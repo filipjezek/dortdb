@@ -1,0 +1,16 @@
+{
+  "buildOptions": {
+    "outDir": "dist"
+  },
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["emscripten"],
+    "lib": ["ESNext", "DOM"]
+  },
+  "files": ["src/index.ts"]
+}
