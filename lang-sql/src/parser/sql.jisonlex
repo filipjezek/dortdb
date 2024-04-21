@@ -86,13 +86,13 @@ DEC       [0-9]
 
 
 {ID1}({ID})* 	return this.yy.AdditionalTokens.ID;
-(U&)?["]{ID1}({ID})*["] 	return this.yy.AdditionalTokens.ID;
+["]{ID1}({ID})*["] 	return this.yy.AdditionalTokens.ID;
 0x{HEX}+		return this.yy.AdditionalTokens.NUMBER;
 0b{BIN}+		return this.yy.AdditionalTokens.NUMBER;
 0o{OCT}+		return this.yy.AdditionalTokens.NUMBER;
 {DEC}+		  return this.yy.AdditionalTokens.NUMBER;
 
-(U&)?[']([^']|'')*[']    return this.yy.AdditionalTokens.STRING;
+[']([^']|'')*[']    return this.yy.AdditionalTokens.STRING;
 
 "$"								      %{ this.pushState('dollarPreamble'); strContent = ''; delimiter = yytext; %}
 <dollarPreamble>"$"	    %{ this.popState(); this.pushState('dollarInner'); delimiter += yytext; %}
