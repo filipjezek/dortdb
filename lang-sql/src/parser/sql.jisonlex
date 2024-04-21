@@ -1,10 +1,3 @@
-%{
-  let commentDepth = 0;
-  let comment = '';
-  let delimiter = '';
-  let strContent = '';
-%}
-
 %options case-insensitive easy_keyword_rules
 
 ID1				[a-z_]
@@ -92,38 +85,38 @@ DEC       [0-9]
 0o{OCT}+		return this.yy.AdditionalTokens.NUMBER;
 {DEC}+		  return this.yy.AdditionalTokens.NUMBER;
 
-[']([^']|'')*[']    return this.yy.AdditionalTokens.STRING;
+[']([^']|[']['])*[']    return this.yy.AdditionalTokens.STRING;
 
-"$"								      %{ this.pushState('dollarPreamble'); strContent = ''; delimiter = yytext; %}
-<dollarPreamble>"$"	    %{ this.popState(); this.pushState('dollarInner'); delimiter += yytext; %}
-<dollarPreamble>.		    delimiter += yytext;
+"$"								      %{ this.pushState('dollarPreamble'); this.strContent = ''; this.delimiter = yytext; %}
+<dollarPreamble>"$"	    %{ this.popState(); this.pushState('dollarInner'); this.delimiter += yytext; %}
+<dollarPreamble>.		    this.delimiter += yytext;
 <dollarPreamble><<EOF>>	%{ this.popState(); return new Error('Unexpected end of file'); %}
 <dollarInner><<EOF>>	  %{ this.popState(); return new Error('Unexpected end of file'); %}
 <dollarInner>.          %{
-  strContent += yytext;
-  if (strContent.endsWith(delimiter)) {
+  this.strContent += yytext;
+  if (this.strContent.endsWith(this.delimiter)) {
     this.popState();
-    yytext = strContent.slice(0, -delimiter.length);
+    yytext = this.strContent.slice(0, -this.delimiter.length);
     return this.yy.AdditionalTokens.STRING;
   }
 %}
 
 
-"--"					%{ this.pushState('linec'); comment = '--'; %}
-<linec>\n		  %{ this.reportComment(comment, {...this.yyloc}); this.popState(); %}
-<linec>.      comment += yytext;
+"--"					%{ this.pushState('linec'); this.comment = '--'; %}
+<linec>\n		  %{ this.yy.reportComment(this.comment, {...this.yyloc}); this.popState(); %}
+<linec>.      this.comment += yytext;
 
 
-"/*"				    %{ this.pushState('blockc'); comment = '/*'; %}
-<blockc>"/*"    %{ comment += '/*'; commentDepth++; %}
+"/*"				    %{ this.pushState('blockc'); this.comment = '/*'; %}
+<blockc>"/*"    %{ this.comment += '/*'; this.commentDepth++; %}
 <blockc>"*/"	  %{
-  comment += '*/';
-  if (!commentDepth) {
+  this.comment += '*/';
+  if (!this.commentDepth) {
     this.popState();
-    this.reportComment(comment, {...this.yyloc});
-  } else commentDepth--; 
+    this.yy.reportComment(this.comment, {...this.yyloc});
+  } else this.commentDepth--; 
 %}
-<blockc>.       comment += yytext;
+<blockc>.       this.comment += yytext;
 <blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
 

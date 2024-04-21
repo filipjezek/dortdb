@@ -1,17 +1,22 @@
 {
-  "buildOptions": {
-    "outDir": "dist"
-  },
   "compilerOptions": {
+    "outDir": "dist",
     "target": "ESNext",
-    "module": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "strict": true,
     "strictNullChecks": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "allowJs": true,
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "dist",
     "forceConsistentCasingInFileNames": true,
     "types": ["emscripten"],
     "lib": ["ESNext", "DOM"]
   },
-  "files": ["src/index.ts"]
+  "files": ["src/index.ts"],
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
 }

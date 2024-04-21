@@ -1,5 +1,5 @@
 import { ASTLiteral } from '@dortdb/core';
-import { SQLVisitor } from './visitor';
+import { SQLVisitor } from './visitor.js';
 
 export class StringLiteral implements ASTLiteral<string> {
   public value: string;
