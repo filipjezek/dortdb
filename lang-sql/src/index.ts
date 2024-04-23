@@ -1,7 +1,9 @@
+import { LanguageManager } from '@dortdb/core';
 import { sqlLexer as Lexer, sqlParser as Parser } from './parser/sql.js';
 import { Keywords, AdditionalTokens } from './parser/tokens.js';
+import { YyContext } from './parser/yycontext.js';
 
-const yy = {
+const yy: YyContext = {
   Keywords,
   AdditionalTokens,
   reportComment: () => {},
@@ -9,14 +11,13 @@ const yy = {
   comment: '',
   strContent: '',
   delimiter: '',
+  langMgr: new LanguageManager(),
+  messageQueue: [],
 };
 
 const lexer: Lexer = new Lexer(yy);
+const parser = new Parser(yy, lexer);
 
-lexer.setInput('SELECT * FROM table WHERE id = $aaa$f$a$oo$aaa$', yy);
+console.log(parser.parse('SELECT * FROM table WHERE id = $aaa$f$a$oo$aaa$'));
 
-let token: any;
-do {
-  token = lexer.lex();
-  console.log('token', token, 'text', lexer.yytext);
-} while (token !== 1);
+export { SQL } from './parser/language.js';

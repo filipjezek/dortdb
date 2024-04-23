@@ -38,6 +38,12 @@ export enum Keywords {
   IN = 'IN',
   LIKE = 'LIKE',
   ILIKE = 'ILIKE',
+  CAST = 'CAST',
+  OPERATOR = 'OPERATOR',
+  ASC = 'ASC',
+  DESC = 'DESC',
+  ARRAY = 'ARRAY',
+  ANY = 'ANY',
 }
 
 export enum AdditionalTokens {
@@ -47,10 +53,13 @@ export enum AdditionalTokens {
   PARAM = 'PARAM',
   COMMA = 'COMMA',
   DOT = 'DOT',
+  DOTSTAR = 'DOTSTAR',
   LPAR = 'LPAR',
   RPAR = 'RPAR',
   LBRA = 'LBRA',
   RBRA = 'RBRA',
+  RCUR = 'RCUR',
+  CLOSEDBRAS = 'CLOSEDBRAS',
   SEMICOLON = 'SEMICOLON',
   COLON = 'COLON',
   DBLCOLON = 'DBLCOLON',
@@ -67,4 +76,6 @@ export enum AdditionalTokens {
   LT = 'LT',
   LTE = 'LTE',
   USEROP = 'USEROP',
+  LANGSWITCH = 'LANGSWITCH',
+  LANGEXIT = 'LANGEXIT',
 }

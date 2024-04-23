@@ -15,11 +15,14 @@ DEC       [0-9]
 %%
 
 "," 			return this.yy.AdditionalTokens.COMMA;
+".*"      return this.yy.AdditionalTokens.DOTSTAR;
 "."				return this.yy.AdditionalTokens.DOT;
 "("				return this.yy.AdditionalTokens.LPAR;
 ")"				return this.yy.AdditionalTokens.RPAR;
+"[]"      return this.yy.AdditionalTokens.CLOSEDBRAS;
 "["				return this.yy.AdditionalTokens.LBRA;
 "]"				return this.yy.AdditionalTokens.RBRA;
+"}"				return this.yy.AdditionalTokens.RCUR;
 "*"				return this.yy.AdditionalTokens.STAR;
 ";" 			return this.yy.AdditionalTokens.SEMICOLON;
 ":" 		  return this.yy.AdditionalTokens.COLON;
@@ -43,15 +46,15 @@ DEC       [0-9]
 "AS"  return this.yy.Keywords.AS;
 "FROM"  return this.yy.Keywords.FROM;
 "WHERE"  return this.yy.Keywords.WHERE;
-"GROUPBY"  return this.yy.Keywords.GROUPBY;
+"GROUP BY"  return this.yy.Keywords.GROUPBY;
 "ROLLUP"  return this.yy.Keywords.ROLLUP;
 "CUBE"  return this.yy.Keywords.CUBE;
-"GROUPINGSETS"  return this.yy.Keywords.GROUPINGSETS;
+"GROUPING SETS"  return this.yy.Keywords.GROUPINGSETS;
 "HAVING"  return this.yy.Keywords.HAVING;
 "UNION"  return this.yy.Keywords.UNION;
 "INTERSECT"  return this.yy.Keywords.INTERSECT;
 "EXCEPT"  return this.yy.Keywords.EXCEPT;
-"ORDERBY"  return this.yy.Keywords.ORDERBY;
+"ORDER BY"  return this.yy.Keywords.ORDERBY;
 "LIMIT"  return this.yy.Keywords.LIMIT;
 "OFFSET"  return this.yy.Keywords.OFFSET;
 "JOIN"  return this.yy.Keywords.JOIN;
@@ -76,6 +79,25 @@ DEC       [0-9]
 "IN"  return this.yy.Keywords.IN;
 "LIKE"  return this.yy.Keywords.LIKE;
 "ILIKE"  return this.yy.Keywords.ILIKE;
+"CAST"  return this.yy.Keywords.CAST;
+"OPERATOR"  return this.yy.Keywords.OPERATOR;
+"ASC"  return this.yy.Keywords.ASC;
+"DESC"  return this.yy.Keywords.DESC;
+"ARRAY" return this.yy.Keywords.ARRAY;
+"ANY"|"SOME" return this.yy.Keywords.ANY;
+
+"LANG EXIT" return this.yy.Keywords.LANGEXIT;
+"LANG "({ID}+) %{
+  const langName = yytext.slice(5);
+  const lang = this.yy.langMgr.getLang(langName);
+  if (!lang) {
+    return new Error(`Unknown language: ${langName}`);
+  }
+  const nestedParser = lang.createParser(this.yy.langMgr);
+  this.yy.messageQueue.push(nestedParser.parse(this._input));
+  return this.yy.Keywords.LANGSWITCH;
+%}
+
 
 
 {ID1}({ID})* 	return this.yy.AdditionalTokens.ID;
@@ -87,40 +109,39 @@ DEC       [0-9]
 
 [']([^']|[']['])*[']    return this.yy.AdditionalTokens.STRING;
 
-"$"								      %{ this.pushState('dollarPreamble'); this.strContent = ''; this.delimiter = yytext; %}
-<dollarPreamble>"$"	    %{ this.popState(); this.pushState('dollarInner'); this.delimiter += yytext; %}
-<dollarPreamble>.		    this.delimiter += yytext;
+"$"								      %{ this.pushState('dollarPreamble'); this.yy.strContent = ''; this.yy.delimiter = yytext; %}
+<dollarPreamble>"$"	    %{ this.popState(); this.pushState('dollarInner'); this.yy.delimiter += yytext; %}
+<dollarPreamble>.		    this.yy.delimiter += yytext;
 <dollarPreamble><<EOF>>	%{ this.popState(); return new Error('Unexpected end of file'); %}
 <dollarInner><<EOF>>	  %{ this.popState(); return new Error('Unexpected end of file'); %}
 <dollarInner>.          %{
-  this.strContent += yytext;
-  if (this.strContent.endsWith(this.delimiter)) {
+  this.yy.strContent += yytext;
+  if (this.yy.strContent.endsWith(this.yy.delimiter)) {
     this.popState();
-    yytext = this.strContent.slice(0, -this.delimiter.length);
+    yytext = this.yy.strContent.slice(0, -this.yy.delimiter.length);
     return this.yy.AdditionalTokens.STRING;
   }
 %}
 
 
-"--"					%{ this.pushState('linec'); this.comment = '--'; %}
-<linec>\n		  %{ this.yy.reportComment(this.comment, {...this.yyloc}); this.popState(); %}
-<linec>.      this.comment += yytext;
+"--"					%{ this.pushState('linec'); this.yy.comment = '--'; %}
+<linec>\n		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}
+<linec>.      this.yy.comment += yytext;
 
 
-"/*"				    %{ this.pushState('blockc'); this.comment = '/*'; %}
-<blockc>"/*"    %{ this.comment += '/*'; this.commentDepth++; %}
+"/*"				    %{ this.pushState('blockc'); this.yy.comment = '/*'; %}
+<blockc>"/*"    %{ this.yy.comment += '/*'; this.yy.commentDepth++; %}
 <blockc>"*/"	  %{
-  this.comment += '*/';
-  if (!this.commentDepth) {
+  this.yy.comment += '*/';
+  if (!this.yy.commentDepth) {
     this.popState();
-    this.yy.reportComment(this.comment, {...this.yyloc});
-  } else this.commentDepth--; 
+    this.yy.reportComment(this.yy.comment, {...this.yyloc});
+  } else this.yy.commentDepth--; 
 %}
-<blockc>.       this.comment += yytext;
+<blockc>.       this.yy.comment += yytext;
 <blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
 
 ([+*/<>=-])+[*/<>=] return this.yy.AdditionalTokens.USEROP;
 [+*/<>=~!@#%^&|`?-]*[~!@#%^&|`?][+*/<>=~!@#%^&|`?-]* return this.yy.AdditionalTokens.USEROP;
-\s+                 /* skip whitespace */        
-.					          return new Error('Unexpected character: ' + yytext);
+\s+                 /* skip whitespace */
