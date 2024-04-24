@@ -3,8 +3,11 @@ import { sqlLexer as Lexer, sqlParser as Parser } from './sql.js';
 import { Keywords, AdditionalTokens } from './tokens.js';
 import { YyContext } from './yycontext.js';
 
-export const SQL: Language = {
+export const SQL: Language<'sql'> = {
   name: 'sql',
+  operators: [],
+  aggregators: [],
+  functions: [],
   createParser: (mgr) => {
     const yy: YyContext = {
       Keywords,

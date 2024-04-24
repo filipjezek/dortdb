@@ -1,10 +1,9 @@
 import { ASTLiteral } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 
-export class StringLiteral implements ASTLiteral<string> {
-  public value: string;
-
+export class StringLiteral extends ASTLiteral<string> {
   constructor(public original: string) {
+    super(original, null);
     this.parse();
   }
 
@@ -12,11 +11,11 @@ export class StringLiteral implements ASTLiteral<string> {
     visitor.visitStringLiteral(this);
   }
 
-  private parse() {
+  private parse(): void {
     if (this.original[0] === '$') {
       return this.parseDolarQuoted();
     }
-    this.value = '';
+    const value = '';
     const escRegex =
       /^[bfnrt\\]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{1,3}/g;
     for (let i = 1; i < this.original.length - 1; i++) {
@@ -71,14 +70,12 @@ export class StringLiteral implements ASTLiteral<string> {
   }
 }
 
-export class NumberLiteral implements ASTLiteral<number> {
-  public value: number;
-
+export class NumberLiteral extends ASTLiteral<number> {
   constructor(public original: string) {
-    this.value = +original;
+    super(original, +original);
   }
 
-  accept(visitor: SQLVisitor): void {
+  override accept(visitor: SQLVisitor): void {
     visitor.visitNumberLiteral(this);
   }
 }
