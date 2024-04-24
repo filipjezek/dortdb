@@ -15,7 +15,6 @@
   "license": "ISC",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
-    "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "@types/emscripten": "^1.39.10",
     "esbuild": "^0.20.2",
     "rollup": "^4.14.3",
@@ -27,6 +26,7 @@
     "@dortdb/core": "^1.0.0"
   },
   "dependencies": {
+    "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "tslib": "^2.6.2"
   }
 }

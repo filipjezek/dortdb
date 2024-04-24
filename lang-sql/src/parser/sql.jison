@@ -82,9 +82,9 @@
 // statements
 
 scope-exit:
-	RBRA { this.lexer.unput($1); }
-	| RPAR { this.lexer.unput($1); }
-	| RCUR { this.lexer.unput($1); }
+	RBRA { yy.lexer.unput($1); }
+	| RPAR { yy.lexer.unput($1); }
+	| RCUR { yy.lexer.unput($1); }
 	| LANGEXIT ;
 
 root:
@@ -109,7 +109,7 @@ select-set-list:
 	| select-set-list setop LPAR subquery RPAR ;
 
 select-list:
-	expression alias_opt
+	expression alias_opt { return $1; }
 	| select-list COMMA expression alias_opt ;
 
 one-table:
@@ -172,113 +172,116 @@ limit-clause:
 // expressions
 
 scoped-id:
-	ID
-	| ID DOT ID ;
+	ID { $$ = new yy.ast.ASTIdentifier($1); }
+	| ID DOT ID { $$ = new yy.ast.ASTIdentifier($1, $3); } ;
 
 field-selector:
-	STAR
-	| scoped-id
-	| scoped-id DOTSTAR ;
+	STAR { $$ = new yy.ast.ASTFieldSelector($1); }
+	| scoped-id { $$ = new yy.ast.ASTFieldSelector($1.idOriginal, new yy.ast.ASTIdentifier($1.schemaOriginal)); }
+	| ID DOT ID DOT ID { $$ = new yy.ast.ASTFieldSelector($3, new yy.ast.ASTIdentifier($2, $1)); }
+	| scoped-id DOTSTAR { $$ = new yy.ast.ASTFieldSelector('*', new yy.ast.ASTIdentifier($1)); } ;
 
 subquery:
 	select-stmt
-	| LANGSWITCH ;
+	| LANGSWITCH { $$ = yy.messageQueue.shift(); } ;
+
+boolean-literal:
+	TRUE { $$ = new yy.ast.ASTLiteral($1, true); }
+	| FALSE { $$ = new yy.ast.ASTLiteral($1, false); }
+	| NULL { $$ = new yy.ast.ASTLiteral($1, null); } ;
 
 primary-expression:
 	field-selector
-	| PARAM
-	| NUMBER
-	| STRING
-	| ID STRING
-	| TRUE
-	| FALSE
-	| NULL
-	| LPAR expression RPAR
-	| scoped-id LPAR expression-list_opt RPAR
-	| scoped-id LPAR subquery RPAR
-	| LPAR subquery RPAR
-	| ARRAY LBRA expression-list_opt RBRA ;
+	| PARAM { $$ = new yy.ast.ASTParam($1); }
+	| NUMBER { $$ = new yy.ast.ASTNumberLiteral($1); }
+	| STRING { $$ = new yy.ast.ASTStringLiteral($1); }
+	| ID STRING { $$ = new yy.ast.ASTCast(new yy.ast.ASTStringLiteral($2), $1); }
+	| boolean-literal
+	| LPAR expression RPAR { $$ = $2; }
+	| scoped-id LPAR expression-list_opt RPAR { 
+		$$ = new yy.ast.ASTFunction('sql', $1, $3);
+	}
+	| scoped-id LPAR subquery RPAR { $$ = new yy.ast.ASTFunction('sql', $1, [$3]); }
+	| LPAR subquery RPAR { $$ = $2; }
+	| ARRAY LBRA expression-list_opt RBRA { $$ = new yy.ast.ASTArray($3); };
 
 expression-list:
-	expression
-	| expression-list COMMA expression ;
+	expression { $$ = [$1]; }
+	| expression-list COMMA expression { $$ = $1; $$.push($3); };
 
 expression-list_opt-list:
-	LPAR expression-list_opt RPAR
-	| expression-list_opt-list COMMA LPAR expression-list_opt RPAR ;
+	LPAR expression-list_opt RPAR { $$ = [$2]; }
+	| expression-list_opt-list COMMA LPAR expression-list_opt RPAR { $$ = $1; $$.push($4); };
 
 cast-expression:
 	primary-expression
-	| CAST LPAR expression AS ID braces_opt RPAR
-	| primary-expression DBLCOLON ID braces_opt ;
+	| CAST LPAR expression AS ID braces_opt RPAR { $$ = new yy.ast.ASTCast($3, $5, !!$6); }
+	| primary-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, $3, !!$4); } ;
 
 subscript-expression:
 	cast-expression
-	| subscript-expression LBRA expression RBRA
-	| subscript-expression LBRA expression COLON expression RBRA ;
+	| subscript-expression LBRA expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3); }
+	| subscript-expression LBRA expression COLON expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3, $5); };
 
 unary-expression:
 	subscript-expression
-	| unary-operator cast-expression ;
+	| unary-operator cast-expression { $$ = yy.makeOp($1, [$2]); } ;
 
 unary-operator:
 	PLUS | MINUS ;
 
 exponentiative-expression:
 	unary-expression
-	| exponentiative-expression EXP cast-expression ;
+	| exponentiative-expression EXP cast-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+multiplicative-operator:
+	STAR | DIV | MOD ;
 
 multiplicative-expression:
 	exponentiative-expression
-	| multiplicative-expression STAR cast-expression
-	| multiplicative-expression MOD cast-expression
-	| multiplicative-expression DIV cast-expression ;
+	| multiplicative-expression multiplicative-operator cast-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 additive-expression:
 	multiplicative-expression
-	| additive-expression PLUS multiplicative-expression
-	| additive-expression MINUS multiplicative-expression ;
+	| additive-expression PLUS multiplicative-expression { $$ = yy.makeOp($2, [$1, $3]); }
+	| additive-expression MINUS multiplicative-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 userop-expression:
 	additive-expression
-	| userop-expression USEROP additive-expression
-	| userop-expression OPERATOR LPAR scoped-id RPAR additive-expression ;
+	| userop-expression USEROP additive-expression { $$ = yy.makeOp($2, [$1, $3]); }
+	| userop-expression OPERATOR LPAR scoped-id RPAR additive-expression { $$ = yy.makeOp($4, [$1, $6]); } ;
 
 string-set-range-expression:
 	userop-expression
-	| userop-expression not_opt BETWEEN userop-expression AND userop-expression
-	| userop-expression not_opt IN LPAR expression-list RPAR
-	| userop-expression not_opt IN LPAR subquery RPAR
-	| userop-expression not_opt LIKE userop-expression
-	| userop-expression not_opt ILIKE userop-expression ;
+	| userop-expression not_opt BETWEEN userop-expression AND userop-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4, $6]), $2); }
+	| userop-expression not_opt IN LPAR expression-list RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
+	| userop-expression not_opt IN LPAR subquery RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
+	| userop-expression not_opt LIKE userop-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); }
+	| userop-expression not_opt ILIKE userop-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); } ;
+
+relational-operator:
+	LT | GT | LTE | GTE | EQ | NEQ ;
 
 relational-expression:
 	string-set-range-expression
-	| relational-expression LT additive-expression
-	| relational-expression GT additive-expression
-	| relational-expression LTE additive-expression
-	| relational-expression GTE additive-expression
-	| relational-expression EQ additive-expression
-	| relational-expression NEQ additive-expression ;
+	| relational-expression relational-operator additive-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 is-expression:
 	relational-expression
-	| relational-expression IS not_opt NULL
-	| relational-expression IS not_opt TRUE
-	| relational-expression IS not_opt FALSE
-	| relational-expression IS not_opt DISTINCT FROM relational-expression ;
+	| relational-expression IS not_opt boolean-literal { $$ = yy.wrapNot(yy.makeOp($2, [$1, $4]), $3); }
+	| relational-expression IS not_opt DISTINCT FROM relational-expression { $$ = yy.wrapNot(yy.makeOp('DISTINCT FROM', [$1, $6]), $3); } ;
 
 logical-NOT-expression:
 	is-expression
-	| NOT is-expression ;
+	| NOT is-expression { $$ = yy.wrapNot($2, $1); } ;
 
 logical-AND-expression:
 	logical-NOT-expression
-	| logical-AND-expression AND logical-NOT-expression ;
+	| logical-AND-expression AND logical-NOT-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 logical-OR-expression:
 	logical-AND-expression
-	| logical-OR-expression OR logical-AND-expression ;
+	| logical-OR-expression OR logical-AND-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 expression:
 	logical-OR-expression ;
@@ -296,11 +299,11 @@ not_opt:
 	| NOT ;
 
 alias_opt:
-	| AS ID ;
+	| AS ID { $$ = new yy.ast.ASTIdentifier($2); } ;
 
 table-alias_opt:
-	| AS ID
-	| AS ID LPAR column-list RPAR ;
+	| AS ID { $$ = new yy.ast.ASTTableAlias($2); }
+	| AS ID LPAR column-list RPAR { $$ = new yy.ast.ASTTableAlias($2, $4); } ;
 
 outer_opt:
 	| OUTER ;

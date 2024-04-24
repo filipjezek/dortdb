@@ -1,4 +1,4 @@
-import { Extension } from './extension.js';
+import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
 
 export class DortDB<LangNames extends string> {
@@ -6,6 +6,7 @@ export class DortDB<LangNames extends string> {
 
   constructor(private config: DortDBConfig<LangNames>) {
     this.langMgr = new LanguageManager();
+    this.langMgr.registerExtension(core);
     this.langMgr.registerLang(config.mainLang);
     this.config.additionalLangs?.forEach((lang) =>
       this.langMgr.registerLang(lang)

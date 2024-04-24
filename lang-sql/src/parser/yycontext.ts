@@ -1,5 +1,7 @@
+import { JisonLexerAPI } from '@ts-jison/parser-generator';
 import { AdditionalTokens, Keywords } from './tokens.js';
-import { LanguageManager } from '@dortdb/core';
+import { ASTNode, ASTOperator, LanguageManager } from '@dortdb/core';
+import { ASTIdentifier } from '../ast/index.js';
 
 export interface YyContext {
   Keywords: typeof Keywords;
@@ -17,4 +19,8 @@ export interface YyContext {
    * This way we can pass some other values
    */
   messageQueue: any[];
+  lexer: JisonLexerAPI;
+  wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
+  makeOp: (op: string | ASTIdentifier, operands: ASTNode[]) => ASTOperator;
+  ast: Record<string, new (...args: any[]) => ASTNode>;
 }

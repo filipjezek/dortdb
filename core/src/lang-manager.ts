@@ -1,4 +1,5 @@
 import { AggregatorFn, Extension, Fn, Operator } from './extension.js';
+import { makePath } from './utils/make-path.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -24,21 +25,27 @@ interface Implementations {
 export class LanguageManager {
   private langs: Record<string, Language> = {};
   private static readonly allLangs = Symbol('allLangs');
+  private static readonly defaultSchema = Symbol('defaultSchema');
   private implementations: Record<
     string | (typeof LanguageManager)['allLangs'],
-    Implementations
+    Record<string | (typeof LanguageManager)['defaultSchema'], Implementations>
   > = {
     [LanguageManager.allLangs]: {
-      operators: {},
-      functions: {},
-      aggregators: {},
+      [LanguageManager.defaultSchema]: {
+        operators: {},
+        functions: {},
+        aggregators: {},
+      },
     },
   };
 
   public registerExtension(ext: Extension) {
     const scope = ext.scope ?? ([LanguageManager.allLangs] as const);
+    const schema = ext.schema ?? LanguageManager.defaultSchema;
+
     for (const lang of scope) {
-      const ims = this.implementations[lang];
+      makePath(this.implementations, lang, schema);
+      const ims = this.implementations[lang][schema];
       for (const type of ['operators', 'functions', 'aggregators'] as const) {
         for (const item of ext[type]) {
           ims[type][item.name] = item;
@@ -56,19 +63,28 @@ export class LanguageManager {
     return this.langs[name.toLowerCase()] as Language<Name>;
   }
 
-  public getOp(lang: string, name: string): Operator {
+  public getOp(lang: string, name: string, schema?: string): Operator {
     return this.getImplementation('operators', lang, name);
+  }
+  public getFn(lang: string, name: string, schema?: string): Fn {
+    return this.getImplementation('functions', lang, name);
+  }
+  public getAggr(lang: string, name: string, schema?: string): AggregatorFn {
+    return this.getImplementation('aggregators', lang, name);
   }
 
   private getImplementation<T extends keyof Implementations>(
     type: T,
     lang: string,
-    name: string
+    name: string,
+    schema:
+      | string
+      | (typeof LanguageManager)['defaultSchema'] = LanguageManager.defaultSchema
   ): Implementations[T][string] {
-    const scoped = this.implementations[lang][type][name];
-    return (scoped ??
-      this.implementations[LanguageManager.allLangs][type][
-        name
-      ]) as Implementations[T][string];
+    let impl = this.implementations[lang]?.[schema]?.[type][name];
+    impl =
+      impl ??
+      this.implementations[LanguageManager.allLangs][schema]?.[type][name];
+    return impl as Implementations[T][string];
   }
 }

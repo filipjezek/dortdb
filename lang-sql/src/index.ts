@@ -4,6 +4,8 @@ import { SQL } from './parser/language.js';
 const db = new DortDB({
   mainLang: SQL,
 });
-console.log(db.parse('SELECT * FROM foo WHERE a = b + 3 * 2'));
+console.log(db.parse("SELECT bar('foo', 13 * a.b)"));
 
 export { SQL };
+export * from './ast/index.js';
+export * from './ast/visitor.js';

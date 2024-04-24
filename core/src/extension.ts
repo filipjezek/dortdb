@@ -1,8 +1,8 @@
-import { ASTExpression } from './ast.js';
+import { operators } from './operators/index.js';
 
 export interface Operator {
   name: string;
-  impl: (...args: ASTExpression[]) => any;
+  impl: (...args: any[]) => any;
 }
 
 export interface Fn {
@@ -21,3 +21,9 @@ export interface Extension<LangNames extends string = string> {
   aggregators: AggregatorFn[];
   scope?: LangNames[];
 }
+
+export const core: Extension = {
+  operators: operators,
+  functions: [],
+  aggregators: [],
+};

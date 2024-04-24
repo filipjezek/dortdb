@@ -88,14 +88,21 @@ DEC       [0-9]
 
 "LANG EXIT" return this.yy.Keywords.LANGEXIT;
 "LANG "({ID}+) %{
+{
   const langName = yytext.slice(5);
   const lang = this.yy.langMgr.getLang(langName);
   if (!lang) {
     return new Error(`Unknown language: ${langName}`);
   }
   const nestedParser = lang.createParser(this.yy.langMgr);
-  this.yy.messageQueue.push(nestedParser.parse(this._input));
+  const res = nestedParser.parse(this._input);
+  if (res instanceof Error) {
+    return res;
+  }
+  this.yy.messageQueue.push(res.value);
+  this._input = res.remainingInput;
   return this.yy.Keywords.LANGSWITCH;
+}
 %}
 
 

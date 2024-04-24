@@ -1,34 +1,61 @@
-import { Language } from '@dortdb/core';
+import {
+  ASTFunction,
+  ASTOperator,
+  Language,
+  LanguageManager,
+  ASTAggregator,
+} from '@dortdb/core';
 import { sqlLexer as Lexer, sqlParser as Parser } from './sql.js';
 import { Keywords, AdditionalTokens } from './tokens.js';
 import { YyContext } from './yycontext.js';
+import * as ast from '../ast/index.js';
+import { ASTLiteral } from '@dortdb/core';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',
   operators: [],
   aggregators: [],
   functions: [],
-  createParser: (mgr) => {
-    const yy: YyContext = {
-      Keywords,
-      AdditionalTokens,
-      reportComment: () => {},
-      commentDepth: 0,
-      comment: '',
-      strContent: '',
-      delimiter: '',
-      langMgr: mgr,
-      messageQueue: [],
-    };
-    const parser = new Parser(yy, new Lexer(yy));
-    return {
-      parse: (input: string) => {
-        const result = parser.parse(input);
-        return {
-          value: result,
-          remainingInput: (parser.lexer as any)._input,
-        };
-      },
-    };
-  },
+  createParser,
 };
+
+function createParser(mgr: LanguageManager) {
+  const yy: YyContext = {
+    Keywords,
+    AdditionalTokens,
+    reportComment: () => {},
+    commentDepth: 0,
+    comment: '',
+    strContent: '',
+    delimiter: '',
+    langMgr: mgr,
+
+    messageQueue: [],
+    lexer: null,
+    wrapNot: (expr, not) =>
+      not ? new ASTOperator('sql', new ast.ASTIdentifier('NOT'), [expr]) : expr,
+    makeOp: (op, args) =>
+      typeof op === 'string'
+        ? new ASTOperator('sql', new ast.ASTIdentifier(op), args)
+        : new ASTOperator('sql', op, args),
+    ast: {
+      ...ast,
+      ASTLiteral,
+      ASTOperator,
+      ASTFunction,
+      ASTAggregator,
+    },
+  };
+
+  const parser = new Parser(yy, new Lexer(yy));
+  yy.lexer = parser.lexer;
+  return {
+    parse: (input: string) => {
+      const result = parser.parse(input);
+      return {
+        value: result,
+        remainingInput: (parser.lexer as any)._input,
+      };
+    },
+  };
+}
