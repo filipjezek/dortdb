@@ -58,7 +58,10 @@ export function interpretEscape(esc: string): string {
 }
 
 export function parseIdentifier(original: string): string {
-  return original[0] === '"' || original[0] === '$'
-    ? parseStringLiteral(original)
-    : original.toLowerCase();
+  return (
+    original &&
+    (original[0] === '"' || original[0] === '$'
+      ? parseStringLiteral(original)
+      : original.toLowerCase())
+  );
 }

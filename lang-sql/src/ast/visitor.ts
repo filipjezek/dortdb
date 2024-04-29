@@ -1,5 +1,13 @@
 import { ASTVisitor } from '@dortdb/core';
-import { SelectStatement } from './select.js';
+import {
+  GroupByClause,
+  JoinClause,
+  JoinUsing,
+  OrderByItem,
+  SelectSet,
+  SelectSetOp,
+  SelectStatement,
+} from './select.js';
 import {
   ASTArray,
   ASTParam,
@@ -9,10 +17,13 @@ import {
   ASTSubscript,
   ASTIdentifier,
 } from './expression.js';
-import { ASTFieldSelector, ASTTableAlias } from './alias.js';
+import {
+  ASTExpressionAlias,
+  ASTFieldSelector,
+  ASTTableAlias,
+} from './alias.js';
 
 export interface SQLVisitor extends ASTVisitor {
-  visitSelectStatement(node: SelectStatement): void;
   visitStringLiteral(node: ASTStringLiteral): void;
   visitNumberLiteral(node: ASTNumberLiteral): void;
   visitArray(node: ASTArray): void;
@@ -22,4 +33,12 @@ export interface SQLVisitor extends ASTVisitor {
   visitIdentifier(node: ASTIdentifier): void;
   visitTableAlias(node: ASTTableAlias): void;
   visitFieldSelector(node: ASTFieldSelector): void;
+  visitExpressionAlias(node: ASTExpressionAlias): void;
+  visitSelectStatement(node: SelectStatement): void;
+  visitSelectSetOp(node: SelectSetOp): void;
+  visitSelectSet(node: SelectSet): void;
+  visitOrderByItem(node: OrderByItem): void;
+  visitGroupByClause(node: GroupByClause): void;
+  visitJoinClause(node: JoinClause): void;
+  visitJoinUsing(node: JoinUsing): void;
 }

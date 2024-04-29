@@ -1,6 +1,5 @@
 todo:
 
-- langswitch
 - any, all, distinct, exists
 - aggregates
 - window functions

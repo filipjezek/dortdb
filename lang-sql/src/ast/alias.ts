@@ -2,10 +2,12 @@ import { ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier } from '../utils/string.js';
 import { ASTIdentifier } from './expression.js';
+import { JoinUsing } from './select.js';
 
 export class ASTTableAlias implements ASTNode {
   name: string;
   columns: string[];
+  table: ASTIdentifier | JoinUsing;
 
   constructor(public nameOriginal: string, public columnsOriginal?: string[]) {
     this.name = parseIdentifier(nameOriginal);
@@ -26,5 +28,17 @@ export class ASTFieldSelector implements ASTNode {
 
   accept(visitor: SQLVisitor) {
     return visitor.visitFieldSelector(this);
+  }
+}
+
+export class ASTExpressionAlias implements ASTNode {
+  public alias: string;
+
+  constructor(public expression: ASTNode, public aliasOriginal: string) {
+    this.alias = parseIdentifier(aliasOriginal);
+  }
+
+  accept(visitor: SQLVisitor) {
+    return visitor.visitExpressionAlias(this);
   }
 }

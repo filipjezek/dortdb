@@ -48,9 +48,7 @@ export class ASTAggregator implements ASTNode {
 
 export interface ASTIdentifier extends ASTNode {
   schema?: string;
-  schemaOriginal?: string;
   id: string;
-  idOriginal: string;
 }
 
 export interface ASTVisitor {

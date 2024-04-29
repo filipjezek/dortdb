@@ -1,4 +1,4 @@
-%options case-insensitive easy_keyword_rules
+%options case-insensitive easy_keyword_rules ranges
 
 ID1				[a-z_]
 ID				[0-9a-z_$]
@@ -18,11 +18,11 @@ DEC       [0-9]
 ".*"      return this.yy.AdditionalTokens.DOTSTAR;
 "."				return this.yy.AdditionalTokens.DOT;
 "("				return this.yy.AdditionalTokens.LPAR;
-")"				return this.yy.AdditionalTokens.RPAR;
+")"				this.yy.saveRemainingInput(')' + this._input); return this.yy.AdditionalTokens.RPAR;
 "[]"      return this.yy.AdditionalTokens.CLOSEDBRAS;
 "["				return this.yy.AdditionalTokens.LBRA;
-"]"				return this.yy.AdditionalTokens.RBRA;
-"}"				return this.yy.AdditionalTokens.RCUR;
+"]"				this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
+"}"				this.yy.saveRemainingInput('}' + this._input); return this.yy.AdditionalTokens.RCUR;
 "*"				return this.yy.AdditionalTokens.STAR;
 ";" 			return this.yy.AdditionalTokens.SEMICOLON;
 ":" 		  return this.yy.AdditionalTokens.COLON;
@@ -85,8 +85,11 @@ DEC       [0-9]
 "DESC"  return this.yy.Keywords.DESC;
 "ARRAY" return this.yy.Keywords.ARRAY;
 "ANY"|"SOME" return this.yy.Keywords.ANY;
+"NULLS" return this.yy.Keywords.NULLS;
+"FIRST" return this.yy.Keywords.FIRST;
+"LAST" return this.yy.Keywords.LAST;
 
-"LANG EXIT" return this.yy.Keywords.LANGEXIT;
+"LANG EXIT" this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.LANGEXIT;
 "LANG "({ID}+) %{
 {
   const langName = yytext.slice(5);

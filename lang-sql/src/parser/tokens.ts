@@ -42,6 +42,9 @@ export enum Keywords {
   OPERATOR = 'OPERATOR',
   ASC = 'ASC',
   DESC = 'DESC',
+  NULLS = 'NULLS',
+  FIRST = 'FIRST',
+  LAST = 'LAST',
   ARRAY = 'ARRAY',
   ANY = 'ANY',
 }

@@ -10,8 +10,14 @@ export interface Fn {
   impl: (...args: any[]) => any;
 }
 
+export enum AggregatorInvocation {
+  INITIAL,
+  ITERATE,
+  FINAL,
+}
 export interface AggregatorFn {
   name: string;
+  impl: (invocationType: AggregatorInvocation, ...args: any[]) => any;
 }
 
 export interface Extension<LangNames extends string = string> {

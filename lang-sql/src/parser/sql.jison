@@ -44,6 +44,9 @@
 %token DESC
 %token ARRAY
 %token ANY
+%token NULLS
+%token FIRST
+%token LAST
 
 %token NUMBER
 %token STRING
@@ -82,91 +85,121 @@
 // statements
 
 scope-exit:
-	RBRA { yy.lexer.unput($1); }
-	| RPAR { yy.lexer.unput($1); }
-	| RCUR { yy.lexer.unput($1); }
+	RBRA
+	| RPAR
+	| RCUR
 	| LANGEXIT ;
 
 root:
-	scope-exit { return {}; }
-  | statement semicolon_opt
-  | statement SEMICOLON root ;
+	scope-exit { return []; }
+	| scope-exit error { return []; }
+  | statement-list semicolon_opt scope-exit { return $1; }
+	| statement-list semicolon_opt scope-exit error { return $1; }
+  | statement-list semicolon_opt { return $1; } ;
+
+statement-list:
+	statement { $$ = [$1]; }
+	| statement-list SEMICOLON statement { $$ = $1; $$.push($2); } ;
 
 statement:
   select-stmt ;
 
 select-stmt:
-	select-set-list orderby-clause_opt limit-clause_opt ;
+	select-set-list orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); } ;
 
 select-set:
-	SELECT select-list
+	SELECT select-list { $$ = new yy.ast.SelectSet($2); }
 	| SELECT select-list FROM table-item
-	where-clause_opt groupby-clause_opt having-clause_opt ;
+	where-clause_opt groupby-clause_opt having-clause_opt {
+		$$ = new yy.ast.SelectSet($2, $4, $5, $6, $7);
+	} ;
 
 select-set-list:
 	select-set
-	| select-set-list setop select-set
-	| select-set-list setop LPAR subquery RPAR ;
+	| select-set-list setop select-set { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($4, undefined, $3); }
+	| select-set-list setop-modifier setop select-set { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($4, $2, $3); }
+	| select-set-list setop LPAR subquery RPAR { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($5, undefined, $3); }
+	| select-set-list setop-modifier setop LPAR subquery RPAR { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($5, $2, $3); } ;
+
+setop-modifier:
+	ALL
+	| DISTINCT ;
 
 select-list:
-	expression alias_opt { return $1; }
-	| select-list COMMA expression alias_opt ;
+	expression alias_opt { $$ = [$2 ? new yy.ast.ASTAlias($1, $2) : $1]; }
+	| select-list COMMA expression alias_opt { $$ = $1; $$.push($4 ? new yy.ast.ASTAlias($3, $4) : $3); } ;
 
 one-table:
-	scoped-id table-alias_opt
-	| LPAR subquery RPAR table-alias_opt
-	| LPAR table-item RPAR table-alias_opt;
+	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
+	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } }
+	| LPAR table-item RPAR table-alias_opt; { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } }
 
 table-item:
 	one-table
-	| table-item join-type one-table join-condition_opt ;
+	| table-item join-type one-table join-condition_opt { $$ = new yy.ast.JoinClause($3, $2, $4); }
+	| table-item CROSS JOIN one-table { $$ = new yy.ast.JoinClause($4, 'cross'); }
+	| table-item NATURAL join-type one-table { $$ = new yy.ast.JoinClause($4, $3); $$.natural = true; } ;
 
 join-type:
-	JOIN
-	| INNER JOIN
-	| LEFT outer_opt JOIN
-	| RIGHT outer_opt JOIN
-	| FULL outer_opt JOIN
-	| CROSS JOIN
-	| NATURAL JOIN ;
+	COMMA { $$ = 'cross'; }
+	| JOIN { $$ = 'inner'; }
+	| INNER JOIN { $$ = 'inner'; }
+	| LEFT outer_opt JOIN { $$ = 'left'; }
+	| RIGHT outer_opt JOIN { $$ = 'right'; }
+	| FULL outer_opt JOIN { $$ = 'full'; } ;
 
 join-condition:
-	ON expression
-	| USING LPAR column-list RPAR alias_opt ;
+	ON expression { $$ = $2; }
+	| USING LPAR column-list RPAR table-alias_opt {
+		$$ = new yy.ast.ASTUsing($3);
+		if ($4) {
+			let alias = new yy.ast.ASTAlias($5);
+			alias.table = $$;
+			$$ = alias;
+		}
+	} ;
 
 column-list:
-	ID
-	| column-list COMMA ID ;
+	ID { $$ = [new yy.ast.ASTIdentifier($1)]; }
+	| column-list COMMA ID { $$ = $1; $$.push(new yy.ast.ASTIdentifier($3)); } ;
 
 where-clause:
-	WHERE expression ;
+	WHERE expression { $$ = $2; } ;
 
 groupby-clause:
-	GROUPBY expression
-	| GROUPBY expression ROLLUP LPAR expression-list RPAR
-	| GROUPBY expression CUBE LPAR expression-list RPAR
-	| GROUPBY expression GROUPINGSETS LPAR expression-list_opt-list RPAR ;
+	GROUPBY expression-list { $$ = new yy.ast.GroupByClause($2, 'basic'); }
+	| GROUPBY ROLLUP LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($4, 'rollup'); }
+	| GROUPBY CUBE LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($4, 'cube'); }
+	| GROUPBY GROUPINGSETS LPAR expression-list_opt-list RPAR { $$ = new yy.ast.GroupByClause($4, 'groupingsets'); } ;
 
 having-clause:
-	HAVING expression ;
+	HAVING expression { $$ = $2; };
 
 setop:
 	UNION
 	| INTERSECT
 	| EXCEPT ;
 
+orderby-order:
+	ASC
+	| DESC ;
+
+orderby-nulls:
+	NULLS FIRST { $$ = true; }
+	| NULLS LAST { $$ = false; } ;
+
 orderby-clause:
-	ORDERBY expression
-	| ORDERBY expression ASC
-	| ORDERBY expression DESC
-	| orderby-clause COMMA expression
-	| orderby-clause COMMA expression ASC
-	| orderby-clause COMMA expression DESC ;
+	ORDERBY expression orderby-order_opt orderby-nulls_opt { $$ = [new yy.ast.OrderByItem($2, $3, $4)]}
+	| orderby-clause COMMA expression orderby-order_opt orderby-nulls_opt {
+		$$ = $1;
+		$$.push(new yy.ast.OrderByItem($3, $4, $5));
+	} ;
 
 limit-clause:
-	LIMIT NUMBER
-	| OFFSET NUMBER
-	| LIMIT NUMBER OFFSET NUMBER ;
+	LIMIT expression { $$ = [undefined, $2]; }
+	| LIMIT ALL OFFSET expression { $$ = [$4, undefined]; }
+	| OFFSET expression { $$ = [$2, undefined]; }
+	| LIMIT expression OFFSET expression { $$ = [$4, $2]; } ;
 
 
 // expressions
@@ -198,7 +231,7 @@ primary-expression:
 	| ID STRING { $$ = new yy.ast.ASTCast(new yy.ast.ASTStringLiteral($2), $1); }
 	| boolean-literal
 	| LPAR expression RPAR { $$ = $2; }
-	| scoped-id LPAR expression-list_opt RPAR { 
+	| scoped-id LPAR expression-list_opt RPAR {
 		$$ = new yy.ast.ASTFunction('sql', $1, $3);
 	}
 	| scoped-id LPAR subquery RPAR { $$ = new yy.ast.ASTFunction('sql', $1, [$3]); }
@@ -210,8 +243,8 @@ expression-list:
 	| expression-list COMMA expression { $$ = $1; $$.push($3); };
 
 expression-list_opt-list:
-	LPAR expression-list_opt RPAR { $$ = [$2]; }
-	| expression-list_opt-list COMMA LPAR expression-list_opt RPAR { $$ = $1; $$.push($4); };
+	LPAR expression-list_opt RPAR { $$ = [$2 ?? []]; }
+	| expression-list_opt-list COMMA LPAR expression-list_opt RPAR { $$ = $1; $$.push($4 ?? []);};
 
 cast-expression:
 	primary-expression
@@ -331,3 +364,9 @@ limit-clause_opt:
 
 braces_opt:
 	| CLOSEDBRAS ;
+
+orderby-order_opt:
+	| orderby-order ;
+
+orderby-nulls_opt:
+	| orderby-nulls ;

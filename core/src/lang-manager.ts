@@ -64,13 +64,13 @@ export class LanguageManager {
   }
 
   public getOp(lang: string, name: string, schema?: string): Operator {
-    return this.getImplementation('operators', lang, name);
+    return this.getImplementation('operators', lang, name, schema);
   }
   public getFn(lang: string, name: string, schema?: string): Fn {
-    return this.getImplementation('functions', lang, name);
+    return this.getImplementation('functions', lang, name, schema);
   }
   public getAggr(lang: string, name: string, schema?: string): AggregatorFn {
-    return this.getImplementation('aggregators', lang, name);
+    return this.getImplementation('aggregators', lang, name, schema);
   }
 
   private getImplementation<T extends keyof Implementations>(

@@ -20,6 +20,7 @@ export const SQL: Language<'sql'> = {
 };
 
 function createParser(mgr: LanguageManager) {
+  let remainingInput = '';
   const yy: YyContext = {
     Keywords,
     AdditionalTokens,
@@ -31,7 +32,7 @@ function createParser(mgr: LanguageManager) {
     langMgr: mgr,
 
     messageQueue: [],
-    lexer: null,
+    saveRemainingInput: (input) => (remainingInput = input),
     wrapNot: (expr, not) =>
       not ? new ASTOperator('sql', new ast.ASTIdentifier('NOT'), [expr]) : expr,
     makeOp: (op, args) =>
@@ -48,13 +49,12 @@ function createParser(mgr: LanguageManager) {
   };
 
   const parser = new Parser(yy, new Lexer(yy));
-  yy.lexer = parser.lexer;
   return {
     parse: (input: string) => {
       const result = parser.parse(input);
       return {
         value: result,
-        remainingInput: (parser.lexer as any)._input,
+        remainingInput,
       };
     },
   };

@@ -19,8 +19,8 @@ export interface YyContext {
    * This way we can pass some other values
    */
   messageQueue: any[];
-  lexer: JisonLexerAPI;
+  saveRemainingInput: (input: string) => void;
   wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
   makeOp: (op: string | ASTIdentifier, operands: ASTNode[]) => ASTOperator;
-  ast: Record<string, new (...args: any[]) => ASTNode>;
+  ast: Record<string, any>;
 }
