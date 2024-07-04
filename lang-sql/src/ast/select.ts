@@ -24,11 +24,12 @@ export class SelectSet implements ASTNode {
   setOp?: SelectSetOp;
 
   constructor(
-    public items: SelectStatement[],
+    public items: ASTNode[],
     public from?: ASTNode,
     public where?: ASTNode,
     public groupBy?: GroupByClause,
-    public having?: ASTNode
+    public having?: ASTNode,
+    public distinct: boolean | ASTNode[] = false
   ) {}
 
   accept(visitor: SQLVisitor): void {

@@ -5,6 +5,7 @@ import {
 } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
+import { Keywords } from '../parser/tokens.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(public original: string) {
@@ -47,6 +48,11 @@ export class ASTArray implements ASTNode {
   accept(visitor: SQLVisitor): void {
     visitor.visitArray(this);
   }
+
+  static fromString(str: string): ASTArray {
+    // TODO
+    return new ASTArray([]);
+  }
 }
 
 export class ASTParam implements ASTNode {
@@ -70,5 +76,27 @@ export class ASTSubscript implements ASTNode {
 
   accept(visitor: SQLVisitor): void {
     visitor.visitSubscript(this);
+  }
+}
+
+export class ASTExists implements ASTNode {
+  constructor(public query: ASTNode) {}
+
+  accept(visitor: SQLVisitor): void {
+    visitor.visitExists(this);
+  }
+}
+
+export enum QuantifierType {
+  ALL = 'all',
+  ANY = 'any',
+}
+export class ASTQuantifier implements ASTNode {
+  constructor(public quantifier: string, public query: ASTNode) {
+    this.quantifier = quantifier.toLowerCase() as QuantifierType;
+  }
+
+  accept(visitor: SQLVisitor): void {
+    visitor.visitQuantifier(this);
   }
 }

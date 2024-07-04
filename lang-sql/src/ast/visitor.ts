@@ -16,6 +16,8 @@ import {
   ASTCast,
   ASTSubscript,
   ASTIdentifier,
+  ASTExists,
+  ASTQuantifier,
 } from './expression.js';
 import {
   ASTExpressionAlias,
@@ -30,6 +32,8 @@ export interface SQLVisitor extends ASTVisitor {
   visitParam(node: ASTParam): void;
   visitCast(node: ASTCast): void;
   visitSubscript(node: ASTSubscript): void;
+  visitExists(node: ASTExists): void;
+  visitQuantifier(node: ASTQuantifier): void;
   visitIdentifier(node: ASTIdentifier): void;
   visitTableAlias(node: ASTTableAlias): void;
   visitFieldSelector(node: ASTFieldSelector): void;

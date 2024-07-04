@@ -26,6 +26,7 @@ export enum Keywords {
   CROSS = 'CROSS',
   NATURAL = 'NATURAL',
   USING = 'USING',
+  EXISTS = 'EXISTS',
 
   AND = 'AND',
   OR = 'OR',

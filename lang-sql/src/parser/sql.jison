@@ -47,6 +47,7 @@
 %token NULLS
 %token FIRST
 %token LAST
+%token EXISTS
 
 %token NUMBER
 %token STRING
@@ -108,18 +109,28 @@ select-stmt:
 	select-set-list orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); } ;
 
 select-set:
-	SELECT select-list { $$ = new yy.ast.SelectSet($2); }
-	| SELECT select-list FROM table-item
+	SELECT distinct-clause_opt select-list { $$ = new yy.ast.SelectSet($3); }
+	| SELECT distinct-clause_opt select-list FROM table-item
 	where-clause_opt groupby-clause_opt having-clause_opt {
-		$$ = new yy.ast.SelectSet($2, $4, $5, $6, $7);
+		$$ = new yy.ast.SelectSet($3, $5, $6, $7, $8);
 	} ;
+
+select-set-or-subquery:
+	select-set
+	| LPAR subquery RPAR { $$ = yy.allFrom($2); } ;
 
 select-set-list:
 	select-set
-	| select-set-list setop select-set { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($4, undefined, $3); }
-	| select-set-list setop-modifier setop select-set { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($4, $2, $3); }
-	| select-set-list setop LPAR subquery RPAR { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($5, undefined, $3); }
-	| select-set-list setop-modifier setop LPAR subquery RPAR { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($5, $2, $3); } ;
+	| LPAR subquery RPAR setop select-set-or-subquery {
+		$$ = yy.allFrom($2);
+		$$.setOp = new yy.ast.SelectSetOp($5, undefined, $4);
+	}
+	| LPAR subquery RPAR setop-modifier setop select-set-or-subquery {
+		$$ = yy.allFrom($2);
+		$$.setOp = new yy.ast.SelectSetOp($6, $4, $5);
+	}
+	| select-set-list setop select-set-or-subquery { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($3, undefined, $2); }
+	| select-set-list setop-modifier setop select-set-or-subquery { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($4, $2, $3); } ;
 
 setop-modifier:
 	ALL
@@ -131,8 +142,7 @@ select-list:
 
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
-	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } }
-	| LPAR table-item RPAR table-alias_opt; { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } }
+	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } } ;
 
 table-item:
 	one-table
@@ -174,6 +184,11 @@ groupby-clause:
 
 having-clause:
 	HAVING expression { $$ = $2; };
+
+distinct-clause:
+	DISTINCT { $$ = true; }
+	| ALL { $$ = false; }
+	| DISTINCT ON LPAR expression-list RPAR { $$ = $4; } ;
 
 setop:
 	UNION
@@ -218,10 +233,22 @@ subquery:
 	select-stmt
 	| LANGSWITCH { $$ = yy.messageQueue.shift(); } ;
 
+query-quantifier:
+	ALL
+	| ANY ;
+
+quantified-query:
+	query-quantifier LPAR subquery RPAR { $$ = new yy.ast.ASTQuantifiedQuery($1, $3); }
+	| query-quantifier LPAR STRING RPAR { $$ = new yy.ast.ASTQuantifiedQuery($1, $3); }
+	| query-quantifier LPAR array-constructor RPAR { $$ = new yy.ast.ASTQuantifiedQuery($1, $3); } ;
+
 boolean-literal:
 	TRUE { $$ = new yy.ast.ASTLiteral($1, true); }
 	| FALSE { $$ = new yy.ast.ASTLiteral($1, false); }
 	| NULL { $$ = new yy.ast.ASTLiteral($1, null); } ;
+
+array-constructor:
+	ARRAY LBRA expression-list_opt RBRA { $$ = new yy.ast.ASTArray($3); } ;
 
 primary-expression:
 	field-selector
@@ -236,7 +263,7 @@ primary-expression:
 	}
 	| scoped-id LPAR subquery RPAR { $$ = new yy.ast.ASTFunction('sql', $1, [$3]); }
 	| LPAR subquery RPAR { $$ = $2; }
-	| ARRAY LBRA expression-list_opt RBRA { $$ = new yy.ast.ASTArray($3); };
+	| array-constructor ;
 
 expression-list:
 	expression { $$ = [$1]; }
@@ -279,30 +306,43 @@ additive-expression:
 	| additive-expression PLUS multiplicative-expression { $$ = yy.makeOp($2, [$1, $3]); }
 	| additive-expression MINUS multiplicative-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
+additive-or-quantified-expression:
+	additive-expression
+	| quantified-query ;
+
 userop-expression:
 	additive-expression
-	| userop-expression USEROP additive-expression { $$ = yy.makeOp($2, [$1, $3]); }
-	| userop-expression OPERATOR LPAR scoped-id RPAR additive-expression { $$ = yy.makeOp($4, [$1, $6]); } ;
+	| userop-expression USEROP additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); }
+	| userop-expression OPERATOR LPAR scoped-id RPAR additive-or-quantified-expression { $$ = yy.makeOp($4, [$1, $6]); } ;
+
+userop-or-quantified-expression:
+	userop-expression
+	| quantified-query ;
 
 string-set-range-expression:
 	userop-expression
-	| userop-expression not_opt BETWEEN userop-expression AND userop-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4, $6]), $2); }
+	| userop-expression not_opt BETWEEN userop-or-quantified-expression AND userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4, $6]), $2); }
 	| userop-expression not_opt IN LPAR expression-list RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
 	| userop-expression not_opt IN LPAR subquery RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
-	| userop-expression not_opt LIKE userop-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); }
-	| userop-expression not_opt ILIKE userop-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); } ;
+	| userop-expression not_opt LIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); }
+	| userop-expression not_opt ILIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); } ;
 
 relational-operator:
 	LT | GT | LTE | GTE | EQ | NEQ ;
 
 relational-expression:
 	string-set-range-expression
-	| relational-expression relational-operator additive-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
+	| relational-expression relational-operator additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+relational-or-quantified-expression:
+	relational-expression
+	| quantified-query ;
 
 is-expression:
 	relational-expression
 	| relational-expression IS not_opt boolean-literal { $$ = yy.wrapNot(yy.makeOp($2, [$1, $4]), $3); }
-	| relational-expression IS not_opt DISTINCT FROM relational-expression { $$ = yy.wrapNot(yy.makeOp('DISTINCT FROM', [$1, $6]), $3); } ;
+	| relational-expression IS not_opt DISTINCT FROM relational-expression { $$ = yy.wrapNot(yy.makeOp('DISTINCT FROM', [$1, $6]), $3); }
+	| EXISTS LPAR subquery RPAR { $$ = new yy.ast.ASTExists($3); } ;
 
 logical-NOT-expression:
 	is-expression
@@ -370,3 +410,6 @@ orderby-order_opt:
 
 orderby-nulls_opt:
 	| orderby-nulls ;
+
+distinct-clause_opt:
+	| distinct-clause ;

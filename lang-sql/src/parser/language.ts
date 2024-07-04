@@ -39,6 +39,8 @@ function createParser(mgr: LanguageManager) {
       typeof op === 'string'
         ? new ASTOperator('sql', new ast.ASTIdentifier(op), args)
         : new ASTOperator('sql', op, args),
+    allFrom: (src) =>
+      new ast.SelectSet([new yy.ast.ASTFieldSelector('*'), src]),
     ast: {
       ...ast,
       ASTLiteral,
