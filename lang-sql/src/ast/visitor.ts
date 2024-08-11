@@ -18,6 +18,7 @@ import {
   ASTIdentifier,
   ASTExists,
   ASTQuantifier,
+  ASTCase,
 } from './expression.js';
 import {
   ASTExpressionAlias,
@@ -45,4 +46,5 @@ export interface SQLVisitor extends ASTVisitor {
   visitGroupByClause(node: GroupByClause): void;
   visitJoinClause(node: JoinClause): void;
   visitJoinUsing(node: JoinUsing): void;
+  visitCase(node: ASTCase): void;
 }

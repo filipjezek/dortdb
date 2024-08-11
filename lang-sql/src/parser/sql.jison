@@ -50,6 +50,12 @@
 %token LAST
 %token EXISTS
 
+%token CASE
+%token WHEN
+%token THEN
+%token ELSE
+%token END
+
 %token NUMBER
 %token STRING
 %token ID
@@ -358,8 +364,17 @@ logical-OR-expression:
 	| logical-OR-expression OR logical-AND-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 expression:
-	logical-OR-expression ;
+	logical-OR-expression 
+	| case-expression;
 
+// case
+
+case-expression:
+	CASE expression when-list else-expression_opt END { $$ = new yy.ast.ASTCase($2, $3, $4); } ;
+
+when-list:
+	WHEN expression THEN expression { $$ = [[$2, $4]]; }
+	| when-list WHEN expression THEN expression { $$ = $1; $$.push([$3, $5]); } ;
 
 // optionals
 
@@ -418,3 +433,9 @@ distinct-clause_opt:
 lateral_opt:
 	{ $$ = false; }
 	| LATERAL { $$ = true; } ;
+
+expression_opt:
+	| expression ;
+
+else-expression_opt:
+	| ELSE expression { $$ = $2; } ;

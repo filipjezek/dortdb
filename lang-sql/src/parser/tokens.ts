@@ -29,6 +29,12 @@ export enum Keywords {
   USING = 'USING',
   EXISTS = 'EXISTS',
 
+  CASE = 'CASE',
+  WHEN = 'WHEN',
+  THEN = 'THEN',
+  ELSE = 'ELSE',
+  END = 'END',
+
   AND = 'AND',
   OR = 'OR',
   NOT = 'NOT',

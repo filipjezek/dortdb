@@ -70,6 +70,12 @@ DEC       [0-9]
 "USING"  return this.yy.Keywords.USING;
 "EXISTS"  return this.yy.Keywords.EXISTS;
 
+"CASE" return this.yy.Keywords.CASE;
+"WHEN" return this.yy.Keywords.WHEN;
+"THEN" return this.yy.Keywords.THEN;
+"ELSE" return this.yy.Keywords.ELSE;
+"END" return this.yy.Keywords.END;
+
 "AND"  return this.yy.Keywords.AND;
 "OR"  return this.yy.Keywords.OR;
 "NOT"  return this.yy.Keywords.NOT;
