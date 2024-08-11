@@ -28,6 +28,7 @@ export enum Keywords {
   LATERAL = 'LATERAL',
   USING = 'USING',
   EXISTS = 'EXISTS',
+  VALUES = 'VALUES',
 
   CASE = 'CASE',
   WHEN = 'WHEN',
@@ -55,6 +56,7 @@ export enum Keywords {
   LAST = 'LAST',
   ARRAY = 'ARRAY',
   ANY = 'ANY',
+  ROW = 'ROW',
 }
 
 export enum AdditionalTokens {

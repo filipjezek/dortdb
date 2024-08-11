@@ -41,8 +41,13 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
   }
 }
 
+/**
+ * Represents PostgreSQL array literal
+ *
+ * Can be created either from a list of items, from a string or from a subquery
+ */
 export class ASTArray implements ASTNode {
-  constructor(public items: ASTNode[]) {}
+  constructor(public items: ASTNode[] | ASTNode) {}
 
   accept(visitor: SQLVisitor): void {
     visitor.visitArray(this);
@@ -51,6 +56,14 @@ export class ASTArray implements ASTNode {
   static fromString(str: string): ASTArray {
     // TODO
     return new ASTArray([]);
+  }
+}
+
+export class ASTRow implements ASTNode {
+  constructor(public items: ASTNode[]) {}
+
+  accept(visitor: SQLVisitor): void {
+    visitor.visitRow(this);
   }
 }
 

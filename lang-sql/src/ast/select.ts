@@ -131,3 +131,11 @@ export class JoinUsing implements ASTNode {
     visitor.visitJoinUsing(this);
   }
 }
+
+export class ValuesClause implements ASTNode {
+  constructor(public values: ASTNode[][]) {}
+
+  accept(visitor: SQLVisitor): void {
+    visitor.visitValues(this);
+  }
+}

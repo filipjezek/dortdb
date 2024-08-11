@@ -49,12 +49,13 @@
 %token FIRST
 %token LAST
 %token EXISTS
-
 %token CASE
 %token WHEN
 %token THEN
 %token ELSE
 %token END
+%token ROW
+%token VALUES
 
 %token NUMBER
 %token STRING
@@ -113,7 +114,8 @@ statement:
   select-stmt ;
 
 select-stmt:
-	select-set-list orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); } ;
+	values_clause orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); }
+	| select-set-list orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); } ;
 
 select-set:
 	SELECT distinct-clause_opt select-list { $$ = new yy.ast.SelectSet($3); }
@@ -150,6 +152,9 @@ select-list:
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
 	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } } ;
+
+values_clause:
+	VALUES expression-list_opt-list { $$ = new yy.ast.ValuesClause($2); } ;
 
 table-item:
 	one-table
@@ -255,7 +260,14 @@ boolean-literal:
 	| NULL { $$ = new yy.ast.ASTLiteral($1, null); } ;
 
 array-constructor:
-	ARRAY LBRA expression-list_opt RBRA { $$ = new yy.ast.ASTArray($3); } ;
+	ARRAY LBRA expression-list_opt RBRA { $$ = new yy.ast.ASTArray($3); }
+	| ARRAY LPAR subquery RPAR { $$ = new yy.ast.ASTArray($3); } ;
+
+row-constructor:
+	ROW LPAR expression RPAR { $$ = new yy.ast.ASTRow($3); }
+	| ROW LPAR RPAR { $$ = new yy.ast.ASTRow([]); }
+	| LPAR expression COMMA expression-list RPAR { $$ = new yy.ast.ASTRow($5); $5.unshift($3); }
+	| ROW LPAR expression COMMA expression-list RPAR { $$ = new yy.ast.ASTRow($5); $5.unshift($3); } ;
 
 primary-expression:
 	field-selector
@@ -270,7 +282,8 @@ primary-expression:
 	}
 	| scoped-id LPAR subquery RPAR { $$ = new yy.ast.ASTFunction('sql', $1, [$3]); }
 	| LPAR subquery RPAR { $$ = $2; }
-	| array-constructor ;
+	| array-constructor
+	| row-constructor;
 
 expression-list:
 	expression { $$ = [$1]; }

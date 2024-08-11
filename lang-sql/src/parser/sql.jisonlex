@@ -69,6 +69,7 @@ DEC       [0-9]
 "LATERAL"  return this.yy.Keywords.LATERAL;
 "USING"  return this.yy.Keywords.USING;
 "EXISTS"  return this.yy.Keywords.EXISTS;
+"VALUES" return this.yy.Keywords.VALUES;
 
 "CASE" return this.yy.Keywords.CASE;
 "WHEN" return this.yy.Keywords.WHEN;
@@ -96,6 +97,7 @@ DEC       [0-9]
 "NULLS" return this.yy.Keywords.NULLS;
 "FIRST" return this.yy.Keywords.FIRST;
 "LAST" return this.yy.Keywords.LAST;
+"ROW" return this.yy.Keywords.ROW;
 
 "LANG EXIT" this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.LANGEXIT;
 "LANG "({ID}+) %{

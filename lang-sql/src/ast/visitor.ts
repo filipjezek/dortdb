@@ -7,6 +7,7 @@ import {
   SelectSet,
   SelectSetOp,
   SelectStatement,
+  ValuesClause,
 } from './select.js';
 import {
   ASTArray,
@@ -19,6 +20,7 @@ import {
   ASTExists,
   ASTQuantifier,
   ASTCase,
+  ASTRow,
 } from './expression.js';
 import {
   ASTExpressionAlias,
@@ -30,6 +32,7 @@ export interface SQLVisitor extends ASTVisitor {
   visitStringLiteral(node: ASTStringLiteral): void;
   visitNumberLiteral(node: ASTNumberLiteral): void;
   visitArray(node: ASTArray): void;
+  visitRow(node: ASTRow): void;
   visitParam(node: ASTParam): void;
   visitCast(node: ASTCast): void;
   visitSubscript(node: ASTSubscript): void;
@@ -47,4 +50,5 @@ export interface SQLVisitor extends ASTVisitor {
   visitJoinClause(node: JoinClause): void;
   visitJoinUsing(node: JoinUsing): void;
   visitCase(node: ASTCase): void;
+  visitValues(node: ValuesClause): void;
 }
