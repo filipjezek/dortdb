@@ -10,26 +10,27 @@ export interface Fn {
   impl: (...args: any[]) => any;
 }
 
-export enum AggregatorInvocation {
-  INITIAL,
-  ITERATE,
-  FINAL,
-}
-export interface AggregatorFn {
+export interface AggregateFn {
   name: string;
-  impl: (invocationType: AggregatorInvocation, ...args: any[]) => any;
+  init: () => any;
+  step: (acc: any, val: any) => any;
+  /**
+   * Optional inverse step function for speeding up window functions
+   */
+  stepInverse?: (acc: any, val: any) => any;
+  result: (acc: any) => any;
 }
 
 export interface Extension<LangNames extends string = string> {
   schema?: string;
   operators: Operator[];
   functions: Fn[];
-  aggregators: AggregatorFn[];
+  aggregates: AggregateFn[];
   scope?: LangNames[];
 }
 
 export const core: Extension = {
   operators: operators,
   functions: [],
-  aggregators: [],
+  aggregates: [],
 };

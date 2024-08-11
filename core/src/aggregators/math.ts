@@ -1,6 +1,6 @@
-import { AggregatorFn, AggregatorInvocation } from '../extension.js';
+import { AggregateFn, AggregatorInvocation } from '../extension.js';
 
-export const count: AggregatorFn = {
+export const count: AggregateFn = {
   name: 'count',
   impl: function (invocationType) {
     switch (invocationType) {
@@ -16,7 +16,7 @@ export const count: AggregatorFn = {
   },
 };
 
-export const sum: AggregatorFn = {
+export const sum: AggregateFn = {
   name: 'sum',
   impl: function (invocationType, value: number) {
     switch (invocationType) {
@@ -32,7 +32,7 @@ export const sum: AggregatorFn = {
   },
 };
 
-export const avg: AggregatorFn = {
+export const avg: AggregateFn = {
   name: 'avg',
   impl: function (invocationType, value: number) {
     switch (invocationType) {

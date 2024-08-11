@@ -1,13 +1,9 @@
-import { ASTNode } from '@dortdb/core';
+import { ASTFunction, ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { ASTTableAlias } from './alias.js';
+import { ASTIdentifier } from './expression.js';
 
 export class SelectStatement implements ASTNode {
-  // orderBy?: OrderByItem[];
-  // limit?: ASTNode;
-  // offset?: ASTNode;
-  // selectSet: SelectSet;
-
   constructor(
     public selectSet: SelectSet,
     public orderBy?: OrderByItem[],
@@ -29,7 +25,8 @@ export class SelectSet implements ASTNode {
     public where?: ASTNode,
     public groupBy?: GroupByClause,
     public having?: ASTNode,
-    public distinct: boolean | ASTNode[] = false
+    public distinct: boolean | ASTNode[] = false,
+    public windows?: ASTNode[]
   ) {}
 
   accept(visitor: SQLVisitor): void {
@@ -137,5 +134,27 @@ export class ValuesClause implements ASTNode {
 
   accept(visitor: SQLVisitor): void {
     visitor.visitValues(this);
+  }
+}
+
+export class TableFn extends ASTFunction {
+  constructor(
+    id: ASTIdentifier,
+    args: ASTNode[],
+    public withOrdinality = false
+  ) {
+    super('sql', id, args);
+  }
+
+  override accept(visitor: SQLVisitor): void {
+    visitor.visitTableFn(this);
+  }
+}
+
+export class RowsFrom implements ASTNode {
+  constructor(public tableFns: TableFn[], public withOrdinality = false) {}
+
+  accept(visitor: SQLVisitor): void {
+    visitor.visitRowsFrom(this);
   }
 }

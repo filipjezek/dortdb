@@ -2,9 +2,12 @@ import {
   ASTLiteral,
   ASTNode,
   ASTIdentifier as ASTIdentifierAttrs,
+  ASTFunction,
 } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
+import { OrderByItem } from './select.js';
+import { WindowSpec } from './window.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(public original: string) {
@@ -122,5 +125,40 @@ export class ASTCase implements ASTNode {
 
   accept(visitor: SQLVisitor): void {
     visitor.visitCase(this);
+  }
+}
+
+export class ASTAggregate extends ASTFunction {
+  public distinct: boolean;
+
+  constructor(
+    id: ASTIdentifier,
+    args: ASTNode[],
+    distinct?: string,
+    public orderBy?: OrderByItem[],
+    public filter?: ASTNode,
+    public withinGroupArgs?: ASTNode[]
+  ) {
+    super('sql', id, args);
+    this.distinct = distinct?.toLowerCase() === 'distinct';
+  }
+
+  override accept(visitor: SQLVisitor): void {
+    visitor.visitAggregate(this);
+  }
+}
+
+export class ASTWindowFn extends ASTAggregate {
+  constructor(
+    id: ASTIdentifier,
+    args: ASTNode[],
+    public window: WindowSpec | string,
+    filter?: ASTNode
+  ) {
+    super(id, args, null, null, filter);
+  }
+
+  override accept(visitor: SQLVisitor): void {
+    visitor.visitWindowFn(this);
   }
 }

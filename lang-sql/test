@@ -1,0 +1,208 @@
+
+> @dortdb/lang-sql@1.0.0 jison
+> ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.js
+
+Conflict in grammar: multiple actions possible when lookahead token is STAR in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 79)
+Conflict in grammar: multiple actions possible when lookahead token is ID in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 71)
+Conflict in grammar: multiple actions possible when lookahead token is PARAM in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 68)
+Conflict in grammar: multiple actions possible when lookahead token is NUMBER in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 69)
+Conflict in grammar: multiple actions possible when lookahead token is STRING in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 70)
+Conflict in grammar: multiple actions possible when lookahead token is TRUE in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 80)
+Conflict in grammar: multiple actions possible when lookahead token is FALSE in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 81)
+Conflict in grammar: multiple actions possible when lookahead token is NULL in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 82)
+Conflict in grammar: multiple actions possible when lookahead token is LPAR in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 139)
+Conflict in grammar: multiple actions possible when lookahead token is ARRAY in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 83)
+Conflict in grammar: multiple actions possible when lookahead token is ROW in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 84)
+Conflict in grammar: multiple actions possible when lookahead token is CASE in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 85)
+Conflict in grammar: multiple actions possible when lookahead token is CAST in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 66)
+Conflict in grammar: multiple actions possible when lookahead token is PLUS in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 63)
+Conflict in grammar: multiple actions possible when lookahead token is MINUS in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 64)
+Conflict in grammar: multiple actions possible when lookahead token is EXISTS in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 53)
+Conflict in grammar: multiple actions possible when lookahead token is NOT in state 140
+- reduce by rule: setop-modifier_opt -> 
+- shift token (then go to state 51)
+Conflict in grammar: multiple actions possible when lookahead token is RPAR in state 140
+- reduce by rule: expression-list_opt -> 
+- reduce by rule: setop-modifier_opt -> 
+Conflict in grammar: multiple actions possible when lookahead token is ORDERBY in state 140
+- reduce by rule: expression-list_opt -> 
+- reduce by rule: setop-modifier_opt -> 
+Conflict in grammar: multiple actions possible when lookahead token is STAR in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 79)
+Conflict in grammar: multiple actions possible when lookahead token is ID in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 71)
+Conflict in grammar: multiple actions possible when lookahead token is PARAM in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 68)
+Conflict in grammar: multiple actions possible when lookahead token is NUMBER in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 69)
+Conflict in grammar: multiple actions possible when lookahead token is STRING in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 70)
+Conflict in grammar: multiple actions possible when lookahead token is TRUE in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 80)
+Conflict in grammar: multiple actions possible when lookahead token is FALSE in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 81)
+Conflict in grammar: multiple actions possible when lookahead token is NULL in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 82)
+Conflict in grammar: multiple actions possible when lookahead token is LPAR in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 139)
+Conflict in grammar: multiple actions possible when lookahead token is ARRAY in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 83)
+Conflict in grammar: multiple actions possible when lookahead token is ROW in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 84)
+Conflict in grammar: multiple actions possible when lookahead token is CASE in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 85)
+Conflict in grammar: multiple actions possible when lookahead token is CAST in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 66)
+Conflict in grammar: multiple actions possible when lookahead token is PLUS in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 63)
+Conflict in grammar: multiple actions possible when lookahead token is MINUS in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 64)
+Conflict in grammar: multiple actions possible when lookahead token is EXISTS in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 53)
+Conflict in grammar: multiple actions possible when lookahead token is NOT in state 140
+- reduce by rule: expression-list_opt -> 
+- shift token (then go to state 51)
+
+States with conflicts:
+State 140
+  primary-expression -> scoped-id LPAR .subquery RPAR #lookaheads= ILIKE LIKE IN NOT BETWEEN IS $end SEMICOLON LANGEXIT RCUR RPAR RBRA LIMIT OFFSET NULLS ASC DESC DBLCOLON LBRA EXP PLUS MINUS AND COMMA OR NEQ EQ GTE LTE GT LT OPERATOR USEROP MOD DIV STAR UNION INTERSECT EXCEPT FROM ORDERBY AS ALL DISTINCT WHEN COLON THEN END HAVING GROUPBY ELSE FULL RIGHT LEFT INNER JOIN WHERE NATURAL CROSS
+  function-call -> scoped-id LPAR .setop-modifier_opt expression-list_opt orderby-clause_opt RPAR filter-clause_opt #lookaheads= DBLCOLON OFFSET LIMIT DESC ASC NULLS RBRA RPAR RCUR LANGEXIT SEMICOLON $end IS BETWEEN NOT IN LIKE ILIKE STAR DIV MOD USEROP OPERATOR LT GT LTE GTE EQ NEQ OR COMMA AND MINUS PLUS EXP LBRA AS ORDERBY FROM EXCEPT INTERSECT UNION DISTINCT ALL WHERE JOIN INNER LEFT RIGHT FULL WHEN ELSE GROUPBY HAVING END THEN COLON CROSS NATURAL
+  function-call -> scoped-id LPAR .expression-list_opt RPAR WITHINGROUP LPAR expression-list_opt orderby-clause_opt RPAR filter-clause_opt #lookaheads= DBLCOLON OFFSET LIMIT DESC ASC NULLS RBRA RPAR RCUR LANGEXIT SEMICOLON $end IS BETWEEN NOT IN LIKE ILIKE STAR DIV MOD USEROP OPERATOR LT GT LTE GTE EQ NEQ OR COMMA AND MINUS PLUS EXP LBRA AS ORDERBY FROM EXCEPT INTERSECT UNION DISTINCT ALL WHERE JOIN INNER LEFT RIGHT FULL WHEN ELSE GROUPBY HAVING END THEN COLON CROSS NATURAL
+  subquery -> .select-stmt
+  subquery -> .LANGSWITCH
+  setop-modifier_opt -> . #lookaheads= RPAR ORDERBY STAR ID PARAM NUMBER STRING TRUE FALSE NULL LPAR ARRAY ROW CASE CAST PLUS MINUS EXISTS NOT
+  setop-modifier_opt -> .setop-modifier #lookaheads= RPAR ORDERBY STAR ID PARAM NUMBER STRING TRUE FALSE NULL LPAR ARRAY ROW CASE CAST PLUS MINUS EXISTS NOT
+  expression-list_opt -> . #lookaheads= RPAR ORDERBY STAR ID PARAM NUMBER STRING TRUE FALSE NULL LPAR ARRAY ROW CASE CAST PLUS MINUS EXISTS NOT
+  expression-list_opt -> .expression-list
+  select-stmt -> .values_clause orderby-clause_opt limit-clause_opt
+  select-stmt -> .select-set-list orderby-clause_opt limit-clause_opt
+  setop-modifier -> .ALL
+  setop-modifier -> .DISTINCT
+  expression-list -> .expression
+  expression-list -> .expression-list COMMA expression
+  values_clause -> .VALUES expression-list_opt-list
+  select-set-list -> .select-set
+  select-set-list -> .LPAR subquery RPAR setop select-set-or-subquery
+  select-set-list -> .LPAR subquery RPAR setop-modifier setop select-set-or-subquery
+  select-set-list -> .select-set-list setop select-set-or-subquery
+  select-set-list -> .select-set-list setop-modifier setop select-set-or-subquery
+  expression -> .logical-OR-expression
+  select-set -> .SELECT distinct-clause_opt select-list
+  select-set -> .SELECT distinct-clause_opt select-list FROM table-item where-clause_opt groupby-clause_opt having-clause_opt
+  logical-OR-expression -> .logical-AND-expression
+  logical-OR-expression -> .logical-OR-expression OR logical-AND-expression
+  logical-AND-expression -> .logical-NOT-expression
+  logical-AND-expression -> .logical-AND-expression AND logical-NOT-expression
+  logical-NOT-expression -> .is-expression
+  logical-NOT-expression -> .NOT is-expression
+  is-expression -> .relational-expression
+  is-expression -> .relational-expression IS not_opt boolean-literal
+  is-expression -> .relational-expression IS not_opt DISTINCT FROM relational-expression
+  is-expression -> .EXISTS LPAR subquery RPAR
+  relational-expression -> .string-set-range-expression
+  relational-expression -> .relational-expression relational-operator additive-or-quantified-expression
+  string-set-range-expression -> .userop-expression
+  string-set-range-expression -> .userop-expression not_opt BETWEEN userop-or-quantified-expression AND userop-or-quantified-expression
+  string-set-range-expression -> .userop-expression not_opt IN LPAR expression-list RPAR
+  string-set-range-expression -> .userop-expression not_opt IN LPAR subquery RPAR
+  string-set-range-expression -> .userop-expression not_opt LIKE userop-or-quantified-expression
+  string-set-range-expression -> .userop-expression not_opt ILIKE userop-or-quantified-expression
+  userop-expression -> .additive-expression
+  userop-expression -> .userop-expression USEROP additive-or-quantified-expression
+  userop-expression -> .userop-expression OPERATOR LPAR scoped-id RPAR additive-or-quantified-expression
+  additive-expression -> .multiplicative-expression
+  additive-expression -> .additive-expression PLUS multiplicative-expression
+  additive-expression -> .additive-expression MINUS multiplicative-expression
+  multiplicative-expression -> .exponentiative-expression
+  multiplicative-expression -> .multiplicative-expression multiplicative-operator cast-expression
+  exponentiative-expression -> .unary-expression
+  exponentiative-expression -> .exponentiative-expression EXP cast-expression
+  unary-expression -> .subscript-expression
+  unary-expression -> .unary-operator cast-expression
+  subscript-expression -> .cast-expression
+  subscript-expression -> .subscript-expression LBRA expression RBRA
+  subscript-expression -> .subscript-expression LBRA expression COLON expression RBRA
+  unary-operator -> .PLUS
+  unary-operator -> .MINUS
+  cast-expression -> .primary-expression
+  cast-expression -> .CAST LPAR expression AS ID braces_opt RPAR
+  cast-expression -> .primary-expression DBLCOLON ID braces_opt
+  primary-expression -> .field-selector
+  primary-expression -> .PARAM
+  primary-expression -> .NUMBER
+  primary-expression -> .STRING
+  primary-expression -> .ID STRING
+  primary-expression -> .boolean-literal
+  primary-expression -> .LPAR expression RPAR
+  primary-expression -> .scoped-id LPAR subquery RPAR
+  primary-expression -> .LPAR subquery RPAR
+  primary-expression -> .array-constructor
+  primary-expression -> .row-constructor
+  primary-expression -> .case-expression
+  primary-expression -> .function-call
+  field-selector -> .STAR
+  field-selector -> .scoped-id
+  field-selector -> .ID DOT ID DOT ID
+  field-selector -> .scoped-id DOTSTAR
+  boolean-literal -> .TRUE
+  boolean-literal -> .FALSE
+  boolean-literal -> .NULL
+  scoped-id -> .ID
+  scoped-id -> .ID DOT ID
+  array-constructor -> .ARRAY LBRA expression-list_opt RBRA
+  array-constructor -> .ARRAY LPAR subquery RPAR
+  row-constructor -> .ROW LPAR expression RPAR
+  row-constructor -> .ROW LPAR RPAR
+  row-constructor -> .LPAR expression COMMA expression-list RPAR
+  row-constructor -> .ROW LPAR expression COMMA expression-list RPAR
+  case-expression -> .CASE expression when-list else-expression_opt END
+  function-call -> .scoped-id LPAR setop-modifier_opt expression-list_opt orderby-clause_opt RPAR filter-clause_opt
+  function-call -> .scoped-id LPAR expression-list_opt RPAR WITHINGROUP LPAR expression-list_opt orderby-clause_opt RPAR filter-clause_opt

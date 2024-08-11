@@ -34,18 +34,6 @@ export class ASTFunction implements ASTNode {
   }
 }
 
-export class ASTAggregator implements ASTNode {
-  constructor(
-    public lang: string,
-    public id: ASTIdentifier,
-    public args: ASTNode[]
-  ) {}
-
-  accept(visitor: ASTVisitor): void {
-    visitor.acceptAggregator(this);
-  }
-}
-
 export interface ASTIdentifier extends ASTNode {
   schema?: string;
   id: string;
@@ -55,5 +43,4 @@ export interface ASTVisitor {
   acceptLiteral<T>(literal: ASTLiteral<T>): void;
   acceptOperator(op: ASTOperator): void;
   acceptFunction(fn: ASTFunction): void;
-  acceptAggregator(fn: ASTAggregator): void;
 }

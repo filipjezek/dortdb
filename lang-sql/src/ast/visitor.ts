@@ -8,6 +8,8 @@ import {
   SelectSetOp,
   SelectStatement,
   ValuesClause,
+  TableFn,
+  RowsFrom,
 } from './select.js';
 import {
   ASTArray,
@@ -21,12 +23,15 @@ import {
   ASTQuantifier,
   ASTCase,
   ASTRow,
+  ASTAggregate,
+  ASTWindowFn,
 } from './expression.js';
 import {
   ASTExpressionAlias,
   ASTFieldSelector,
   ASTTableAlias,
 } from './alias.js';
+import { WindowSpec } from './window.js';
 
 export interface SQLVisitor extends ASTVisitor {
   visitStringLiteral(node: ASTStringLiteral): void;
@@ -51,4 +56,9 @@ export interface SQLVisitor extends ASTVisitor {
   visitJoinUsing(node: JoinUsing): void;
   visitCase(node: ASTCase): void;
   visitValues(node: ValuesClause): void;
+  visitAggregate(node: ASTAggregate): void;
+  visitWindowSpec(node: WindowSpec): void;
+  visitWindowFn(node: ASTWindowFn): void;
+  visitTableFn(node: TableFn): void;
+  visitRowsFrom(node: RowsFrom): void;
 }

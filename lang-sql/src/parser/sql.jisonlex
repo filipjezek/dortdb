@@ -46,15 +46,15 @@ DEC       [0-9]
 "AS"  return this.yy.Keywords.AS;
 "FROM"  return this.yy.Keywords.FROM;
 "WHERE"  return this.yy.Keywords.WHERE;
-"GROUP BY"  return this.yy.Keywords.GROUPBY;
+"GROUP"\s+"BY"  return this.yy.Keywords.GROUPBY;
 "ROLLUP"  return this.yy.Keywords.ROLLUP;
 "CUBE"  return this.yy.Keywords.CUBE;
-"GROUPING SETS"  return this.yy.Keywords.GROUPINGSETS;
+"GROUPING"\s+"SETS"  return this.yy.Keywords.GROUPINGSETS;
 "HAVING"  return this.yy.Keywords.HAVING;
 "UNION"  return this.yy.Keywords.UNION;
 "INTERSECT"  return this.yy.Keywords.INTERSECT;
 "EXCEPT"  return this.yy.Keywords.EXCEPT;
-"ORDER BY"  return this.yy.Keywords.ORDERBY;
+"ORDER"\s+"BY"  return this.yy.Keywords.ORDERBY;
 "LIMIT"  return this.yy.Keywords.LIMIT;
 "OFFSET"  return this.yy.Keywords.OFFSET;
 "JOIN"  return this.yy.Keywords.JOIN;
@@ -70,6 +70,25 @@ DEC       [0-9]
 "USING"  return this.yy.Keywords.USING;
 "EXISTS"  return this.yy.Keywords.EXISTS;
 "VALUES" return this.yy.Keywords.VALUES;
+"WITHIN"\s+"GROUP" return this.yy.Keywords.WITHINGROUP;
+"FILTER" return this.yy.Keywords.FILTER;
+"ORDINALITY" return this.yy.Keywords.ORDINALITY;
+"WITH" return this.yy.Keywords.WITH;
+
+"OVER" return this.yy.Keywords.OVER;
+"PARTITION"\s+"BY" return this.yy.Keywords.PARTITIONBY;
+"RANGE" return this.yy.Keywords.RANGE;
+"ROWS" return this.yy.Keywords.ROWS;
+"GROUPS" return this.yy.Keywords.GROUPS;
+"UNBOUNDED" return this.yy.Keywords.UNBOUNDED;
+"PRECEDING" return this.yy.Keywords.PRECEDING;
+"FOLLOWING" return this.yy.Keywords.FOLLOWING;
+"CURRENT"\s+"ROW" return this.yy.Keywords.CURRENTROW;
+"EXCLUDE"\s+"GROUP" return this.yy.Keywords.EXCLUDEGROUP;
+"EXCLUDE"\s+"TIES" return this.yy.Keywords.EXCLUDETIES;
+"EXCLUDE"\s+"NO"\s+"OTHERS" return this.yy.Keywords.EXCLUDENOOTHERS;
+"EXCLUDE"\s+"CURRENT"\s+"ROW" return this.yy.Keywords.EXCLUDECURRENTROW;
+"WINDOW" return this.yy.Keywords.WINDOW;
 
 "CASE" return this.yy.Keywords.CASE;
 "WHEN" return this.yy.Keywords.WHEN;
@@ -99,8 +118,8 @@ DEC       [0-9]
 "LAST" return this.yy.Keywords.LAST;
 "ROW" return this.yy.Keywords.ROW;
 
-"LANG EXIT" this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.LANGEXIT;
-"LANG "({ID}+) %{
+"LANG"\s+"EXIT" this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.LANGEXIT;
+"LANG"\s+({ID}+) %{
 {
   const langName = yytext.slice(5);
   const lang = this.yy.langMgr.getLang(langName);

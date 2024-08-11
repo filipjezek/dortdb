@@ -1,4 +1,4 @@
-import { AggregatorFn, Extension, Fn, Operator } from './extension.js';
+import { AggregateFn, Extension, Fn, Operator } from './extension.js';
 import { makePath } from './utils/make-path.js';
 
 export interface Parser {
@@ -12,14 +12,14 @@ export interface Language<Name extends string = string> {
   readonly name: Lowercase<Name>;
   operators: Operator[];
   functions: Fn[];
-  aggregators: AggregatorFn[];
+  aggregates: AggregateFn[];
   createParser: (mgr: LanguageManager) => Parser;
 }
 
 interface Implementations {
   operators: Record<string, Operator>;
   functions: Record<string, Fn>;
-  aggregators: Record<string, AggregatorFn>;
+  aggregates: Record<string, AggregateFn>;
 }
 
 export class LanguageManager {
@@ -34,7 +34,7 @@ export class LanguageManager {
       [LanguageManager.defaultSchema]: {
         operators: {},
         functions: {},
-        aggregators: {},
+        aggregates: {},
       },
     },
   };
@@ -46,7 +46,7 @@ export class LanguageManager {
     for (const lang of scope) {
       makePath(this.implementations, lang, schema);
       const ims = this.implementations[lang][schema];
-      for (const type of ['operators', 'functions', 'aggregators'] as const) {
+      for (const type of ['operators', 'functions', 'aggregates'] as const) {
         for (const item of ext[type]) {
           ims[type][item.name] = item;
         }
@@ -69,8 +69,8 @@ export class LanguageManager {
   public getFn(lang: string, name: string, schema?: string): Fn {
     return this.getImplementation('functions', lang, name, schema);
   }
-  public getAggr(lang: string, name: string, schema?: string): AggregatorFn {
-    return this.getImplementation('aggregators', lang, name, schema);
+  public getAggr(lang: string, name: string, schema?: string): AggregateFn {
+    return this.getImplementation('aggregates', lang, name, schema);
   }
 
   private getImplementation<T extends keyof Implementations>(

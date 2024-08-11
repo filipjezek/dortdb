@@ -3,19 +3,21 @@ import {
   ASTOperator,
   Language,
   LanguageManager,
-  ASTAggregator,
 } from '@dortdb/core';
 import { sqlLexer as Lexer, sqlParser as Parser } from './sql.js';
 import { Keywords, AdditionalTokens } from './tokens.js';
 import { YyContext } from './yycontext.js';
 import * as ast from '../ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
+import { coalesce } from '../functions/coalesce.js';
+import { sum } from '../functions/sum.js';
+import { count } from '../functions/count.js';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',
   operators: [],
-  aggregators: [],
-  functions: [],
+  aggregates: [sum, count],
+  functions: [coalesce],
   createParser,
 };
 
@@ -46,7 +48,6 @@ function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
-      ASTAggregator,
     },
   };
 

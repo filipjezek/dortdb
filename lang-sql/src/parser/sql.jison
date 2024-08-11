@@ -56,6 +56,24 @@
 %token END
 %token ROW
 %token VALUES
+%token WITHINGROUP
+%token FILTER
+%token OVER
+%token PARTITIONBY
+%token RANGE
+%token ROWS
+%token GROUPS
+%token UNBOUNDED
+%token PRECEDING
+%token FOLLOWING
+%token CURRENTROW
+%token EXCLUDEGROUP
+%token EXCLUDETIES
+%token EXCLUDENOOTHERS
+%token EXCLUDECURRENTROW
+%token WINDOW
+%token ORDINALITY
+%token WITH
 
 %token NUMBER
 %token STRING
@@ -120,8 +138,8 @@ select-stmt:
 select-set:
 	SELECT distinct-clause_opt select-list { $$ = new yy.ast.SelectSet($3); }
 	| SELECT distinct-clause_opt select-list FROM table-item
-	where-clause_opt groupby-clause_opt having-clause_opt {
-		$$ = new yy.ast.SelectSet($3, $5, $6, $7, $8);
+	where-clause_opt groupby-clause_opt having-clause_opt window-clause_opt {
+		$$ = new yy.ast.SelectSet($3, $5, $6, $7, $8, $2, $9);
 	} ;
 
 select-set-or-subquery:
@@ -151,7 +169,17 @@ select-list:
 
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
-	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } } ;
+	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } }
+	| simple-function-call table-alias_opt ;
+
+table-function-call:
+	simple-function-call table-alias_opt { $$ = new yy.ast.TableFn($1.id, $1.args); if ($2) {$2.table = $$; $$ = $2;} }
+	| simple-function-call WITH ORDINALITY table-alias_opt {
+		$$ = new yy.ast.TableFn($1.id, $1.args, true); if ($3) {$3.table = $$; $$ = $3;}
+	}
+	| ROWS FROM LPAR simple-function-call-list RPAR with-ordinality_opt table-alias_opt {
+		$$ = new yy.ast.RowsFrom($4, $6); if ($7) {$7.table = $$; $$ = $7;}
+	} ;
 
 values_clause:
 	VALUES expression-list_opt-list { $$ = new yy.ast.ValuesClause($2); } ;
@@ -193,6 +221,13 @@ groupby-clause:
 	| GROUPBY ROLLUP LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($4, 'rollup'); }
 	| GROUPBY CUBE LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($4, 'cube'); }
 	| GROUPBY GROUPINGSETS LPAR expression-list_opt-list RPAR { $$ = new yy.ast.GroupByClause($4, 'groupingsets'); } ;
+
+window-clause:
+	WINDOW window-spec-list { $$ = $2; } ;
+
+window-spec-list:
+	ID AS window-spec { $$ = {[$1]: $3}; }
+	| window-spec-list COMMA ID AS window-spec { $$ = $1; $$[$3] = $5; } ;
 
 having-clause:
 	HAVING expression { $$ = $2; };
@@ -277,13 +312,89 @@ primary-expression:
 	| ID STRING { $$ = new yy.ast.ASTCast(new yy.ast.ASTStringLiteral($2), $1); }
 	| boolean-literal
 	| LPAR expression RPAR { $$ = $2; }
-	| scoped-id LPAR expression-list_opt RPAR {
-		$$ = new yy.ast.ASTFunction('sql', $1, $3);
-	}
-	| scoped-id LPAR subquery RPAR { $$ = new yy.ast.ASTFunction('sql', $1, [$3]); }
 	| LPAR subquery RPAR { $$ = $2; }
 	| array-constructor
-	| row-constructor;
+	| row-constructor
+	| case-expression
+	| function-call ;
+
+function-call:
+	simple-function-call
+	| scoped-id LPAR expression-list RPAR filter-clause { $$ = new yy.ast.ASTAggregate($1, $3, null, null, $5); }
+	| scoped-id LPAR expression-list orderby-clause RPAR filter-clause_opt {
+		$$ = new yy.ast.ASTAggregate($1, $3, null, $4, $6);
+	}
+	| scoped-id LPAR setop-modifier expression-list orderby-clause_opt RPAR filter-clause_opt {
+		$$ = new yy.ast.ASTAggregate($1, $4, $3, $5, $7);
+	}
+	| scoped-id LPAR expression-list RPAR WITHINGROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
+		$$ = new yy.ast.ASTAggregate($1, $3, null, $8, $10, $7);
+	}
+	| scoped-id LPAR RPAR WITHINGROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
+		$$ = new yy.ast.ASTAggregate($1, [], null, $7, $9, $6);
+	}
+	| scoped-id LPAR RPAR filter-clause_opt OVER window-spec-or-id {
+		$$ = new yy.ast.ASTWindowFunction($1, [], $6, $4);
+	}
+	| scoped-id LPAR expression-list RPAR filter-clause_opt OVER window-spec-or-id {
+		$$ = new yy.ast.ASTWindowFunction($1, $3, $7, $5);
+	};
+
+simple-function-call:
+	scoped-id LPAR RPAR { $$ = new yy.ast.ASTFunction('sql', $1, []); }
+	| scoped-id LPAR subquery RPAR { $$ = new yy.ast.ASTFunction('sql', $1, [$3]); }
+	| scoped-id LPAR expression-list RPAR {
+		$$ = new yy.ast.ASTFunction('sql', $1, $3);
+	} ;
+
+simple-function-call-list:
+	simple-function-call { $$ = [$1]; }
+	| simple-function-call-list COMMA simple-function-call { $$ = $1; $$.push($3); } ;
+
+filter-clause:
+	FILTER LPAR WHERE expression RPAR { $$ = $4; } ;
+
+window-spec-or-id:
+	ID
+	| window-spec ;
+
+window-spec:
+	LPAR ID_opt PARTITIONBY expression-list orderby-clause frame-clause_opt RPAR {
+		$$ = $6 ? $6 : new yy.ast.WindowSpec();
+		$$.columns = $4;
+		$$.parent = $2;
+		$$.order = $5;
+	}
+	| LPAR ID_opt PARTITIONBY expression-list frame-clause_opt RPAR {
+		$$ = $5 ? $5 : new yy.ast.WindowSpec();
+		$$.columns = $4;
+		$$.parent = $2;
+	};
+
+frame-clause:
+	frame-mode frame-boundary-start frame-exclusion_opt { $$ = new yy.ast.WindowSpec(null, $1, $2, null, $3?.slice(7)); }
+	| frame-mode BETWEEN frame-boundary-start AND frame-boundary-end frame-exclusion_opt { $$ = new yy.ast.WindowSpec(null, $1, $3, $5, $6?.slice(7)); };
+
+frame-mode:
+	RANGE
+	| ROWS
+	| GROUPS ;
+
+frame-boundary-start:
+	UNBOUNDED PRECEDING { $$ = Infinity; }
+	| expression PRECEDING { $$ = $1; }
+	| CURRENTROW { $$ = 0; };
+
+frame-boundary-end:
+	CURRENTROW { $$ = 0; }
+	| expression FOLLOWING { $$ = $1; }
+	| UNBOUNDED FOLLOWING { $$ = Infinity; };
+
+frame-exclusion:
+	EXCLUDEGROUP { $$ = 'group'; }
+	| EXCLUDETIES { $$ = 'ties'; }
+	| EXCLUDENOOTHERS { $$ = 'noothers'; }
+	| EXCLUDECURRENTROW { $$ = 'currentrow'; } ;
 
 expression-list:
 	expression { $$ = [$1]; }
@@ -377,8 +488,7 @@ logical-OR-expression:
 	| logical-OR-expression OR logical-AND-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 expression:
-	logical-OR-expression 
-	| case-expression;
+	logical-OR-expression ;
 
 // case
 
@@ -395,6 +505,7 @@ semicolon_opt:
   | SEMICOLON ;
 
 expression-list_opt:
+	{ $$ = []; }
 	| expression-list ;
 
 not_opt:
@@ -452,3 +563,21 @@ expression_opt:
 
 else-expression_opt:
 	| ELSE expression { $$ = $2; } ;
+
+filter-clause_opt:
+	| filter-clause ;
+
+window-clause_opt:
+	| window-clause ;
+
+ID_opt:
+	| ID ;
+
+frame-clause_opt:
+	| frame-clause ;
+
+frame-exclusion_opt:
+	| frame-exclusion ;
+
+with-ordinality_opt:
+	| WITH ORDINALITY ;
