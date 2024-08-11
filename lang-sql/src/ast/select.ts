@@ -109,7 +109,8 @@ export class JoinClause implements ASTNode {
   constructor(
     public table: ASTNode,
     public joinType: JoinType,
-    joinCond?: ASTNode | ASTNode[]
+    joinCond?: ASTNode | ASTNode[],
+    public lateral = false
   ) {
     if (joinCond instanceof Array || joinCond instanceof ASTTableAlias) {
       this.using = joinCond;

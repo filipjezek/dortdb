@@ -6,7 +6,6 @@ todo:
 - table functions
 - values
 - distinct on
-- lateral
 - row constructors
 - regex
 - case when

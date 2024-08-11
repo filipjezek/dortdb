@@ -66,6 +66,7 @@ DEC       [0-9]
 "ON"  return this.yy.Keywords.ON;
 "CROSS"  return this.yy.Keywords.CROSS;
 "NATURAL"  return this.yy.Keywords.NATURAL;
+"LATERAL"  return this.yy.Keywords.LATERAL;
 "USING"  return this.yy.Keywords.USING;
 "EXISTS"  return this.yy.Keywords.EXISTS;
 

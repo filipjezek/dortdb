@@ -26,6 +26,7 @@
 %token ON
 %token CROSS
 %token NATURAL
+%token LATERAL
 %token USING
 %token AND
 %token OR
@@ -146,9 +147,9 @@ one-table:
 
 table-item:
 	one-table
-	| table-item join-type one-table join-condition_opt { $$ = new yy.ast.JoinClause($3, $2, $4); }
-	| table-item CROSS JOIN one-table { $$ = new yy.ast.JoinClause($4, 'cross'); }
-	| table-item NATURAL join-type one-table { $$ = new yy.ast.JoinClause($4, $3); $$.natural = true; } ;
+	| table-item join-type lateral_opt one-table join-condition_opt { $$ = new yy.ast.JoinClause($4, $2, $5, $3); }
+	| table-item CROSS JOIN lateral_opt one-table { $$ = new yy.ast.JoinClause($5, 'cross', undefined, $4); }
+	| table-item NATURAL join-type lateral_opt one-table { $$ = new yy.ast.JoinClause($5, $3, undefined, $4); $$.natural = true; } ;
 
 join-type:
 	COMMA { $$ = 'cross'; }
@@ -413,3 +414,7 @@ orderby-nulls_opt:
 
 distinct-clause_opt:
 	| distinct-clause ;
+
+lateral_opt:
+	{ $$ = false; }
+	| LATERAL { $$ = true; } ;
