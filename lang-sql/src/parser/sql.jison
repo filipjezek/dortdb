@@ -6,7 +6,7 @@
 %token AS
 %token FROM
 %token WHERE
-%token GROUPBY
+%token GROUP
 %token ROLLUP
 %token CUBE
 %token GROUPINGSETS
@@ -56,24 +56,33 @@
 %token END
 %token ROW
 %token VALUES
-%token WITHINGROUP
+%token WITHIN
 %token FILTER
 %token OVER
-%token PARTITIONBY
+%token PARTITION
 %token RANGE
 %token ROWS
 %token GROUPS
 %token UNBOUNDED
 %token PRECEDING
 %token FOLLOWING
-%token CURRENTROW
-%token EXCLUDEGROUP
-%token EXCLUDETIES
-%token EXCLUDENOOTHERS
-%token EXCLUDECURRENTROW
+%token CURRENT
+%token EXCLUDE
+%token TIES
+%token NOOTHERS
 %token WINDOW
 %token ORDINALITY
 %token WITH
+%token RECURSIVE
+%token SEARCH
+%token BREADTH
+%token DEPTH
+%token SET
+%token BY
+%token CYCLE
+%token TO
+%token DEFAULT
+%token MATERIALIZED
 
 %token NUMBER
 %token STRING
@@ -133,6 +142,7 @@ statement:
 
 select-stmt:
 	values_clause orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); }
+	| with-clause select-set-list orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($2, $3, $4?.[0], $4?.[1], $1); }
 	| select-set-list orderby-clause_opt limit-clause_opt { $$ = new yy.ast.SelectStatement($1, $2, $3?.[0], $3?.[1]); } ;
 
 select-set:
@@ -181,6 +191,52 @@ table-function-call:
 		$$ = new yy.ast.RowsFrom($4, $6); if ($7) {$7.table = $$; $$ = $7;}
 	} ;
 
+with-clause:
+	WITH recursive_opt with-query-cycle-list {
+		$$ = $3;
+		for (const q of $$) {
+			q.recursive = $2;
+		}
+	} ;
+
+with-query-name:
+	ID AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery($1, [], $5, $3); }
+	| ID LPAR column-list RPAR AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery($1, $3, $8, $6); } ;
+
+with-query-search:
+	with-query-name
+	| with-query-name SEARCH with-search-type FIRST BY column-list SET ID {
+		$$ = $1;
+		$$.searchType = $3;
+		$$.searchCols = $6;
+		$$.searchName = $8;
+	};
+
+with-query-cycle:
+	with-query-search
+	| with-query-search CYCLE column-list SET ID USING ID {
+		$$ = $1;
+		$$.cycleCols = $3;
+		$$.cycleMarkName = $5;
+		$$.cyclePathName = $7;
+	}
+	| with-query-search CYCLE column-list SET ID TO expression DEFAULT expression USING ID {
+		$$ = $1;
+		$$.cycleCols = $3;
+		$$.cycleMarkName = $5;
+		$$.cyclePathName = $11;
+		$$.cycleMarkVal = $7;
+		$$.cycleMarkDefault = $9;
+	};
+
+with-query-cycle-list:
+	with-query-cycle { $$ = [$1]; }
+	| with-query-cycle-list COMMA with-query-cycle { $$ = $1; $$.push($3); } ;
+
+with-search-type:
+	DEPTH { $$ = 'dfs'; }
+	| BREADTH { $$ = 'bfs'; } ;
+
 values_clause:
 	VALUES expression-list_opt-list { $$ = new yy.ast.ValuesClause($2); } ;
 
@@ -217,10 +273,10 @@ where-clause:
 	WHERE expression { $$ = $2; } ;
 
 groupby-clause:
-	GROUPBY expression-list { $$ = new yy.ast.GroupByClause($2, 'basic'); }
-	| GROUPBY ROLLUP LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($4, 'rollup'); }
-	| GROUPBY CUBE LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($4, 'cube'); }
-	| GROUPBY GROUPINGSETS LPAR expression-list_opt-list RPAR { $$ = new yy.ast.GroupByClause($4, 'groupingsets'); } ;
+	GROUP BY expression-list { $$ = new yy.ast.GroupByClause($3, 'basic'); }
+	| GROUP BY ROLLUP LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($5, 'rollup'); }
+	| GROUP BY CUBE LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($5, 'cube'); }
+	| GROUP BY GROUPINGSETS LPAR expression-list_opt-list RPAR { $$ = new yy.ast.GroupByClause($5, 'groupingsets'); } ;
 
 window-clause:
 	WINDOW window-spec-list { $$ = $2; } ;
@@ -327,11 +383,11 @@ function-call:
 	| scoped-id LPAR setop-modifier expression-list orderby-clause_opt RPAR filter-clause_opt {
 		$$ = new yy.ast.ASTAggregate($1, $4, $3, $5, $7);
 	}
-	| scoped-id LPAR expression-list RPAR WITHINGROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
-		$$ = new yy.ast.ASTAggregate($1, $3, null, $8, $10, $7);
+	| scoped-id LPAR expression-list RPAR WITHIN GROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
+		$$ = new yy.ast.ASTAggregate($1, $3, null, $9, $11, $8);
 	}
-	| scoped-id LPAR RPAR WITHINGROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
-		$$ = new yy.ast.ASTAggregate($1, [], null, $7, $9, $6);
+	| scoped-id LPAR RPAR WITHIN GROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
+		$$ = new yy.ast.ASTAggregate($1, [], null, $8, $10, $7);
 	}
 	| scoped-id LPAR RPAR filter-clause_opt OVER window-spec-or-id {
 		$$ = new yy.ast.ASTWindowFunction($1, [], $6, $4);
@@ -359,15 +415,15 @@ window-spec-or-id:
 	| window-spec ;
 
 window-spec:
-	LPAR ID_opt PARTITIONBY expression-list orderby-clause frame-clause_opt RPAR {
-		$$ = $6 ? $6 : new yy.ast.WindowSpec();
-		$$.columns = $4;
+	LPAR ID_opt PARTITION BY expression-list orderby-clause frame-clause_opt RPAR {
+		$$ = $7 ? $7 : new yy.ast.WindowSpec();
+		$$.columns = $5;
 		$$.parent = $2;
-		$$.order = $5;
+		$$.order = $6;
 	}
-	| LPAR ID_opt PARTITIONBY expression-list frame-clause_opt RPAR {
-		$$ = $5 ? $5 : new yy.ast.WindowSpec();
-		$$.columns = $4;
+	| LPAR ID_opt PARTITION BY expression-list frame-clause_opt RPAR {
+		$$ = $6 ? $6 : new yy.ast.WindowSpec();
+		$$.columns = $5;
 		$$.parent = $2;
 	};
 
@@ -383,18 +439,18 @@ frame-mode:
 frame-boundary-start:
 	UNBOUNDED PRECEDING { $$ = Infinity; }
 	| expression PRECEDING { $$ = $1; }
-	| CURRENTROW { $$ = 0; };
+	| CURRENT ROW { $$ = 0; };
 
 frame-boundary-end:
-	CURRENTROW { $$ = 0; }
+	CURRENT ROW { $$ = 0; }
 	| expression FOLLOWING { $$ = $1; }
 	| UNBOUNDED FOLLOWING { $$ = Infinity; };
 
 frame-exclusion:
-	EXCLUDEGROUP { $$ = 'group'; }
-	| EXCLUDETIES { $$ = 'ties'; }
-	| EXCLUDENOOTHERS { $$ = 'noothers'; }
-	| EXCLUDECURRENTROW { $$ = 'currentrow'; } ;
+	EXCLUDE GROUP { $$ = 'group'; }
+	| EXCLUDE TIES { $$ = 'ties'; }
+	| EXCLUDE NOOTHERS { $$ = 'noothers'; }
+	| EXCLUDE CURRENT ROW { $$ = 'currentrow'; } ;
 
 expression-list:
 	expression { $$ = [$1]; }
@@ -581,3 +637,11 @@ frame-exclusion_opt:
 
 with-ordinality_opt:
 	| WITH ORDINALITY ;
+
+recursive_opt:
+	{ $$ = false; }
+	| RECURSIVE { $$ = true; } ;
+
+materialized_opt:
+	| NOT MATERIALIZED { $$ = false; }
+	| MATERIALIZED { $$ = true; } ;

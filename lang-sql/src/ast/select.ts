@@ -2,13 +2,15 @@ import { ASTFunction, ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { ASTTableAlias } from './alias.js';
 import { ASTIdentifier } from './expression.js';
+import { WithQuery } from './with.js';
 
 export class SelectStatement implements ASTNode {
   constructor(
     public selectSet: SelectSet,
     public orderBy?: OrderByItem[],
     public limit?: ASTNode,
-    public offset?: ASTNode
+    public offset?: ASTNode,
+    public withQueries?: WithQuery[]
   ) {}
 
   accept(visitor: SQLVisitor): void {

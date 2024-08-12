@@ -32,6 +32,7 @@ import {
   ASTTableAlias,
 } from './alias.js';
 import { WindowSpec } from './window.js';
+import { WithQuery } from './with.js';
 
 export interface SQLVisitor extends ASTVisitor {
   visitStringLiteral(node: ASTStringLiteral): void;
@@ -61,4 +62,5 @@ export interface SQLVisitor extends ASTVisitor {
   visitWindowFn(node: ASTWindowFn): void;
   visitTableFn(node: TableFn): void;
   visitRowsFrom(node: RowsFrom): void;
+  visitWithQuery(node: WithQuery): void;
 }
