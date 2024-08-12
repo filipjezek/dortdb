@@ -87,7 +87,11 @@ export class ASTCast implements ASTNode {
 }
 
 export class ASTSubscript implements ASTNode {
-  constructor(public expr: ASTNode, public from: ASTNode, public to: ASTNode) {}
+  constructor(
+    public expr: ASTNode,
+    public from: ASTNode,
+    public to?: ASTNode
+  ) {}
 
   accept(visitor: SQLVisitor): void {
     visitor.visitSubscript(this);

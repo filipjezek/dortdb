@@ -5,7 +5,7 @@
   "description": "SQL parser and executor for DortDB",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run jison && rollup -c rollup.test.config.js && node --test dist/tests/*.spec.js",
     "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.js",
     "rollup": "rollup -c rollup.config.js",
     "build": "npm run jison && npm run rollup",
@@ -17,7 +17,9 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
     "@types/emscripten": "^1.39.10",
+    "@types/node": "^22.2.0",
     "esbuild": "^0.20.2",
+    "glob": "^8.1.0",
     "rollup": "^4.14.3",
     "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-esbuild": "^6.1.1",

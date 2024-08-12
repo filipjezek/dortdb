@@ -324,7 +324,7 @@ limit-clause:
 
 scoped-id:
 	ID { $$ = new yy.ast.ASTIdentifier($1); }
-	| ID DOT ID { $$ = new yy.ast.ASTIdentifier($1, $3); } ;
+	| ID DOT ID { $$ = new yy.ast.ASTIdentifier($3, $1); } ;
 
 field-selector:
 	STAR { $$ = new yy.ast.ASTFieldSelector($1); }
@@ -460,33 +460,30 @@ expression-list_opt-list:
 	LPAR expression-list_opt RPAR { $$ = [$2 ?? []]; }
 	| expression-list_opt-list COMMA LPAR expression-list_opt RPAR { $$ = $1; $$.push($4 ?? []);};
 
-cast-expression:
+cast-or-subscript-expression:
 	primary-expression
 	| CAST LPAR expression AS ID braces_opt RPAR { $$ = new yy.ast.ASTCast($3, $5, !!$6); }
-	| primary-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, $3, !!$4); } ;
-
-subscript-expression:
-	cast-expression
-	| subscript-expression LBRA expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3); }
-	| subscript-expression LBRA expression COLON expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3, $5); };
+	| cast-or-subscript-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, $3, !!$4); }
+	| cast-or-subscript-expression LBRA expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3); }
+	| cast-or-subscript-expression LBRA expression COLON expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3, $5); };
 
 unary-expression:
-	subscript-expression
-	| unary-operator cast-expression { $$ = yy.makeOp($1, [$2]); } ;
+	cast-or-subscript-expression
+	| unary-operator unary-expression { $$ = yy.makeOp($1, [$2]); } ;
 
 unary-operator:
 	PLUS | MINUS ;
 
 exponentiative-expression:
 	unary-expression
-	| exponentiative-expression EXP cast-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
+	| exponentiative-expression EXP unary-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 multiplicative-operator:
 	STAR | DIV | MOD ;
 
 multiplicative-expression:
 	exponentiative-expression
-	| multiplicative-expression multiplicative-operator cast-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
+	| multiplicative-expression multiplicative-operator exponentiative-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 additive-expression:
 	multiplicative-expression
@@ -519,21 +516,17 @@ relational-operator:
 
 relational-expression:
 	string-set-range-expression
-	| relational-expression relational-operator additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
-
-relational-or-quantified-expression:
-	relational-expression
-	| quantified-query ;
+	| relational-expression relational-operator userop-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 is-expression:
 	relational-expression
-	| relational-expression IS not_opt boolean-literal { $$ = yy.wrapNot(yy.makeOp($2, [$1, $4]), $3); }
-	| relational-expression IS not_opt DISTINCT FROM relational-expression { $$ = yy.wrapNot(yy.makeOp('DISTINCT FROM', [$1, $6]), $3); }
+	| is-expression IS not_opt boolean-literal { $$ = yy.wrapNot(yy.makeOp($2, [$1, $4]), $3); }
+	| is-expression IS not_opt DISTINCT FROM relational-expression { $$ = yy.wrapNot(yy.makeOp('DISTINCT FROM', [$1, $6]), $3); }
 	| EXISTS LPAR subquery RPAR { $$ = new yy.ast.ASTExists($3); } ;
 
 logical-NOT-expression:
 	is-expression
-	| NOT is-expression { $$ = yy.wrapNot($2, $1); } ;
+	| NOT logical-NOT-expression { $$ = yy.wrapNot($2, $1); } ;
 
 logical-AND-expression:
 	logical-NOT-expression

@@ -25,8 +25,8 @@ DEC       [0-9]
 "}"				this.yy.saveRemainingInput('}' + this._input); return this.yy.AdditionalTokens.RCUR;
 "*"				return this.yy.AdditionalTokens.STAR;
 ";" 			return this.yy.AdditionalTokens.SEMICOLON;
-":" 		  return this.yy.AdditionalTokens.COLON;
 "::" 			return this.yy.AdditionalTokens.DBLCOLON;
+":" 		  return this.yy.AdditionalTokens.COLON;
 "+"	  		return this.yy.AdditionalTokens.PLUS;
 "-" 			return this.yy.AdditionalTokens.MINUS;
 "/" 			return this.yy.AdditionalTokens.DIV;
