@@ -1,0 +1,12 @@
+{
+  "name": "@dortdb/project",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "workspaces": [
+    "packages/*"
+  ],
+  "author": "dortdb",
+  "license": "ISC"
+}

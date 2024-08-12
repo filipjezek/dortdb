@@ -7,7 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.js",
-    "build": "rollup -c rollup.config.js",
+    "rollup": "rollup -c rollup.config.js",
+    "build": "npm run jison && npm run rollup",
     "watch": "rollup -c rollup.config.js --watch",
     "start": "node dist/index.js"
   },

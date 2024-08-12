@@ -75,15 +75,15 @@ DEC       [0-9]
 "ORDINALITY" return this.yy.Keywords.ORDINALITY;
 "WITH" return this.yy.Keywords.WITH;
 "RECURSIVE" return this.yy.Keywords.RECURSIVE;
-"SEARCH" return this.yy.Keywords.SEARCH,
-"BREADTH" return this.yy.Keywords.BREADTH,
-"DEPTH" return this.yy.Keywords.DEPTH,
-"SET" return this.yy.Keywords.SET,
-"BY" return this.yy.Keywords.BY,
-"CYCLE" return this.yy.Keywords.CYCLE,
-"TO" return this.yy.Keywords.TO,
-"DEFAULT" return this.yy.Keywords.DEFAULT,
-"MATERIALIZED" return this.yy.Keywords.MATERIALIZED,
+"SEARCH" return this.yy.Keywords.SEARCH;
+"BREADTH" return this.yy.Keywords.BREADTH;
+"DEPTH" return this.yy.Keywords.DEPTH;
+"SET" return this.yy.Keywords.SET;
+"BY" return this.yy.Keywords.BY;
+"CYCLE" return this.yy.Keywords.CYCLE;
+"TO" return this.yy.Keywords.TO;
+"DEFAULT" return this.yy.Keywords.DEFAULT;
+"MATERIALIZED" return this.yy.Keywords.MATERIALIZED;
 
 "OVER" return this.yy.Keywords.OVER;
 "PARTITION" return this.yy.Keywords.PARTITION;

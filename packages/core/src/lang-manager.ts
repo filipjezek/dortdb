@@ -46,7 +46,9 @@ export class LanguageManager {
     for (const lang of scope) {
       makePath(this.implementations, lang, schema);
       const ims = this.implementations[lang][schema];
+
       for (const type of ['operators', 'functions', 'aggregates'] as const) {
+        ims[type] = (ims[type] as any) ?? {};
         for (const item of ext[type]) {
           ims[type][item.name] = item;
         }
