@@ -214,4 +214,37 @@ describe('AST Expressions', () => {
       );
     }
   });
+
+  describe('comments', () => {
+    it('should ignore line comments', () => {
+      const result = db.parse(`
+        SELECT 1, -- 2,
+        -- 3,
+        4`).value;
+      const expected = [
+        new astSQL.SelectStatement(
+          new astSQL.SelectSet([
+            new astSQL.ASTNumberLiteral('1'),
+            new astSQL.ASTNumberLiteral('4'),
+          ])
+        ),
+      ];
+      assert.deepEqual(result, expected);
+    });
+
+    it('should ignore block comments', () => {
+      const result = db.parse(`
+        SELECT 1, /* 2,
+        /* 3, */ 4, */ 5`).value;
+      const expected = [
+        new astSQL.SelectStatement(
+          new astSQL.SelectSet([
+            new astSQL.ASTNumberLiteral('1'),
+            new astSQL.ASTNumberLiteral('5'),
+          ])
+        ),
+      ];
+      assert.deepEqual(result, expected);
+    });
+  });
 });

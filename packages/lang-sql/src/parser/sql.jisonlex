@@ -129,6 +129,23 @@ DEC       [0-9]
 {DEC}+"."{DEC}+ return this.yy.AdditionalTokens.NUMBER;
 {DEC}+		  return this.yy.AdditionalTokens.NUMBER;
 
+"--"					%{ this.pushState('linec'); this.yy.comment = '--'; %}
+<linec>\n		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}
+<linec>.      this.yy.comment += yytext;
+
+
+"/*"				    %{ this.pushState('blockc'); this.yy.comment = '/*'; %}
+<blockc>"/*"    %{ this.yy.comment += '/*'; this.yy.commentDepth++; %}
+<blockc>"*/"	  %{
+  this.yy.comment += '*/';
+  if (!this.yy.commentDepth) {
+    this.popState();
+    this.yy.reportComment(this.yy.comment, {...this.yyloc});
+  } else this.yy.commentDepth--; 
+%}
+<blockc>.|\n       this.yy.comment += yytext;
+<blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
+
 "," 			return this.yy.AdditionalTokens.COMMA;
 ".*"      return this.yy.AdditionalTokens.DOTSTAR;
 "."				return this.yy.AdditionalTokens.DOT;
@@ -171,22 +188,6 @@ DEC       [0-9]
 %}
 
 
-"--"					%{ this.pushState('linec'); this.yy.comment = '--'; %}
-<linec>\n		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}
-<linec>.      this.yy.comment += yytext;
-
-
-"/*"				    %{ this.pushState('blockc'); this.yy.comment = '/*'; %}
-<blockc>"/*"    %{ this.yy.comment += '/*'; this.yy.commentDepth++; %}
-<blockc>"*/"	  %{
-  this.yy.comment += '*/';
-  if (!this.yy.commentDepth) {
-    this.popState();
-    this.yy.reportComment(this.yy.comment, {...this.yyloc});
-  } else this.yy.commentDepth--; 
-%}
-<blockc>.       this.yy.comment += yytext;
-<blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
 
 ([+*/<>=-])+[*/<>=] return this.yy.AdditionalTokens.USEROP;
