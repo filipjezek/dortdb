@@ -328,7 +328,7 @@ scoped-id:
 
 field-selector:
 	STAR { $$ = new yy.ast.ASTFieldSelector($1); }
-	| scoped-id { $$ = new yy.ast.ASTFieldSelector($1.idOriginal, new yy.ast.ASTIdentifier($1.schemaOriginal)); }
+	| scoped-id { $$ = new yy.ast.ASTFieldSelector($1.idOriginal, $1.schemaOriginal && new yy.ast.ASTIdentifier($1.schemaOriginal)); }
 	| ID DOT ID DOT ID { $$ = new yy.ast.ASTFieldSelector($3, new yy.ast.ASTIdentifier($2, $1)); }
 	| scoped-id DOTSTAR { $$ = new yy.ast.ASTFieldSelector('*', new yy.ast.ASTIdentifier($1)); } ;
 
@@ -341,9 +341,9 @@ query-quantifier:
 	| ANY ;
 
 quantified-query:
-	query-quantifier LPAR subquery RPAR { $$ = new yy.ast.ASTQuantifiedQuery($1, $3); }
-	| query-quantifier LPAR STRING RPAR { $$ = new yy.ast.ASTQuantifiedQuery($1, $3); }
-	| query-quantifier LPAR array-constructor RPAR { $$ = new yy.ast.ASTQuantifiedQuery($1, $3); } ;
+	query-quantifier LPAR subquery RPAR { $$ = new yy.ast.ASTQuantifier($1, $3); }
+	| query-quantifier LPAR STRING RPAR { $$ = new yy.ast.ASTQuantifier($1, $3); }
+	| query-quantifier LPAR array-constructor RPAR { $$ = new yy.ast.ASTQuantifier($1, $3); } ;
 
 boolean-literal:
 	TRUE { $$ = new yy.ast.ASTLiteral($1, true); }
@@ -376,18 +376,18 @@ primary-expression:
 
 function-call:
 	simple-function-call
-	| scoped-id LPAR expression-list RPAR filter-clause { $$ = new yy.ast.ASTAggregate($1, $3, null, null, $5); }
+	| scoped-id LPAR expression-list RPAR filter-clause { $$ = new yy.ast.ASTAggregate($1, $3, undefined, undefined, $5); }
 	| scoped-id LPAR expression-list orderby-clause RPAR filter-clause_opt {
-		$$ = new yy.ast.ASTAggregate($1, $3, null, $4, $6);
+		$$ = new yy.ast.ASTAggregate($1, $3, undefined, $4, $6);
 	}
 	| scoped-id LPAR setop-modifier expression-list orderby-clause_opt RPAR filter-clause_opt {
 		$$ = new yy.ast.ASTAggregate($1, $4, $3, $5, $7);
 	}
 	| scoped-id LPAR expression-list RPAR WITHIN GROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
-		$$ = new yy.ast.ASTAggregate($1, $3, null, $9, $11, $8);
+		$$ = new yy.ast.ASTAggregate($1, $3, undefined, $9, $11, $8);
 	}
 	| scoped-id LPAR RPAR WITHIN GROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
-		$$ = new yy.ast.ASTAggregate($1, [], null, $8, $10, $7);
+		$$ = new yy.ast.ASTAggregate($1, [], undefined, $8, $10, $7);
 	}
 	| scoped-id LPAR RPAR filter-clause_opt OVER window-spec-or-id {
 		$$ = new yy.ast.ASTWindowFunction($1, [], $6, $4);
@@ -428,8 +428,8 @@ window-spec:
 	};
 
 frame-clause:
-	frame-mode frame-boundary-start frame-exclusion_opt { $$ = new yy.ast.WindowSpec(null, $1, $2, null, $3?.slice(7)); }
-	| frame-mode BETWEEN frame-boundary-start AND frame-boundary-end frame-exclusion_opt { $$ = new yy.ast.WindowSpec(null, $1, $3, $5, $6?.slice(7)); };
+	frame-mode frame-boundary-start frame-exclusion_opt { $$ = new yy.ast.WindowSpec(undefined, $1, $2, undefined, $3?.slice(7)); }
+	| frame-mode BETWEEN frame-boundary-start AND frame-boundary-end frame-exclusion_opt { $$ = new yy.ast.WindowSpec(undefined, $1, $3, $5, $6?.slice(7)); };
 
 frame-mode:
 	RANGE
@@ -542,7 +542,7 @@ expression:
 // case
 
 case-expression:
-	CASE expression when-list else-expression_opt END { $$ = new yy.ast.ASTCase($2, $3, $4); } ;
+	CASE expression_opt when-list else-expression_opt END { $$ = new yy.ast.ASTCase($2, $3, $4); } ;
 
 when-list:
 	WHEN expression THEN expression { $$ = [[$2, $4]]; }

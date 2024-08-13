@@ -4,14 +4,14 @@ export function parseStringLiteral(original: string): string {
   }
   let value = '';
   const escRegex =
-    /^[bfnrt\\]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{1,3}/g;
+    /^([bfnrt\\]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{1,3})/;
   for (let i = 1; i < original.length - 1; i++) {
     const c = original[i];
     let match: RegExpMatchArray | null;
-    if (c === '\\' && (match = original.slice(i).match(escRegex))) {
+    if (c === '\\' && (match = original.slice(i + 1).match(escRegex))) {
       i += match[0].length;
       value += interpretEscape(match[0]);
-    } else if (c === '' && original[i + 1] === '') {
+    } else if (c === "'" && original[i + 1] === "'") {
       i++;
       value += "'";
     } else {

@@ -5,11 +5,11 @@
   "description": "SQL parser and executor for DortDB",
   "main": "dist/index.js",
   "scripts": {
-    "test": "npm run jison && rollup -c rollup.test.config.js && node --test dist/tests/*.spec.js",
-    "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.js",
+    "test": "npm run jison && node --import tsx --test \"tests/**/*.spec.ts\"",
+    "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.cjs",
     "rollup": "rollup -c rollup.config.js",
+    "rollup:watch": "rollup -c rollup.config.js --watch",
     "build": "npm run jison && npm run rollup",
-    "watch": "rollup -c rollup.config.js --watch",
     "start": "node dist/index.js"
   },
   "author": "dortdb",
@@ -23,6 +23,7 @@
     "rollup": "^4.14.3",
     "rollup-plugin-dts": "^6.1.0",
     "rollup-plugin-esbuild": "^6.1.1",
+    "tsx": "^4.17.0",
     "typescript": "^5.4.5"
   },
   "peerDependencies": {

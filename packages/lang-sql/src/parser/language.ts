@@ -4,7 +4,7 @@ import {
   Language,
   LanguageManager,
 } from '@dortdb/core';
-import { sqlLexer as Lexer, sqlParser as Parser } from './sql.js';
+import { sqlLexer as Lexer, sqlParser as Parser } from './sql.cjs';
 import { Keywords, AdditionalTokens } from './tokens.js';
 import { YyContext } from './yycontext.js';
 import * as ast from '../ast/index.js';
