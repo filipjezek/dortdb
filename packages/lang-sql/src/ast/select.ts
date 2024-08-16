@@ -13,8 +13,8 @@ export class SelectStatement implements ASTNode {
     public withQueries?: WithQuery[]
   ) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitSelectStatement(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitSelectStatement(this);
   }
 }
 
@@ -31,8 +31,8 @@ export class SelectSet implements ASTNode {
     public windows?: ASTNode[]
   ) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitSelectSet(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitSelectSet(this);
   }
 }
 
@@ -51,12 +51,12 @@ export class SelectSetOp implements ASTNode {
     this.type = type.toLowerCase() as SelectSetOpType;
   }
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitSelectSetOp(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitSelectSetOp(this);
   }
 }
 
-export class OrderByItem implements ASTNode {
+export class OrderByItem {
   public ascending: boolean;
 
   constructor(
@@ -69,10 +69,6 @@ export class OrderByItem implements ASTNode {
     if (nullsFirst === undefined) {
       this.nullsFirst = !this.ascending;
     }
-  }
-
-  accept(visitor: SQLVisitor): void {
-    visitor.visitOrderByItem(this);
   }
 }
 
@@ -88,8 +84,8 @@ export class GroupByClause implements ASTNode {
     public type: GroupByType
   ) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitGroupByClause(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitGroupByClause(this);
   }
 }
 
@@ -118,24 +114,24 @@ export class JoinClause implements ASTNode {
     }
   }
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitJoinClause(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitJoinClause(this);
   }
 }
 
 export class JoinUsing implements ASTNode {
   constructor(public columns: ASTNode[]) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitJoinUsing(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitJoinUsing(this);
   }
 }
 
 export class ValuesClause implements ASTNode {
   constructor(public values: ASTNode[][]) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitValues(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitValues(this);
   }
 }
 
@@ -148,15 +144,15 @@ export class TableFn extends ASTFunction {
     super('sql', id, args);
   }
 
-  override accept(visitor: SQLVisitor): void {
-    visitor.visitTableFn(this);
+  override accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitTableFn(this);
   }
 }
 
 export class RowsFrom implements ASTNode {
   constructor(public tableFns: TableFn[], public withOrdinality = false) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitRowsFrom(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitRowsFrom(this);
   }
 }

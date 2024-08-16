@@ -14,8 +14,8 @@ export class ASTTableAlias implements ASTNode {
     this.columns = columnsOriginal?.map(parseIdentifier);
   }
 
-  accept(visitor: SQLVisitor) {
-    return visitor.visitTableAlias(this);
+  accept<T>(visitor: SQLVisitor<T>) {
+    return return visitor.visitTableAlias(this);
   }
 }
 
@@ -26,8 +26,8 @@ export class ASTFieldSelector implements ASTNode {
     this.field = parseIdentifier(fieldOriginal);
   }
 
-  accept(visitor: SQLVisitor) {
-    return visitor.visitFieldSelector(this);
+  accept<T>(visitor: SQLVisitor<T>) {
+    return return visitor.visitFieldSelector(this);
   }
 }
 
@@ -38,7 +38,7 @@ export class ASTExpressionAlias implements ASTNode {
     this.alias = parseIdentifier(aliasOriginal);
   }
 
-  accept(visitor: SQLVisitor) {
-    return visitor.visitExpressionAlias(this);
+  accept<T>(visitor: SQLVisitor<T>) {
+    return return visitor.visitExpressionAlias(this);
   }
 }

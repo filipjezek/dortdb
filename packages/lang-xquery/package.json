@@ -1,12 +1,12 @@
 {
-  "name": "@dortdb/lang-sql",
+  "name": "@dortdb/lang-xquery",
   "type": "module",
   "version": "1.0.0",
-  "description": "SQL parser and executor for DortDB",
+  "description": "XQuery parser and executor for DortDB",
   "main": "dist/index.js",
   "scripts": {
     "test": "npm run jison && node --import tsx --test \"tests/**/*.spec.ts\"",
-    "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.cjs",
+    "jison": "ts-jison src/parser/xquery.jison src/parser/xquery.jisonlex -o src/parser/xquery.cjs",
     "rollup": "rollup -c rollup.config.js",
     "rollup:watch": "rollup -c rollup.config.js --watch",
     "build": "npm run jison && npm run rollup",

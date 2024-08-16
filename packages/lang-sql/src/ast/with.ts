@@ -24,7 +24,7 @@ export class WithQuery implements ASTNode {
     public materialized?: boolean
   ) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitWithQuery(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitWithQuery(this);
   }
 }

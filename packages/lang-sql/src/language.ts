@@ -4,14 +4,14 @@ import {
   Language,
   LanguageManager,
 } from '@dortdb/core';
-import { sqlLexer as Lexer, sqlParser as Parser } from './sql.cjs';
-import { Keywords, AdditionalTokens } from './tokens.js';
-import { YyContext } from './yycontext.js';
-import * as ast from '../ast/index.js';
+import { sqlLexer as Lexer, sqlParser as Parser } from './parser/sql.cjs';
+import { Keywords, AdditionalTokens } from './parser/tokens.js';
+import { YyContext } from './parser/yycontext.js';
+import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
-import { coalesce } from '../functions/coalesce.js';
-import { sum } from '../functions/sum.js';
-import { count } from '../functions/count.js';
+import { coalesce } from './functions/coalesce.js';
+import { sum } from './functions/sum.js';
+import { count } from './functions/count.js';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',

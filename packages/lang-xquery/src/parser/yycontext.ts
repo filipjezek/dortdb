@@ -1,6 +1,5 @@
 import { AdditionalTokens, Keywords } from './tokens.js';
 import { ASTNode, ASTOperator, LanguageManager } from '@dortdb/core';
-import { ASTIdentifier, SelectSet } from '../ast/index.js';
 
 export interface YyContext {
   Keywords: typeof Keywords;
@@ -10,8 +9,7 @@ export interface YyContext {
 
   comment: string;
   commentDepth: number;
-  delimiter: string;
-  strContent: string;
+  textContent: string;
 
   /**
    * this implementation of lexer can only pass to the parser strings or numbers.
@@ -19,8 +17,5 @@ export interface YyContext {
    */
   messageQueue: any[];
   saveRemainingInput: (input: string) => void;
-  wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
-  makeOp: (op: string | ASTIdentifier, operands: ASTNode[]) => ASTOperator;
-  allFrom: (src: ASTNode) => SelectSet;
   ast: Record<string, any>;
 }

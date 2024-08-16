@@ -125,9 +125,9 @@ DEC       [0-9]
 0x{HEX}+		return this.yy.AdditionalTokens.NUMBER;
 0b{BIN}+		return this.yy.AdditionalTokens.NUMBER;
 0o{OCT}+		return this.yy.AdditionalTokens.NUMBER;
-{DEC}+"."{DEC}+"e"{DEC}+ return this.yy.AdditionalTokens.NUMBER;
-{DEC}+"."{DEC}+ return this.yy.AdditionalTokens.NUMBER;
-{DEC}+		  return this.yy.AdditionalTokens.NUMBER;
+[+-]?{DEC}+"."{DEC}+"e"[+-]?{DEC}+ return this.yy.AdditionalTokens.NUMBER;
+[+-]?{DEC}+"."{DEC}+ return this.yy.AdditionalTokens.NUMBER;
+[+-]?{DEC}+		  return this.yy.AdditionalTokens.NUMBER;
 
 "--"					%{ this.pushState('linec'); this.yy.comment = '--'; %}
 <linec>\n		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}

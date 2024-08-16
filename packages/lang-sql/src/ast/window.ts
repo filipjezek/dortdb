@@ -30,7 +30,7 @@ export class WindowSpec implements ASTNode {
     this.mode = mode && (mode.toLowerCase() as FrameMode);
   }
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitWindowSpec(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitWindowSpec(this);
   }
 }

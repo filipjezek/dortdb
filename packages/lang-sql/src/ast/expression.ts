@@ -15,8 +15,8 @@ export class ASTStringLiteral extends ASTLiteral<string> {
     this.value = parseStringLiteral(original);
   }
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitStringLiteral(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitStringLiteral(this);
   }
 }
 
@@ -29,8 +29,8 @@ export class ASTIdentifier implements ASTNode, ASTIdentifierAttrs {
     this.schema = schemaOriginal && parseIdentifier(schemaOriginal);
   }
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitIdentifier(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitIdentifier(this);
   }
 }
 
@@ -39,8 +39,8 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
     super(original, +original);
   }
 
-  override accept(visitor: SQLVisitor): void {
-    visitor.visitNumberLiteral(this);
+  override accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitNumberLiteral(this);
   }
 }
 
@@ -52,8 +52,8 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
 export class ASTArray implements ASTNode {
   constructor(public items: ASTNode[] | ASTNode) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitArray(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitArray(this);
   }
 
   static fromString(str: string): ASTArray {
@@ -65,24 +65,24 @@ export class ASTArray implements ASTNode {
 export class ASTRow implements ASTNode {
   constructor(public items: ASTNode[]) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitRow(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitRow(this);
   }
 }
 
 export class ASTParam implements ASTNode {
   constructor(public name: string) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitParam(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitParam(this);
   }
 }
 
 export class ASTCast implements ASTNode {
   constructor(public expr: ASTNode, public type: string, isArray = false) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitCast(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitCast(this);
   }
 }
 
@@ -93,16 +93,16 @@ export class ASTSubscript implements ASTNode {
     public to?: ASTNode
   ) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitSubscript(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitSubscript(this);
   }
 }
 
 export class ASTExists implements ASTNode {
   constructor(public query: ASTNode) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitExists(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitExists(this);
   }
 }
 
@@ -115,8 +115,8 @@ export class ASTQuantifier implements ASTNode {
     this.quantifier = quantifier.toLowerCase() as QuantifierType;
   }
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitQuantifier(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitQuantifier(this);
   }
 }
 
@@ -127,8 +127,8 @@ export class ASTCase implements ASTNode {
     public elseExpr: ASTNode
   ) {}
 
-  accept(visitor: SQLVisitor): void {
-    visitor.visitCase(this);
+  accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitCase(this);
   }
 }
 
@@ -147,8 +147,8 @@ export class ASTAggregate extends ASTFunction {
     this.distinct = distinct?.toLowerCase() === 'distinct';
   }
 
-  override accept(visitor: SQLVisitor): void {
-    visitor.visitAggregate(this);
+  override accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitAggregate(this);
   }
 }
 
@@ -162,7 +162,7 @@ export class ASTWindowFn extends ASTAggregate {
     super(id, args, null, null, filter);
   }
 
-  override accept(visitor: SQLVisitor): void {
-    visitor.visitWindowFn(this);
+  override accept<T>(visitor: SQLVisitor<T>): T {
+    return visitor.visitWindowFn(this);
   }
 }
