@@ -33,6 +33,7 @@ DEC       [0-9]
 "where"                  return this.yy.Keywords.WHERE;
 "when"                   return this.yy.Keywords.WHEN;
 "unordered"              return this.yy.Keywords.UNORDERED;
+"union"                  return this.yy.Keywords.UNION;
 "tumbling"               return this.yy.Keywords.TUMBLING;
 "to"                     return this.yy.Keywords.TO;
 "then"                   return this.yy.Keywords.THEN;
@@ -44,8 +45,10 @@ DEC       [0-9]
 "sliding"                return this.yy.Keywords.SLIDING;
 "self"                   return this.yy.Keywords.SELF;
 "schema-element"         return this.yy.Keywords.SCHEMA_ELEMENT;
+"schema-attribute"       return this.yy.Keywords.SCHEMA_ATTRIBUTE;
 "satisfies"              return this.yy.Keywords.SATISFIES;
 "return"                 return this.yy.Keywords.RETURN;
+"processing-instruction" return this.yy.Keywords.PROC_INSTR;
 "previous"               return this.yy.Keywords.PREVIOUS;
 "preceding"              return this.yy.Keywords.PRECEDING;
 "preceding-sibling"      return this.yy.Keywords.PRECEDING_SIBLING;
@@ -58,22 +61,34 @@ DEC       [0-9]
 "only"                   return this.yy.Keywords.ONLY;
 "node"                   return this.yy.Keywords.NODE;
 "next"                   return this.yy.Keywords.NEXT;
+"ne"                     return this.yy.Keywords.KW_NEQ;
 "namespace"              return this.yy.Keywords.NAMESPACE;
 "namespace-node"         return this.yy.Keywords.NAMESPACENODE;
 "mod"                    return this.yy.Keywords.MOD;
+"lt"                     return this.yy.Keywords.KW_LT;
 "let"                    return this.yy.Keywords.LET;
 "least"                  return this.yy.Keywords.LEAST;
+"le"                     return this.yy.Keywords.KW_LTE;
+"item"                   return this.yy.Keywords.ITEM;
+"is"                     return this.yy.Keywords.IS;
+"intersect"              return this.yy.Keywords.INTERSECT;
 "instance"\s+"of"        return this.yy.Keywords.INSTANCEOF;
 "in"                     return this.yy.Keywords.IN;
 "if"                     return this.yy.Keywords.IF;
 "idiv"                   return this.yy.Keywords.IDIV;
+"gt"                     return this.yy.Keywords.KW_GT;
 "group"\s+"by"           return this.yy.Keywords.GROUPBY;
 "greatest"               return this.yy.Keywords.GREATEST;
+"ge"                     return this.yy.Keywords.KW_GTE;
+"function"               return this.yy.Keywords.FUNCTION;
 "for"                    return this.yy.Keywords.FOR;
 "following"              return this.yy.Keywords.FOLLOWING;
 "following-sibling"      return this.yy.Keywords.FOLLOWING_SIBLING;
+"except"                 return this.yy.Keywords.EXCEPT;
 "every"                  return this.yy.Keywords.EVERY;
+"eq"                     return this.yy.Keywords.KW_EQ;
 "end"                    return this.yy.Keywords.END;
+"empty-sequence"         return this.yy.Keywords.EMPTYSEQ;
 "empty"                  return this.yy.Keywords.EMPTY;
 "else"                   return this.yy.Keywords.ELSE;
 "element"                return this.yy.Keywords.ELEMENT;
@@ -102,6 +117,9 @@ DEC       [0-9]
 "Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  return this.yy.AdditionalTokens.QNAME;
 {NAME1}{NAME}*":"{NAME1}{NAME}*          return this.yy.AdditionalTokens.QNAME;
 {NAME1}{NAME}*                           return this.yy.AdditionalTokens.NCNAME;
+"Q{"({ENTITY}|[^&{}])*"}*"               return this.yy.AdditionalTokens.QNAME_WILDCARD;
+{NAME1}{NAME}*":*"                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
+"*:"{NAME1}{NAME}*                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
 
 [+-]?{DEC}*"."{DEC}+[Ee][+-]?{DEC}+ return this.yy.AdditionalTokens.NUMBER;
 [+-]?{DEC}*"."{DEC}+ return this.yy.AdditionalTokens.NUMBER;
@@ -139,14 +157,22 @@ DEC       [0-9]
 ":" 		  return this.yy.AdditionalTokens.COLON;
 "+"	  		return this.yy.AdditionalTokens.PLUS;
 "-" 			return this.yy.AdditionalTokens.MINUS;
+"//"      return this.yy.AdditionalTokens.DBLSLASH;
 "/" 			return this.yy.AdditionalTokens.SLASH;
 "^"				return this.yy.AdditionalTokens.EXP;
 "=" 			return this.yy.AdditionalTokens.EQ;
 "!="|"<>" return this.yy.AdditionalTokens.NEQ;
 ">="      return this.yy.AdditionalTokens.GTE;
 "<="      return this.yy.AdditionalTokens.LTE;
+">>"      return this.yy.AdditionalTokens.SHIFTR;
+"<<"      return this.yy.AdditionalTokens.SHIFTL;
 ">"       return this.yy.AdditionalTokens.GT;
 "<"       return this.yy.AdditionalTokens.LT;
+"||"      return this.yy.AdditionalTokens.DBLPIPE;
+"|"       return this.yy.AdditionalTokens.PIPE;
+"?"       return this.yy.AdditionalTokens.QUESTION;
+"!"       return this.yy.AdditionalTokens.EMPH;
+"@"       return this.yy.AdditionalTokens.AT_SIGN;
 
 
 \s+       /* skip whitespace */

@@ -69,8 +69,25 @@
 %token BASEURI
 %token ORDERING
 %token ORDER
+%token KW_EQ
+%token KW_NEQ
+%token KW_LT
+%token KW_LTE
+%token KW_GT
+%token KW_GTE
+%token IS
+%token UNION
+%token EXCEPT
+%token INTERSECT
+%token EMPTYSEQ
+%token ITEM
+%token PROC_INSTR
+%token SCHEMA_ATTRIBUTE
+%token FUNCTION
 
 %token COMMA
+%token SLASH
+%token DBLSLASH
 %token DOT
 %token DOLLAR
 %token LPAR
@@ -94,12 +111,28 @@
 %token GTE
 %token LT
 %token LTE
+%token SHIFTR
+%token SHIFTL
+%token PIPE
+%token DBLPIPE
+%token QUESTION
+%token EMPH
+%token AT_SIGN
 %token NUMBER
 %token STRING
 %token QNAME
+%token QNAME_WILDCARD
 %token NCNAME
 %token LANGSWITCH
 %token LANGEXIT
+
+// see https://www.w3.org/TR/2014/REC-xquery-30-20140408/#extra-grammatical-constraints - the grammar from the spec itself is hacky
+%left SEQUENCE_TYPE_PRIORITY
+%left BINOP_PRIORITY
+%left PATH_START_PRIORITY
+%left LONE_SLASH_PRIORITY
+%left PLUS
+%left STAR // these operators need to have some precedence defined in order for other priorities to work
 
 %%
 
@@ -154,7 +187,8 @@ expr:
 	flwor-expr
 	| quantified-expr
 	| switch-expr
-	| if-expr ;
+	| if-expr
+	| or-expr ;
 
 flwor-expr:
 	flwor-initial flwor-body flwor-return { $2.unshift($1); $2.push($3); $$ = new yy.ast.FLWORExpr($2); } ;
@@ -294,6 +328,207 @@ name:
 	QNAME { $$ = new yy.ast.ASTName($1); }
 	| NCNAME { $$ = new yy.ast.ASTName($1); } ;
 
+occurence:
+	STAR
+	| PLUS
+	| QUESTION ;
+
+item-type:
+	kind-test
+	| ITEM LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| FUNCTION LPAR STAR RPAR { $$ = new yy.ast.ASTItemType($1, $3); }
+	| name { $$ = new yy.ast.ASTItemType(null, $1); }
+	| LPAR item-type RPAR { $$ = $2; } ;
+
+kind-test:
+	document-test
+	| element-test
+	| attribute-test
+	| SCHEMA_ELEMENT LPAR name RPAR { $$ = new yy.ast.ASTItemType($1, $3); }
+	| SCHEMA_ATTRIBUTE LPAR name RPAR { $$ = new yy.ast.ASTItemType($1, $3); }
+	| pi-test
+	| COMMENT LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| TEXT LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| NAMESPACENODE LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| NODE LPAR RPAR { $$ = new yy.ast.ASTItemType($1); } ;
+
+document-test:
+	DOCUMENT_NODE LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| DOCUMENT_NODE LPAR element-test RPAR { $$ = new yy.ast.ASTItemType(yy.ast.ItemKind.documentElement, $3.name); }
+	| DOCUMENT_NODE LPAR SCHEMA_ELEMENT LPAR name RPAR RPAR { $$ = new yy.ast.ASTItemType(yy.ast.ItemKind.documentSchemaElement, $3.name); } ;
+
+name-or-star:
+	name
+	| STAR ;
+
+element-test:
+	ELEMENT LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| ELEMENT LPAR name-or-star RPAR { $$ = new yy.ast.ASTItemType($1, $3); };
+
+attribute-test:
+	ATTRIBUTE LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| ATTRIBUTE LPAR name-or-star RPAR { $$ = new yy.ast.ASTItemType($1, $3); };
+
+pi-test:
+	PROC_INSTR LPAR RPAR { $$ = new yy.ast.ASTItemType($1); }
+	| PROC_INSTR LPAR name RPAR { $$ = new yy.ast.ASTItemType($1, $3); }
+	| PROC_INSTR LPAR string-literal RPAR { $$ = new yy.ast.ASTItemType($1, $3); };
+
+sequence-type:
+	EMPTYSEQ LPAR RPAR { $$ = new yy.ast.ASTSequenceType(); }
+	| item-type %prec BINOP_PRIORITY { $$ = new yy.ast.ASTSequenceType($1); }
+	| item-type occurence %prec SEQUENCE_TYPE_PRIORITY { $$ = new yy.ast.ASTSequenceType($1, $2); } ;
+
+primary-expr:
+	DOT ;
+
+postfix-expr:
+	primary-expr
+	| postfix-expr predicate { $$ = new yy.ast.FilterExpr($1, $2); }
+	| postfix-expr LPAR argument-list_opt RPAR { $$ = new yy.ast.FunctionCall($1, $3); } ;
+
+argument-list:
+	argument { $$ = [$1]; }
+	| argument-list COMMA argument { $$ = $1; $$.push($3); } ;
+
+argument:
+	expr
+	| QUESTION { $$ = new yy.ast.ArgumentPlaceholder(); } ;
+
+path-expr:
+	relative-path-expr { $$ = new yy.ast.PathExpr($1); }
+	| SLASH %prec LONE_SLASH_PRIORITY { $$ = new yy.ast.PathExpr($2, $1); }
+	| SLASH relative-path-expr %prec PATH_START_PRIORITY { $$ = new yy.ast.PathExpr($2, $1); }
+	| DBLSLASH relative-path-expr { $$ = new yy.ast.PathExpr($2, $1); } ;
+
+relative-path-expr:
+	step-expr { $$ = [$1]; }
+	| relative-path-expr SLASH step-expr { $$ = $1; $$.push($3); }
+	| relative-path-expr DBLSLASH step-expr {
+		$$ = $1;
+		$$.push(
+			new yy.ast.PathAxis(
+				yy.ast.AxisType.DESCENDANT_OR_SELF,
+				new yy.ast.ASTItemType(yy.ast.ItemKind.NODE)
+			), $3);
+	} ;
+
+step-expr:
+	postfix-expr
+	| predicate-step ;
+
+predicate-step:
+	axis-step predicate-list { $$ = $1; $$.predicates = $2; } ;
+
+axis-step:
+	axis-keyword DBLCOLON node-test { $$ = new yy.ast.PathAxis($1, $3); }
+	| node-test { $$ = new yy.ast.PathAxis(yy.ast.AxisType.CHILD, $1); }
+	| DOT DOT { $$ = new yy.ast.PathAxis(yy.ast.AxisType.PARENT, new yy.ast.ASTItemType(yy.ast.ItemKind.NODE)); }
+	| AT_SIGN node-test { $$ = new yy.ast.PathAxis(yy.ast.AxisType.ATTRIBUTE, $2); } ;
+
+node-test:
+	kind-test
+	| name-or-star { $$ = new yy.ast.ASTItemType(null, $1); }
+	| QNAME_WILDCARD { $$ = new yy.ast.ASTItemType(null, new yy.ast.ASTName($1)); } ;
+
+axis-keyword:
+	CHILD
+	| DESCENDANT
+	| ATTRIBUTE
+	| SELF
+	| DESCENDANT_OR_SELF
+	| ANCESTOR
+	| FOLLOWING_SIBLING
+	| FOLLOWING
+	| PARENT
+	| PRECEDING_SIBLING
+	| PRECEDING
+	| ANCESTOR_OR_SELF ;
+
+predicate-list:
+	{ $$ = []; }
+	| predicate-list predicate { $$ = $1; $$.push($2); } ;
+
+predicate:
+	LBRA expr-list RBRA { $$ = new yy.ast.PathPredicate($2); } ;
+
+simple-map-expr:
+	path-expr
+	| simple-map-expr EMPH path-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+value-expr:
+	simple-map-expr ;
+
+unary-expr:
+	value-expr
+	| additive-op unary-expr { $$ = new yy.makeOp($1, [$2]); } ;
+
+cast-expr:
+	unary-expr
+	| cast-expr CAST AS name { $$ = new yy.ast.CastExpr($1, $4); } ;
+
+instanceof-expr:
+	cast-expr
+	| instanceof-expr INSTANCEOF sequence-type { $$ = new yy.ast.InstanceOfExpr($1, $3); } ;
+
+intersect-op:
+	INTERSECT
+	| EXCEPT ;
+
+intersect-expr:
+	instanceof-expr
+	| intersect-expr intersect-op instanceof-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+
+union-op:
+	PIPE
+	| UNION ;
+
+union-expr:
+	intersect-expr
+	| union-expr union-op intersect-expr { $$ = yy.makeOp("|", [$1, $3]); } ;
+
+mult-op:
+	STAR
+	| DIV
+	| IDIV
+	| MOD ;
+
+multiplicative-expr:
+	union-expr
+	| multiplicative-expr mult-op union-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+additive-op:
+	PLUS
+	| MINUS ;
+
+additive-expr:
+	multiplicative-expr
+	| additive-expr additive-op multiplicative-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+range-expr:
+	additive-expr
+	| range-expr TO additive-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+str-concat-expr:
+	range-expr
+	| str-concat-expr DBLPIPE range-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+comparison-expr:
+	str-concat-expr
+	| comparison-expr comparison-op str-concat-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+comparison-op:
+	EQ | NEQ | GT | GTE | LT | LTE | KW_EQ | KW_NEQ | KW_GT | KW_GTE | KW_LT | KW_LTE | IS | SHIFTL | SHIFTR ;
+
+and-expr:
+	comparison-expr
+	| and-expr AND comparison-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
+or-expr:
+	and-expr
+	| or-expr OR and-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+
 
 // optionals
 
@@ -308,3 +543,16 @@ stable_opt:
 
 empty-order_opt:
 	| empty-order ;
+
+occurence_opt:
+	| occurence ;
+
+question_opt:
+	| QUESTION ;
+
+argument-list_opt:
+	| argument-list ;
+
+relative-path-expr_opt:
+	{ $$ = []; }
+	| relative-path-expr ;

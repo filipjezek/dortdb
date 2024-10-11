@@ -89,3 +89,54 @@ export class IfExpr implements ASTNode {
     return visitor.visitIfExpr(this);
   }
 }
+
+export enum Occurence {
+  ZERO_OR_ONE = '?',
+  ZERO_OR_MORE = '*',
+  ONE_OR_MORE = '+',
+}
+export class ASTSequenceType implements ASTNode {
+  constructor(public type?: ASTNode, public occurrence?: string) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitSequenceType(this);
+  }
+}
+
+export class InstanceOfExpr implements ASTNode {
+  constructor(public expr: ASTNode, public type: ASTSequenceType) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitInstanceOfExpr(this);
+  }
+}
+
+export class CastExpr implements ASTNode {
+  constructor(public expr: ASTNode, public type: ASTName) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitCastExpr(this);
+  }
+}
+
+export class FilterExpr implements ASTNode {
+  constructor(public expr: ASTNode, public predicate: ASTNode) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitFilterExpr(this);
+  }
+}
+
+export class FunctionCall implements ASTNode {
+  constructor(public nameOrExpr: ASTNode, public args: ASTNode[] = []) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitFunctionCall(this);
+  }
+}
+
+export class ArgumentPlaceholder implements ASTNode {
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitArgumentPlaceholder(this);
+  }
+}

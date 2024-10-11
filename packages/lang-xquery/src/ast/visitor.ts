@@ -1,10 +1,16 @@
 import { ASTVisitor } from '@dortdb/core';
 import {
+  ArgumentPlaceholder,
   ASTName,
   ASTNumberLiteral,
+  ASTSequenceType,
   ASTStringLiteral,
   ASTVariable,
+  CastExpr,
+  FilterExpr,
+  FunctionCall,
   IfExpr,
+  InstanceOfExpr,
   QuantifiedExpr,
   SwitchExpr,
 } from './expression.js';
@@ -28,6 +34,8 @@ import {
   OrderingDeclaration,
   Prolog,
 } from './prolog.js';
+import { ASTItemType } from './item-type.js';
+import { PathAxis, PathExpr, PathPredicate } from './path.js';
 
 export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitProlog(node: Prolog): T;
@@ -53,4 +61,14 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitQuantifiedExpr(node: QuantifiedExpr): T;
   visitSwitchExpr(node: SwitchExpr): T;
   visitIfExpr(node: IfExpr): T;
+  visitSequenceType(node: ASTSequenceType): T;
+  visitInstanceOfExpr(node: InstanceOfExpr): T;
+  visitCastExpr(node: CastExpr): T;
+  visitItemType(node: ASTItemType): T;
+  visitPathExpr(node: PathExpr): T;
+  visitPathPredicate(node: PathPredicate): T;
+  visitPathAxis(node: PathAxis): T;
+  visitFilterExpr(node: FilterExpr): T;
+  visitFunctionCall(node: FunctionCall): T;
+  visitArgumentPlaceholder(node: ArgumentPlaceholder): T;
 }

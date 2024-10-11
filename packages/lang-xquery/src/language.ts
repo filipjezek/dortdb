@@ -4,13 +4,16 @@ import {
   Language,
   LanguageManager,
 } from '@dortdb/core';
-import { sqlLexer as Lexer, sqlParser as Parser } from './parser/xquery.cjs';
+import {
+  xqueryLexer as Lexer,
+  xqueryParser as Parser,
+} from './parser/xquery.cjs';
 import { Keywords, AdditionalTokens } from './parser/tokens.js';
 import { YyContext } from './parser/yycontext.js';
 import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
 
-export const SQL: Language<'xquery'> = {
+export const XQuery: Language<'xquery'> = {
   name: 'xquery',
   operators: [],
   aggregates: [],
@@ -31,6 +34,7 @@ function createParser(mgr: LanguageManager) {
 
     messageQueue: [],
     saveRemainingInput: (input) => (remainingInput = input),
+    makeOp: (op, args) => new ASTOperator('xquery', new ast.ASTName(op), args),
     ast: {
       ...ast,
       ASTLiteral,

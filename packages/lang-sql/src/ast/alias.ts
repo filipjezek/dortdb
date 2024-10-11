@@ -15,7 +15,7 @@ export class ASTTableAlias implements ASTNode {
   }
 
   accept<T>(visitor: SQLVisitor<T>) {
-    return return visitor.visitTableAlias(this);
+    return visitor.visitTableAlias(this);
   }
 }
 
@@ -27,7 +27,7 @@ export class ASTFieldSelector implements ASTNode {
   }
 
   accept<T>(visitor: SQLVisitor<T>) {
-    return return visitor.visitFieldSelector(this);
+    return visitor.visitFieldSelector(this);
   }
 }
 
@@ -39,6 +39,6 @@ export class ASTExpressionAlias implements ASTNode {
   }
 
   accept<T>(visitor: SQLVisitor<T>) {
-    return return visitor.visitExpressionAlias(this);
+    return visitor.visitExpressionAlias(this);
   }
 }

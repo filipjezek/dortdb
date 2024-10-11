@@ -17,5 +17,6 @@ export interface YyContext {
    */
   messageQueue: any[];
   saveRemainingInput: (input: string) => void;
+  makeOp: (op: string, args: ASTNode[]) => ASTOperator;
   ast: Record<string, any>;
 }

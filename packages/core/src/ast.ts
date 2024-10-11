@@ -6,7 +6,7 @@ export class ASTLiteral<T> implements ASTNode {
   constructor(public original: string, public value: T) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
-    visitor.acceptLiteral(this);
+    return visitor.acceptLiteral(this);
   }
 }
 
@@ -18,7 +18,7 @@ export class ASTOperator implements ASTNode {
   ) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
-    visitor.acceptOperator(this);
+    return visitor.acceptOperator(this);
   }
 }
 
@@ -30,7 +30,7 @@ export class ASTFunction implements ASTNode {
   ) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
-    visitor.acceptFunction(this);
+    return visitor.acceptFunction(this);
   }
 }
 
