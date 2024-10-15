@@ -32,11 +32,12 @@ function createParser(mgr: LanguageManager) {
     textContent: '',
     langMgr: mgr,
     stringDelim: undefined,
+    elStack: [],
 
     messageQueue: [],
     saveRemainingInput: (input) => (remainingInput = input),
     makeOp: (op, args) => new ASTOperator('xquery', new ast.ASTName(op), args),
-    resetText: () => {
+    resetText: (yy) => {
       const temp = yy.textContent;
       yy.textContent = '';
       return temp;

@@ -1,3 +1,4 @@
+import { ASTName } from '../ast/expression.js';
 import { AdditionalTokens, Keywords } from './tokens.js';
 import { ASTNode, ASTOperator, LanguageManager } from '@dortdb/core';
 
@@ -11,6 +12,7 @@ export interface YyContext {
   commentDepth: number;
   textContent: string;
   stringDelim: '"' | "'";
+  elStack: ASTName[];
 
   /**
    * this implementation of lexer can only pass to the parser strings or numbers.
@@ -19,6 +21,6 @@ export interface YyContext {
   messageQueue: any[];
   saveRemainingInput: (input: string) => void;
   makeOp: (op: string, args: ASTNode[]) => ASTOperator;
-  resetText: () => string;
+  resetText: (yy: YyContext) => string;
   ast: Record<string, any>;
 }

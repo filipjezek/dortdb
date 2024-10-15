@@ -8,6 +8,7 @@ DEC       [0-9]
 %x blockc
 %x dirconstr
 %x dirconstr_el
+%x dirconstr_end_el
 %x dirconstr_pi
 %x cdata
 %x dirconstr_content_el
@@ -122,9 +123,9 @@ DEC       [0-9]
 "ancestor-or-self"       return this.yy.Keywords.ANCESTOR_OR_SELF;
 "allowing"               return this.yy.Keywords.ALLOWING;
 
-<INITIAL,dirconstr_el>"Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  return this.yy.AdditionalTokens.QNAME;
-<INITIAL,dirconstr_el>{NAME1}{NAME}*":"{NAME1}{NAME}*          return this.yy.AdditionalTokens.QNAME;
-<INITIAL,dirconstr_el>{NAME1}{NAME}*                           return this.yy.AdditionalTokens.NCNAME;
+<INITIAL,dirconstr_el,dirconstr_end_el>"Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  return this.yy.AdditionalTokens.QNAME;
+<INITIAL,dirconstr_el,dirconstr_end_el>{NAME1}{NAME}*":"{NAME1}{NAME}*          return this.yy.AdditionalTokens.QNAME;
+<INITIAL,dirconstr_el,dirconstr_end_el>{NAME1}{NAME}*                           return this.yy.AdditionalTokens.NCNAME;
 "Q{"({ENTITY}|[^&{}])*"}*"               return this.yy.AdditionalTokens.QNAME_WILDCARD;
 {NAME1}{NAME}*":*"                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
 "*:"{NAME1}{NAME}*                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
@@ -153,29 +154,34 @@ DEC       [0-9]
 <dirconstr>"<?" %{ this.popState(); this.pushState('dirconstr_pi'); return this.yy.AdditionalTokens.DIRPI_START; %}
 <dirconstr>"<" %{ this.popState(); this.pushState('dirconstr_el'); return this.yy.AdditionalTokens.LT; %}
 
-<dirconstr_el>\s+    return this.yy.AdditionalTokens.WS;
-<dirconstr_el>">"    %{ this.popState(); this.pushState('dirconstr_content_el'); return this.yy.AdditionalTokens.GT; %}
-<dirconstr_el>"/>"   %{ this.popState(); return this.yy.AdditionalTokens.DIREL_SELFEND; %}
-<dirconstr_el>["']    %{ this.yy.stringDelim = yytext; this.pushState('dirconstr_content_attr'); %}
+<dirconstr_el>\s*"/>"   %{ this.popState(); return this.yy.AdditionalTokens.DIREL_SELFEND; %}
+<dirconstr_el,dirconstr_end_el>\s+       return this.yy.AdditionalTokens.WS;
+<dirconstr_el>">"       %{ this.popState(); this.pushState('dirconstr_content_el'); return this.yy.AdditionalTokens.GT; %}
+<dirconstr_el>["']      %{ this.yy.stringDelim = yytext; this.pushState('dirconstr_content_attr'); %}
 
 <dirconstr_content_el,dirconstr_content_attr>"{{"|"}}" this.yy.textContent += yytext;
 <dirconstr_content_el,dirconstr_content_attr>"{"       %{
   this.pushState('INITIAL');
   this.unput('{');
-  yytext = this.yy.resetText();
-  return this.topState(1) === 'dirconstr_content_el' ? this.yy.AdditionalTokens.DIREL_CONTENT : this.yy.AdditionalTokens.ATTR_CONTENT;
+  yytext = this.yy.resetText(this.yy);
+  if (yytext)
+    return this.topState(1) === 'dirconstr_content_el' ? this.yy.AdditionalTokens.DIREL_CONTENT : this.yy.AdditionalTokens.ATTR_CONTENT;
                                                         %}
 <dirconstr_content_el>"<![CDATA[" this.pushState('cdata'); this.yy.textContent += yytext;
 <dirconstr_content_el>"</"         %{ 
   this.popState();
-  yytext = this.yy.resetText();
-  return this.yy.AdditionalTokens.DIREL_CONTENT;
+  this.pushState('dirconstr_end_el');
+  yytext = this.yy.resetText(this.yy);
+  if (yytext)
+    return this.yy.AdditionalTokens.DIREL_CONTENT;
                                   %}
-<dirconstr_content_el>"<"         %{ 
-  this.pushState('dirconstr');
-  this.unput('<');
-  yytext = this.yy.resetText();
-  return this.yy.AdditionalTokens.DIREL_CONTENT;
+<dirconstr_content_el>"<"         %{
+  yytext = this.yy.resetText(this.yy);
+  if (yytext) {
+    this.unput('<');
+    return this.yy.AdditionalTokens.DIREL_CONTENT;
+  }
+  else return this.yy.AdditionalTokens.LT;
                                   %}
 <dirconstr_content_el>.|\n        this.yy.textContent += yytext;
 
@@ -185,12 +191,15 @@ DEC       [0-9]
 <dirconstr_content_attr>["'] %{
   if (yytext === this.yy.stringDelim) {
     this.popState();
-    yytext = yytext + this.yy.resetText() + yytext;
-    return this.yy.AdditionalTokens.ATTR_CONTENT;
-  }
-  this.yy.textContent += yytext;
+    yytext = this.yy.resetText(this.yy);
+    if (yytext)
+      return this.yy.AdditionalTokens.ATTR_CONTENT;
+  } else
+    this.yy.textContent += yytext;
                              %}
 <dirconstr_content_attr>.|\n this.yy.textContent += yytext;
+
+<dirconstr_end_el>">" %{ this.popState(); return this.yy.AdditionalTokens.GT; %}
 
 
 
@@ -202,6 +211,7 @@ DEC       [0-9]
 "[]"      return this.yy.AdditionalTokens.CLOSEDBRAS;
 "["				return this.yy.AdditionalTokens.LBRA;
 "]"				this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
+"{"				return this.yy.AdditionalTokens.LCUR;
 "}"				%{
   if (this.stateStackSize() > 1) {
     this.popState();

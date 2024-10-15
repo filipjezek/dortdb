@@ -142,7 +142,7 @@
 %left LONE_SLASH_PRIORITY
 %left PLUS
 %left STAR // these operators need to have some precedence defined in order for other priorities to work
-%left LT
+%nonassoc LT
 
 %%
 
@@ -415,11 +415,11 @@ dir-elem-content:
 dir-elem-content-part:
 	DIREL_CONTENT
 	| direct-constructor
-	| LBRA expr-list RBRA { $$ = $2; } ;
+	| LCUR expr-list RCUR { $$ = $2; } ;
 
 dir-elem-attr-list:
-	WS dir-elem-attr { $$ = [$2]; console.log($2); }
-	| dir-elem-attr-list WS dir-elem-attr { $$ = $1; $$.push($3); console.log('pushed', $$); } ;
+	WS dir-elem-attr { $$ = [$2]; }
+	| dir-elem-attr-list WS dir-elem-attr { $$ = $1; $$.push($3); } ;
 
 dir-elem-attr:
 	name WS_opt EQ WS_opt dir-attr-content { $$ = [$1, new yy.ast.DirConstrContent($5)]; } ;
@@ -430,7 +430,7 @@ dir-attr-content:
 
 dir-attr-content-part:
 	ATTR_CONTENT
-	| LBRA expr-list RBRA { $$ = $2; } ;
+	| LCUR expr-list RCUR { $$ = $2; } ;
 
 dir-constructor-meta:
 	LT { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<'); } ; /* this rule only serves to switch lexer state and retry */

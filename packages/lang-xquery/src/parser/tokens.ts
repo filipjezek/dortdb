@@ -103,6 +103,7 @@ export enum AdditionalTokens {
   RPAR = 'RPAR',
   LBRA = 'LBRA',
   RBRA = 'RBRA',
+  LCUR = 'LCUR',
   RCUR = 'RCUR',
   CLOSEDBRAS = 'CLOSEDBRAS',
   SEMICOLON = 'SEMICOLON',
