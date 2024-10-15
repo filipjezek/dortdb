@@ -10,6 +10,7 @@ export interface YyContext {
   comment: string;
   commentDepth: number;
   textContent: string;
+  stringDelim: '"' | "'";
 
   /**
    * this implementation of lexer can only pass to the parser strings or numbers.
@@ -18,5 +19,6 @@ export interface YyContext {
   messageQueue: any[];
   saveRemainingInput: (input: string) => void;
   makeOp: (op: string, args: ASTNode[]) => ASTOperator;
+  resetText: () => string;
   ast: Record<string, any>;
 }

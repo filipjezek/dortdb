@@ -1,11 +1,19 @@
 %options easy_keyword_rules ranges
 
-NAME1     [A-Za-z_\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\u10000-\uEFFFF]
+NAME1     [A-Za-z_\xC0-\xD6\xD8-\xF6\xF8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD]
 NAME      {NAME1}|[-.0-9\xB7\u0300-\u036F\u203F-\u2040]
 ENTITY    "&"([a-z]+|"#"[0-9]+|"#x"[0-9a-zA-Z]+)";"
 DEC       [0-9]
 
 %x blockc
+%x dirconstr
+%x dirconstr_el
+%x dirconstr_pi
+%x cdata
+%x dirconstr_content_el
+%x dirconstr_content_attr
+%x dirconstr_content_pi
+%x dirconstr_content_comment
 
 %%
 
@@ -114,9 +122,9 @@ DEC       [0-9]
 "ancestor-or-self"       return this.yy.Keywords.ANCESTOR_OR_SELF;
 "allowing"               return this.yy.Keywords.ALLOWING;
 
-"Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  return this.yy.AdditionalTokens.QNAME;
-{NAME1}{NAME}*":"{NAME1}{NAME}*          return this.yy.AdditionalTokens.QNAME;
-{NAME1}{NAME}*                           return this.yy.AdditionalTokens.NCNAME;
+<INITIAL,dirconstr_el>"Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  return this.yy.AdditionalTokens.QNAME;
+<INITIAL,dirconstr_el>{NAME1}{NAME}*":"{NAME1}{NAME}*          return this.yy.AdditionalTokens.QNAME;
+<INITIAL,dirconstr_el>{NAME1}{NAME}*                           return this.yy.AdditionalTokens.NCNAME;
 "Q{"({ENTITY}|[^&{}])*"}*"               return this.yy.AdditionalTokens.QNAME_WILDCARD;
 {NAME1}{NAME}*":*"                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
 "*:"{NAME1}{NAME}*                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
@@ -141,6 +149,51 @@ DEC       [0-9]
 <blockc>.|\n       this.yy.comment += yytext;
 <blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
+<dirconstr>"<!--" %{ this.popState(); this.pushState('dirconstr_content_comment'); return this.yy.AdditionalTokens.DIRCOMMENT_START; %}
+<dirconstr>"<?" %{ this.popState(); this.pushState('dirconstr_pi'); return this.yy.AdditionalTokens.DIRPI_START; %}
+<dirconstr>"<" %{ this.popState(); this.pushState('dirconstr_el'); return this.yy.AdditionalTokens.LT; %}
+
+<dirconstr_el>\s+    return this.yy.AdditionalTokens.WS;
+<dirconstr_el>">"    %{ this.popState(); this.pushState('dirconstr_content_el'); return this.yy.AdditionalTokens.GT; %}
+<dirconstr_el>"/>"   %{ this.popState(); return this.yy.AdditionalTokens.DIREL_SELFEND; %}
+<dirconstr_el>["']    %{ this.yy.stringDelim = yytext; this.pushState('dirconstr_content_attr'); %}
+
+<dirconstr_content_el,dirconstr_content_attr>"{{"|"}}" this.yy.textContent += yytext;
+<dirconstr_content_el,dirconstr_content_attr>"{"       %{
+  this.pushState('INITIAL');
+  this.unput('{');
+  yytext = this.yy.resetText();
+  return this.topState(1) === 'dirconstr_content_el' ? this.yy.AdditionalTokens.DIREL_CONTENT : this.yy.AdditionalTokens.ATTR_CONTENT;
+                                                        %}
+<dirconstr_content_el>"<![CDATA[" this.pushState('cdata'); this.yy.textContent += yytext;
+<dirconstr_content_el>"</"         %{ 
+  this.popState();
+  yytext = this.yy.resetText();
+  return this.yy.AdditionalTokens.DIREL_CONTENT;
+                                  %}
+<dirconstr_content_el>"<"         %{ 
+  this.pushState('dirconstr');
+  this.unput('<');
+  yytext = this.yy.resetText();
+  return this.yy.AdditionalTokens.DIREL_CONTENT;
+                                  %}
+<dirconstr_content_el>.|\n        this.yy.textContent += yytext;
+
+<cdata>"]]>"  this.popState(); this.yy.textContent += yytext;
+<cdata>.|\n   this.yy.textContent += yytext;
+
+<dirconstr_content_attr>["'] %{
+  if (yytext === this.yy.stringDelim) {
+    this.popState();
+    yytext = yytext + this.yy.resetText() + yytext;
+    return this.yy.AdditionalTokens.ATTR_CONTENT;
+  }
+  this.yy.textContent += yytext;
+                             %}
+<dirconstr_content_attr>.|\n this.yy.textContent += yytext;
+
+
+
 "," 			return this.yy.AdditionalTokens.COMMA;
 "."				return this.yy.AdditionalTokens.DOT;
 "$"       return this.yy.AdditionalTokens.DOLLAR;
@@ -149,7 +202,14 @@ DEC       [0-9]
 "[]"      return this.yy.AdditionalTokens.CLOSEDBRAS;
 "["				return this.yy.AdditionalTokens.LBRA;
 "]"				this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
-"}"				this.yy.saveRemainingInput('}' + this._input); return this.yy.AdditionalTokens.RCUR;
+"}"				%{
+  if (this.stateStackSize() > 1) {
+    this.popState();
+    return this.yy.AdditionalTokens.RCUR;
+  }
+  this.yy.saveRemainingInput('}' + this._input);
+  return this.yy.AdditionalTokens.RCUR;
+          %}
 "*"				return this.yy.AdditionalTokens.STAR;
 ";" 			return this.yy.AdditionalTokens.SEMICOLON;
 "::" 			return this.yy.AdditionalTokens.DBLCOLON;
@@ -160,7 +220,7 @@ DEC       [0-9]
 "//"      return this.yy.AdditionalTokens.DBLSLASH;
 "/" 			return this.yy.AdditionalTokens.SLASH;
 "^"				return this.yy.AdditionalTokens.EXP;
-"=" 			return this.yy.AdditionalTokens.EQ;
+<INITIAL,dirconstr_el>"=" 			return this.yy.AdditionalTokens.EQ;
 "!="|"<>" return this.yy.AdditionalTokens.NEQ;
 ">="      return this.yy.AdditionalTokens.GTE;
 "<="      return this.yy.AdditionalTokens.LTE;

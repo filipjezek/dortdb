@@ -95,21 +95,19 @@
 %token RPAR
 %token LBRA
 %token RBRA
+%token LCUR
 %token RCUR
 %token CLOSEDBRAS
 %token SEMICOLON
 %token COLON
 %token COLONEQ
 %token DBLCOLON
-%token PLUS
 %token MINUS
-%token STAR
 %token EXP
 %token EQ
 %token NEQ
 %token GT
 %token GTE
-%token LT
 %token LTE
 %token SHIFTR
 %token SHIFTL
@@ -123,16 +121,28 @@
 %token QNAME
 %token QNAME_WILDCARD
 %token NCNAME
+%token DIREL_SELFEND
+%token WS
+%token DIRCOMMENT_START
+%token DIRCOMMENT_END
+%token DIRPI_START
+%token DIRPI_END
+%token ATTR_CONTENT
+%token COMMENT_CONTENT
+%token PI_CONTENT
+%token DIREL_CONTENT
 %token LANGSWITCH
 %token LANGEXIT
 
 // see https://www.w3.org/TR/2014/REC-xquery-30-20140408/#extra-grammatical-constraints - the grammar from the spec itself is hacky
+// todo: test these
 %left SEQUENCE_TYPE_PRIORITY
 %left BINOP_PRIORITY
 %left PATH_START_PRIORITY
 %left LONE_SLASH_PRIORITY
 %left PLUS
 %left STAR // these operators need to have some precedence defined in order for other priorities to work
+%left LT
 
 %%
 
@@ -152,10 +162,10 @@ root:
   | module { return $1; } ;
 
 module:
-	prolog querybody ;
+	prolog querybody { $$ = new yy.ast.Module($1, $2); } ;
 	
 prolog:
-	declaration-list { $$ = new yy.ast.Prolog($1); } ;
+	declaration-list_opt { $$ = new yy.ast.Prolog($1); } ;
 
 declaration-list:
 	declaration { $$ = [$1]; }
@@ -379,8 +389,65 @@ sequence-type:
 	| item-type %prec BINOP_PRIORITY { $$ = new yy.ast.ASTSequenceType($1); }
 	| item-type occurence %prec SEQUENCE_TYPE_PRIORITY { $$ = new yy.ast.ASTSequenceType($1, $2); } ;
 
+ordered-expr:
+	ORDERED LCUR expr-list RCUR { $$ = new yy.ast.OrderedExpr($2, true); }
+	| UNORDERED LCUR expr-list RCUR { $$ = new yy.ast.OrderedExpr($2, false); } ;
+
+direct-constructor:
+	dir-constructor-meta direct-constructor-itself { $$ = $2; } ;
+
+direct-constructor-itself:
+	dir-elem-constr ;
+	/* | dir-comment-constr
+	| dir-pi-constr ; */
+
+dir-elem-constr:
+	LT name dir-elem-attr-list_opt DIREL_SELFEND { $$ = new yy.ast.DirectElementConstructor($2, $3); }
+	| LT name dir-elem-attr-list_opt dir-elem-constr-end { $$ = new yy.ast.DirectElementConstructor($2, $3, $4); } ;
+
+dir-elem-constr-end:
+	GT dir-elem-content_opt name GT { $$ = $2; } ; /* DIREL_END token is consumed by the lexer */
+
+dir-elem-content:
+	dir-elem-content-part { $$ = [$1]; }
+	| dir-elem-content dir-elem-content-part { $$ = $1; $$.push($2); } ;
+
+dir-elem-content-part:
+	DIREL_CONTENT
+	| direct-constructor
+	| LBRA expr-list RBRA { $$ = $2; } ;
+
+dir-elem-attr-list:
+	WS dir-elem-attr { $$ = [$2]; console.log($2); }
+	| dir-elem-attr-list WS dir-elem-attr { $$ = $1; $$.push($3); console.log('pushed', $$); } ;
+
+dir-elem-attr:
+	name WS_opt EQ WS_opt dir-attr-content { $$ = [$1, new yy.ast.DirConstrContent($5)]; } ;
+
+dir-attr-content:
+	dir-attr-content-part { $$ = [$1]; }
+	| dir-attr-content dir-attr-content-part { $$ = $1; $$.push($2); } ;
+
+dir-attr-content-part:
+	ATTR_CONTENT
+	| LBRA expr-list RBRA { $$ = $2; } ;
+
+dir-constructor-meta:
+	LT { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<'); } ; /* this rule only serves to switch lexer state and retry */
+
+constructor-expr:
+	direct-constructor ;
+	/* | computed-constructor ; */
+
 primary-expr:
-	DOT ;
+	number-literal
+	| string-literal
+	| variable
+	| LPAR expr-list_opt RPAR { $$ = $2.length === 1 ? $2[0] : new yy.ast.SequenceConstructor($2); }
+	| name LPAR argument-list_opt RPAR { $$ = new yy.ast.FunctionCall($1, $3); }
+	| ordered-expr
+	|	constructor-expr
+	| DOT { $$ = new yy.ast.CurrentItemRef(); } ;
 
 postfix-expr:
 	primary-expr
@@ -396,7 +463,13 @@ argument:
 	| QUESTION { $$ = new yy.ast.ArgumentPlaceholder(); } ;
 
 path-expr:
-	relative-path-expr { $$ = new yy.ast.PathExpr($1); }
+	relative-path-expr {
+		if ($1.length === 1 && $1[0].axis === yy.ast.AxisType.CHILD && $1[0].nodeTest.kind === null && !$1[0].predicates.length) {
+			$$ = $1[0].nodeTest.name;
+		} else {
+			$$ = new yy.ast.PathExpr($1);
+		}
+	}
 	| SLASH %prec LONE_SLASH_PRIORITY { $$ = new yy.ast.PathExpr($2, $1); }
 	| SLASH relative-path-expr %prec PATH_START_PRIORITY { $$ = new yy.ast.PathExpr($2, $1); }
 	| DBLSLASH relative-path-expr { $$ = new yy.ast.PathExpr($2, $1); } ;
@@ -556,3 +629,21 @@ argument-list_opt:
 relative-path-expr_opt:
 	{ $$ = []; }
 	| relative-path-expr ;
+
+expr-list_opt:
+	{ $$ = []; }
+	| expr-list ;
+
+WS_opt:
+	| WS ;
+
+dir-elem-attr-list_opt:
+	WS_opt { $$ = []; }
+	| dir-elem-attr-list ;
+
+dir-elem-content_opt:
+	| dir-elem-content ;
+
+declaration-list_opt:
+	{ $$ = []; }
+	| declaration-list ;

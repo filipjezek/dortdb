@@ -31,10 +31,16 @@ function createParser(mgr: LanguageManager) {
     comment: '',
     textContent: '',
     langMgr: mgr,
+    stringDelim: undefined,
 
     messageQueue: [],
     saveRemainingInput: (input) => (remainingInput = input),
     makeOp: (op, args) => new ASTOperator('xquery', new ast.ASTName(op), args),
+    resetText: () => {
+      const temp = yy.textContent;
+      yy.textContent = '';
+      return temp;
+    },
     ast: {
       ...ast,
       ASTLiteral,

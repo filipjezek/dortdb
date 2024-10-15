@@ -41,3 +41,9 @@ export class PathAxis implements ASTNode {
     return visitor.visitPathAxis(this);
   }
 }
+
+export class CurrentItemRef implements ASTNode {
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitCurrentItemRef(this);
+  }
+}

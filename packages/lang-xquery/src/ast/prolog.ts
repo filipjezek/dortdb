@@ -58,3 +58,11 @@ export class EmptyOrderDeclaration implements ASTNode {
     return visitor.visitEmptyOrderDeclaration(this);
   }
 }
+
+export class Module implements ASTNode {
+  constructor(public prolog: Prolog, public body: ASTNode[]) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitModule(this);
+  }
+}

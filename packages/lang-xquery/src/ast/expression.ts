@@ -140,3 +140,19 @@ export class ArgumentPlaceholder implements ASTNode {
     return visitor.visitArgumentPlaceholder(this);
   }
 }
+
+export class SequenceConstructor implements ASTNode {
+  constructor(public items: ASTNode[]) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitSequenceConstructor(this);
+  }
+}
+
+export class OrderedExpr implements ASTNode {
+  constructor(public exprs: ASTNode[], public ordered: boolean) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitOrderedExpr(this);
+  }
+}

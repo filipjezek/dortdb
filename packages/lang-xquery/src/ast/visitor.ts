@@ -11,7 +11,9 @@ import {
   FunctionCall,
   IfExpr,
   InstanceOfExpr,
+  OrderedExpr,
   QuantifiedExpr,
+  SequenceConstructor,
   SwitchExpr,
 } from './expression.js';
 import {
@@ -30,12 +32,14 @@ import {
   BaseURIDeclaration,
   DefaultNSDeclaration,
   EmptyOrderDeclaration,
+  Module,
   NSDeclaration,
   OrderingDeclaration,
   Prolog,
 } from './prolog.js';
 import { ASTItemType } from './item-type.js';
-import { PathAxis, PathExpr, PathPredicate } from './path.js';
+import { CurrentItemRef, PathAxis, PathExpr, PathPredicate } from './path.js';
+import { DirConstrContent, DirectElementConstructor } from './constructor.js';
 
 export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitProlog(node: Prolog): T;
@@ -71,4 +75,10 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitFilterExpr(node: FilterExpr): T;
   visitFunctionCall(node: FunctionCall): T;
   visitArgumentPlaceholder(node: ArgumentPlaceholder): T;
+  visitCurrentItemRef(node: CurrentItemRef): T;
+  visitSequenceConstructor(node: SequenceConstructor): T;
+  visitOrderedExpr(node: OrderedExpr): T;
+  visitDirectElementConstructor(node: DirectElementConstructor): T;
+  visitDirConstrContent(node: DirConstrContent): T;
+  visitModule(node: Module): T;
 }

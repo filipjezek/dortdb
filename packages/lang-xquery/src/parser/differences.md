@@ -10,3 +10,4 @@
 - no `try catch` expressions
 - no `validate` expressions
 - no pragma expressions
+- function references do not use `#` syntax
