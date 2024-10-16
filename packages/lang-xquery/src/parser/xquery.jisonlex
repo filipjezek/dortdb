@@ -9,7 +9,6 @@ DEC       [0-9]
 %x dirconstr
 %x dirconstr_el
 %x dirconstr_end_el
-%x dirconstr_pi
 %x cdata
 %x dirconstr_content_el
 %x dirconstr_content_attr
@@ -151,11 +150,11 @@ DEC       [0-9]
 <blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
 <dirconstr>"<!--" %{ this.popState(); this.pushState('dirconstr_content_comment'); return this.yy.AdditionalTokens.DIRCOMMENT_START; %}
-<dirconstr>"<?" %{ this.popState(); this.pushState('dirconstr_pi'); return this.yy.AdditionalTokens.DIRPI_START; %}
+<dirconstr>"<?" %{ this.popState(); this.pushState('dirconstr_content_pi'); return this.yy.AdditionalTokens.DIRPI_START; %}
 <dirconstr>"<" %{ this.popState(); this.pushState('dirconstr_el'); return this.yy.AdditionalTokens.LT; %}
 
 <dirconstr_el>\s*"/>"   %{ this.popState(); return this.yy.AdditionalTokens.DIREL_SELFEND; %}
-<dirconstr_el,dirconstr_end_el>\s+       return this.yy.AdditionalTokens.WS;
+<dirconstr_el,dirconstr_end_el>\s+ return this.yy.AdditionalTokens.WS;
 <dirconstr_el>">"       %{ this.popState(); this.pushState('dirconstr_content_el'); return this.yy.AdditionalTokens.GT; %}
 <dirconstr_el>["']      %{ this.yy.stringDelim = yytext; this.pushState('dirconstr_content_attr'); %}
 
@@ -201,6 +200,28 @@ DEC       [0-9]
 
 <dirconstr_end_el>">" %{ this.popState(); return this.yy.AdditionalTokens.GT; %}
 
+<dirconstr_content_comment>"-->" %{ this.popState(); return this.yy.AdditionalTokens.DIRCOMMENT_END; %}
+<dirconstr_content_comment>([-]?[^-])* return this.yy.AdditionalTokens.COMMENT_CONTENT;
+
+<dirconstr_content_pi>"?>" %{
+  {const t = this.yy.resetText(this.yy);
+  if (t) {
+    this.unput('?>');
+    yytext = t;
+    return this.yy.AdditionalTokens.PI_CONTENT;
+  }
+  this.popState(); return this.yy.AdditionalTokens.DIRPI_END;}
+%}
+<dirconstr_content_pi>\s+  %{
+  {const t = this.yy.resetText(this.yy);
+  if (t) {
+    this.unput(yytext);
+    yytext = t;
+    return this.yy.AdditionalTokens.PI_CONTENT;
+  }
+  return this.yy.AdditionalTokens.WS;}
+%}
+<dirconstr_content_pi>.    this.yy.textContent += yytext;
 
 
 "," 			return this.yy.AdditionalTokens.COMMA;

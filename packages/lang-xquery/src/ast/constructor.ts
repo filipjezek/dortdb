@@ -1,4 +1,4 @@
-import { ASTNode } from '@dortdb/core';
+import { ASTNode, ASTVisitor } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { ASTName } from './expression.js';
 
@@ -19,5 +19,21 @@ export class DirConstrContent implements ASTNode {
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitDirConstrContent(this);
+  }
+}
+
+export class DirectCommentConstructor implements ASTNode {
+  constructor(public content: string) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitDirectCommentConstructor(this);
+  }
+}
+
+export class DirectPIConstructor implements ASTNode {
+  constructor(public name: string, public content?: string) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitDirectPIConstructor(this);
   }
 }

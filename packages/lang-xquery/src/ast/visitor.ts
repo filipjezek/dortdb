@@ -39,7 +39,12 @@ import {
 } from './prolog.js';
 import { ASTItemType } from './item-type.js';
 import { CurrentItemRef, PathAxis, PathExpr, PathPredicate } from './path.js';
-import { DirConstrContent, DirectElementConstructor } from './constructor.js';
+import {
+  DirConstrContent,
+  DirectCommentConstructor,
+  DirectElementConstructor,
+  DirectPIConstructor,
+} from './constructor.js';
 
 export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitProlog(node: Prolog): T;
@@ -81,4 +86,6 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitDirectElementConstructor(node: DirectElementConstructor): T;
   visitDirConstrContent(node: DirConstrContent): T;
   visitModule(node: Module): T;
+  visitDirectPIConstructor(node: DirectPIConstructor): T;
+  visitDirectCommentConstructor(node: DirectCommentConstructor): T;
 }

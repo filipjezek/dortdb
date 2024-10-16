@@ -394,12 +394,16 @@ ordered-expr:
 	| UNORDERED LCUR expr-list RCUR { $$ = new yy.ast.OrderedExpr($2, false); } ;
 
 direct-constructor:
-	dir-constructor-meta direct-constructor-itself { $$ = $2; } ;
+	dir-elem-constr-meta dir-elem-constr { $$ = $2; }
+  | dir-comment-constr-meta dir-comment-constr { $$ = $2; }
+	| dir-pi-constr-meta dir-pi-constr { $$ = $2; } ;
 
-direct-constructor-itself:
-	dir-elem-constr ;
-	/* | dir-comment-constr
-	| dir-pi-constr ; */
+dir-comment-constr:
+	DIRCOMMENT_START COMMENT_CONTENT DIRCOMMENT_END { $$ = new yy.ast.DirectCommentConstructor($2); } ;
+
+dir-pi-constr:
+	DIRPI_START WS_opt PI_CONTENT WS_opt DIRPI_END { $$ = new yy.ast.DirectPIConstructor($3); }
+	| DIRPI_START WS_opt PI_CONTENT WS_opt PI_CONTENT WS_opt DIRPI_END { $$ = new yy.ast.DirectPIConstructor($3, $5); } ;
 
 dir-elem-constr:
 	LT name dir-elem-attr-list_opt DIREL_SELFEND { $$ = new yy.ast.DirectElementConstructor($2, $3); }
@@ -432,8 +436,14 @@ dir-attr-content-part:
 	ATTR_CONTENT
 	| LCUR expr-list RCUR { $$ = $2; } ;
 
-dir-constructor-meta:
-	LT { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<'); } ; /* this rule only serves to switch lexer state and retry */
+/* this rule only serves to switch lexer state and retry */
+dir-elem-constr-meta:
+	LT NCNAME { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
+	| LT QNAME { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); } ;
+dir-comment-constr-meta:
+	LT EMPH { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<!'); } ;
+dir-pi-constr-meta:
+	LT QUESTION { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<?'); } ;
 
 constructor-expr:
 	direct-constructor ;
