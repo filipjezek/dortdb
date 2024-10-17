@@ -101,6 +101,7 @@ DEC       [0-9]
 "else"                   return this.yy.Keywords.ELSE;
 "element"                return this.yy.Keywords.ELEMENT;
 "document-node"          return this.yy.Keywords.DOCUMENT_NODE;
+"document"               return this.yy.Keywords.DOCUMENT;
 "div"                    return this.yy.Keywords.DIV;
 "descending"             return this.yy.Keywords.DESCENDING;
 "descendant"             return this.yy.Keywords.DESCENDANT;

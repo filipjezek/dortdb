@@ -1,4 +1,4 @@
-import { ASTLiteral, ASTNode, ASTFunction, ASTIdentifier } from '@dortdb/core';
+import { ASTLiteral, ASTNode, ASTIdentifier } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { parseName, parseStringLiteral } from '../utils/string.js';
 
@@ -34,6 +34,10 @@ export class ASTName implements ASTIdentifier {
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitName(this);
+  }
+
+  equals(other: ASTName) {
+    return this.schema === other.schema && this.id === other.id;
   }
 }
 
@@ -154,5 +158,13 @@ export class OrderedExpr implements ASTNode {
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitOrderedExpr(this);
+  }
+}
+
+export class InlineFunction implements ASTNode {
+  constructor(public args: ASTVariable[], public body: ASTNode[]) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitInlineFn(this);
   }
 }

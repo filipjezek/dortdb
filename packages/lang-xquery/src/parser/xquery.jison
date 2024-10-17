@@ -84,6 +84,7 @@
 %token PROC_INSTR
 %token SCHEMA_ATTRIBUTE
 %token FUNCTION
+%token DOCUMENT
 
 %token COMMA
 %token SLASH
@@ -407,10 +408,13 @@ dir-pi-constr:
 
 dir-elem-constr:
 	LT name dir-elem-attr-list_opt DIREL_SELFEND { $$ = new yy.ast.DirectElementConstructor($2, $3); }
-	| LT name dir-elem-attr-list_opt dir-elem-constr-end { $$ = new yy.ast.DirectElementConstructor($2, $3, $4); } ;
+	| LT name dir-elem-attr-list_opt dir-elem-constr-end {
+		if (!$4[1].equals($2)) throw new Error('Unexpected closing tag: "' + $4[1].original + '"');
+		$$ = new yy.ast.DirectElementConstructor($2, $3, $4[0]);
+	} ;
 
 dir-elem-constr-end:
-	GT dir-elem-content_opt name GT { $$ = $2; } ; /* DIREL_END token is consumed by the lexer */
+	GT dir-elem-content_opt name GT { $$ = [$2, $3]; } ; /* DIREL_END token is consumed by the lexer */
 
 dir-elem-content:
 	dir-elem-content-part { $$ = [$1]; }
@@ -445,9 +449,31 @@ dir-comment-constr-meta:
 dir-pi-constr-meta:
 	LT QUESTION { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<?'); } ;
 
+computed-constructor:
+	DOCUMENT LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $3); }
+	| ELEMENT name-or-expr LCUR expr-list_opt RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, $2); }
+	| ATTRIBUTE name-or-expr LCUR expr-list_opt RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, $2); }
+	| NAMESPACE NCNAME LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, new yy.ast.ASTName($2)); }
+	| NAMESPACE LCUR expr RCUR LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $6, $3); }
+	| PROC_INSTR NCNAME LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, new yy.ast.ASTName($2)); }
+	| PROC_INSTR LCUR expr RCUR LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $6, $3); }
+	| TEXT LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $3); }
+	| COMMENT LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $3); } ;
+
+name-or-expr:
+	name
+	| LCUR expr RCUR { $$ = $2; } ;
+
 constructor-expr:
-	direct-constructor ;
-	/* | computed-constructor ; */
+	direct-constructor
+	| computed-constructor ;
+
+inline-function-expr:
+	FUNCTION LPAR param-list_opt RPAR LCUR expr-list_opt RCUR { $$ = new yy.ast.InlineFunction($3, $6); };
+
+param-list:
+	variable { $$ = [$1]; }
+	| param-list COMMA variable { $$ = $1; $$.push($3); } ;
 
 primary-expr:
 	number-literal
@@ -457,6 +483,7 @@ primary-expr:
 	| name LPAR argument-list_opt RPAR { $$ = new yy.ast.FunctionCall($1, $3); }
 	| ordered-expr
 	|	constructor-expr
+	| inline-function-expr
 	| DOT { $$ = new yy.ast.CurrentItemRef(); } ;
 
 postfix-expr:
@@ -657,3 +684,7 @@ dir-elem-content_opt:
 declaration-list_opt:
 	{ $$ = []; }
 	| declaration-list ;
+
+param-list_opt:
+	{ $$ = []; }
+	| param-list ;

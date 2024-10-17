@@ -10,6 +10,7 @@ import {
   FilterExpr,
   FunctionCall,
   IfExpr,
+  InlineFunction,
   InstanceOfExpr,
   OrderedExpr,
   QuantifiedExpr,
@@ -40,6 +41,7 @@ import {
 import { ASTItemType } from './item-type.js';
 import { CurrentItemRef, PathAxis, PathExpr, PathPredicate } from './path.js';
 import {
+  ComputedConstructor,
   DirConstrContent,
   DirectCommentConstructor,
   DirectElementConstructor,
@@ -88,4 +90,6 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitModule(node: Module): T;
   visitDirectPIConstructor(node: DirectPIConstructor): T;
   visitDirectCommentConstructor(node: DirectCommentConstructor): T;
+  visitComputedConstructor(node: ComputedConstructor): T;
+  visitInlineFn(node: InlineFunction): T;
 }

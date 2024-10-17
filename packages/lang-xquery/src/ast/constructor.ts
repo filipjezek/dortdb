@@ -1,4 +1,4 @@
-import { ASTNode, ASTVisitor } from '@dortdb/core';
+import { ASTNode } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { ASTName } from './expression.js';
 
@@ -35,5 +35,26 @@ export class DirectPIConstructor implements ASTNode {
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitDirectPIConstructor(this);
+  }
+}
+
+export enum ConstructorType {
+  TEXT = 'text',
+  COMMENT = 'comment',
+  NAMESPACE = 'namespace',
+  PROCESSING_INSTRUCTION = 'processing-instruction',
+  ATTRIBUTE = 'attribute',
+  ELEMENT = 'element',
+  DOCUMENT = 'document',
+}
+export class ComputedConstructor implements ASTNode {
+  constructor(
+    public type: ConstructorType,
+    public content: ASTNode[],
+    public name?: ASTName | ASTNode
+  ) {}
+
+  accept<T>(visitor: XQueryVisitor<T>): T {
+    return visitor.visitComputedConstructor(this);
   }
 }
