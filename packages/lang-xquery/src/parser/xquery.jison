@@ -92,19 +92,14 @@
 %token DOT
 %token DOLLAR
 %token LPAR
-%token DBLLPAR
 %token RPAR
 %token LBRA
 %token RBRA
 %token LCUR
 %token RCUR
-%token CLOSEDBRAS
-%token SEMICOLON
-%token COLON
 %token COLONEQ
 %token DBLCOLON
 %token MINUS
-%token EXP
 %token EQ
 %token NEQ
 %token GT
@@ -129,6 +124,7 @@
 %token DIRPI_START
 %token DIRPI_END
 %token ATTR_CONTENT
+%token EMPTY_ATTR
 %token COMMENT_CONTENT
 %token PI_CONTENT
 %token DIREL_CONTENT
@@ -308,21 +304,21 @@ quantifier-binding-list:
 	| quantifier-binding-list COMMA quantifier-binding { $$ = $1; $$.push($3); } ;
 
 switch-expr:
-	SWITCH LPAR expr RPAR switch-case-list DEFAULT RETURN expr { $$ = new yy.ast.SwitchExpr($3, $5, $8); } ;
+	SWITCH par-expr switch-case-list DEFAULT RETURN expr { $$ = new yy.ast.SwitchExpr($2, $3, $6); } ;
 
 switch-case-list:
 	switch-case { $$ = [$1]; }
 	| switch-case-list switch-case { $$ = $1; $$.push($2); } ;
 
 switch-case:
-	case-list RETURN expr { $$ = [$2, $4]; } ;
+	case-list RETURN expr { $$ = [$1, $3]; } ;
 
 case-list:
 	CASE expr { $$ = [$2]; }
 	| case-list CASE expr { $$ = $1; $$.push($3); } ;
 
 if-expr:
-	IF LPAR expr RPAR THEN expr ELSE expr { $$ = new yy.ast.IfExpr($3, $6, $8); } ;
+	IF par-expr THEN expr ELSE expr { $$ = new yy.ast.IfExpr($2, $4, $6); } ;
 
 // expression
 
@@ -338,6 +334,18 @@ variable:
 name:
 	QNAME { $$ = new yy.ast.ASTName($1); }
 	| NCNAME { $$ = new yy.ast.ASTName($1); } ;
+
+par-expr:
+	LPAR nested-lang RPAR { $$ = $2; }
+	| LPAR expr RPAR { $$ = $2; } ;
+
+cur-expr:
+	LCUR nested-lang RCUR { $$ = $2; }
+	| LCUR expr-list RCUR { $$ = $2; } ;
+
+cur-opt-expr:
+	LCUR nested-lang RCUR { $$ = $2; }
+	| LCUR expr-list_opt RCUR { $$ = $2; } ;
 
 occurence:
 	STAR
@@ -391,8 +399,8 @@ sequence-type:
 	| item-type occurence %prec SEQUENCE_TYPE_PRIORITY { $$ = new yy.ast.ASTSequenceType($1, $2); } ;
 
 ordered-expr:
-	ORDERED LCUR expr-list RCUR { $$ = new yy.ast.OrderedExpr($2, true); }
-	| UNORDERED LCUR expr-list RCUR { $$ = new yy.ast.OrderedExpr($2, false); } ;
+	ORDERED cur-expr { $$ = new yy.ast.OrderedExpr($2, true); }
+	| UNORDERED cur-expr { $$ = new yy.ast.OrderedExpr($2, false); } ;
 
 direct-constructor:
 	dir-elem-constr-meta dir-elem-constr { $$ = $2; }
@@ -423,7 +431,7 @@ dir-elem-content:
 dir-elem-content-part:
 	DIREL_CONTENT
 	| direct-constructor
-	| LCUR expr-list RCUR { $$ = $2; } ;
+	| cur-expr { $$ = $1; } ;
 
 dir-elem-attr-list:
 	WS dir-elem-attr { $$ = [$2]; }
@@ -433,12 +441,13 @@ dir-elem-attr:
 	name WS_opt EQ WS_opt dir-attr-content { $$ = [$1, new yy.ast.DirConstrContent($5)]; } ;
 
 dir-attr-content:
-	dir-attr-content-part { $$ = [$1]; }
+	dir-attr-content-part { $$ = $1 === '' ? [] : [$1]; }
 	| dir-attr-content dir-attr-content-part { $$ = $1; $$.push($2); } ;
 
 dir-attr-content-part:
 	ATTR_CONTENT
-	| LCUR expr-list RCUR { $$ = $2; } ;
+	| EMPTY_ATTR { $$ = ''; }
+	| cur-expr { $$ = $1; } ;
 
 /* this rule only serves to switch lexer state and retry */
 dir-elem-constr-meta:
@@ -450,19 +459,19 @@ dir-pi-constr-meta:
 	LT QUESTION { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<?'); } ;
 
 computed-constructor:
-	DOCUMENT LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $3); }
-	| ELEMENT name-or-expr LCUR expr-list_opt RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, $2); }
-	| ATTRIBUTE name-or-expr LCUR expr-list_opt RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, $2); }
-	| NAMESPACE NCNAME LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, new yy.ast.ASTName($2)); }
-	| NAMESPACE LCUR expr RCUR LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $6, $3); }
-	| PROC_INSTR NCNAME LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $4, new yy.ast.ASTName($2)); }
-	| PROC_INSTR LCUR expr RCUR LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $6, $3); }
-	| TEXT LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $3); }
-	| COMMENT LCUR expr-list RCUR { $$ = new yy.ast.ComputedConstructor($1, $3); } ;
+	DOCUMENT cur-expr { $$ = new yy.ast.ComputedConstructor($1, $2); }
+	| ELEMENT name-or-expr cur-opt-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
+	| ATTRIBUTE name-or-expr cur-opt-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
+	| NAMESPACE NCNAME cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, new yy.ast.ASTName($2)); }
+	| NAMESPACE cur-expr cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
+	| PROC_INSTR NCNAME cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, new yy.ast.ASTName($2)); }
+	| PROC_INSTR cur-expr cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
+	| TEXT cur-expr { $$ = new yy.ast.ComputedConstructor($1, $2); }
+	| COMMENT cur-expr { $$ = new yy.ast.ComputedConstructor($1, $2); } ;
 
 name-or-expr:
 	name
-	| LCUR expr RCUR { $$ = $2; } ;
+	| cur-expr { $$ = $1; } ;
 
 constructor-expr:
 	direct-constructor
@@ -475,12 +484,25 @@ param-list:
 	variable { $$ = [$1]; }
 	| param-list COMMA variable { $$ = $1; $$.push($3); } ;
 
+nested-lang:
+	LANGSWITCH { $$ = yy.messageQueue.shift(); } ;
+
 primary-expr:
 	number-literal
 	| string-literal
 	| variable
 	| LPAR expr-list_opt RPAR { $$ = $2.length === 1 ? $2[0] : new yy.ast.SequenceConstructor($2); }
-	| name LPAR argument-list_opt RPAR { $$ = new yy.ast.FunctionCall($1, $3); }
+	| LPAR nested-lang RPAR { $$ = $2; }
+	| name LPAR argument-list_opt RPAR {
+		if ($3.includes(yy.argPlaceholder)) {
+			$$ = new yy.ast.BoundFunction(
+				$1,
+				$3.map((arg, i) => arg === yy.argPlaceholder ? 0 : [i, arg]).filter(x => x)
+			);
+		} else {
+			$$ = new yy.ast.ASTFunction('xquery', $1, $3);
+		}
+	}
 	| ordered-expr
 	|	constructor-expr
 	| inline-function-expr
@@ -489,7 +511,16 @@ primary-expr:
 postfix-expr:
 	primary-expr
 	| postfix-expr predicate { $$ = new yy.ast.FilterExpr($1, $2); }
-	| postfix-expr LPAR argument-list_opt RPAR { $$ = new yy.ast.FunctionCall($1, $3); } ;
+	| postfix-expr LPAR argument-list_opt RPAR {
+		if ($3.includes(yy.argPlaceholder)) {
+			$$ = new yy.ast.BoundFunction(
+				$1,
+				$3.map((arg, i) => arg === yy.argPlaceholder ? 0 : [i, arg]).filter(x => x)
+			);
+		} else {
+			$$ = new yy.ast.DynamicFunctionCall($1, $3);
+		}
+	} ;
 
 argument-list:
 	argument { $$ = [$1]; }
@@ -497,12 +528,12 @@ argument-list:
 
 argument:
 	expr
-	| QUESTION { $$ = new yy.ast.ArgumentPlaceholder(); } ;
+	| QUESTION { $$ = yy.argPlaceholder; } ;
 
 path-expr:
 	relative-path-expr {
 		if ($1.length === 1 && $1[0].axis === yy.ast.AxisType.CHILD && $1[0].nodeTest.kind === null && !$1[0].predicates.length) {
-			$$ = $1[0].nodeTest.name;
+			$$ = new yy.ast.PathExpr([$1[0].nodeTest.name]);
 		} else {
 			$$ = new yy.ast.PathExpr($1);
 		}

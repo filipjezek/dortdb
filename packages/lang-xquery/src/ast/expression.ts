@@ -131,20 +131,6 @@ export class FilterExpr implements ASTNode {
   }
 }
 
-export class FunctionCall implements ASTNode {
-  constructor(public nameOrExpr: ASTNode, public args: ASTNode[] = []) {}
-
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFunctionCall(this);
-  }
-}
-
-export class ArgumentPlaceholder implements ASTNode {
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitArgumentPlaceholder(this);
-  }
-}
-
 export class SequenceConstructor implements ASTNode {
   constructor(public items: ASTNode[]) {}
 
@@ -158,13 +144,5 @@ export class OrderedExpr implements ASTNode {
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitOrderedExpr(this);
-  }
-}
-
-export class InlineFunction implements ASTNode {
-  constructor(public args: ASTVariable[], public body: ASTNode[]) {}
-
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitInlineFn(this);
   }
 }

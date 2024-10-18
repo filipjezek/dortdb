@@ -19,10 +19,7 @@ export enum ItemKind {
   SCHEMA_ATTRIBUTE = 'schema-attribute',
 }
 export class ASTItemType implements ASTNode {
-  constructor(
-    public kind?: ItemKind,
-    public name: ASTName | '*' | ASTStringLiteral = '*'
-  ) {
+  constructor(public kind?: ItemKind | null, public name: ASTName | '*' = '*') {
     if (
       this.name instanceof ASTStringLiteral &&
       this.kind !== ItemKind.PROCESSING_INSTRUCTION

@@ -1,6 +1,5 @@
 import { ASTVisitor } from '@dortdb/core';
 import {
-  ArgumentPlaceholder,
   ASTName,
   ASTNumberLiteral,
   ASTSequenceType,
@@ -8,9 +7,7 @@ import {
   ASTVariable,
   CastExpr,
   FilterExpr,
-  FunctionCall,
   IfExpr,
-  InlineFunction,
   InstanceOfExpr,
   OrderedExpr,
   QuantifiedExpr,
@@ -47,6 +44,11 @@ import {
   DirectElementConstructor,
   DirectPIConstructor,
 } from './constructor.js';
+import {
+  BoundFunction,
+  DynamicFunctionCall,
+  InlineFunction,
+} from './function.js';
 
 export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitProlog(node: Prolog): T;
@@ -80,8 +82,7 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitPathPredicate(node: PathPredicate): T;
   visitPathAxis(node: PathAxis): T;
   visitFilterExpr(node: FilterExpr): T;
-  visitFunctionCall(node: FunctionCall): T;
-  visitArgumentPlaceholder(node: ArgumentPlaceholder): T;
+  visitDynamicFunctionCall(node: DynamicFunctionCall): T;
   visitCurrentItemRef(node: CurrentItemRef): T;
   visitSequenceConstructor(node: SequenceConstructor): T;
   visitOrderedExpr(node: OrderedExpr): T;
@@ -92,4 +93,5 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitDirectCommentConstructor(node: DirectCommentConstructor): T;
   visitComputedConstructor(node: ComputedConstructor): T;
   visitInlineFn(node: InlineFunction): T;
+  visitBoundFunction(node: BoundFunction): T;
 }

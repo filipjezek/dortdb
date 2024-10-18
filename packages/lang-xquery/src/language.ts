@@ -47,6 +47,7 @@ function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
+      argPlaceholder: Symbol('argPlaceholder'),
     },
   };
 

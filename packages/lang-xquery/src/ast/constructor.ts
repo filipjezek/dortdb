@@ -3,11 +3,15 @@ import { XQueryVisitor } from './visitor.js';
 import { ASTName } from './expression.js';
 
 export class DirectElementConstructor implements ASTNode {
+  public content: DirConstrContent;
+
   constructor(
-    public name: string,
+    public name: ASTName,
     public attributes: [ASTName, DirConstrContent][],
-    public children: ASTNode[] = []
-  ) {}
+    content: (ASTNode[] | ASTNode | string)[] = []
+  ) {
+    this.content = new DirConstrContent(content);
+  }
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitDirectElementConstructor(this);
@@ -15,7 +19,7 @@ export class DirectElementConstructor implements ASTNode {
 }
 
 export class DirConstrContent implements ASTNode {
-  constructor(public content: (ASTNode | string)[]) {}
+  constructor(public content: (ASTNode[] | ASTNode | string)[]) {}
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitDirConstrContent(this);

@@ -46,6 +46,23 @@ describe('AST Expressions', () => {
       ];
       assert.deepEqual(result, expected);
     });
+    it('should preserve associativity', () => {
+      const result = db.parse('SELECT 1 - 2 - 3').value;
+      const expected = [
+        new astSQL.SelectStatement(
+          new astSQL.SelectSet([
+            new ASTOperator('sql', new astSQL.ASTIdentifier('-'), [
+              new ASTOperator('sql', new astSQL.ASTIdentifier('-'), [
+                new astSQL.ASTNumberLiteral('1'),
+                new astSQL.ASTNumberLiteral('2'),
+              ]),
+              new astSQL.ASTNumberLiteral('3'),
+            ]),
+          ])
+        ),
+      ];
+      assert.deepEqual(result, expected);
+    });
   });
 
   describe('function calls', () => {

@@ -1,5 +1,6 @@
 import { ASTNode } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
+import { ASTItemType } from './item-type.js';
 
 export class PathExpr implements ASTNode {
   constructor(public steps: ASTNode[], public start?: '/' | '//') {}
@@ -35,7 +36,7 @@ export enum AxisType {
 export class PathAxis implements ASTNode {
   public predicates: PathPredicate[] = [];
 
-  constructor(public axis: AxisType, public nodeTest: ASTNode) {}
+  constructor(public axis: AxisType, public nodeTest: ASTItemType) {}
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitPathAxis(this);

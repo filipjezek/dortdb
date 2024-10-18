@@ -5,3 +5,4 @@ export * from './flow-control.js';
 export * from './item-type.js';
 export * from './path.js';
 export * from './constructor.js';
+export * from './function.js';

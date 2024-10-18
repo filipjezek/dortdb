@@ -11,6 +11,7 @@ DEC       [0-9]
 %x dirconstr_end_el
 %x cdata
 %x dirconstr_content_el
+%x dirconstr_content_el_nested_start
 %x dirconstr_content_attr
 %x dirconstr_content_pi
 %x dirconstr_content_comment
@@ -58,8 +59,8 @@ DEC       [0-9]
 "return"                 return this.yy.Keywords.RETURN;
 "processing-instruction" return this.yy.Keywords.PROC_INSTR;
 "previous"               return this.yy.Keywords.PREVIOUS;
-"preceding"              return this.yy.Keywords.PRECEDING;
 "preceding-sibling"      return this.yy.Keywords.PRECEDING_SIBLING;
+"preceding"              return this.yy.Keywords.PRECEDING;
 "parent"                 return this.yy.Keywords.PARENT;
 "ordering"               return this.yy.Keywords.ORDERING;
 "ordered"                return this.yy.Keywords.ORDERED;
@@ -70,8 +71,8 @@ DEC       [0-9]
 "node"                   return this.yy.Keywords.NODE;
 "next"                   return this.yy.Keywords.NEXT;
 "ne"                     return this.yy.Keywords.KW_NEQ;
-"namespace"              return this.yy.Keywords.NAMESPACE;
 "namespace-node"         return this.yy.Keywords.NAMESPACENODE;
+"namespace"              return this.yy.Keywords.NAMESPACE;
 "mod"                    return this.yy.Keywords.MOD;
 "lt"                     return this.yy.Keywords.KW_LT;
 "let"                    return this.yy.Keywords.LET;
@@ -90,8 +91,8 @@ DEC       [0-9]
 "ge"                     return this.yy.Keywords.KW_GTE;
 "function"               return this.yy.Keywords.FUNCTION;
 "for"                    return this.yy.Keywords.FOR;
-"following"              return this.yy.Keywords.FOLLOWING;
 "following-sibling"      return this.yy.Keywords.FOLLOWING_SIBLING;
+"following"              return this.yy.Keywords.FOLLOWING;
 "except"                 return this.yy.Keywords.EXCEPT;
 "every"                  return this.yy.Keywords.EVERY;
 "eq"                     return this.yy.Keywords.KW_EQ;
@@ -104,8 +105,8 @@ DEC       [0-9]
 "document"               return this.yy.Keywords.DOCUMENT;
 "div"                    return this.yy.Keywords.DIV;
 "descending"             return this.yy.Keywords.DESCENDING;
-"descendant"             return this.yy.Keywords.DESCENDANT;
 "descendant-or-self"     return this.yy.Keywords.DESCENDANT_OR_SELF;
+"descendant"             return this.yy.Keywords.DESCENDANT;
 "default"                return this.yy.Keywords.DEFAULT;
 "declare"                return this.yy.Keywords.DECLARE;
 "count"                  return this.yy.Keywords.COUNT;
@@ -119,13 +120,28 @@ DEC       [0-9]
 "ascending"              return this.yy.Keywords.ASCENDING;
 "as"                     return this.yy.Keywords.AS;
 "and"                    return this.yy.Keywords.AND;
-"ancestor"               return this.yy.Keywords.ANCESTOR;
 "ancestor-or-self"       return this.yy.Keywords.ANCESTOR_OR_SELF;
+"ancestor"               return this.yy.Keywords.ANCESTOR;
 "allowing"               return this.yy.Keywords.ALLOWING;
 
-<INITIAL,dirconstr_el,dirconstr_end_el>"Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  return this.yy.AdditionalTokens.QNAME;
-<INITIAL,dirconstr_el,dirconstr_end_el>{NAME1}{NAME}*":"{NAME1}{NAME}*          return this.yy.AdditionalTokens.QNAME;
-<INITIAL,dirconstr_el,dirconstr_end_el>{NAME1}{NAME}*                           return this.yy.AdditionalTokens.NCNAME;
+<INITIAL,dirconstr_el,dirconstr_end_el,dirconstr_content_el_nested_start>"Q{"({ENTITY}|[^&{}])*"}"{NAME1}{NAME}*  %{
+  if (this.topState() === 'dirconstr_content_el_nested_start') {
+    this.popState();
+  }
+  return this.yy.AdditionalTokens.QNAME;
+%}
+<INITIAL,dirconstr_el,dirconstr_end_el,dirconstr_content_el_nested_start>{NAME1}{NAME}*":"{NAME1}{NAME}*  %{
+  if (this.topState() === 'dirconstr_content_el_nested_start') {
+    this.popState();
+  }
+  return this.yy.AdditionalTokens.QNAME;
+%}
+<INITIAL,dirconstr_el,dirconstr_end_el,dirconstr_content_el_nested_start>{NAME1}{NAME}* %{
+  if (this.topState() === 'dirconstr_content_el_nested_start') {
+    this.popState();
+  }
+  return this.yy.AdditionalTokens.NCNAME;
+%}
 "Q{"({ENTITY}|[^&{}])*"}*"               return this.yy.AdditionalTokens.QNAME_WILDCARD;
 {NAME1}{NAME}*":*"                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
 "*:"{NAME1}{NAME}*                       return this.yy.AdditionalTokens.QNAME_WILDCARD;
@@ -157,6 +173,7 @@ DEC       [0-9]
 <dirconstr_el>\s*"/>"   %{ this.popState(); return this.yy.AdditionalTokens.DIREL_SELFEND; %}
 <dirconstr_el,dirconstr_end_el>\s+ return this.yy.AdditionalTokens.WS;
 <dirconstr_el>">"       %{ this.popState(); this.pushState('dirconstr_content_el'); return this.yy.AdditionalTokens.GT; %}
+<dirconstr_el>["]{2}|[']{2}  return this.yy.AdditionalTokens.EMPTY_ATTR;
 <dirconstr_el>["']      %{ this.yy.stringDelim = yytext; this.pushState('dirconstr_content_attr'); %}
 
 <dirconstr_content_el,dirconstr_content_attr>"{{"|"}}" this.yy.textContent += yytext;
@@ -176,14 +193,19 @@ DEC       [0-9]
     return this.yy.AdditionalTokens.DIREL_CONTENT;
                                   %}
 <dirconstr_content_el>"<"         %{
-  yytext = this.yy.resetText(this.yy);
-  if (yytext) {
+  if (this.yy.textContent) {
     this.unput('<');
+    yytext = this.yy.resetText(this.yy);
     return this.yy.AdditionalTokens.DIREL_CONTENT;
+  } else {
+    this.pushState('dirconstr_content_el_nested_start');
+    return this.yy.AdditionalTokens.LT;
   }
-  else return this.yy.AdditionalTokens.LT;
                                   %}
 <dirconstr_content_el>.|\n        this.yy.textContent += yytext;
+
+<dirconstr_content_el_nested_start>"!" this.popState(); return this.yy.AdditionalTokens.EMPH;
+<dirconstr_content_el_nested_start>"?" this.popState(); return this.yy.AdditionalTokens.QUESTION;
 
 <cdata>"]]>"  this.popState(); this.yy.textContent += yytext;
 <cdata>.|\n   this.yy.textContent += yytext;
