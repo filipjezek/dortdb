@@ -2,8 +2,7 @@ import { describe, it } from 'node:test';
 import { XQuery } from '../../src/index.js';
 import assert from 'node:assert/strict';
 import * as astXQuery from '../../src/ast/index.js';
-import { ASTNode, ASTOperator, DortDB } from '@dortdb/core';
-import { inspect } from 'node:util';
+import { ASTNode, DortDB } from '@dortdb/core';
 
 describe('AST constructors', () => {
   const db = new DortDB({
@@ -187,6 +186,30 @@ describe('AST constructors', () => {
     assert.deepEqual(result, expected);
   });
 
+  it('should parse nested interpolated content', () => {
+    const result = db.parse('<foo>{<a>{2}</a>}</foo>').value.body;
+    const expected = [
+      wrapPath(
+        new astXQuery.DirectElementConstructor(
+          new astXQuery.ASTName('foo'),
+          [],
+          [
+            [
+              wrapPath(
+                new astXQuery.DirectElementConstructor(
+                  new astXQuery.ASTName('a'),
+                  [],
+                  [[wrapPath(new astXQuery.ASTNumberLiteral('2'))]]
+                )
+              ),
+            ],
+          ]
+        )
+      ),
+    ];
+    assert.deepEqual(result, expected);
+  });
+
   it('should parse empty attributes', () => {
     const result = db.parse('<foo bar=""></foo>').value.body;
     const expected = [
@@ -197,5 +220,13 @@ describe('AST constructors', () => {
       ),
     ];
     assert.deepEqual(result, expected);
+  });
+
+  it('should not allow mismatched tags', () => {
+    assert.throws(() => db.parse('<foo></bar>'));
+  });
+
+  it('should not allow unclosed tags', () => {
+    assert.throws(() => db.parse('<foo>'));
   });
 });

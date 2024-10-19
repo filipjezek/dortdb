@@ -13,23 +13,26 @@ describe('AST Expressions', () => {
 
   describe('operators', () => {
     it('should preserve operator precedence', () => {
-      const result = db.parse('1 + 2 * 3 - 5 div 8 cast as foo').value.body;
+      const result = db.parse('1 + 2 * 3 - 5 div 8 cast as foo < 3').value.body;
       const expected = [
-        new ASTOperator('xquery', new astXQuery.ASTName('-'), [
-          new ASTOperator('xquery', new astXQuery.ASTName('+'), [
-            wrapPath(new astXQuery.ASTNumberLiteral('1')),
-            new ASTOperator('xquery', new astXQuery.ASTName('*'), [
-              wrapPath(new astXQuery.ASTNumberLiteral('2')),
-              wrapPath(new astXQuery.ASTNumberLiteral('3')),
+        new ASTOperator('xquery', new astXQuery.ASTName('<'), [
+          new ASTOperator('xquery', new astXQuery.ASTName('-'), [
+            new ASTOperator('xquery', new astXQuery.ASTName('+'), [
+              wrapPath(new astXQuery.ASTNumberLiteral('1')),
+              new ASTOperator('xquery', new astXQuery.ASTName('*'), [
+                wrapPath(new astXQuery.ASTNumberLiteral('2')),
+                wrapPath(new astXQuery.ASTNumberLiteral('3')),
+              ]),
+            ]),
+            new ASTOperator('xquery', new astXQuery.ASTName('div'), [
+              wrapPath(new astXQuery.ASTNumberLiteral('5')),
+              new astXQuery.CastExpr(
+                wrapPath(new astXQuery.ASTNumberLiteral('8')),
+                new astXQuery.ASTName('foo')
+              ),
             ]),
           ]),
-          new ASTOperator('xquery', new astXQuery.ASTName('div'), [
-            wrapPath(new astXQuery.ASTNumberLiteral('5')),
-            new astXQuery.CastExpr(
-              wrapPath(new astXQuery.ASTNumberLiteral('8')),
-              new astXQuery.ASTName('foo')
-            ),
-          ]),
+          wrapPath(new astXQuery.ASTNumberLiteral('3')),
         ]),
       ];
       assert.deepEqual(result, expected);

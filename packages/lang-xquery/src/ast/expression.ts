@@ -1,6 +1,7 @@
 import { ASTLiteral, ASTNode, ASTIdentifier } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { parseName, parseStringLiteral } from '../utils/string.js';
+import { ASTItemType } from './item-type.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(public original: string) {
@@ -100,7 +101,7 @@ export enum Occurence {
   ONE_OR_MORE = '+',
 }
 export class ASTSequenceType implements ASTNode {
-  constructor(public type?: ASTNode, public occurrence?: string) {}
+  constructor(public type?: ASTItemType, public occurrence?: string) {}
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitSequenceType(this);

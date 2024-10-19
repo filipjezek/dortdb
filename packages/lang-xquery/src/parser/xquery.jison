@@ -538,7 +538,7 @@ path-expr:
 			$$ = new yy.ast.PathExpr($1);
 		}
 	}
-	| SLASH %prec LONE_SLASH_PRIORITY { $$ = new yy.ast.PathExpr($2, $1); }
+	| SLASH %prec LONE_SLASH_PRIORITY { $$ = new yy.ast.PathExpr([], $1); }
 	| SLASH relative-path-expr %prec PATH_START_PRIORITY { $$ = new yy.ast.PathExpr($2, $1); }
 	| DBLSLASH relative-path-expr { $$ = new yy.ast.PathExpr($2, $1); } ;
 
