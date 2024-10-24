@@ -1,0 +1,24 @@
+{
+  "name": "@dortdb/testing",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "node --import tsx --test \"tests/**/*.spec.ts\"",
+    "build": "rollup -c rollup.config.js"
+  },
+  "author": "dortdb",
+  "license": "ISC",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "rollup": "^4.16.4",
+    "rollup-plugin-esbuild": "^6.1.1"
+  },
+  "peerDependencies": {
+    "@dortdb/core": "^1.0.0",
+    "@dortdb/lang-sql": "^1.0.0",
+    "@dortdb/lang-xquery": "^1.0.0"
+  }
+}
