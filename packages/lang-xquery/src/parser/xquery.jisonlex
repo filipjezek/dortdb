@@ -34,7 +34,7 @@ DEC       [0-9]
   }
   this.yy.messageQueue.push(res.value);
   this._input = res.remainingInput;
-  return this.yy.Keywords.LANGSWITCH;
+  return this.yy.AdditionalTokens.LANGSWITCH;
 }
 %}
 

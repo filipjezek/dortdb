@@ -21,8 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     errorOutput.textContent = err.message;
     console.error(err);
   }
-
-  parseButton.addEventListener('click', () => {
+  function parse() {
     if (!textarea.value) return;
     clearOutput();
     try {
@@ -30,6 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log(ast);
     } catch (err) {
       handleError(err as any);
+    }
+  }
+
+  parseButton.addEventListener('click', () => {
+    parse();
+  });
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.preventDefault();
+      parse();
     }
   });
 });

@@ -21,7 +21,7 @@ export default [
       commonjs(),
       esbuild({
         tsconfig: 'tsconfig.json',
-        minify: true,
+        minify: false,
       }),
     ],
   },
