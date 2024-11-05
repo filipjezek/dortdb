@@ -14,8 +14,6 @@ export interface YyContext {
 
   comment: string;
   commentDepth: number;
-  delimiter: string;
-  strContent: string;
 
   /**
    * this implementation of lexer can only pass to the parser strings or numbers.

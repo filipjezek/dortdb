@@ -1,11 +1,17 @@
 %options case-insensitive easy_keyword_rules ranges
 
-ID1				[a-z_]
-ID				[0-9a-z_$]
-HEX				[0-9a-fA-F]
+ID1       [__id_start__]
+ID        [__id_continue__]
+HEX				[0-9A-F]
 BIN				[01]
 OCT				[0-7]
 DEC       [0-9]
+DASH      [-­‐‑‒–—―−﹘﹣－]
+LARR      [<⟨〈﹤＜]
+RARR      [>⟩〉﹥＞]
+
+%x linec
+%x blockc
 
 %%
 
@@ -69,6 +75,39 @@ DEC       [0-9]
 "ALL"         return this.yy.Keywords.ALL;
 "ADD"         return this.yy.Keywords.ADD;
 
+({LARR}|"<")\s*{DASH}\s*"["  return this.yy.AdditionalTokens.LARROWDASHLBRA;
+({LARR}|"<")(\s*({DASH}|"-")){2}  return this.yy.AdditionalTokens.LARROWDBLDASH;
+(({DASH}|"-")\s*){2}  return this.yy.AdditionalTokens.DBLDASH;
+({DASH}|"-")\s*"["     return this.yy.AdditionalTokens.DASHLBRA;
+{DASH}        return this.yy.AdditionalTokens.DASH;
+"["           return this.yy.AdditionalTokens.LBRA;
+"]"           return this.yy.AdditionalTokens.RBRA;
+"("           return this.yy.AdditionalTokens.LPAR;
+")"           return this.yy.AdditionalTokens.RPAR;
+"{"           return this.yy.AdditionalTokens.LCUR;
+"}"           return this.yy.AdditionalTokens.RCUR;
+{LARR}        return this.yy.AdditionalTokens.LARROW;
+{RARR}        return this.yy.AdditionalTokens.RARROW;
+">"           return this.yy.AdditionalTokens.GT;
+"<"           return this.yy.AdditionalTokens.LT;
+"="           return this.yy.AdditionalTokens.EQ;
+"<>"          return this.yy.AdditionalTokens.NEQ;
+">="          return this.yy.AdditionalTokens.GTE;
+"<="          return this.yy.AdditionalTokens.LTE;
+"+="          return this.yy.AdditionalTokens.PLUSEQ;
+"+"           return this.yy.AdditionalTokens.PLUS;
+"-"           return this.yy.AdditionalTokens.MINUS;
+","           return this.yy.AdditionalTokens.COMMA;
+";"           return this.yy.AdditionalTokens.SEMICOLON;
+":"           return this.yy.AdditionalTokens.COLON;
+"|"           return this.yy.AdditionalTokens.PIPE;
+"*"           return this.yy.AdditionalTokens.STAR;
+"/"           return this.yy.AdditionalTokens.SLASH;
+"%"           return this.yy.AdditionalTokens.PERCENT;
+"^"           return this.yy.AdditionalTokens.EXP;
+".."          return this.yy.AdditionalTokens.DBLDOT;
+"."           return this.yy.AdditionalTokens.DOT;
+
 "LANG"\s+"EXIT" this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.LANGEXIT;
 "LANG"\s+({ID}+) %{
 {
@@ -87,5 +126,36 @@ DEC       [0-9]
   return this.yy.AdditionalTokens.LANGSWITCH;
 }
 %}
+
+0x{HEX}+		return this.yy.AdditionalTokens.INTLIT;
+0b{BIN}+		return this.yy.AdditionalTokens.INTLIT;
+0o{OCT}+		return this.yy.AdditionalTokens.INTLIT;
+{DEC}+"."{DEC}+"e"[+-]?{DEC}+ return this.yy.AdditionalTokens.FLOATLIT;
+{DEC}+"."{DEC}+ return this.yy.AdditionalTokens.FLOATLIT;
+{DEC}+		  return this.yy.AdditionalTokens.INTLIT;
+
+{ID1}{ID}*       return this.yy.AdditionalTokens.ID;
+"`"([^`]|``)*"`" return this.yy.AdditionalTokens.ID;
+"$"{DEC}+        return this.yy.AdditionalTokens.PARAM;
+"$"{ID1}{ID}*    return this.yy.AdditionalTokens.PARAM;
+{ID1}{ID}*"."{ID1}{ID}*"("           return this.yy.AdditionalTokens.SCHEMANAMELPAR;
+["]((\\.)|[^\\"])*["] return this.yy.AdditionalTokens.STRINGLIT;
+[']((\\.)|[^\\'])*['] return this.yy.AdditionalTokens.STRINGLIT;
+
+"//"					        %{ this.pushState('linec'); this.yy.comment = '//'; %}
+<linec>\n|<<EOF>>		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}
+<linec>.              this.yy.comment += yytext;
+
+"/*"				    %{ this.pushState('blockc'); this.yy.comment = '/*'; %}
+<blockc>"/*"    %{ this.yy.comment += '/*'; this.yy.commentDepth++; %}
+<blockc>"*/"	  %{
+  this.yy.comment += '*/';
+  if (!this.yy.commentDepth) {
+    this.popState();
+    this.yy.reportComment(this.yy.comment, {...this.yyloc});
+  } else this.yy.commentDepth--;
+%}
+<blockc>.|\n       this.yy.comment += yytext;
+<blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
 \s+                 /* skip whitespace */

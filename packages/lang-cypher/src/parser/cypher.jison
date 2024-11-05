@@ -1,3 +1,16 @@
+/*
+
+There is one expected reduce/reduce conflict in this grammar:
+Conflict in grammar: multiple actions possible when lookahead token is RPAR in state 135 (number can change in future)
+- reduce by rule: node-label-list_opt ->
+- reduce by rule: atom -> variable
+
+This is because of our limited lookahead and cannot be resolved using precedence rules, because
+it is not shift/reduce. The parser will always choose the first rule in this case, which
+is the correct one.
+
+*/
+
 %start root
 
 %token YIELD
@@ -78,6 +91,10 @@
 %token MINUS
 %token PLUSEQ
 %token DASH
+%token DBLDASH
+%token DASHLBRA
+%token LARROWDASHLBRA
+%token LARROWDBLDASH
 %token COMMA
 %token SEMICOLON
 %token COLON
@@ -93,7 +110,13 @@
 %token FLOATLIT
 %token STRLIT
 %token ID
+%token SCHEMANAMELPAR
 %token LANGEXIT
+
+%nonassoc NODE_PATTERN_PRIORITY COMPR_PRIORITY
+%nonassoc PAREN_EXPR_PRIORITY LISTLIT_PRIORITY
+
+%nonassoc PARAM LCUR COLON RPAR EQ IN // need to specify some precedence for the other priorities to work
 
 %%
 
@@ -106,18 +129,18 @@ scope-exit:
 root:
 	scope-exit { return null; }
 	| scope-exit error { return null; }
-  | query semicolon_opt scope-exit { return $1; }
-	| query semicolon_opt scope-exit error { return $1; }
-  | query semicolon_opt { return $1; } ;
+  | full-query semicolon_opt scope-exit { return $1; }
+	| full-query semicolon_opt scope-exit error { return $1; }
+  | full-query semicolon_opt { return $1; } ;
 
-query:
-  regular-query
-  | standalone-call ;
-  /*| in-query-call ; /* standalone call in reality overlaps in-query call, for grammar reasons they are disjunct and need to be specified both here */
+full-query:
+  /* regular-query */
+  standalone-call
+  | in-query-call ; /* standalone call in reality overlaps in-query call, for grammar reasons they are disjunct and need to be specified both here */
 
 regular-query:
   single-query
-  | single-query setop regular-query ;
+  | regular-query setop single-query ;
 
 setop:
   UNION
@@ -296,15 +319,17 @@ pattern-el-chain-nonempty:
   | pattern-el-chain-nonempty rel-pattern node-pattern ;
 
 node-pattern:
-  LPAR variable node-label-list_opt properties_opt RPAR
+  LPAR variable node-label-list_opt properties_opt RPAR %prec NODE_PATTERN_PRIORITY
   | LPAR node-label-list_opt properties_opt RPAR ;
 
 rel-pattern:
-  arrow-left arrow-body rel-detail_opt arrow-body arrow-right_opt
-  | arrow-body rel-detail_opt arrow-body arrow-right_opt ;
+  LARROWDBLDASH arrow-body arrow-right_opt
+  | LARROWDASHLBRA rel-detail arrow-body arrow-right_opt
+  | DBLDASH arrow-right_opt
+  | DASHLBRA rel-detail arrow-body arrow-right_opt ;
 
 rel-detail:
-  LBRA variable_opt rel-type-union_opt range-literal_opt properties_opt RBRA ;
+  variable_opt rel-type-union_opt range-literal_opt properties_opt RBRA ;
 
 properties:
   map-literal
@@ -417,18 +442,22 @@ label-filter-expression:
   | atom node-label-list ;
 
 atom:
-  literal
+  atom-no-pattern
+  | variable %prec PAREN_EXPR_PRIORITY
   | PARAM
+  | map-literal ;
+
+atom-no-pattern:
+  literal
   | case-expression
   | COUNT LPAR STAR RPAR
   | list-comprehension
   | pattern-comprehension
   | quantified-expression
-  | pattern-el-chain-nonempty
-  | LPAR expression RPAR
   | function-invocation
   | existential-subquery
-  | variable ;
+  | pattern-el-chain
+  | LPAR expression RPAR ;
 
 case-expression:
   CASE case-expr-alternative-list else-clause_opt END
@@ -442,18 +471,15 @@ case-expr-alternative:
   WHEN expression THEN expression ;
 
 list-comprehension:
-  LBRA filter-expression RBRA
-  | LBRA filter-expression PIPE expression RBRA ;
-
-filter-expression:
-  variable IN expression where-clause_opt ;
+  LBRA variable IN expression where-clause RBRA
+  | LBRA variable IN expression where-clause_opt PIPE expression RBRA ;
 
 pattern-comprehension:
-  LBRA pattern-el-chain-nonempty where-clause_opt PIPE expression RBRA
-  | LBRA variable EQ pattern-el-chain-nonempty where-clause_opt PIPE expression RBRA ;
+  LBRA pattern-el-chain where-clause_opt PIPE expression RBRA
+  | LBRA variable EQ pattern-el-chain where-clause_opt PIPE expression RBRA %prec COMPR_PRIORITY ;
 
 quantified-expression:
-  quantifier LPAR filter-expression RPAR ;
+  quantifier LPAR variable IN expression where-clause_opt RPAR ;
 
 quantifier:
   ANY
@@ -461,12 +487,9 @@ quantifier:
   | NONE
   | SINGLE ;
 
-pattern-predicate:
-  pattern-el-chain-nonempty ;
-
 function-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR
-  | symbolic-name DOT symbolic-name LPAR distinct_opt expression-list RPAR ;
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR ;
 
 existential-subquery:
   EXISTS LCUR regular-query RCUR
@@ -474,7 +497,7 @@ existential-subquery:
 
 explicit-procedure-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR
-  symbolic-name DOT symbolic-name LPAR distinct_opt expression-list RPAR ;
+  SCHEMANAMELPAR distinct_opt expression-list RPAR ;
 
 implicit-procedure-invocation:
   | symbolic-name
@@ -489,8 +512,7 @@ literal:
   | FALSE
   | NULL
   | STRLIT
-  | list-literal
-  | map-literal ;
+  | list-literal ;
 
 number-literal:
   int-literal
@@ -509,8 +531,69 @@ map-entry-list:
   schema-name COLON expression { $$ = [$1]; }
   | map-entry-list COMMA schema-name COLON expression { $$ = $1; $$.push($3); } ;
 
+reserved-word:
+  ALL
+  | ASC
+  | ASCENDING
+  | BY
+  | CREATE
+  | DELETE
+  | DESC
+  | DESCENDING
+  | DETACH
+  | EXISTS
+  | LIMIT
+  | MATCH
+  | MERGE
+  | ON
+  | OPTIONAL
+  | ORDER
+  | REMOVE
+  | RETURN
+  | SET
+  | SKIP
+  | WHERE
+  | WITH
+  | UNION
+  | UNWIND
+  | AND
+  | AS
+  | CONTAINS
+  | DISTINCT
+  | ENDS
+  | IN
+  | IS
+  | NOT
+  | OR
+  | STARTS
+  | XOR
+  | FALSE
+  | TRUE
+  | NULL
+  | CONSTRAINT
+  | DO
+  | FOR
+  | REQUIRE
+  | UNIQUE
+  | CASE
+  | WHEN
+  | THEN
+  | ELSE
+  | END
+  | MANDATORY
+  | SCALAR
+  | OF
+  | ADD
+  | DROP
+  | COUNT
+  | NONE
+  | ANY
+  | SINGLE
+  ;
+
 schema-name:
-  symbolic-name ;
+  symbolic-name
+  | reserved-word ;
 
 symbolic-name:
   ID ;
@@ -560,7 +643,8 @@ variable_opt:
   | variable ;
 
 node-label-list_opt:
-  | node-label-list ;
+  %prec PAREN_EXPR_PRIORITY
+  | node-label-list %prec NODE_PATTERN_PRIORITY ;
 
 properties_opt:
   | properties ;

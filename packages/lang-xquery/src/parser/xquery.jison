@@ -132,7 +132,6 @@
 %token LANGEXIT
 
 // see https://www.w3.org/TR/2014/REC-xquery-30-20140408/#extra-grammatical-constraints - the grammar from the spec itself is hacky
-// todo: test these
 %left SEQUENCE_TYPE_PRIORITY
 %left BINOP_PRIORITY
 %left PATH_START_PRIORITY

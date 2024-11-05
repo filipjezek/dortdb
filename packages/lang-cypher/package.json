@@ -7,6 +7,7 @@
   "scripts": {
     "test": "npm run jison && node --import tsx --test \"tests/**/*.spec.ts\"",
     "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs",
+    "antlr": "antlr4ng -Dlanguage=TypeScript -o src/parser/generated/ -visitor -no-listener -long-messages -Xexact-output-dir src/parser/Cypher.g4",
     "rollup": "rollup -c rollup.config.js",
     "rollup:watch": "rollup -c rollup.config.js --watch",
     "build": "npm run jison && npm run rollup",
@@ -16,8 +17,10 @@
   "license": "ISC",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-replace": "^6.0.1",
     "@types/emscripten": "^1.39.10",
     "@types/node": "^22.2.0",
+    "antlr4ng-cli": "^2.0.0",
     "esbuild": "^0.20.2",
     "rollup": "^4.14.3",
     "rollup-plugin-dts": "^6.1.0",
@@ -30,6 +33,7 @@
   },
   "dependencies": {
     "@ts-jison/parser-generator": "^0.4.1-alpha.2",
+    "antlr4ng": "^3.0.7",
     "tslib": "^2.6.2"
   }
 }
