@@ -67,7 +67,6 @@ export enum AdditionalTokens {
   RPAR = 'RPAR',
   LCUR = 'LCUR',
   RCUR = 'RCUR',
-  LARROW = 'LARROW',
   RARROW = 'RARROW',
   GT = 'GT',
   LT = 'LT',

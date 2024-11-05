@@ -86,7 +86,6 @@ RARR      [>⟩〉﹥＞]
 ")"           return this.yy.AdditionalTokens.RPAR;
 "{"           return this.yy.AdditionalTokens.LCUR;
 "}"           return this.yy.AdditionalTokens.RCUR;
-{LARR}        return this.yy.AdditionalTokens.LARROW;
 {RARR}        return this.yy.AdditionalTokens.RARROW;
 ">"           return this.yy.AdditionalTokens.GT;
 "<"           return this.yy.AdditionalTokens.LT;

@@ -79,7 +79,6 @@ is the correct one.
 %token RPAR
 %token LCUR
 %token RCUR
-%token LARROW
 %token RARROW
 %token GT
 %token LT
@@ -129,14 +128,14 @@ scope-exit:
 root:
 	scope-exit { return null; }
 	| scope-exit error { return null; }
-  | full-query semicolon_opt scope-exit { return $1; }
-	| full-query semicolon_opt scope-exit error { return $1; }
-  | full-query semicolon_opt { return $1; } ;
+  | full-query scope-exit { return $1; }
+	| full-query scope-exit error { return $1; }
+  | full-query { return $1; } ;
 
 full-query:
-  /* regular-query */
-  standalone-call
-  | in-query-call ; /* standalone call in reality overlaps in-query call, for grammar reasons they are disjunct and need to be specified both here */
+  regular-query semicolon_opt
+  | standalone-call semicolon_opt
+  | in-query-call semicolon_opt ; // standalone call in reality overlaps in-query call, for grammar reasons they are disjunct and need to be specified both here
 
 regular-query:
   single-query
@@ -314,10 +313,6 @@ pattern-el-chain:
   node-pattern
   | pattern-el-chain rel-pattern node-pattern ;
 
-pattern-el-chain-nonempty:
-  node-pattern rel-pattern node-pattern
-  | pattern-el-chain-nonempty rel-pattern node-pattern ;
-
 node-pattern:
   LPAR variable node-label-list_opt properties_opt RPAR %prec NODE_PATTERN_PRIORITY
   | LPAR node-label-list_opt properties_opt RPAR ;
@@ -350,10 +345,6 @@ range-literal:
 arrow-right:
   RARROW
   | GT ;
-
-arrow-left:
-  LARROW
-  | LT ;
 
 arrow-body:
   MINUS
@@ -611,9 +602,6 @@ updating-clause-list_opt:
   { $$ = []; }
   | updating-clause-list ;
 
-optional_opt:
-  | OPTIONAL ;
-
 where-clause_opt:
   | where-clause ;
 
@@ -623,9 +611,6 @@ return-clause_opt:
 merge-actions-list_opt:
   { $$ = []; }
   | merge-actions-list ;
-
-detach_opt:
-  | DETACH ;
 
 distinct_opt:
   | DISTINCT ;
@@ -649,14 +634,8 @@ node-label-list_opt:
 properties_opt:
   | properties ;
 
-arrow-left_opt:
-  | arrow-left ;
-
 arrow-right_opt:
   | arrow-right ;
-
-rel-detail_opt:
-  | rel-detail ;
 
 rel-type-union_opt:
   { $$ = []; }
