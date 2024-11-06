@@ -23,7 +23,7 @@ export const Cypher: Language<'cypher'> = {
 
 function createParser(mgr: LanguageManager) {
   let remainingInput = '';
-  const yy: Partial<YyContext> = {
+  const yy: YyContext = {
     Keywords,
     AdditionalTokens,
     reportComment: () => {},
@@ -33,14 +33,12 @@ function createParser(mgr: LanguageManager) {
 
     messageQueue: [],
     saveRemainingInput: (input) => (remainingInput = input),
-    // wrapNot: (expr, not) =>
-    //   not
-    //     ? new ASTOperator('cypher', new ast.ASTIdentifier('NOT'), [expr])
-    //     : expr,
-    // makeOp: (op, args) =>
-    //   typeof op === 'string'
-    //     ? new ASTOperator('cypher', new ast.ASTIdentifier(op), args)
-    //     : new ASTOperator('cypher', op, args),
+    makeOp: (op, args) =>
+      typeof op === 'string'
+        ? new ASTOperator('cypher', new ast.ASTIdentifier(op), args)
+        : new ASTOperator('cypher', op, args),
+    wrapFn: (id, args = [], distinct = false) =>
+      new ast.FnCallWrapper(new ASTFunction('cypher', id, args), distinct),
     ast: {
       ...ast,
       ASTLiteral,

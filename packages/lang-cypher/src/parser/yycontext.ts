@@ -1,3 +1,4 @@
+import { FnCallWrapper } from '../ast/expression.js';
 import { AdditionalTokens, Keywords } from './tokens.js';
 import {
   ASTNode,
@@ -21,7 +22,11 @@ export interface YyContext {
    */
   messageQueue: any[];
   saveRemainingInput: (input: string) => void;
-  wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
   makeOp: (op: string | ASTIdentifier, operands: ASTNode[]) => ASTOperator;
+  wrapFn: (
+    id: ASTIdentifier,
+    args?: ASTNode[],
+    distinct?: boolean
+  ) => FnCallWrapper;
   ast: Record<string, any>;
 }

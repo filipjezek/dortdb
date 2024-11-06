@@ -110,6 +110,7 @@ is the correct one.
 %token STRLIT
 %token ID
 %token SCHEMANAMELPAR
+%token LANGSWITCH
 %token LANGEXIT
 
 %nonassoc NODE_PATTERN_PRIORITY COMPR_PRIORITY
@@ -448,6 +449,7 @@ atom-no-pattern:
   | function-invocation
   | existential-subquery
   | pattern-el-chain
+  | LANGSWITCH { $$ = yy.messageQueue.shift(); }
   | LPAR expression RPAR ;
 
 case-expression:
@@ -479,44 +481,46 @@ quantifier:
   | SINGLE ;
 
 function-invocation:
-  symbolic-name LPAR distinct_opt expression-list RPAR
-  | SCHEMANAMELPAR distinct_opt expression-list RPAR ;
+  symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 existential-subquery:
   EXISTS LCUR regular-query RCUR
   | EXISTS LCUR pattern where-clause_opt RCUR ;
 
 explicit-procedure-invocation:
-  symbolic-name LPAR distinct_opt expression-list RPAR
-  SCHEMANAMELPAR distinct_opt expression-list RPAR ;
+  symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
+  SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 implicit-procedure-invocation:
-  | symbolic-name
-  symbolic-name DOT symbolic-name ;
+  | symbolic-name { $$ = yy.wrapFn($1); }
+  symbolic-name DOT symbolic-name {
+    $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.idOriginal, $2.idOriginal));
+  } ;
 
 variable:
   symbolic-name ;
 
 literal:
   number-literal
-  | TRUE
-  | FALSE
-  | NULL
-  | STRLIT
+  | TRUE { $$ = new yy.ast.ASTBooleanLiteral($1); }
+  | FALSE { $$ = new yy.ast.ASTBooleanLiteral($1); }
+  | NULL { $$ = new yy.ast.ASTBooleanLiteral($1); }
+  | STRLIT { $$ = new yy.ast.ASTStringLiteral($1); }
   | list-literal ;
 
 number-literal:
   int-literal
-  | FLOATLIT ;
+  | FLOATLIT { $$ = new yy.ast.ASTNumberLiteral($1); } ;
 
 int-literal:
-  INTLIT ;
+  INTLIT { $$ = new yy.ast.ASTNumberLiteral($1); } ;
 
 list-literal:
-  LBRA expression-list_opt RBRA ;
+  LBRA expression-list_opt RBRA { $$ = new yy.ast.ASTListLiteral($2); } ;
 
 map-literal:
-  LCUR map-entry-list_opt RCUR ;
+  LCUR map-entry-list_opt RCUR { $$ = new yy.ast.ASTMapLiteral($2); } ;
 
 map-entry-list:
   schema-name COLON expression { $$ = [$1]; }
@@ -584,10 +588,10 @@ reserved-word:
 
 schema-name:
   symbolic-name
-  | reserved-word ;
+  | reserved-word { $$ = new yy.ast.ASTIdentifier($1); } ;
 
 symbolic-name:
-  ID ;
+  ID { $$ = new yy.ast.ASTIdentifier($1); } ;
 
 // optionals
 

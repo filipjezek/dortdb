@@ -133,11 +133,11 @@ RARR      [>⟩〉﹥＞]
 {DEC}+"."{DEC}+ return this.yy.AdditionalTokens.FLOATLIT;
 {DEC}+		  return this.yy.AdditionalTokens.INTLIT;
 
+(({ID1}{ID}*)|"`"([^`]|``)*"`")"."(({ID1}{ID}*)|"`"([^`]|``)*"`")"("  return this.yy.AdditionalTokens.SCHEMANAMELPAR;
 {ID1}{ID}*       return this.yy.AdditionalTokens.ID;
 "`"([^`]|``)*"`" return this.yy.AdditionalTokens.ID;
 "$"{DEC}+        return this.yy.AdditionalTokens.PARAM;
 "$"{ID1}{ID}*    return this.yy.AdditionalTokens.PARAM;
-{ID1}{ID}*"."{ID1}{ID}*"("           return this.yy.AdditionalTokens.SCHEMANAMELPAR;
 ["]((\\.)|[^\\"])*["] return this.yy.AdditionalTokens.STRINGLIT;
 [']((\\.)|[^\\'])*['] return this.yy.AdditionalTokens.STRINGLIT;
 
