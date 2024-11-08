@@ -35,7 +35,11 @@ function createParser(mgr: LanguageManager) {
     saveRemainingInput: (input) => (remainingInput = input),
     makeOp: (op, args) =>
       typeof op === 'string'
-        ? new ASTOperator('cypher', new ast.ASTIdentifier(op), args)
+        ? new ASTOperator(
+            'cypher',
+            new ast.ASTIdentifier(op.toLowerCase()),
+            args
+          )
         : new ASTOperator('cypher', op, args),
     wrapFn: (id, args = [], distinct = false) =>
       new ast.FnCallWrapper(new ASTFunction('cypher', id, args), distinct),

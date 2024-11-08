@@ -140,29 +140,29 @@ full-query:
 
 regular-query:
   single-query
-  | regular-query setop single-query ;
+  | regular-query setop single-query { $$ = $1; $1.setOp = new yy.ast.SetOp($2, $3); } ;
 
 setop:
   UNION
-  | UNION ALL ;
+  | UNION ALL { $$ = 'unionall' } ;
 
 single-query:
   single-part-query
   | multi-part-query ;
 
 single-part-query:
-  reading-clause-list_opt return-clause
-  | reading-clause-list_opt updating-clause-list return-clause_opt ;
+  reading-clause-list_opt return-clause { $$ = new yy.ast.Query($1); $1.push($2); }
+  | reading-clause-list_opt updating-clause-list return-clause_opt { $$ = new yy.ast.Query([...$1, ...$2, $3]); } ;
 
 multi-part-query:
-  mpq-start-list single-part-query ;
+  mpq-start-list single-part-query { $$ = $2; $2.statements = [$1, $2.statements].flat(Infinity); } ;
 
 mpq-start-list:
   mpq-start { $$ = [$1]; }
-  | mpq-start-list mpq-start { $$ = $1; $$.push($2); } ;
+  | mpq-start-list mpq-start { $$ = $1; $1.push($2); } ;
 
 mpq-start:
-  reading-clause-list_opt updating-clause-list_opt with-clause ;
+  reading-clause-list_opt updating-clause-list_opt with-clause { $$ = [$1, $2, $3]; } ;
 
 reading-clause-list:
   reading-clause { $$ = [$1]; }
@@ -174,11 +174,11 @@ reading-clause:
   | in-query-call ;
 
 match-clause:
-  OPTIONAL MATCH pattern where-clause_opt
-  | MATCH pattern where-clause_opt ;
+  OPTIONAL MATCH pattern where-clause_opt { $$ = new yy.ast.MatchClause($3, $4); $$.optional = true; }
+  | MATCH pattern where-clause_opt { $$ = new yy.ast.MatchClause($2, $3); } ;
 
 unwind-clause:
-  UNWIND expression AS variable ;
+  UNWIND expression AS variable { $$ = new yy.ast.UnwindClause($2, $4); } ;
 
 updating-clause-list:
   updating-clause { $$ = [$1]; }
@@ -195,74 +195,76 @@ create-clause:
   CREATE pattern ;
 
 merge-clause:
-  MERGE pattern-part merge-actions-list_opt ;
+  MERGE pattern-part merge-actions-list_opt { $$ = new yy.ast.MergeClause($2, $3); } ;
 
 merge-actions-list:
   merge-action { $$ = [$1]; }
   | merge-actions-list merge-action { $$ = $1; $$.push($2); } ;
 
 merge-action:
-  ON MATCH set-clause
-  | ON CREATE set-clause ;
+  ON MATCH set-clause { $$ = new yy.ast.MergeAction('match', $3); }
+  | ON CREATE set-clause { $$ = new yy.ast.MergeAction('create', $3); } ;
 
 set-clause:
-  SET set-item-list ;
+  SET set-item-list { $$ = new yy.ast.SetClause($2); } ;
 
 set-item-list:
   set-item { $$ = [$1]; }
   | set-item-list COMMA set-item { $$ = $1; $$.push($3); } ;
 
 set-item:
-  property-expr EQ expression
-  | variable EQ expression
-  | variable PLUSEQ expression
-  | variable node-label-list ;
+  property-expr EQ expression { $$ = new yy.ast.SetItem($1, $3); }
+  | variable EQ expression { $$ = new yy.ast.SetItem($1, $3); }
+  | variable PLUSEQ expression { $$ = new yy.ast.SetItem($1, $3); $$.add = true; }
+  | variable node-label-list { $$ = new yy.ast.SetItem($1, $2); } ;
 
 remove-clause:
-  REMOVE remove-item-list ;
+  REMOVE remove-item-list { $$ = new yy.ast.RemoveClause($2); } ;
 
 remove-item-list:
   remove-item { $$ = [$1]; }
   | remove-item-list COMMA remove-item { $$ = $1; $$.push($3); } ;
 
 remove-item:
-  property-expr
-  | variable node-label-list ;
+  property-expr { $$ = new yy.ast.RemoveItem($1); }
+  | variable node-label-list { $$ = new yy.ast.RemoveItem($1, $2); } ;
 
 delete-clause:
-  DELETE expression-list
-  | DETACH DELETE expression-list ;
+  DELETE expression-list { $$ = new yy.ast.DeleteClause($2); }
+  | DETACH DELETE expression-list { $$ = new yy.ast.DeleteClause($3, true); } ;
 
 expression-list:
   expression { $$ = [$1]; }
   | expression-list COMMA expression { $$ = $1; $$.push($3); } ;
 
 in-query-call:
-  CALL explicit-procedure-invocation
-  | CALL explicit-procedure-invocation YIELD yield-item-list where-clause_opt ;
+  CALL explicit-procedure-invocation { $$ = $2; }
+  | CALL explicit-procedure-invocation YIELD yield-item-list where-clause_opt { $$ = $2; $$.yieldItems = $4; $$.where = $5; } ;
 
 standalone-call:
-  CALL implicit-procedure-invocation 
-  | CALL implicit-procedure-invocation YIELD yield-item-list where-clause_opt
-  | CALL explicit-procedure-invocation YIELD STAR
-  | CALL implicit-procedure-invocation YIELD STAR ;
+  CALL implicit-procedure-invocation  { $$ = $2; }
+  | CALL implicit-procedure-invocation YIELD yield-item-list where-clause_opt { $$ = $2; $$.yieldItems = $4; $$.where = $5; }
+  | CALL explicit-procedure-invocation YIELD STAR { $$ = $2; $$.yieldItems = $4; }
+  | CALL implicit-procedure-invocation YIELD STAR { $$ = $2; $$.yieldItems = $4; } ;
 
 yield-item-list:
   yield-item { $$ = [$1]; }
   | yield-item-list COMMA yield-item { $$ = $1; $$.push($3); } ;
 
 yield-item:
-  symbolic-name AS variable
+  symbolic-name AS variable { $$ = [$1, $3]; }
   | variable ;
 
 with-clause:
-  WITH projection-body where-clause_opt ;
+  WITH projection-body where-clause_opt { $$ = new yy.ast.WithClause($2, $3); } ;
 
 return-clause:
-  RETURN projection-body ;
+  RETURN projection-body { $$ = new yy.ast.ReturnClause($2); } ;
 
 projection-body:
-  distinct_opt projection-item-list order-clause_opt skip-clause_opt limit-clause_opt ;
+  distinct_opt projection-item-list order-clause_opt skip-clause_opt limit-clause_opt {
+    $$ = new yy.ast.ProjectionBody($2, $3, $4, $5, $1);
+  } ;
 
 projection-item-list:
   projection-item { $$ = [$1]; }
@@ -271,30 +273,30 @@ projection-item-list:
 
 projection-item:
   expression
-  | expression AS variable ;
+  | expression AS variable { $$ = [$1, $3]; } ;
 
 order-clause:
-  ORDER BY sort-item-list ;
+  ORDER BY sort-item-list { $$ = $3; };
 
 sort-item-list:
   sort-item { $$ = [$1]; }
   | sort-item-list COMMA sort-item { $$ = $1; $$.push($3); } ;
 
 sort-item:
-  expression
-  | expression ASCENDING
-  | expression ASC
-  | expression DESCENDING
-  | expression DESC ;
+  expression { $$ = new yy.ast.OrderItem($1); }
+  | expression ASCENDING { $$ = new yy.ast.OrderItem($1, true); }
+  | expression ASC { $$ = new yy.ast.SortItem($1, true); }
+  | expression DESCENDING { $$ = new yy.ast.OrderItem($1, false); }
+  | expression DESC { $$ = new yy.ast.OrderItem($1, false); } ;
 
 skip-clause:
-  SKIP expression ;
+  SKIP expression { $$ = $2; } ;
 
 limit-clause:
-  LIMIT expression ;
+  LIMIT expression { $$ = $2; } ;
 
 where-clause:
-  WHERE expression ;
+  WHERE expression { $$ = $2; } ;
 
 // patterns
 
@@ -303,45 +305,49 @@ pattern:
   | pattern COMMA pattern-part { $$ = $1; $$.push($2); } ;
 
 pattern-part:
-  variable EQ pattern-element
+  variable EQ pattern-element { $$ = $3; $$.variable = $1; }
   | pattern-element ;
 
 pattern-element:
   pattern-el-chain
-  | LPAR pattern-element RPAR ;
+  | LPAR pattern-element RPAR { $$ = $2; } ;
 
 pattern-el-chain:
-  node-pattern
-  | pattern-el-chain rel-pattern node-pattern ;
+  node-pattern { $$ = new yy.ast.PatternElChain($1); }
+  | pattern-el-chain rel-pattern node-pattern { $$ = $1; $$.chain.push($2, $3); } ;
 
 node-pattern:
-  LPAR variable node-label-list_opt properties_opt RPAR %prec NODE_PATTERN_PRIORITY
-  | LPAR node-label-list_opt properties_opt RPAR ;
+  LPAR variable node-label-list_opt properties_opt RPAR %prec NODE_PATTERN_PRIORITY {
+    $$ = new yy.ast.NodePattern($2, $3, $4);
+  }
+  | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(null, $2, $3); } ;
 
 rel-pattern:
-  LARROWDBLDASH arrow-body arrow-right_opt
-  | LARROWDASHLBRA rel-detail arrow-body arrow-right_opt
-  | DBLDASH arrow-right_opt
-  | DASHLBRA rel-detail arrow-body arrow-right_opt ;
+  LARROWDBLDASH arrow-body arrow-right_opt { $$ = new yy.ast.RelPattern(true, $3); }
+  | LARROWDASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsLeft = true; $$.pointsRight = $4;}
+  | DBLDASH arrow-right_opt { $$ = new yy.ast.RelPattern(false, $3); }
+  | DASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsRight = $4; } ;
 
 rel-detail:
-  variable_opt rel-type-union_opt range-literal_opt properties_opt RBRA ;
+  variable_opt rel-type-union_opt range-literal_opt properties_opt RBRA {
+    $$ = new yy.ast.RelPattern(false, false, $1, $2, $3, $4);
+  } ;
 
 properties:
   map-literal
-  | PARAM ;
+  | PARAM { $$ = new yy.ast.ASTParameter($1); } ;
 
 rel-type-union:
-  COLON schema-name
-  | rel-type-union PIPE COLON schema-name ;
+  COLON schema-name { $$ = [$2]; }
+  | rel-type-union PIPE COLON schema-name { $$ = $1; $$.push($4); } ;
 
 node-label-list:
-  COLON schema-name { $$ = [$1]; }
-  | node-label-list COLON schema-name { $$ = $1; $$.push($2); } ;
+  COLON schema-name { $$ = [$2]; }
+  | node-label-list COLON schema-name { $$ = $1; $$.push($3); } ;
 
 range-literal:
-  STAR int-literal_opt
-  | STAR int-literal_opt DBLDOT int-literal_opt ;
+  STAR int-literal_opt { $$ = $2; }
+  | STAR int-literal_opt DBLDOT int-literal_opt { $$ = [$2, $4]; } ;
 
 arrow-right:
   RARROW
@@ -354,34 +360,31 @@ arrow-body:
 // expressions
 
 property-expr:
-  atom property-lookup-list ;
-
-property-lookup-list:
-  property-lookup { $$ = [$1]; }
-  | property-lookup-list property-lookup { $$ = $1; $$.push($2); } ;
+  atom property-lookup { $$ = new yy.ast.PropLookup($1, $2); }
+  | property-expr property-lookup { $$ = new yy.ast.PropLookup($1, $2); } ;
 
 expression:
   or-expression ;
 
 or-expression:
   xor-expression
-  | or-expression OR xor-expression ;
+  | or-expression OR xor-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 xor-expression:
   and-expression
-  | xor-expression XOR and-expression ;
+  | xor-expression XOR and-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 and-expression:
   not-expression
-  | and-expression AND not-expression ;
+  | and-expression AND not-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 not-expression:
   comparison-expression
-  | NOT not-expression ;
+  | NOT not-expression { $$ = makeOp($1, [$2]); } ;
 
 comparison-expression:
   string-list-null-predicate-expression
-  | comparison-expression compop string-list-null-predicate-expression ;
+  | comparison-expression compop string-list-null-predicate-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 compop:
   EQ
@@ -393,56 +396,56 @@ compop:
 
 string-list-null-predicate-expression:
   additive-expression
-  | string-list-null-predicate-expression IS NULL
-  | string-list-null-predicate-expression IS NOT NULL
-  | string-list-null-predicate-expression CONTAINS additive-expression
-  | string-list-null-predicate-expression STARTS WITH additive-expression
-  | string-list-null-predicate-expression ENDS WITH additive-expression
-  | string-list-null-predicate-expression IN additive-expression ;
+  | string-list-null-predicate-expression IS NULL { $$ = makeOp('isnull', [$1]); }
+  | string-list-null-predicate-expression IS NOT NULL { $$ = makeOp('isnotnull', [$1]); }
+  | string-list-null-predicate-expression CONTAINS additive-expression { $$ = makeOp($2, [$1, $3]); }
+  | string-list-null-predicate-expression STARTS WITH additive-expression { $$ = makeOp('startswith', [$1, $3]); }
+  | string-list-null-predicate-expression ENDS WITH additive-expression { $$ = makeOp('startswith', [$1, $3]); }
+  | string-list-null-predicate-expression IN additive-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 additive-expression:
   multiplicative-expression
-  | additive-expression PLUS multiplicative-expression
-  | additive-expression MINUS multiplicative-expression ;
+  | additive-expression PLUS multiplicative-expression { $$ = makeOp($2, [$1, $3]); }
+  | additive-expression MINUS multiplicative-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 multiplicative-expression:
   power-expression
-  | multiplicative-expression STAR power-expression
-  | multiplicative-expression SLASH power-expression
-  | multiplicative-expression PERCENT power-expression ;
+  | multiplicative-expression STAR power-expression { $$ = makeOp($2, [$1, $3]); }
+  | multiplicative-expression SLASH power-expression { $$ = makeOp($2, [$1, $3]); }
+  | multiplicative-expression PERCENT power-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 power-expression:
   unary-expression
-  | power-expression EXP unary-expression ;
+  | power-expression EXP unary-expression { $$ = makeOp($2, [$1, $3]); } ;
 
 unary-expression:
   non-arithmetic-op-expression
-  | PLUS unary-expression
-  | MINUS unary-expression ;
+  | PLUS unary-expression { $$ = makeOp($1, [$2]); }
+  | MINUS unary-expression { $$ = makeOp($1, [$2]); } ;
 
 non-arithmetic-op-expression:
   label-filter-expression
-  | non-arithmetic-op-expression LBRA expression RBRA
-  | non-arithmetic-op-expression LBRA expression DBLDOT expression RBRA
-  | non-arithmetic-op-expression property-lookup ;
+  | non-arithmetic-op-expression LBRA expression RBRA { $$ = new yy.ast.SubscriptExpr($1, [$3]); }
+  | non-arithmetic-op-expression LBRA expression_opt DBLDOT expression_opt RBRA { $$ = new yy.ast.SubscriptExpr($1, [$3, $5]); }
+  | non-arithmetic-op-expression property-lookup { $$ = new yy.ast.PropLookup($1, $2); };
 
 property-lookup:
-  DOT schema-name ;
+  DOT schema-name { $$ = $2; } ;
 
 label-filter-expression:
   atom
-  | atom node-label-list ;
+  | atom node-label-list { $$ = new yy.ast.LabelFilterExpr($1, $2); } ;
 
 atom:
   atom-no-pattern
   | variable %prec PAREN_EXPR_PRIORITY
-  | PARAM
+  | PARAM { $$ = new yy.ast.ASTParameter($1); }
   | map-literal ;
 
 atom-no-pattern:
   literal
   | case-expression
-  | COUNT LPAR STAR RPAR
+  | COUNT LPAR STAR RPAR { $$ = new yy.ast.CountAll(); }
   | list-comprehension
   | pattern-comprehension
   | quantified-expression
@@ -450,11 +453,11 @@ atom-no-pattern:
   | existential-subquery
   | pattern-el-chain
   | LANGSWITCH { $$ = yy.messageQueue.shift(); }
-  | LPAR expression RPAR ;
+  | LPAR expression RPAR { $$ = $2;} ;
 
 case-expression:
-  CASE case-expr-alternative-list else-clause_opt END
-  | CASE expression case-expr-alternative-list else-clause_opt END ;
+  CASE case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpression(null, $2, $3); }
+  | CASE expression case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpression($2, $3, $4); } ;
 
 case-expr-alternative-list:
   case-expr-alternative { $$ = [$1]; }
@@ -464,15 +467,18 @@ case-expr-alternative:
   WHEN expression THEN expression ;
 
 list-comprehension:
-  LBRA variable IN expression where-clause RBRA
-  | LBRA variable IN expression where-clause_opt PIPE expression RBRA ;
+  LBRA variable IN expression where-clause RBRA { $$ = new yy.ast.ListComprehension($2, $4, $5); }
+  | LBRA variable IN expression where-clause_opt PIPE expression RBRA { $$ = new yy.ast.ListComprehension($2, $4, $5, $7); } ;
 
 pattern-comprehension:
-  LBRA pattern-el-chain where-clause_opt PIPE expression RBRA
-  | LBRA variable EQ pattern-el-chain where-clause_opt PIPE expression RBRA %prec COMPR_PRIORITY ;
+  LBRA pattern-el-chain where-clause_opt PIPE expression RBRA { $$ = new yy.ast.PatternComprehension($2, $3, $5); }
+  | LBRA variable EQ pattern-el-chain where-clause_opt PIPE expression RBRA %prec COMPR_PRIORITY {
+    $4.variable = $2;
+    $$ = new yy.ast.PatternComprehension($4, $5, $7);
+  } ;
 
 quantified-expression:
-  quantifier LPAR variable IN expression where-clause_opt RPAR ;
+  quantifier LPAR variable IN expression where-clause_opt RPAR { $$ = new yy.ast.ASTQuantifiedExpr($1, $3, $5, $6); } ;
 
 quantifier:
   ANY
@@ -485,16 +491,16 @@ function-invocation:
   | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 existential-subquery:
-  EXISTS LCUR regular-query RCUR
-  | EXISTS LCUR pattern where-clause_opt RCUR ;
+  EXISTS LCUR regular-query RCUR { $$ = new yy.ast.ASTExists(); $$.query = $3; }
+  | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ASTExists(); $$.pattern = $3; $$.where = $4; } ;
 
 explicit-procedure-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
-  SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 implicit-procedure-invocation:
-  | symbolic-name { $$ = yy.wrapFn($1); }
-  symbolic-name DOT symbolic-name {
+  symbolic-name { $$ = yy.wrapFn($1); }
+  | symbolic-name DOT symbolic-name {
     $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.idOriginal, $2.idOriginal));
   } ;
 
@@ -632,7 +638,7 @@ variable_opt:
   | variable ;
 
 node-label-list_opt:
-  %prec PAREN_EXPR_PRIORITY
+  %prec PAREN_EXPR_PRIORITY { $$ = []; }
   | node-label-list %prec NODE_PATTERN_PRIORITY ;
 
 properties_opt:
@@ -661,3 +667,6 @@ expression-list_opt:
 map-entry-list_opt:
   { $$ = []; }
   | map-entry-list ;
+
+expression_opt:
+  | expression ;

@@ -1,10 +1,11 @@
 import { DortDB } from '@dortdb/core';
+import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
 
 const db = new DortDB({
   mainLang: SQL,
-  additionalLangs: [XQuery],
+  additionalLangs: [XQuery, Cypher],
 });
 
 document.addEventListener('DOMContentLoaded', () => {

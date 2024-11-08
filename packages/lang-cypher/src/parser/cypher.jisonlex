@@ -81,11 +81,11 @@ RARR      [>⟩〉﹥＞]
 ({DASH}|"-")\s*"["     return this.yy.AdditionalTokens.DASHLBRA;
 {DASH}        return this.yy.AdditionalTokens.DASH;
 "["           return this.yy.AdditionalTokens.LBRA;
-"]"           return this.yy.AdditionalTokens.RBRA;
+"]"           this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
 "("           return this.yy.AdditionalTokens.LPAR;
-")"           return this.yy.AdditionalTokens.RPAR;
+")"           this.yy.saveRemainingInput(')' + this._input); return this.yy.AdditionalTokens.RPAR;
 "{"           return this.yy.AdditionalTokens.LCUR;
-"}"           return this.yy.AdditionalTokens.RCUR;
+"}"           this.yy.saveRemainingInput('}' + this._input); return this.yy.AdditionalTokens.RCUR;
 {RARR}        return this.yy.AdditionalTokens.RARROW;
 ">"           return this.yy.AdditionalTokens.GT;
 "<"           return this.yy.AdditionalTokens.LT;
@@ -136,8 +136,9 @@ RARR      [>⟩〉﹥＞]
 (({ID1}{ID}*)|"`"([^`]|``)*"`")"."(({ID1}{ID}*)|"`"([^`]|``)*"`")"("  return this.yy.AdditionalTokens.SCHEMANAMELPAR;
 {ID1}{ID}*       return this.yy.AdditionalTokens.ID;
 "`"([^`]|``)*"`" return this.yy.AdditionalTokens.ID;
-"$"{DEC}+        return this.yy.AdditionalTokens.PARAM;
 "$"{ID1}{ID}*    return this.yy.AdditionalTokens.PARAM;
+"$"{DEC}+        return this.yy.AdditionalTokens.PARAM;
+"$"[`]([^`]|``)*"`"    return this.yy.AdditionalTokens.PARAM;
 ["]((\\.)|[^\\"])*["] return this.yy.AdditionalTokens.STRINGLIT;
 [']((\\.)|[^\\'])*['] return this.yy.AdditionalTokens.STRINGLIT;
 
