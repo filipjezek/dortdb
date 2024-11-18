@@ -45,6 +45,7 @@ is the correct one.
 %token LIMIT
 %token IS
 %token IN
+%token FROM
 %token FOR
 %token FALSE
 %token EXISTS
@@ -140,7 +141,9 @@ full-query:
 
 regular-query:
   single-query
-  | regular-query setop single-query { $$ = $1; $1.setOp = new yy.ast.SetOp($2, $3); } ;
+  | from-clause single-query { $$ = $2; $2.from = $1; }
+  | regular-query setop single-query { $$ = $1; $1.setOp = new yy.ast.SetOp($2, $3); }
+  | regular-query setop from-clause single-query { $$ = $1; $1.setOp = new yy.ast.SetOp($2, $4); $4.from = $3; } ;
 
 setop:
   UNION
@@ -172,6 +175,9 @@ reading-clause:
   match-clause
   | unwind-clause
   | in-query-call ;
+
+from-clause:
+  FROM symbolic-name { $$ = $2; } ;
 
 match-clause:
   OPTIONAL MATCH pattern where-clause_opt { $$ = new yy.ast.MatchClause($3, $4); $$.optional = true; }
@@ -368,23 +374,26 @@ expression:
 
 or-expression:
   xor-expression
-  | or-expression OR xor-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | or-expression OR xor-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 xor-expression:
   and-expression
-  | xor-expression XOR and-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | xor-expression XOR and-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 and-expression:
   not-expression
-  | and-expression AND not-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | and-expression AND not-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 not-expression:
-  comparison-expression
-  | NOT not-expression { $$ = makeOp($1, [$2]); } ;
-
-comparison-expression:
   string-list-null-predicate-expression
-  | comparison-expression compop string-list-null-predicate-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | comparison-expression-chain
+  | NOT not-expression { $$ = yy.makeOp($1, [$2]); } ;
+
+comparison-expression-chain:
+  string-list-null-predicate-expression compop string-list-null-predicate-expression { $$ = yy.makeOp($2, [$1, $3]); }
+  | comparison-expression-chain compop string-list-null-predicate-expression {
+    $$ = yy.makeOp('and', [$1, yy.makeOp($2, [$1.operands[1], $3])]);
+  } ;
 
 compop:
   EQ
@@ -396,32 +405,32 @@ compop:
 
 string-list-null-predicate-expression:
   additive-expression
-  | string-list-null-predicate-expression IS NULL { $$ = makeOp('isnull', [$1]); }
-  | string-list-null-predicate-expression IS NOT NULL { $$ = makeOp('isnotnull', [$1]); }
-  | string-list-null-predicate-expression CONTAINS additive-expression { $$ = makeOp($2, [$1, $3]); }
-  | string-list-null-predicate-expression STARTS WITH additive-expression { $$ = makeOp('startswith', [$1, $3]); }
-  | string-list-null-predicate-expression ENDS WITH additive-expression { $$ = makeOp('startswith', [$1, $3]); }
-  | string-list-null-predicate-expression IN additive-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | string-list-null-predicate-expression IS NULL { $$ = yy.makeOp('isnull', [$1]); }
+  | string-list-null-predicate-expression IS NOT NULL { $$ = yy.makeOp('isnotnull', [$1]); }
+  | string-list-null-predicate-expression CONTAINS additive-expression { $$ = yy.makeOp($2, [$1, $3]); }
+  | string-list-null-predicate-expression STARTS WITH additive-expression { $$ = yy.makeOp('startswith', [$1, $3]); }
+  | string-list-null-predicate-expression ENDS WITH additive-expression { $$ = yy.makeOp('startswith', [$1, $3]); }
+  | string-list-null-predicate-expression IN additive-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 additive-expression:
   multiplicative-expression
-  | additive-expression PLUS multiplicative-expression { $$ = makeOp($2, [$1, $3]); }
-  | additive-expression MINUS multiplicative-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | additive-expression PLUS multiplicative-expression { $$ = yy.makeOp($2, [$1, $3]); }
+  | additive-expression MINUS multiplicative-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 multiplicative-expression:
   power-expression
-  | multiplicative-expression STAR power-expression { $$ = makeOp($2, [$1, $3]); }
-  | multiplicative-expression SLASH power-expression { $$ = makeOp($2, [$1, $3]); }
-  | multiplicative-expression PERCENT power-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | multiplicative-expression STAR power-expression { $$ = yy.makeOp($2, [$1, $3]); }
+  | multiplicative-expression SLASH power-expression { $$ = yy.makeOp($2, [$1, $3]); }
+  | multiplicative-expression PERCENT power-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 power-expression:
   unary-expression
-  | power-expression EXP unary-expression { $$ = makeOp($2, [$1, $3]); } ;
+  | power-expression EXP unary-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
 
 unary-expression:
   non-arithmetic-op-expression
-  | PLUS unary-expression { $$ = makeOp($1, [$2]); }
-  | MINUS unary-expression { $$ = makeOp($1, [$2]); } ;
+  | PLUS unary-expression { $$ = yy.makeOp($1, [$2]); }
+  | MINUS unary-expression { $$ = yy.makeOp($1, [$2]); } ;
 
 non-arithmetic-op-expression:
   label-filter-expression
@@ -670,3 +679,6 @@ map-entry-list_opt:
 
 expression_opt:
   | expression ;
+
+from-clause_opt:
+  | from-clause ;

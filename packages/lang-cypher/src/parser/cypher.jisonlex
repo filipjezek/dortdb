@@ -47,6 +47,7 @@ RARR      [>⟩〉﹥＞]
 "LIMIT"       return this.yy.Keywords.LIMIT;
 "IS"          return this.yy.Keywords.IS;
 "IN"          return this.yy.Keywords.IN;
+"FROM"         return this.yy.Keywords.FROM;
 "FOR"         return this.yy.Keywords.FOR;
 "FALSE"       return this.yy.Keywords.FALSE;
 "EXISTS"      return this.yy.Keywords.EXISTS;

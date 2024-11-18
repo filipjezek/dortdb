@@ -23,9 +23,15 @@ export type QueryStatement =
   | FnCallWrapper
   | CreateClause
   | MergeClause
-  | SetClause;
+  | SetClause
+  | RemoveClause
+  | DeleteClause
+  | ReturnClause
+  | WithClause;
+
 export class Query implements ASTNode {
   public setOp: SetOp;
+  public from?: ASTIdentifier;
 
   constructor(public statements: QueryStatement[]) {}
 

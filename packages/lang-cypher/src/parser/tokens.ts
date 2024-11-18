@@ -31,6 +31,7 @@ export enum Keywords {
   LIMIT = 'LIMIT',
   IS = 'IS',
   IN = 'IN',
+  FROM = 'FROM',
   FOR = 'FOR',
   FALSE = 'FALSE',
   EXISTS = 'EXISTS',
