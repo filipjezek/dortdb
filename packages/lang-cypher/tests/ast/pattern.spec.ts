@@ -74,19 +74,10 @@ describe('AST patterns', () => {
           ],
         ])
       ),
-      new astCypher.NodePattern(
-        undefined,
-        [
-          new astCypher.ASTIdentifier('baz'),
-          new astCypher.ASTIdentifier('gaz'),
-        ],
-        new astCypher.ASTMapLiteral([
-          [
-            new astCypher.ASTIdentifier('foo'),
-            new astCypher.ASTNumberLiteral('1'),
-          ],
-        ])
-      ),
+      new astCypher.NodePattern(undefined, [
+        new astCypher.ASTIdentifier('baz'),
+        new astCypher.ASTIdentifier('gaz'),
+      ]),
       new astCypher.RelPattern(true, true),
       new astCypher.NodePattern(
         undefined,
@@ -156,5 +147,6 @@ describe('AST patterns', () => {
       ),
       new astCypher.NodePattern(new astCypher.ASTIdentifier('i')),
     ]);
+    assert.deepStrictEqual(result, expected);
   });
 });
