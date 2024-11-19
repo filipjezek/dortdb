@@ -6,9 +6,9 @@ HEX				[0-9A-F]
 BIN				[01]
 OCT				[0-7]
 DEC       [0-9]
-DASH      [-­‐‑‒–—―−﹘﹣－]
-LARR      [<⟨〈﹤＜]
-RARR      [>⟩〉﹥＞]
+DASH      [­‐‑‒–—―−﹘﹣－]
+LARR      [⟨〈﹤＜]
+RARR      [⟩〉﹥＞]
 
 %x linec
 %x blockc
@@ -76,13 +76,31 @@ RARR      [>⟩〉﹥＞]
 "ALL"         return this.yy.Keywords.ALL;
 "ADD"         return this.yy.Keywords.ADD;
 
-({LARR}|"<")\s*{DASH}\s*"["  return this.yy.AdditionalTokens.LARROWDASHLBRA;
+"//"					        %{ this.pushState('linec'); this.yy.comment = '//'; %}
+<linec>\n|<<EOF>>		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}
+<linec>.              this.yy.comment += yytext;
+
+"/*"				    %{ this.pushState('blockc'); this.yy.comment = '/*'; %}
+<blockc>"/*"    %{ this.yy.comment += '/*'; this.yy.commentDepth++; %}
+<blockc>"*/"	  %{
+  this.yy.comment += '*/';
+  if (!this.yy.commentDepth) {
+    this.popState();
+    this.yy.reportComment(this.yy.comment, {...this.yyloc});
+  } else this.yy.commentDepth--;
+%}
+<blockc>.|\n       this.yy.comment += yytext;
+<blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
+
+({LARR}|"<")\s*({DASH}|"-")\s*"["  return this.yy.AdditionalTokens.LARROWDASHLBRA;
 ({LARR}|"<")(\s*({DASH}|"-")){2}  return this.yy.AdditionalTokens.LARROWDBLDASH;
 (({DASH}|"-")\s*){2}  return this.yy.AdditionalTokens.DBLDASH;
 ({DASH}|"-")\s*"["     return this.yy.AdditionalTokens.DASHLBRA;
 {DASH}        return this.yy.AdditionalTokens.DASH;
 "["           return this.yy.AdditionalTokens.LBRA;
 "]"           this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
+"("\s*{ID1}{ID}*\s*")"       return this.yy.AdditionalTokens.PARENVAR;
+"("\s*"`"([^`]|``)*"`"\s*")" return this.yy.AdditionalTokens.PARENVAR;
 "("           return this.yy.AdditionalTokens.LPAR;
 ")"           this.yy.saveRemainingInput(')' + this._input); return this.yy.AdditionalTokens.RPAR;
 "{"           return this.yy.AdditionalTokens.LCUR;
@@ -140,23 +158,7 @@ RARR      [>⟩〉﹥＞]
 "$"{ID1}{ID}*    return this.yy.AdditionalTokens.PARAM;
 "$"{DEC}+        return this.yy.AdditionalTokens.PARAM;
 "$"[`]([^`]|``)*"`"    return this.yy.AdditionalTokens.PARAM;
-["]((\\.)|[^\\"])*["] return this.yy.AdditionalTokens.STRINGLIT;
-[']((\\.)|[^\\'])*['] return this.yy.AdditionalTokens.STRINGLIT;
-
-"//"					        %{ this.pushState('linec'); this.yy.comment = '//'; %}
-<linec>\n|<<EOF>>		  %{ this.yy.reportComment(this.yy.comment, {...this.yyloc}); this.popState(); %}
-<linec>.              this.yy.comment += yytext;
-
-"/*"				    %{ this.pushState('blockc'); this.yy.comment = '/*'; %}
-<blockc>"/*"    %{ this.yy.comment += '/*'; this.yy.commentDepth++; %}
-<blockc>"*/"	  %{
-  this.yy.comment += '*/';
-  if (!this.yy.commentDepth) {
-    this.popState();
-    this.yy.reportComment(this.yy.comment, {...this.yyloc});
-  } else this.yy.commentDepth--;
-%}
-<blockc>.|\n       this.yy.comment += yytext;
-<blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
+["]((\\.)|[^\\"])*["] return this.yy.AdditionalTokens.STRLIT;
+[']((\\.)|[^\\'])*['] return this.yy.AdditionalTokens.STRLIT;
 
 \s+                 /* skip whitespace */

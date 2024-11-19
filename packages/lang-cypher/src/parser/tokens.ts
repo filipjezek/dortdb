@@ -99,5 +99,6 @@ export enum AdditionalTokens {
   STRLIT = 'STRLIT',
   ID = 'ID',
   SCHEMANAMELPAR = 'SCHEMANAMELPAR',
+  PARENVAR = 'PARENVAR',
   LANGEXIT = 'LANGEXIT',
 }

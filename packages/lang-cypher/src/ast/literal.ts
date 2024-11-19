@@ -90,10 +90,22 @@ export class ASTMapLiteral implements ASTNode {
 
 export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
   constructor(public original: string) {
-    super(original, original && original.toLocaleLowerCase() === 'true');
+    super(original, null);
+    this.value = this.parse(original);
   }
 
   accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitBooleanLiteral(this);
+  }
+
+  private parse(val: string) {
+    const lc = val.toLowerCase();
+    if (lc === 'true') {
+      return true;
+    }
+    if (lc === 'false') {
+      return false;
+    }
+    return null;
   }
 }

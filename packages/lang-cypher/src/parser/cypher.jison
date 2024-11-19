@@ -6,8 +6,7 @@ Conflict in grammar: multiple actions possible when lookahead token is RPAR in s
 - reduce by rule: atom -> variable
 
 This is because of our limited lookahead and cannot be resolved using precedence rules, because
-it is not shift/reduce. The parser will always choose the first rule in this case, which
-is the correct one.
+it is not shift/reduce. It is solved in lexer by using PARENVAR token, but the parser is not aware of that.
 
 */
 
@@ -113,11 +112,13 @@ is the correct one.
 %token SCHEMANAMELPAR
 %token LANGSWITCH
 %token LANGEXIT
+%token PARENVAR
 
-%nonassoc NODE_PATTERN_PRIORITY COMPR_PRIORITY
-%nonassoc PAREN_EXPR_PRIORITY LISTLIT_PRIORITY
+%nonassoc COMPR_PRIORITY
+%nonassoc PARAM LCUR COLON RPAR  // need to specify some precedence for the other priorities to work
+%nonassoc PAREN_EXPR_PRIORITY
+%nonassoc IN EQ
 
-%nonassoc PARAM LCUR COLON RPAR EQ IN // need to specify some precedence for the other priorities to work
 
 %%
 
@@ -323,16 +324,17 @@ pattern-el-chain:
   | pattern-el-chain rel-pattern node-pattern { $$ = $1; $$.chain.push($2, $3); } ;
 
 node-pattern:
-  LPAR variable node-label-list_opt properties_opt RPAR %prec NODE_PATTERN_PRIORITY {
+  PARENVAR { $$ = new yy.ast.NodePattern(new yy.ast.ASTIdentifier($1.slice(1, -1).trim())); }
+  | LPAR variable node-label-list_opt properties_opt RPAR {
     $$ = new yy.ast.NodePattern($2, $3, $4);
   }
-  | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(null, $2, $3); } ;
+  | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
 
 rel-pattern:
-  LARROWDBLDASH arrow-body arrow-right_opt { $$ = new yy.ast.RelPattern(true, $3); }
-  | LARROWDASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsLeft = true; $$.pointsRight = $4;}
-  | DBLDASH arrow-right_opt { $$ = new yy.ast.RelPattern(false, $3); }
-  | DASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsRight = $4; } ;
+  LARROWDBLDASH arrow-right_opt { $$ = new yy.ast.RelPattern(true, !!$2); }
+  | LARROWDASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsLeft = true; $$.pointsRight = !!$4;}
+  | DBLDASH arrow-right_opt { $$ = new yy.ast.RelPattern(false, !!$2); }
+  | DASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsRight = !!$4; } ;
 
 rel-detail:
   variable_opt rel-type-union_opt range-literal_opt properties_opt RBRA {
@@ -352,7 +354,7 @@ node-label-list:
   | node-label-list COLON schema-name { $$ = $1; $$.push($3); } ;
 
 range-literal:
-  STAR int-literal_opt { $$ = $2; }
+  STAR int-literal_opt { $$ = [$2]; }
   | STAR int-literal_opt DBLDOT int-literal_opt { $$ = [$2, $4]; } ;
 
 arrow-right:
@@ -447,8 +449,8 @@ label-filter-expression:
 
 atom:
   atom-no-pattern
-  | variable %prec PAREN_EXPR_PRIORITY
   | PARAM { $$ = new yy.ast.ASTParameter($1); }
+  | variable %prec PAREN_EXPR_PRIORITY
   | map-literal ;
 
 atom-no-pattern:
@@ -462,18 +464,18 @@ atom-no-pattern:
   | existential-subquery
   | pattern-el-chain
   | LANGSWITCH { $$ = yy.messageQueue.shift(); }
-  | LPAR expression RPAR { $$ = $2;} ;
+  | LPAR expression RPAR { console.log('patterned expression!', $2); $$ = $2; } ; 
 
 case-expression:
-  CASE case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpression(null, $2, $3); }
-  | CASE expression case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpression($2, $3, $4); } ;
+  CASE case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpr(undefined, $2, $3); }
+  | CASE expression case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpr($2, $3, $4); } ;
 
 case-expr-alternative-list:
   case-expr-alternative { $$ = [$1]; }
   | case-expr-alternative-list case-expr-alternative { $$ = $1; $$.push($2); } ;
 
 case-expr-alternative:
-  WHEN expression THEN expression ;
+  WHEN expression THEN expression { $$ = [$2, $4]; } ;
 
 list-comprehension:
   LBRA variable IN expression where-clause RBRA { $$ = new yy.ast.ListComprehension($2, $4, $5); }
@@ -487,7 +489,7 @@ pattern-comprehension:
   } ;
 
 quantified-expression:
-  quantifier LPAR variable IN expression where-clause_opt RPAR { $$ = new yy.ast.ASTQuantifiedExpr($1, $3, $5, $6); } ;
+  quantifier LPAR variable IN expression where-clause_opt RPAR { $$ = new yy.ast.QuantifiedExpr($1, $3, $5, $6); } ;
 
 quantifier:
   ANY
@@ -538,8 +540,8 @@ map-literal:
   LCUR map-entry-list_opt RCUR { $$ = new yy.ast.ASTMapLiteral($2); } ;
 
 map-entry-list:
-  schema-name COLON expression { $$ = [$1]; }
-  | map-entry-list COMMA schema-name COLON expression { $$ = $1; $$.push($3); } ;
+  schema-name COLON expression { $$ = [[$1, $3]]; }
+  | map-entry-list COMMA schema-name COLON expression { $$ = $1; $$.push([$3, $5]); } ;
 
 reserved-word:
   ALL
@@ -632,7 +634,8 @@ merge-actions-list_opt:
   | merge-actions-list ;
 
 distinct_opt:
-  | DISTINCT ;
+  { $$ = false; }
+  | DISTINCT { $$ = true; } ;
 
 order-clause_opt:
   | order-clause ;
@@ -648,7 +651,7 @@ variable_opt:
 
 node-label-list_opt:
   %prec PAREN_EXPR_PRIORITY { $$ = []; }
-  | node-label-list %prec NODE_PATTERN_PRIORITY ;
+  | node-label-list ;
 
 properties_opt:
   | properties ;

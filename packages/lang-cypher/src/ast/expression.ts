@@ -65,7 +65,7 @@ export class ASTParameter extends ASTIdentifier {
 export class PatternComprehension implements ASTNode {
   constructor(
     public pattern: PatternElChain,
-    public where: ASTNode,
+    public where: ASTNode | undefined,
     public expr: ASTNode
   ) {}
 
@@ -89,7 +89,7 @@ export class ListComprehension implements ASTNode {
 
 export class CaseExpr implements ASTNode {
   constructor(
-    public expr: ASTNode,
+    public expr: ASTNode | undefined,
     public whenThens: [ASTNode, ASTNode][],
     public elseExpr?: ASTNode
   ) {}

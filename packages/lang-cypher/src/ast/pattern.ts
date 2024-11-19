@@ -18,8 +18,8 @@ export class PatternElChain implements ASTNode {
 
 export class NodePattern implements ASTNode {
   constructor(
-    public variable: ASTIdentifier,
-    public labels?: ASTIdentifier[],
+    public variable: ASTIdentifier | undefined,
+    public labels: ASTIdentifier[] = [],
     public props?: ASTMapLiteral | ASTParameter
   ) {}
 
@@ -33,8 +33,10 @@ export class RelPattern implements ASTNode {
     public pointsLeft: boolean,
     public pointsRight: boolean,
     public variable?: ASTIdentifier,
-    public types?: ASTIdentifier,
-    public range?: [ASTNumberLiteral] | [ASTNumberLiteral, ASTNumberLiteral],
+    public types: ASTIdentifier[] = [],
+    public range?:
+      | [ASTNumberLiteral | undefined]
+      | [ASTNumberLiteral, ASTNumberLiteral],
     public props?: ASTMapLiteral | ASTParameter
   ) {}
 
