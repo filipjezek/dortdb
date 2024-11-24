@@ -1,0 +1,12 @@
+SELECT p FROM (
+  LANG cypher
+  WITH (
+    SELECT personId
+    FROM orders
+    GROUP BY personId
+    ORDER BY sum(totalPrice) DESC
+    LIMIT 2 
+  ) AS toptwo
+  MATCH ({id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
+  RETURN foaf.id AS p
+)

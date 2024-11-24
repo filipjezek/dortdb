@@ -1,0 +1,14 @@
+SELECT num as productId FROM (
+  LANG xquery
+  for $interPerson in (
+    LANG cypher
+    MATCH p = allShortestPaths(({id: $cust1})-[]-({id: $cust2}))
+    UNWIND p[1..-1] AS pathEl
+    WITH DISTINCT pathEl WHERE pathEl:Person
+    RETURN pathEl.id
+  ), $productId in Invoices/Invoice.xml[PersonId=$interPerson]//productId
+  group by $num = number($productId)
+  order by count($productId) descending
+  return $num
+)
+LIMIT 3

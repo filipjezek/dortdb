@@ -1,0 +1,22 @@
+WITH topPosters AS (
+  LANG cypher
+  MATCH (cust)-[:hasCreated]->(post),
+    (cust)-[:hasInterest]->(tag)
+  WHERE post.creationDate > now() - interval('1 year')
+  RETURN cust.id AS custId, collect(tag.id) AS interests
+  ORDER BY count(post) DESC LIMIT 10
+)
+SELECT
+  personId,
+  interests,
+  MAX(orderDate) recency,
+  COUNT(*) frequency,
+  SUM(totalPrice) monetary,
+  ARRAY(
+    SELECT feedback FROM feedback
+    WHERE customerId = topPosters.personId
+    LIMIT 10
+  ) recentReviews
+FROM orders JOIN topPosters
+ON orders.personId = topPosters.custId
+GROUP BY personId, interests

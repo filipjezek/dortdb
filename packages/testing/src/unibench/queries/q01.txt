@@ -1,0 +1,11 @@
+SELECT
+  ROW(customers.*) profile,
+  ARRAY(SELECT ROW(*) FROM orders WHERE personId = customers.id) orders,
+  ARRAY(SELECT ROW(productId, feedback) FROM feedback WHERE customerId = customers.id) feedback,
+  (
+    LANG cypher
+    MATCH ({id: customers.id})-[:hasCreated]->(post)
+    RETURN post
+  ) posts
+FROM customers
+WHERE id = :customer

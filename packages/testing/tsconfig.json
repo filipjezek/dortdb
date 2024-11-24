@@ -15,7 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "lib": ["ESNext", "DOM"]
   },
-  "files": ["src/index.ts"],
+  "files": ["src/showcase/index.ts", "src/unibench/index.ts"],
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }

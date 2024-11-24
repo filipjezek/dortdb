@@ -503,6 +503,7 @@ function-invocation:
 
 existential-subquery:
   EXISTS LCUR regular-query RCUR { $$ = new yy.ast.ASTExists(); $$.query = $3; }
+  | EXISTS LCUR LANGSWITCH RCUR { $$ = new yy.ast.ASTExists(); $$.query = $yy.messageQueue.shift(); }
   | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ASTExists(); $$.pattern = $3; $$.where = $4; } ;
 
 explicit-procedure-invocation:

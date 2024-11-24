@@ -1,0 +1,11 @@
+SELECT * FROM customers
+WHERE EXISTS (
+  LANG cypher
+  MATCH ({id: customers.id})-[:hasCreated]->(post)-[:hasTag]->({id: $product})
+  RETURN 1
+) AND EXISTS (
+  SELECT 1 FROM orders
+  WHERE personId = customers.id AND EXISTS (
+    SELECT 1 FROM (SELECT orders.orderLine) WHERE productId = :product
+  )
+)

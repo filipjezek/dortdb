@@ -13,7 +13,9 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.1",
     "@rollup/plugin-node-resolve": "^15.3.0",
+    "@types/unzipper": "^0.10.10",
     "rollup": "^4.16.4",
+    "rollup-plugin-copy": "^3.5.0",
     "rollup-plugin-esbuild": "^6.1.1"
   },
   "peerDependencies": {
@@ -21,5 +23,8 @@
     "@dortdb/lang-cypher": "^1.0.0",
     "@dortdb/lang-sql": "^1.0.0",
     "@dortdb/lang-xquery": "^1.0.0"
+  },
+  "dependencies": {
+    "unzipper": "^0.12.3"
   }
 }

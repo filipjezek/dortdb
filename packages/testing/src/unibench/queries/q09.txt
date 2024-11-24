@@ -1,0 +1,35 @@
+WITH topVendors AS (
+  SELECT
+    vendors.id,
+    (
+      LANG xquery
+      for $sale in Invoices//[brand = $vendors:id]
+      return count($sale)
+    ) sales
+  FROM vendors
+  ORDER BY sales DESC
+  LIMIT 3
+)
+SELECT
+  id,
+  (
+    SELECT count(*) FROM customers
+    WHERE gender = 'male' AND EXISTS (
+      SELECT 1 FROM orders WHERE personId = customers.id
+      AND orderlines @> ARRAY(ROW(topVendors.id AS brand))
+    )
+  ) / 
+  (
+    LANG xquery
+    count(distinct-values(
+      for $custId in Invoices/Invoice.xml[.//brand = $vendors:id]/PersonId/text()
+      where (LANG sql SELECT gender FROM customers WHERE id = custId) = 'female'
+      return $custId
+    ))
+  ) m2fRatio,
+  ARRAY(
+    LANG cypher
+    MATCH (post)-[:hasTag]->({id: topVendors.id})
+    RETURN post.content ORDER BY post.creationDate DESC LIMIT 10
+  ) latestPosts
+FROM topVendors

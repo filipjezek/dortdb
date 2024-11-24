@@ -1,0 +1,18 @@
+SELECT feedback FROM feedback
+JOIN products ON products.id = feedback.productId
+WHERE brand = :brand AND feedback[0]::Number < 4 AND (
+  LANG xquery
+  for $orderline in Invoices//[
+    date(OrderDate) gt now() - interval('3 months')
+  ]
+    /Orderline[productId = $products:id]
+  return sum($orderline)
+) < (
+  LANG xquery
+  for $orderline in Invoices//[
+    date(OrderDate) le now() - interval('3 months') and
+    date(OrderDate) gt now() - interval('6 months')
+  ]
+    /Orderline[productId = $products:id]
+  return sum($orderline)
+)
