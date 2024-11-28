@@ -1,3 +1,5 @@
+-- customers which posted about PRODUCT and left negative feedback
+
 SELECT customers.id, feedback.feedback
 FROM customers
 JOIN feedback ON customers.id = feedback.personId

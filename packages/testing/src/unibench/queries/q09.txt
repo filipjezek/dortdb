@@ -1,3 +1,5 @@
+-- compare top 3 vendors' male and female customer ratio and find latest posts about them
+
 WITH topVendors AS (
   SELECT
     vendors.id,

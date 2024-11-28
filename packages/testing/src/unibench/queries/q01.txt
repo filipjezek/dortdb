@@ -1,3 +1,5 @@
+-- all data about CUSTOMER
+
 SELECT
   ROW(customers.*) profile,
   ARRAY(SELECT ROW(*) FROM orders WHERE personId = customers.id) orders,

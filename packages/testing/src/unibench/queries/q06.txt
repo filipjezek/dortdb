@@ -1,8 +1,11 @@
+-- find persons in the shortest path between CUSTOMERS and return their top 3 bestsellers
+
 SELECT num as productId FROM (
   LANG xquery
   for $interPerson in (
     LANG cypher
-    MATCH p = allShortestPaths(({id: $cust1})-[]-({id: $cust2}))
+    MATCH ps = allShortestPaths(({id: $cust1})-[]-({id: $cust2}))
+    UNWIND ps AS p
     UNWIND p[1..-1] AS pathEl
     WITH DISTINCT pathEl WHERE pathEl:Person
     RETURN pathEl.id

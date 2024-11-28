@@ -1,3 +1,6 @@
+-- find this year's top posters and get their recency/frequency/monetary statistics,
+-- their interests and their latest feedback
+
 WITH topPosters AS (
   LANG cypher
   MATCH (cust)-[:hasCreated]->(post),

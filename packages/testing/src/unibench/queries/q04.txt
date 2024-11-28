@@ -1,3 +1,5 @@
+-- three-hop common friends of the two top spenders
+
 SELECT p FROM (
   LANG cypher
   WITH (

@@ -1,3 +1,5 @@
+-- customers which bought PRODUCT and posted about it
+
 SELECT * FROM customers
 WHERE EXISTS (
   LANG cypher

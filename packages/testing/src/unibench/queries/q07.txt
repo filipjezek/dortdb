@@ -1,3 +1,5 @@
+-- find negative feedback on BRAND products with decreasing sales
+
 SELECT feedback FROM feedback
 JOIN products ON products.id = feedback.productId
 WHERE brand = :brand AND feedback[0]::Number < 4 AND (

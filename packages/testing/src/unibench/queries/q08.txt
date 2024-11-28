@@ -1,3 +1,6 @@
+-- compute this year's total sales amount and social media popularity of
+-- products in CATEGORY 
+
 WITH totalPosts AS (
   LANG cypher
   UNWIND (
