@@ -121,7 +121,7 @@ DEC       [0-9]
 
 
 {ID1}({ID})* 	return this.yy.AdditionalTokens.ID;
-["]{ID1}({ID})*["] 	return this.yy.AdditionalTokens.ID;
+["]([^"]|["]["])*["] 	return this.yy.AdditionalTokens.ID;
 0x{HEX}+		return this.yy.AdditionalTokens.NUMBER;
 0b{BIN}+		return this.yy.AdditionalTokens.NUMBER;
 0o{OCT}+		return this.yy.AdditionalTokens.NUMBER;

@@ -66,8 +66,19 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   visitCast(node: ASTCast): ASTNode {
     node.expr = node.expr.accept(this);
     if (node.expr instanceof ASTLiteral) {
-      const castable = this.langMgr.getCast('sql', node.type);
+      const castable = this.langMgr.getCast(
+        'sql',
+        node.type.id,
+        node.type.schema
+      );
       if (castable) {
+        if (node.isArray)
+          return new ASTLiteral(
+            null,
+            (JSON.parse(node.expr.value) as any[]).map((x) =>
+              castable.convert(x)
+            )
+          );
         return new ASTLiteral(null, castable.convert(node.expr.value));
       }
       throw new Error(`Unknown cast: ${node.type}`);

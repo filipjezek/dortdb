@@ -79,7 +79,11 @@ export class ASTParam implements ASTNode {
 }
 
 export class ASTCast implements ASTNode {
-  constructor(public expr: ASTNode, public type: string, isArray = false) {}
+  constructor(
+    public expr: ASTNode,
+    public type: ASTIdentifierAttrs,
+    public isArray = false
+  ) {}
 
   accept<T>(visitor: SQLVisitor<T>): T {
     return visitor.visitCast(this);

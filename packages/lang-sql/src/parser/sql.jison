@@ -462,8 +462,8 @@ expression-list_opt-list:
 
 cast-or-subscript-expression:
 	primary-expression
-	| CAST LPAR expression AS ID braces_opt RPAR { $$ = new yy.ast.ASTCast($3, $5, !!$6); }
-	| cast-or-subscript-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, $3, !!$4); }
+	| CAST LPAR expression AS ID braces_opt RPAR { $$ = new yy.ast.ASTCast($3, new yy.ast.ASTIdentifier($5), !!$6); }
+	| cast-or-subscript-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, new yy.ast.ASTIdentifier($3), !!$4); }
 	| cast-or-subscript-expression LBRA expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3); }
 	| cast-or-subscript-expression LBRA expression COLON expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3, $5); };
 
