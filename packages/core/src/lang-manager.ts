@@ -1,4 +1,6 @@
-import { AggregateFn, Extension, Fn, Operator } from './extension.js';
+import { ASTNode } from './ast.js';
+import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
+import { LogicalPlanOperator } from './plan/visitor.js';
 import { makePath } from './utils/make-path.js';
 
 export interface Parser {
@@ -14,12 +16,18 @@ export interface Language<Name extends string = string> {
   functions: Fn[];
   aggregates: AggregateFn[];
   createParser: (mgr: LanguageManager) => Parser;
+  buildLogicalPlan: (
+    mgr: LanguageManager,
+    params: Record<string, any>,
+    ast: ASTNode
+  ) => LogicalPlanOperator;
 }
 
 interface Implementations {
   operators: Record<string, Operator>;
   functions: Record<string, Fn>;
   aggregates: Record<string, AggregateFn>;
+  castables: Record<string, Castable>;
 }
 
 export class LanguageManager {
@@ -35,6 +43,7 @@ export class LanguageManager {
         operators: {},
         functions: {},
         aggregates: {},
+        castables: {},
       },
     },
   };
@@ -47,7 +56,12 @@ export class LanguageManager {
       makePath(this.implementations, lang, schema);
       const ims = this.implementations[lang][schema];
 
-      for (const type of ['operators', 'functions', 'aggregates'] as const) {
+      for (const type of [
+        'operators',
+        'functions',
+        'aggregates',
+        'castables',
+      ] as const) {
         ims[type] = (ims[type] as any) ?? {};
         for (const item of ext[type]) {
           ims[type][item.name] = item;
@@ -73,6 +87,9 @@ export class LanguageManager {
   }
   public getAggr(lang: string, name: string, schema?: string): AggregateFn {
     return this.getImplementation('aggregates', lang, name, schema);
+  }
+  public getCast(lang: string, name: string, schema?: string): Castable {
+    return this.getImplementation('castables', lang, name, schema);
   }
 
   private getImplementation<T extends keyof Implementations>(

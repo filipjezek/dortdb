@@ -12,6 +12,7 @@ import { ASTLiteral } from '@dortdb/core';
 import { coalesce } from './functions/coalesce.js';
 import { sum } from './functions/sum.js';
 import { count } from './functions/count.js';
+import { SQLLogicalPlanBuilder } from './logical-plan/builder.js';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',
@@ -19,6 +20,9 @@ export const SQL: Language<'sql'> = {
   aggregates: [sum, count],
   functions: [coalesce],
   createParser,
+  buildLogicalPlan: (mgr, params, ast) => {
+    return ast.accept(new SQLLogicalPlanBuilder(mgr, params));
+  },
 };
 
 function createParser(mgr: LanguageManager) {

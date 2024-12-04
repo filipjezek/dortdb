@@ -58,17 +58,16 @@ export class SelectSetOp implements ASTNode {
 
 export class OrderByItem {
   public ascending: boolean;
+  public nullsFirst: boolean;
 
   constructor(
     public expression: ASTNode,
     direction?: string,
-    public nullsFirst?: boolean
+    nullsFirst?: boolean
   ) {
     this.ascending =
       direction === undefined || direction.toLowerCase() === 'asc';
-    if (nullsFirst === undefined) {
-      this.nullsFirst = !this.ascending;
-    }
+    this.nullsFirst = nullsFirst ?? !this.ascending;
   }
 }
 
@@ -116,14 +115,6 @@ export class JoinClause implements ASTNode {
 
   accept<T>(visitor: SQLVisitor<T>): T {
     return visitor.visitJoinClause(this);
-  }
-}
-
-export class JoinUsing implements ASTNode {
-  constructor(public columns: ASTNode[]) {}
-
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitJoinUsing(this);
   }
 }
 

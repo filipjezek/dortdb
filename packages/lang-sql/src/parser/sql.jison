@@ -200,8 +200,8 @@ with-clause:
 	} ;
 
 with-query-name:
-	ID AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery($1, [], $5, $3); }
-	| ID LPAR column-list RPAR AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery($1, $3, $8, $6); } ;
+	ID AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.ASTIdentifier($1), [], $5, $3); }
+	| ID LPAR column-list RPAR AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.ASTIdentifier($1), $3, $8, $6); } ;
 
 with-query-search:
 	with-query-name
@@ -209,7 +209,7 @@ with-query-search:
 		$$ = $1;
 		$$.searchType = $3;
 		$$.searchCols = $6;
-		$$.searchName = $8;
+		$$.searchName = new yy.ast.ASTIdentifier($8);
 	};
 
 with-query-cycle:
@@ -217,14 +217,14 @@ with-query-cycle:
 	| with-query-search CYCLE column-list SET ID USING ID {
 		$$ = $1;
 		$$.cycleCols = $3;
-		$$.cycleMarkName = $5;
-		$$.cyclePathName = $7;
+		$$.cycleMarkName = new yy.ast.ASTIdentifier($5);
+		$$.cyclePathName = new yy.ast.ASTIdentifier($7);
 	}
 	| with-query-search CYCLE column-list SET ID TO expression DEFAULT expression USING ID {
 		$$ = $1;
 		$$.cycleCols = $3;
-		$$.cycleMarkName = $5;
-		$$.cyclePathName = $11;
+		$$.cycleMarkName = new yy.ast.ASTIdentifier($5);
+		$$.cyclePathName = new yy.ast.ASTIdentifier($11);
 		$$.cycleMarkVal = $7;
 		$$.cycleMarkDefault = $9;
 	};
@@ -390,10 +390,10 @@ function-call:
 		$$ = new yy.ast.ASTAggregate($1, [], undefined, $8, $10, $7);
 	}
 	| scoped-id LPAR RPAR filter-clause_opt OVER window-spec-or-id {
-		$$ = new yy.ast.ASTWindowFunction($1, [], $6, $4);
+		$$ = new yy.ast.ASTWindowFn($1, [], $6, $4);
 	}
 	| scoped-id LPAR expression-list RPAR filter-clause_opt OVER window-spec-or-id {
-		$$ = new yy.ast.ASTWindowFunction($1, $3, $7, $5);
+		$$ = new yy.ast.ASTWindowFn($1, $3, $7, $5);
 	};
 
 simple-function-call:
@@ -437,14 +437,14 @@ frame-mode:
 	| GROUPS ;
 
 frame-boundary-start:
-	UNBOUNDED PRECEDING { $$ = Infinity; }
+	UNBOUNDED PRECEDING { $$ = new yy.ast.ASTLiteral(null, Infinity); }
 	| expression PRECEDING { $$ = $1; }
-	| CURRENT ROW { $$ = 0; };
+	| CURRENT ROW { $$ = new yy.ast.ASTLiteral(null, 0); };
 
 frame-boundary-end:
-	CURRENT ROW { $$ = 0; }
+	CURRENT ROW { $$ = new yy.ast.ASTLiteral(null, 0); }
 	| expression FOLLOWING { $$ = $1; }
-	| UNBOUNDED FOLLOWING { $$ = Infinity; };
+	| UNBOUNDED FOLLOWING { $$ = new yy.ast.ASTLiteral(null, Infinity); };
 
 frame-exclusion:
 	EXCLUDE GROUP { $$ = 'group'; }

@@ -21,11 +21,17 @@ export interface AggregateFn {
   result: (acc: any) => any;
 }
 
+export interface Castable {
+  name: string;
+  convert: (val: any) => any;
+}
+
 export interface Extension<LangNames extends string = string> {
   schema?: string;
   operators: Operator[];
   functions: Fn[];
   aggregates: AggregateFn[];
+  castables?: Castable[];
   scope?: LangNames[];
 }
 

@@ -23,8 +23,8 @@ export class WindowSpec implements ASTNode {
 
   constructor(
     mode?: string,
-    public start?: number | ASTNode,
-    public end?: number | ASTNode,
+    public start?: ASTNode,
+    public end?: ASTNode,
     public exclude: FrameExclusion = FrameExclusion.NO_OTHERS
   ) {
     this.mode = mode && (mode.toLowerCase() as FrameMode);
