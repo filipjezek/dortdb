@@ -18,3 +18,5 @@ WHERE brand = :brand AND feedback[0]::Number < 4 AND (
     /Orderline[productId = $products:id]
   return sum($orderline)
 )
+
+-- join SQL * XML * XML

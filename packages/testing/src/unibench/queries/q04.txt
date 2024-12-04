@@ -3,6 +3,7 @@
 SELECT p FROM (
   LANG cypher
   WITH (
+    LANG sql
     SELECT personId
     FROM orders
     GROUP BY personId
