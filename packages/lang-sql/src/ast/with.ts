@@ -1,4 +1,4 @@
-import { ASTNode } from '@dortdb/core';
+import { ASTIdentifier, ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 
 export enum SearchType {
@@ -7,19 +7,19 @@ export enum SearchType {
 }
 
 export class WithQuery implements ASTNode {
-  public searchCols: string[];
+  public searchCols: ASTIdentifier[];
   public searchType: SearchType;
-  public searchName: string;
+  public searchName: ASTIdentifier;
 
-  public cycleCols: string[];
-  public cycleMarkName: string;
-  public cyclePathName: string;
+  public cycleCols: ASTIdentifier[];
+  public cycleMarkName: ASTIdentifier;
+  public cyclePathName: ASTIdentifier;
   public cycleMarkVal: ASTNode;
   public cycleMarkDefault: ASTNode;
 
   constructor(
-    public name: string,
-    public colNames: string[],
+    public name: ASTIdentifier,
+    public colNames: ASTIdentifier[],
     public query: ASTNode,
     public materialized?: boolean
   ) {}

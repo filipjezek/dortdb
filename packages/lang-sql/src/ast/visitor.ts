@@ -2,8 +2,6 @@ import { ASTVisitor } from '@dortdb/core';
 import {
   GroupByClause,
   JoinClause,
-  JoinUsing,
-  OrderByItem,
   SelectSet,
   SelectSetOp,
   SelectStatement,
@@ -53,7 +51,6 @@ export interface SQLVisitor<T> extends ASTVisitor<T> {
   visitSelectSet(node: SelectSet): T;
   visitGroupByClause(node: GroupByClause): T;
   visitJoinClause(node: JoinClause): T;
-  visitJoinUsing(node: JoinUsing): T;
   visitCase(node: ASTCase): T;
   visitValues(node: ValuesClause): T;
   visitAggregate(node: ASTAggregate): T;

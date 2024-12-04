@@ -6,7 +6,7 @@ export class ASTLiteral<T> implements ASTNode {
   constructor(public original: string, public value: T) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.acceptLiteral(this);
+    return visitor.visitLiteral(this);
   }
 }
 
@@ -18,7 +18,7 @@ export class ASTOperator implements ASTNode {
   ) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.acceptOperator(this);
+    return visitor.visitOperator(this);
   }
 }
 
@@ -30,7 +30,7 @@ export class ASTFunction implements ASTNode {
   ) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.acceptFunction(this);
+    return visitor.visitFunction(this);
   }
 }
 
@@ -39,8 +39,17 @@ export interface ASTIdentifier extends ASTNode {
   id: string;
 }
 
+export class LangSwitch implements ASTNode {
+  constructor(public lang: string, public node: ASTNode) {}
+
+  accept<T>(visitor: ASTVisitor<T>): T {
+    return visitor.visitLangSwitch(this);
+  }
+}
+
 export interface ASTVisitor<T> {
-  acceptLiteral<U>(literal: ASTLiteral<U>): T;
-  acceptOperator(op: ASTOperator): T;
-  acceptFunction(fn: ASTFunction): T;
+  visitLiteral<U>(node: ASTLiteral<U>): T;
+  visitOperator(node: ASTOperator): T;
+  visitFunction(node: ASTFunction): T;
+  visitLangSwitch(node: LangSwitch): T;
 }

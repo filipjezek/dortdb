@@ -156,7 +156,7 @@ export class ASTWindowFn extends ASTAggregate {
   constructor(
     id: ASTIdentifier,
     args: ASTNode[],
-    public window: WindowSpec | string,
+    public window: WindowSpec | ASTIdentifierAttrs,
     filter?: ASTNode
   ) {
     super(id, args, null, null, filter);
