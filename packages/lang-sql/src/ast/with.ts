@@ -1,5 +1,6 @@
-import { ASTIdentifier, ASTNode } from '@dortdb/core';
+import { ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
+import { ASTIdentifier } from './expression.js';
 
 export enum SearchType {
   DFS = 'bfs',

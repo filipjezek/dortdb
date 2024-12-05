@@ -10,7 +10,6 @@ import {
 import { SQLVisitor } from '../ast/visitor.js';
 import {
   ASTTableAlias,
-  ASTFieldSelector,
   ASTExpressionAlias,
   ASTAggregate,
   ASTArray,
@@ -32,6 +31,7 @@ import {
   SelectStatement,
   TableFn,
   ValuesClause,
+  ASTIdentifier as ASTIdentifierClass,
 } from '../ast/index.js';
 import { WindowSpec } from '../ast/window.js';
 import { WithQuery } from '../ast/with.js';
@@ -68,8 +68,8 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
     if (node.expr instanceof ASTLiteral) {
       const castable = this.langMgr.getCast(
         'sql',
-        node.type.id,
-        node.type.schema
+        node.type.id as string,
+        this.schemaAsStr(node.type.schema)
       );
       if (castable) {
         if (node.isArray)
@@ -123,9 +123,6 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   visitTableAlias(node: ASTTableAlias): ASTNode {
     return node;
   }
-  visitFieldSelector(node: ASTFieldSelector): ASTNode {
-    return node;
-  }
   visitExpressionAlias(node: ASTExpressionAlias): ASTNode {
     node.expression = node.expression.accept(this);
     return node;
@@ -149,7 +146,10 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   }
   visitSelectSet(node: SelectSet): ASTNode {
     node.items = node.items.map((item) => item.accept(this));
-    node.from = node.from?.accept(this);
+    node.from = node.from?.accept(this) as
+      | ASTIdentifierClass
+      | ASTTableAlias
+      | JoinClause;
     node.where = node.where?.accept(this);
     node.groupBy = node.groupBy?.accept(this) as GroupByClause;
     node.having = node.having?.accept(this);
@@ -172,11 +172,14 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   }
   visitJoinClause(node: JoinClause): ASTNode {
     node.condition = node.condition.accept(this);
-    node.table = node.table.accept(this);
-    node.using =
-      node.using instanceof Array
-        ? node.using.map((item) => item.accept(this))
-        : (node.using.accept(this) as ASTTableAlias);
+    node.tableLeft = node.tableLeft.accept(this) as
+      | ASTIdentifier
+      | ASTTableAlias
+      | JoinClause;
+    node.tableRight = node.tableRight.accept(this) as
+      | ASTIdentifier
+      | ASTTableAlias
+      | JoinClause;
     return node;
   }
   visitCase(node: ASTCase): ASTNode {
@@ -252,9 +255,15 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   visitOperator(node: ASTOperator): ASTNode {
     node.operands = node.operands.map((op) => op.accept(this));
     if (node.operands.every((op) => op instanceof ASTLiteral)) {
-      const op = this.langMgr.getOp('sql', node.id.id, node.id.schema);
+      const op = this.langMgr.getOp(
+        'sql',
+        node.id.id as string,
+        this.schemaAsStr(node.id.schema)
+      );
       if (!op)
-        throw new Error(`Unknown operator: ${node.id.schema}.${node.id.id}`);
+        throw new Error(
+          `Unknown operator: ${node.id.schema}.${node.id.id as string}`
+        );
       const res = op.impl(
         node.operands.map((op) => (op as ASTLiteral<any>).value)
       );
@@ -266,9 +275,15 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   visitFunction(node: ASTFunction): ASTNode {
     node.args = node.args.map((arg) => arg.accept(this));
     if (node.args.every((arg) => arg instanceof ASTLiteral)) {
-      const fn = this.langMgr.getFn('sql', node.id.id, node.id.schema);
+      const fn = this.langMgr.getFn(
+        'sql',
+        node.id.id as string,
+        this.schemaAsStr(node.id.schema)
+      );
       if (!fn)
-        throw new Error(`Unknown function: ${node.id.schema}.${node.id.id}`);
+        throw new Error(
+          `Unknown function: ${node.id.schema}.${node.id.id as string}`
+        );
       const res = fn.impl(
         node.args.map((arg) => (arg as ASTLiteral<any>).value)
       );
@@ -279,5 +294,11 @@ export class SQLExprSimplifier implements SQLVisitor<ASTNode> {
   }
   visitLangSwitch(node: LangSwitch): ASTNode {
     return node;
+  }
+
+  private schemaAsStr(
+    schema: ASTIdentifier | string | undefined
+  ): string | undefined {
+    return typeof schema === 'string' ? schema : (schema?.id as string);
   }
 }

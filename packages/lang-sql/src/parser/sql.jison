@@ -179,16 +179,16 @@ select-list:
 
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
-	| LPAR subquery RPAR table-alias_opt { if ($4) {$4.table = $2; $$ = $4;} else { $$ = $2; } }
-	| simple-function-call table-alias_opt ;
+	| LPAR subquery RPAR table-alias { $4.table = $2; $$ = $4; }
+	| table-function-call ;
 
 table-function-call:
-	simple-function-call table-alias_opt { $$ = new yy.ast.TableFn($1.id, $1.args); if ($2) {$2.table = $$; $$ = $2;} }
-	| simple-function-call WITH ORDINALITY table-alias_opt {
-		$$ = new yy.ast.TableFn($1.id, $1.args, true); if ($3) {$3.table = $$; $$ = $3;}
+	simple-function-call table-alias { $$ = $2; $2.table = new yy.ast.TableFn($1.id, $1.args); }
+	| simple-function-call WITH ORDINALITY table-alias {
+		$$ = $4; $4.table = new yy.ast.TableFn($1.id, $1.args, true);
 	}
-	| ROWS FROM LPAR simple-function-call-list RPAR with-ordinality_opt table-alias_opt {
-		$$ = new yy.ast.RowsFrom($4, $6); if ($7) {$7.table = $$; $$ = $7;}
+	| ROWS FROM LPAR simple-function-call-list RPAR with-ordinality_opt table-alias {
+		$$ = $7; $7.table = new yy.ast.RowsFrom($4, $6);
 	} ;
 
 with-clause:
@@ -242,9 +242,9 @@ values_clause:
 
 table-item:
 	one-table
-	| table-item join-type lateral_opt one-table join-condition_opt { $$ = new yy.ast.JoinClause($4, $2, $5, $3); }
-	| table-item CROSS JOIN lateral_opt one-table { $$ = new yy.ast.JoinClause($5, 'cross', undefined, $4); }
-	| table-item NATURAL join-type lateral_opt one-table { $$ = new yy.ast.JoinClause($5, $3, undefined, $4); $$.natural = true; } ;
+	| table-item join-type lateral_opt one-table join-condition_opt { $$ = new yy.ast.JoinClause($1, $4, $2, $5, $3); }
+	| table-item CROSS JOIN lateral_opt one-table { $$ = new yy.ast.JoinClause($1, $5, 'cross', undefined, $4); }
+	| table-item NATURAL join-type lateral_opt one-table { $$ = new yy.ast.JoinClause($1, $5, $3, undefined, $4); $$.natural = true; } ;
 
 join-type:
 	COMMA { $$ = 'cross'; }
@@ -256,14 +256,7 @@ join-type:
 
 join-condition:
 	ON expression { $$ = $2; }
-	| USING LPAR column-list RPAR table-alias_opt {
-		$$ = new yy.ast.ASTUsing($3);
-		if ($4) {
-			let alias = new yy.ast.ASTAlias($5);
-			alias.table = $$;
-			$$ = alias;
-		}
-	} ;
+	| USING LPAR column-list RPAR { $$ = $3; } ;
 
 column-list:
 	ID { $$ = [new yy.ast.ASTIdentifier($1)]; }
@@ -274,9 +267,9 @@ where-clause:
 
 groupby-clause:
 	GROUP BY expression-list { $$ = new yy.ast.GroupByClause($3, 'basic'); }
-	| GROUP BY ROLLUP LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($5, 'rollup'); }
-	| GROUP BY CUBE LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($5, 'cube'); }
-	| GROUP BY GROUPINGSETS LPAR expression-list_opt-list RPAR { $$ = new yy.ast.GroupByClause($5, 'groupingsets'); } ;
+	| GROUP BY ROLLUP LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($5, $3); }
+	| GROUP BY CUBE LPAR expression-list RPAR { $$ = new yy.ast.GroupByClause($5, $3); }
+	| GROUP BY GROUPINGSETS LPAR expression-list_opt-list RPAR { $$ = new yy.ast.GroupByClause($5, $3); } ;
 
 window-clause:
 	WINDOW window-spec-list { $$ = $2; } ;
@@ -327,10 +320,14 @@ scoped-id:
 	| ID DOT ID { $$ = new yy.ast.ASTIdentifier($3, $1); } ;
 
 field-selector:
-	STAR { $$ = new yy.ast.ASTFieldSelector($1); }
-	| scoped-id { $$ = new yy.ast.ASTFieldSelector($1.idOriginal, $1.schemaOriginal && new yy.ast.ASTIdentifier($1.schemaOriginal)); }
-	| ID DOT ID DOT ID { $$ = new yy.ast.ASTFieldSelector($3, new yy.ast.ASTIdentifier($2, $1)); }
-	| scoped-id DOTSTAR { $$ = new yy.ast.ASTFieldSelector('*', new yy.ast.ASTIdentifier($1)); } ;
+	STAR { $$ = new yy.ast.ASTIdentifier(yy.ast.allAttrs); }
+	| scoped-id { $$ = new yy.ast.ASTIdentifier($1.idOriginal, $1.schemaOriginal && new yy.ast.ASTIdentifier($1.schemaOriginal)); }
+	| ID DOT ID DOT ID { $$ = new yy.ast.ASTIdentifier($3, new yy.ast.ASTIdentifier($2, $1)); }
+	| scoped-id DOTSTAR { $$ = new yy.ast.ASTIdentifier(yy.ast.allAttrs, new yy.ast.ASTIdentifier($1)); } ;
+
+table-alias:
+	AS ID { $$ = new yy.ast.ASTTableAlias($2); }
+	| AS ID LPAR column-list RPAR { $$ = new yy.ast.ASTTableAlias($2, $4); } ;
 
 subquery:
 	select-stmt
@@ -564,8 +561,7 @@ alias_opt:
 	| AS ID { $$ = new yy.ast.ASTIdentifier($2); } ;
 
 table-alias_opt:
-	| AS ID { $$ = new yy.ast.ASTTableAlias($2); }
-	| AS ID LPAR column-list RPAR { $$ = new yy.ast.ASTTableAlias($2, $4); } ;
+	| table-alias ;
 
 outer_opt:
 	| OUTER ;

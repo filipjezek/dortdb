@@ -3,6 +3,7 @@ import {
   ASTNode,
   ASTIdentifier as ASTIdentifierAttrs,
   ASTFunction,
+  allAttrs,
 } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
@@ -21,11 +22,15 @@ export class ASTStringLiteral extends ASTLiteral<string> {
 }
 
 export class ASTIdentifier implements ASTNode, ASTIdentifierAttrs {
-  public id: string;
-  public schema: string;
+  public id: string | typeof allAttrs;
+  public schema: string | ASTIdentifier;
 
-  constructor(public idOriginal: string, public schemaOriginal?: string) {
-    this.id = parseIdentifier(idOriginal);
+  constructor(
+    public idOriginal: string | typeof allAttrs,
+    public schemaOriginal?: string
+  ) {
+    this.id =
+      idOriginal === allAttrs ? idOriginal : parseIdentifier(idOriginal);
     this.schema = schemaOriginal && parseIdentifier(schemaOriginal);
   }
 

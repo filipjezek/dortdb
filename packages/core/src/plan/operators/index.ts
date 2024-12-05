@@ -10,3 +10,4 @@ export * from './calculation.js';
 export * from './limit.js';
 export * from './sort.js';
 export * from './intersection.js';
+export * from './distinct.js';

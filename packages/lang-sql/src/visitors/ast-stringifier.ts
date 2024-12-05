@@ -2,12 +2,12 @@ import {
   ASTLiteral,
   ASTOperator,
   ASTFunction,
-  ASTIdentifier,
   LangSwitch,
+  ASTNode,
+  allAttrs,
 } from '@dortdb/core';
 import {
   ASTTableAlias,
-  ASTFieldSelector,
   ASTExpressionAlias,
   ASTAggregate,
   ASTArray,
@@ -29,6 +29,9 @@ import {
   SelectStatement,
   TableFn,
   ValuesClause,
+  SelectSetOpType,
+  GroupByType,
+  ASTIdentifier as ASTIdentifierClass,
 } from '../ast/index.js';
 import { SQLVisitor } from '../ast/visitor.js';
 import { WindowSpec } from '../ast/window.js';
@@ -70,11 +73,16 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     return `${node.quantifier}(${node.query.accept(this)})`;
   }
 
-  visitIdentifier(node: ASTIdentifier): string {
-    return (
-      (node.schema ? this.addQuotes(node.schema, '"') + '.' : '') +
-      this.addQuotes(node.id, '"')
-    );
+  visitIdentifier(node: ASTIdentifierClass): string {
+    let id = node.id === allAttrs ? '*' : this.addQuotes(node.id, '"');
+    if (node.schema)
+      id =
+        (typeof node.schema === 'string'
+          ? node.schema
+          : node.schema.accept(this)) +
+        '.' +
+        id;
+    return id;
   }
   private addQuotes(str: string, quot: '"' | "'") {
     return quot + str.replaceAll(quot, quot + quot) + quot;
@@ -87,29 +95,81 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     if (node.table) alias = node.table.accept(this) + ' ' + alias;
     return alias;
   }
-  visitFieldSelector(node: ASTFieldSelector): string {
-    let field =
-      node.fieldOriginal === '*' ? '*' : this.addQuotes(node.field, '"');
-    if (node.table) field = node.table.accept(this) + '.' + field;
-    return field;
-  }
   visitExpressionAlias(node: ASTExpressionAlias): string {
-    throw new Error('Method not implemented.');
+    // TODO: aliases could have different names but same contents, check for duplicates
+    return `${node.expression.accept(this)} AS ${this.addQuotes(
+      node.alias,
+      '"'
+    )}`;
   }
   visitSelectStatement(node: SelectStatement): string {
-    throw new Error('Method not implemented.');
+    let res = node.selectSet.accept(this);
+    if (node.withQueries)
+      res =
+        'WITH ' +
+        node.withQueries.map((x) => x.accept(this)).join(',') +
+        ' ' +
+        res;
+    if (node.orderBy)
+      res +=
+        ' ORDER BY ' +
+        node.orderBy
+          .map(
+            (x) =>
+              `${x.expression.accept(this)} ${
+                x.ascending ? 'ASC' : 'DESC'
+              } NULLS ${x.nullsFirst ? 'FIRST' : 'LAST'}`
+          )
+          .join(',');
+    if (node.limit) res += ' LIMIT ' + node.limit.accept(this);
+    if (node.offset) res += ' OFFSET ' + node.offset.accept(this);
+    return res;
   }
   visitSelectSetOp(node: SelectSetOp): string {
-    throw new Error('Method not implemented.');
+    return `${node.type}${
+      node.type === SelectSetOpType.UNION && !node.distinct ? ' ALL' : ''
+    } ${node.next.accept(this)}`;
   }
   visitSelectSet(node: SelectSet): string {
-    throw new Error('Method not implemented.');
+    let res = `SELECT${node.distinct ? ' DISTINCT' : ''} ${node.items
+      .map((x) => x.accept(this))
+      .join(',')}`;
+    if (node.from) res += ` FROM ${node.from.accept(this)}`;
+    if (node.where) res += ` WHERE ${node.where.accept(this)}`;
+    if (node.groupBy) res += ` ${node.groupBy.accept(this)}`;
+    if (node.having) res += ` HAVING ${node.having.accept(this)}`;
+    if (node.windows)
+      res += ` WINDOW ${node.windows.map((x) => x.accept(this)).join(',')}`;
+    if (node.setOp) res += ` ${node.setOp.accept(this)}`;
+    return res;
   }
   visitGroupByClause(node: GroupByClause): string {
-    throw new Error('Method not implemented.');
+    let res = node.type === GroupByType.BASIC ? '' : node.type;
+    if (node.items[0] instanceof Array) {
+      res += node.items
+        .map(
+          (x) => `(${(x as ASTNode[]).map((y) => y.accept(this)).join(',')})`
+        )
+        .join(',');
+    } else {
+      res += node.items.map((x) => (x as ASTNode).accept(this)).join(',');
+    }
+    return res;
   }
   visitJoinClause(node: JoinClause): string {
-    throw new Error('Method not implemented.');
+    // natural joins are not supported
+    const res =
+      node.tableLeft.accept(this) +
+      ' ' +
+      node.joinType +
+      ' JOIN ' +
+      node.lateral
+        ? 'LATERAL '
+        : '' + node.tableRight.accept(this);
+    if (node.condition) return res + ' ON ' + node.condition.accept(this);
+    if (node.using)
+      return res + ' USING (' + node.using.map((x) => x.accept(this)).join(',');
+    return res;
   }
   visitCase(node: ASTCase): string {
     throw new Error('Method not implemented.');

@@ -5,13 +5,13 @@ import {
   LogicalPlanVisitor,
 } from '../visitor.js';
 
+export type ProjectionField =
+  | ASTIdentifier
+  | Aliased<ASTIdentifier>
+  | Aliased<LogicalPlanOperator>;
 export class Projection implements LogicalPlanOperator {
   constructor(
-    public fields: (
-      | ASTIdentifier
-      | Aliased<ASTIdentifier>
-      | Aliased<LogicalPlanOperator>
-    )[],
+    public fields: ProjectionField[],
     public source: LogicalPlanOperator
   ) {}
 

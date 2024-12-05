@@ -1,10 +1,10 @@
-import { ASTNode } from '../../ast.js';
+import { ASTIdentifier } from '../../ast.js';
 import { LogicalPlanOperator, LogicalPlanVisitor } from '../visitor.js';
 
 export class Sort implements LogicalPlanOperator {
   constructor(
     public sort: {
-      expression: ASTNode;
+      expression: ASTIdentifier;
       ascending: boolean;
       nullsFirst: boolean;
     }[],

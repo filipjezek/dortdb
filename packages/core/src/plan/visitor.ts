@@ -5,7 +5,11 @@ export interface LogicalPlanOperator {
   accept<T>(visitor: LogicalPlanVisitor<T>): T;
 }
 
-export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
+export const groupbyAttr = Symbol('group by attribute');
+export type Aliased<T = ASTIdentifier> = [
+  T,
+  ASTIdentifier | typeof groupbyAttr
+];
 
 export interface LogicalPlanVisitor<T> {
   visitProjection(operator: operators.Projection): T;
@@ -20,4 +24,5 @@ export interface LogicalPlanVisitor<T> {
   visitNest(operator: operators.Nest): T;
   visitUnnest(operator: operators.Unnest): T;
   visitCartesianProduct(operator: operators.CartesianProduct): T;
+  visitDistinct(operator: operators.Distinct): T;
 }

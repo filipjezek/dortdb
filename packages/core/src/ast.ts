@@ -34,9 +34,10 @@ export class ASTFunction implements ASTNode {
   }
 }
 
+export const allAttrs = Symbol('all attrs');
 export interface ASTIdentifier extends ASTNode {
-  schema?: string;
-  id: string;
+  schema?: string | ASTIdentifier;
+  id: string | typeof allAttrs;
 }
 
 export class LangSwitch implements ASTNode {

@@ -1,8 +1,9 @@
 import { ASTFunction, ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { ASTTableAlias } from './alias.js';
-import { ASTIdentifier } from './expression.js';
+import { ASTIdentifier } from '@dortdb/core';
 import { WithQuery } from './with.js';
+import { ASTIdentifier as ASTIdentifierClass } from './expression.js';
 
 export class SelectStatement implements ASTNode {
   constructor(
@@ -23,7 +24,7 @@ export class SelectSet implements ASTNode {
 
   constructor(
     public items: ASTNode[],
-    public from?: ASTNode,
+    public from?: ASTIdentifierClass | ASTTableAlias | JoinClause,
     public where?: ASTNode,
     public groupBy?: GroupByClause,
     public having?: ASTNode,
@@ -75,13 +76,13 @@ export enum GroupByType {
   BASIC = 'basic',
   ROLLUP = 'rollup',
   CUBE = 'cube',
-  GROUPINGSETS = 'groupingsets',
+  GROUPINGSETS = 'grouping sets',
 }
 export class GroupByClause implements ASTNode {
-  constructor(
-    public items: ASTNode[] | ASTNode[][],
-    public type: GroupByType
-  ) {}
+  public type: GroupByType;
+  constructor(public items: ASTNode[] | ASTNode[][], type: string) {
+    this.type = type.toLowerCase() as GroupByType;
+  }
 
   accept<T>(visitor: SQLVisitor<T>): T {
     return visitor.visitGroupByClause(this);
@@ -97,16 +98,17 @@ export enum JoinType {
 }
 export class JoinClause implements ASTNode {
   public condition?: ASTNode;
-  public using?: ASTNode[] | ASTTableAlias;
+  public using?: ASTIdentifier[];
   public natural = false;
 
   constructor(
-    public table: ASTNode,
+    public tableLeft: ASTTableAlias | ASTIdentifier | JoinClause,
+    public tableRight: ASTTableAlias | ASTIdentifier | JoinClause,
     public joinType: JoinType,
-    joinCond?: ASTNode | ASTNode[],
+    joinCond?: ASTNode | ASTIdentifier[],
     public lateral = false
   ) {
-    if (joinCond instanceof Array || joinCond instanceof ASTTableAlias) {
+    if (joinCond instanceof Array) {
       this.using = joinCond;
     } else {
       this.condition = joinCond;

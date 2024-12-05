@@ -24,11 +24,7 @@ import {
   ASTAggregate,
   ASTWindowFn,
 } from './expression.js';
-import {
-  ASTExpressionAlias,
-  ASTFieldSelector,
-  ASTTableAlias,
-} from './alias.js';
+import { ASTExpressionAlias, ASTTableAlias } from './alias.js';
 import { WindowSpec } from './window.js';
 import { WithQuery } from './with.js';
 
@@ -44,7 +40,6 @@ export interface SQLVisitor<T> extends ASTVisitor<T> {
   visitQuantifier(node: ASTQuantifier): T;
   visitIdentifier(node: ASTIdentifier): T;
   visitTableAlias(node: ASTTableAlias): T;
-  visitFieldSelector(node: ASTFieldSelector): T;
   visitExpressionAlias(node: ASTExpressionAlias): T;
   visitSelectStatement(node: SelectStatement): T;
   visitSelectSetOp(node: SelectSetOp): T;

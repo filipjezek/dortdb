@@ -3,6 +3,7 @@ import {
   ASTOperator,
   Language,
   LanguageManager,
+  allAttrs,
 } from '@dortdb/core';
 import { sqlLexer as Lexer, sqlParser as Parser } from './parser/sql.cjs';
 import { Keywords, AdditionalTokens } from './parser/tokens.js';
@@ -12,7 +13,7 @@ import { ASTLiteral } from '@dortdb/core';
 import { coalesce } from './functions/coalesce.js';
 import { sum } from './functions/sum.js';
 import { count } from './functions/count.js';
-import { SQLLogicalPlanBuilder } from './logical-plan/builder.js';
+import { SQLLogicalPlanBuilder } from './visitors/builder.js';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',
@@ -52,6 +53,7 @@ function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
+      allAttrs,
     },
   };
 
