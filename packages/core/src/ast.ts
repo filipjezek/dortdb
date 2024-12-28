@@ -1,3 +1,5 @@
+import { LanguageManager } from './lang-manager.js';
+
 export interface ASTNode {
   accept<T>(visitor: ASTVisitor<T>): T;
 }
@@ -35,9 +37,11 @@ export class ASTFunction implements ASTNode {
 }
 
 export const allAttrs = Symbol('all attrs');
-export interface ASTIdentifier extends ASTNode {
-  schema?: string | ASTIdentifier;
-  id: string | typeof allAttrs;
+export abstract class ASTIdentifier implements ASTNode {
+  public schemaParts: string[];
+  public id: string | typeof allAttrs;
+
+  abstract accept<T>(visitor: ASTVisitor<T>): T;
 }
 
 export class LangSwitch implements ASTNode {

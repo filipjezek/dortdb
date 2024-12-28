@@ -1,6 +1,6 @@
-import { ASTNode } from './ast.js';
+import { ASTIdentifier, ASTNode, ASTVisitor } from './ast.js';
 import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
-import { LogicalPlanOperator } from './plan/visitor.js';
+import { LogicalPlanOperator, LogicalPlanVisitor } from './plan/visitor.js';
 import { makePath } from './utils/make-path.js';
 
 export interface Parser {
@@ -16,11 +16,15 @@ export interface Language<Name extends string = string> {
   functions: Fn[];
   aggregates: AggregateFn[];
   createParser: (mgr: LanguageManager) => Parser;
-  buildLogicalPlan: (
-    mgr: LanguageManager,
-    params: Record<string, any>,
-    ast: ASTNode
-  ) => LogicalPlanOperator;
+  visitors: {
+    logicalPlanBuilder: ASTVisitor<LogicalPlanOperator>;
+    /**
+     * Combines fncalls, literals etc. into a single function with clearly specified inputs
+     */
+    calculationBuilder?: LogicalPlanVisitor<
+      [(LogicalPlanOperator | ASTIdentifier)[], (...args: any[]) => any]
+    >;
+  };
 }
 
 interface Implementations {
