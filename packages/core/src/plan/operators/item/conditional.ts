@@ -1,11 +1,15 @@
+import { ASTIdentifier } from '../../../ast.js';
 import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 
 export class Conditional implements LogicalPlanOperator {
   constructor(
     public lang: string,
-    public condition: LogicalPlanOperator,
-    public whenThens: [LogicalPlanOperator, LogicalPlanOperator][],
-    public defaultCase: LogicalPlanOperator
+    public condition: LogicalPlanOperator | ASTIdentifier,
+    public whenThens: [
+      LogicalPlanOperator | ASTIdentifier,
+      LogicalPlanOperator | ASTIdentifier
+    ][],
+    public defaultCase: LogicalPlanOperator | ASTIdentifier
   ) {}
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

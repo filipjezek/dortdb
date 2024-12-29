@@ -5,4 +5,5 @@ export function makePath(src: any, ...parts: (string | symbol)[]) {
     }
     src = src[part];
   }
+  return src;
 }

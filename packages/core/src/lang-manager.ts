@@ -1,7 +1,8 @@
-import { ASTIdentifier, ASTNode, ASTVisitor } from './ast.js';
+import { ASTVisitor } from './ast.js';
 import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
-import { LogicalPlanOperator, LogicalPlanVisitor } from './plan/visitor.js';
+import { LogicalPlanOperator } from './plan/visitor.js';
 import { makePath } from './utils/make-path.js';
+import { coreVisitors, LogicalPlanVisitors } from './visitors/index.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -16,14 +17,8 @@ export interface Language<Name extends string = string> {
   functions: Fn[];
   aggregates: AggregateFn[];
   createParser: (mgr: LanguageManager) => Parser;
-  visitors: {
-    logicalPlanBuilder: ASTVisitor<LogicalPlanOperator>;
-    /**
-     * Combines fncalls, literals etc. into a single function with clearly specified inputs
-     */
-    calculationBuilder?: LogicalPlanVisitor<
-      [(LogicalPlanOperator | ASTIdentifier)[], (...args: any[]) => any]
-    >;
+  visitors: Partial<LogicalPlanVisitors> & {
+    logicalPlanBuilder: { new (): ASTVisitor<LogicalPlanOperator> };
   };
 }
 
@@ -81,6 +76,20 @@ export class LanguageManager {
 
   public getLang<Name extends string>(name: Name): Language<Name> {
     return this.langs[name.toLowerCase()] as Language<Name>;
+  }
+
+  public getVisitorMap<T extends keyof LogicalPlanVisitors>(
+    visitor: T
+  ): Record<string, InstanceType<LogicalPlanVisitors[T]>> {
+    const vmap = {} as Record<string, InstanceType<LogicalPlanVisitors[T]>>;
+    for (const lang in this.langs) {
+      const VClass =
+        this.langs[lang].visitors[visitor] ?? coreVisitors.logicalPlan[visitor];
+      vmap[lang] = new VClass(vmap, this) as InstanceType<
+        LogicalPlanVisitors[T]
+      >;
+    }
+    return vmap;
   }
 
   public getOp(lang: string, name: string, schema?: string): Operator {

@@ -7,6 +7,8 @@ export interface LogicalPlanOperator {
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
 }
 
+export type LogicalOpOrId = LogicalPlanOperator | ASTIdentifier;
+
 export const groupbyAttr = Symbol('group by attribute');
 export type Aliased<T = ASTIdentifier> = [
   T,

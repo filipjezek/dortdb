@@ -1,4 +1,5 @@
 import { allAttrs, ASTIdentifier } from '../ast.js';
+import { makePath } from '../utils/make-path.js';
 
 export class ExecutionContext {
   // scope is a nested object, where leaf values are contained under `allAttrs` key
@@ -6,17 +7,13 @@ export class ExecutionContext {
 
   public set<T>(key: ASTIdentifier, value: T): void {
     let refs = this.scopes[this.scopes.length - 1];
-    for (let schema of key.schemaParts) {
-      if (!(schema in refs)) refs[schema] = {};
-      refs = refs[schema];
-    }
+    refs = makePath(refs, ...key.schemaParts);
     if (key.id === allAttrs) {
       refs[allAttrs] = value;
       return;
     }
 
-    if (allAttrs in refs) refs[allAttrs] = {};
-    refs = refs[allAttrs];
+    refs = makePath(refs, allAttrs);
     refs[key.id] = value;
   }
 
