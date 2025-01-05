@@ -15,3 +15,15 @@ export class ItemSource implements LogicalPlanOperator {
     return visitors[this.lang].visitItemSource(this);
   }
 }
+
+export class ItemFnSource implements LogicalPlanOperator {
+  constructor(
+    public lang: string,
+    public args: (ASTIdentifier | LogicalPlanOperator)[],
+    public impl: (...args: any[]) => Iterable<any>
+  ) {}
+
+  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
+    return visitors[this.lang].visitItemFnSource(this);
+  }
+}

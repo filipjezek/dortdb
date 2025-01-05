@@ -3,32 +3,37 @@ import { makePath } from '../utils/make-path.js';
 
 export class ExecutionContext {
   // scope is a nested object, where leaf values are contained under `allAttrs` key
-  private scopes: Partial<Record<string | typeof allAttrs, any>>[] = [{}];
+  private scopes: Partial<Record<string | symbol, any>>[] = [{}];
 
   public set<T>(key: ASTIdentifier, value: T): void {
     let refs = this.scopes[this.scopes.length - 1];
-    refs = makePath(refs, ...key.schemaParts);
-    if (key.id === allAttrs) {
-      refs[allAttrs] = value;
-      return;
+    const endI = key.parts.length - 1;
+    const last = key.parts[endI];
+    for (let i = 0; i < endI; i++) {
+      const part = key.parts[i];
+      if (!(part in refs)) refs[part] = {};
+      refs = refs[part];
     }
 
-    refs = makePath(refs, allAttrs);
-    refs[key.id] = value;
+    if (last !== allAttrs) {
+      makePath(refs, allAttrs);
+      refs = refs[allAttrs];
+    }
+    refs[last] = value;
   }
 
   public get<T>(key: ASTIdentifier): T | Map<string, T> {
-    const end =
-      key.id === allAttrs ? key.schemaParts.length - 1 : key.schemaParts.length;
+    const endI = key.parts.length - 1;
+    const last = key.parts[endI];
 
     scopeLoop: for (let i = this.scopes.length - 1; i >= 0; i--) {
       let refs = this.scopes[i];
-      for (let j = 0; j < end; j++) {
-        if (key.schemaParts[j] in refs) continue scopeLoop;
-        refs = refs[key.schemaParts[j]];
+      for (let j = 0; j < endI; j++) {
+        if (key.parts[j] in refs) continue scopeLoop;
+        refs = refs[key.parts[j]];
       }
       refs = refs[allAttrs];
-      return refs[key.id === allAttrs ? key.schemaParts[end] : key.id];
+      return last === allAttrs ? refs : refs[last];
     }
   }
 

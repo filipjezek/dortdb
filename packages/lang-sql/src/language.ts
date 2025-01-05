@@ -21,8 +21,8 @@ export const SQL: Language<'sql'> = {
   aggregates: [sum, count],
   functions: [coalesce],
   createParser,
-  buildLogicalPlan: (mgr, params, ast) => {
-    return ast.accept(new SQLLogicalPlanBuilder(mgr, params));
+  visitors: {
+    logicalPlanBuilder: SQLLogicalPlanBuilder,
   },
 };
 
@@ -41,10 +41,10 @@ function createParser(mgr: LanguageManager) {
     messageQueue: [],
     saveRemainingInput: (input) => (remainingInput = input),
     wrapNot: (expr, not) =>
-      not ? new ASTOperator('sql', new ast.ASTIdentifier('NOT'), [expr]) : expr,
+      not ? new ASTOperator('sql', new ast.SQLIdentifier('NOT'), [expr]) : expr,
     makeOp: (op, args) =>
       typeof op === 'string'
-        ? new ASTOperator('sql', new ast.ASTIdentifier(op), args)
+        ? new ASTOperator('sql', new ast.SQLIdentifier(op), args)
         : new ASTOperator('sql', op, args),
     allFrom: (src) =>
       new ast.SelectSet([new yy.ast.ASTFieldSelector('*'), src]),

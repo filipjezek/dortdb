@@ -23,6 +23,7 @@ export interface AggregateFn {
 
 export interface Castable {
   name: string;
+  pure?: boolean;
   convert: (val: any) => any;
 }
 

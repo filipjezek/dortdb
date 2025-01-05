@@ -24,3 +24,5 @@ export const coreVisitors = {
     calculationBuilder: CalculationBuilder,
   } satisfies LogicalPlanVisitors,
 };
+
+export type { CalculationParams } from './calculation-builder.js';

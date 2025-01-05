@@ -1,9 +1,10 @@
 import {
   ASTLiteral,
   ASTNode,
-  ASTIdentifier as ASTIdentifierAttrs,
+  ASTIdentifier,
   ASTFunction,
   allAttrs,
+  QuantifierType,
 } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
@@ -21,21 +22,19 @@ export class ASTStringLiteral extends ASTLiteral<string> {
   }
 }
 
-export class ASTIdentifier implements ASTNode, ASTIdentifierAttrs {
-  public id: string | typeof allAttrs;
-  public schema: string | ASTIdentifier;
-
+export class SQLIdentifier extends ASTIdentifier {
   constructor(
     public idOriginal: string | typeof allAttrs,
     public schemaOriginal?: string
   ) {
-    this.id =
-      idOriginal === allAttrs ? idOriginal : parseIdentifier(idOriginal);
-    this.schema = schemaOriginal && parseIdentifier(schemaOriginal);
+    super();
+    this.parts =
+      idOriginal === allAttrs ? [idOriginal] : [parseIdentifier(idOriginal)];
+    if (schemaOriginal) this.parts.push(parseIdentifier(schemaOriginal));
   }
 
   accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitIdentifier(this);
+    return visitor.visitSQLIdentifier(this);
   }
 }
 
@@ -86,7 +85,7 @@ export class ASTParam implements ASTNode {
 export class ASTCast implements ASTNode {
   constructor(
     public expr: ASTNode,
-    public type: ASTIdentifierAttrs,
+    public type: ASTIdentifier,
     public isArray = false
   ) {}
 
@@ -115,12 +114,11 @@ export class ASTExists implements ASTNode {
   }
 }
 
-export enum QuantifierType {
-  ALL = 'all',
-  ANY = 'any',
-}
 export class ASTQuantifier implements ASTNode {
-  constructor(public quantifier: string, public query: ASTNode) {
+  public quantifier: QuantifierType;
+  public parentOp: string | ASTIdentifier;
+
+  constructor(quantifier: string, public query: ASTNode) {
     this.quantifier = quantifier.toLowerCase() as QuantifierType;
   }
 
@@ -145,12 +143,12 @@ export class ASTAggregate extends ASTFunction {
   public distinct: boolean;
 
   constructor(
-    id: ASTIdentifier,
+    id: SQLIdentifier,
     args: ASTNode[],
     distinct?: string,
     public orderBy?: OrderByItem[],
     public filter?: ASTNode,
-    public withinGroupArgs?: ASTNode[]
+    public withinGroupArgs?: OrderByItem[]
   ) {
     super('sql', id, args);
     this.distinct = distinct?.toLowerCase() === 'distinct';
@@ -163,9 +161,9 @@ export class ASTAggregate extends ASTFunction {
 
 export class ASTWindowFn extends ASTAggregate {
   constructor(
-    id: ASTIdentifier,
+    id: SQLIdentifier,
     args: ASTNode[],
-    public window: WindowSpec | ASTIdentifierAttrs,
+    public window: WindowSpec | ASTIdentifier,
     filter?: ASTNode
   ) {
     super(id, args, null, null, filter);

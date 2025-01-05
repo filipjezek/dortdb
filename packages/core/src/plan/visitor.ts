@@ -6,14 +6,13 @@ export interface LogicalPlanOperator {
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
 }
+export interface LogicalPlanTupleOperator extends LogicalPlanOperator {
+  schema: ASTIdentifier[];
+}
 
 export type LogicalOpOrId = LogicalPlanOperator | ASTIdentifier;
 
-export const groupbyAttr = Symbol('group by attribute');
-export type Aliased<T = ASTIdentifier> = [
-  T,
-  ASTIdentifier | typeof groupbyAttr
-];
+export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
 export interface LogicalPlanVisitor<T> {
   visitProjection(operator: operators.Projection): T;
@@ -34,4 +33,15 @@ export interface LogicalPlanVisitor<T> {
   visitProjectionIndex(operator: operators.ProjectionIndex): T;
   visitOrderBy(operator: operators.OrderBy): T;
   visitGroupBy(operator: operators.GroupBy): T;
+  visitLimit(operator: operators.Limit): T;
+  visitUnion(operator: operators.Union): T;
+  visitUnionAll(operator: operators.UnionAll): T;
+  visitIntersection(operator: operators.Intersection): T;
+  visitDifference(operator: operators.Difference): T;
+  visitDistinct(operator: operators.Distinct): T;
+  visitNullSource(operator: operators.NullSource): T;
+  visitAggregate(operator: operators.AggregateCall): T;
+  visitItemFnSource(operator: operators.ItemFnSource): T;
+  visitTupleFnSource(operator: operators.TupleFnSource): T;
+  visitQuantifier(operator: operators.Quantifier): T;
 }

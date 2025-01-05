@@ -1,6 +1,6 @@
 import { ASTNode } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
-import { ASTIdentifier } from './expression.js';
+import { SQLIdentifier } from './expression.js';
 
 export enum SearchType {
   DFS = 'bfs',
@@ -8,19 +8,21 @@ export enum SearchType {
 }
 
 export class WithQuery implements ASTNode {
-  public searchCols: ASTIdentifier[];
-  public searchType: SearchType;
-  public searchName: ASTIdentifier;
+  public recursive = false;
 
-  public cycleCols: ASTIdentifier[];
-  public cycleMarkName: ASTIdentifier;
-  public cyclePathName: ASTIdentifier;
+  public searchCols: SQLIdentifier[];
+  public searchType: SearchType;
+  public searchName: SQLIdentifier;
+
+  public cycleCols: SQLIdentifier[];
+  public cycleMarkName: SQLIdentifier;
+  public cyclePathName: SQLIdentifier;
   public cycleMarkVal: ASTNode;
   public cycleMarkDefault: ASTNode;
 
   constructor(
-    public name: ASTIdentifier,
-    public colNames: ASTIdentifier[],
+    public name: SQLIdentifier,
+    public colNames: SQLIdentifier[],
     public query: ASTNode,
     public materialized?: boolean
   ) {}

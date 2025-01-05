@@ -1,51 +1,47 @@
-import { AggregateFn, AggregatorInvocation } from '../extension.js';
+import { AggregateFn } from '../extension.js';
 
 export const count: AggregateFn = {
   name: 'count',
-  impl: function (invocationType) {
-    switch (invocationType) {
-      case AggregatorInvocation.INITIAL:
-        this.count = 0;
-        return null;
-      case AggregatorInvocation.ITERATE:
-        this.count++;
-        return null;
-      case AggregatorInvocation.FINAL:
-        return this.count;
-    }
-  },
+  init: () => 0,
+  step: (acc: number) => acc + 1,
+  stepInverse: (acc: number) => acc - 1,
+  result: (acc: number) => acc,
 };
 
 export const sum: AggregateFn = {
   name: 'sum',
-  impl: function (invocationType, value: number) {
-    switch (invocationType) {
-      case AggregatorInvocation.INITIAL:
-        this.sum = 0;
-        return null;
-      case AggregatorInvocation.ITERATE:
-        this.sum += value;
-        return null;
-      case AggregatorInvocation.FINAL:
-        return this.sum;
-    }
-  },
+  init: () => 0,
+  step: (acc: number, val: number) => acc + val,
+  stepInverse: (acc: number, val: number) => acc - val,
+  result: (acc: number) => acc,
 };
 
 export const avg: AggregateFn = {
   name: 'avg',
-  impl: function (invocationType, value: number) {
-    switch (invocationType) {
-      case AggregatorInvocation.INITIAL:
-        this.sum = 0;
-        this.count = 0;
-        return null;
-      case AggregatorInvocation.ITERATE:
-        this.sum += value;
-        this.count++;
-        return null;
-      case AggregatorInvocation.FINAL:
-        return this.sum / this.count;
-    }
+  init: () => ({ sum: 0, count: 0 }),
+  step: (acc: { sum: number; count: number }, val: number) => {
+    acc.sum += val;
+    acc.count++;
+    return acc;
   },
+  stepInverse: (acc: { sum: number; count: number }, val: number) => {
+    acc.sum -= val;
+    acc.count--;
+    return acc;
+  },
+  result: (acc: { sum: number; count: number }) => acc.sum / acc.count,
+};
+
+export const min: AggregateFn = {
+  name: 'min',
+  init: () => Infinity,
+  step: (acc: number, val: number) => Math.min(acc, val),
+  result: (acc: number) => acc,
+};
+
+export const max: AggregateFn = {
+  name: 'max',
+  init: () => -Infinity,
+  step: (acc: number, val: number) => Math.max(acc, val),
+  result: (acc: number) => acc,
 };

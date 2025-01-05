@@ -5,7 +5,7 @@ import { parseIdentifier } from '../utils/string.js';
 export class ASTTableAlias implements ASTNode {
   name: string;
   columns: string[];
-  table: ASTIdentifier;
+  table: ASTNode;
 
   constructor(public nameOriginal: string, public columnsOriginal?: string[]) {
     this.name = parseIdentifier(nameOriginal);

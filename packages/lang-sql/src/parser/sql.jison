@@ -180,7 +180,7 @@ select-list:
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
 	| LPAR subquery RPAR table-alias { $4.table = $2; $$ = $4; }
-	| table-function-call ;
+	| table-function-call table-alias { $$ = $2; $2.table = $1; } ;
 
 table-function-call:
 	simple-function-call table-alias { $$ = $2; $2.table = new yy.ast.TableFn($1.id, $1.args); }
@@ -493,8 +493,8 @@ additive-or-quantified-expression:
 
 userop-expression:
 	additive-expression
-	| userop-expression USEROP additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); }
-	| userop-expression OPERATOR LPAR scoped-id RPAR additive-or-quantified-expression { $$ = yy.makeOp($4, [$1, $6]); } ;
+	| userop-expression USEROP additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); $3.parentOp = $2; }
+	| userop-expression OPERATOR LPAR scoped-id RPAR additive-or-quantified-expression { $$ = yy.makeOp($4, [$1, $6]); $6.parentOp = $4; } ;
 
 userop-or-quantified-expression:
 	userop-expression
@@ -502,18 +502,22 @@ userop-or-quantified-expression:
 
 string-set-range-expression:
 	userop-expression
-	| userop-expression not_opt BETWEEN userop-or-quantified-expression AND userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4, $6]), $2); }
+	| userop-expression not_opt BETWEEN userop-or-quantified-expression AND userop-or-quantified-expression {
+		$$ = yy.wrapNot(yy.makeOp($3, [$1, $4, $6]), $2);
+		$4.parentOp = '>=';
+		$6.parentOp = '<=';
+	}
 	| userop-expression not_opt IN LPAR expression-list RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
 	| userop-expression not_opt IN LPAR subquery RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
-	| userop-expression not_opt LIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); }
-	| userop-expression not_opt ILIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); } ;
+	| userop-expression not_opt LIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); $4.parentOp = 'LIKE'; }
+	| userop-expression not_opt ILIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); $4.parentOp = 'ILIKE'; } ;
 
 relational-operator:
 	LT | GT | LTE | GTE | EQ | NEQ ;
 
 relational-expression:
 	string-set-range-expression
-	| relational-expression relational-operator userop-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); } ;
+	| relational-expression relational-operator userop-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); $3.parentOp = $2; } ;
 
 is-expression:
 	relational-expression

@@ -1,5 +1,9 @@
-import { ASTIdentifier } from '../../../ast.js';
-import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  LogicalOpOrId,
+  LogicalPlanOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
+import { AggregateCall } from './aggregate-call.js';
 
 /**
  * This is built from literals, fncalls etc. The purpose is to
@@ -8,8 +12,10 @@ import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 export class Calculation implements LogicalPlanOperator {
   constructor(
     public lang: string,
-    public implementation: (...args: any[]) => any,
-    public operands: Set<LogicalPlanOperator | ASTIdentifier>
+    public impl: (...args: any[]) => any,
+    public args: LogicalOpOrId[],
+    public aggregates: AggregateCall[] = [],
+    public literal = false
   ) {}
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

@@ -3,7 +3,8 @@ import { SQLVisitor } from './visitor.js';
 import { ASTTableAlias } from './alias.js';
 import { ASTIdentifier } from '@dortdb/core';
 import { WithQuery } from './with.js';
-import { ASTIdentifier as ASTIdentifierClass } from './expression.js';
+import { SQLIdentifier as ASTIdentifierClass } from './expression.js';
+import { WindowSpec } from './window.js';
 
 export class SelectStatement implements ASTNode {
   constructor(
@@ -29,7 +30,7 @@ export class SelectSet implements ASTNode {
     public groupBy?: GroupByClause,
     public having?: ASTNode,
     public distinct: boolean | ASTNode[] = false,
-    public windows?: ASTNode[]
+    public windows?: Record<string, WindowSpec>
   ) {}
 
   accept<T>(visitor: SQLVisitor<T>): T {

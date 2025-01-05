@@ -18,7 +18,9 @@ export interface Language<Name extends string = string> {
   aggregates: AggregateFn[];
   createParser: (mgr: LanguageManager) => Parser;
   visitors: Partial<LogicalPlanVisitors> & {
-    logicalPlanBuilder: { new (): ASTVisitor<LogicalPlanOperator> };
+    logicalPlanBuilder: {
+      new (langMgr: LanguageManager): ASTVisitor<LogicalPlanOperator>;
+    };
   };
 }
 
@@ -92,17 +94,61 @@ export class LanguageManager {
     return vmap;
   }
 
-  public getOp(lang: string, name: string, schema?: string): Operator {
-    return this.getImplementation('operators', lang, name, schema);
+  public getOp(
+    lang: string,
+    name: string,
+    schema?: string,
+    throwOnMissing = true
+  ): Operator {
+    return this.getImplementation(
+      'operators',
+      lang,
+      name,
+      schema,
+      throwOnMissing
+    );
   }
-  public getFn(lang: string, name: string, schema?: string): Fn {
-    return this.getImplementation('functions', lang, name, schema);
+  public getFn(
+    lang: string,
+    name: string,
+    schema?: string,
+    throwOnMissing = true
+  ): Fn {
+    return this.getImplementation(
+      'functions',
+      lang,
+      name,
+      schema,
+      throwOnMissing
+    );
   }
-  public getAggr(lang: string, name: string, schema?: string): AggregateFn {
-    return this.getImplementation('aggregates', lang, name, schema);
+  public getAggr(
+    lang: string,
+    name: string,
+    schema?: string,
+    throwOnMissing = true
+  ): AggregateFn {
+    return this.getImplementation(
+      'aggregates',
+      lang,
+      name,
+      schema,
+      throwOnMissing
+    );
   }
-  public getCast(lang: string, name: string, schema?: string): Castable {
-    return this.getImplementation('castables', lang, name, schema);
+  public getCast(
+    lang: string,
+    name: string,
+    schema?: string,
+    throwOnMissing = true
+  ): Castable {
+    return this.getImplementation(
+      'castables',
+      lang,
+      name,
+      schema,
+      throwOnMissing
+    );
   }
 
   private getImplementation<T extends keyof Implementations>(
@@ -111,12 +157,19 @@ export class LanguageManager {
     name: string,
     schema:
       | string
-      | (typeof LanguageManager)['defaultSchema'] = LanguageManager.defaultSchema
+      | (typeof LanguageManager)['defaultSchema'] = LanguageManager.defaultSchema,
+    throwOnMissing = true
   ): Implementations[T][string] {
     let impl = this.implementations[lang]?.[schema]?.[type][name];
     impl =
       impl ??
       this.implementations[LanguageManager.allLangs][schema]?.[type][name];
+    if (!impl && throwOnMissing)
+      throw new Error(
+        `${type.slice(1)} not found: [${lang}] ${
+          schema === LanguageManager.defaultSchema ? '<default>' : schema
+        }.${name}`
+      );
     return impl as Implementations[T][string];
   }
 }

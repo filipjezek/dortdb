@@ -37,11 +37,18 @@ export class ASTFunction implements ASTNode {
 }
 
 export const allAttrs = Symbol('all attrs');
-export abstract class ASTIdentifier implements ASTNode {
-  public schemaParts: string[];
-  public id: string | typeof allAttrs;
+export class ASTIdentifier implements ASTNode {
+  public parts: (string | symbol)[] = [];
 
-  abstract accept<T>(visitor: ASTVisitor<T>): T;
+  accept<T>(visitor: ASTVisitor<T>): T {
+    return visitor.visitIdentifier(this);
+  }
+
+  static fromParts(parts: (string | symbol)[]): ASTIdentifier {
+    const ret = new ASTIdentifier();
+    ret.parts = parts;
+    return ret;
+  }
 }
 
 export class LangSwitch implements ASTNode {
@@ -57,4 +64,5 @@ export interface ASTVisitor<T> {
   visitOperator(node: ASTOperator): T;
   visitFunction(node: ASTFunction): T;
   visitLangSwitch(node: LangSwitch): T;
+  visitIdentifier(node: ASTIdentifier): T;
 }

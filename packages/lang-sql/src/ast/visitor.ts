@@ -1,4 +1,4 @@
-import { ASTVisitor } from '@dortdb/core';
+import { ASTIdentifier, ASTVisitor } from '@dortdb/core';
 import {
   GroupByClause,
   JoinClause,
@@ -16,7 +16,7 @@ import {
   ASTStringLiteral,
   ASTCast,
   ASTSubscript,
-  ASTIdentifier,
+  SQLIdentifier,
   ASTExists,
   ASTQuantifier,
   ASTCase,
@@ -39,6 +39,7 @@ export interface SQLVisitor<T> extends ASTVisitor<T> {
   visitExists(node: ASTExists): T;
   visitQuantifier(node: ASTQuantifier): T;
   visitIdentifier(node: ASTIdentifier): T;
+  visitSQLIdentifier(node: SQLIdentifier): T;
   visitTableAlias(node: ASTTableAlias): T;
   visitExpressionAlias(node: ASTExpressionAlias): T;
   visitSelectStatement(node: SelectStatement): T;

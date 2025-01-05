@@ -1,16 +1,14 @@
 import { ASTIdentifier } from '../ast.js';
 import { LanguageManager } from '../lang-manager.js';
 import * as operators from '../plan/operators/index.js';
-import {
-  LogicalOpOrId,
-  LogicalPlanOperator,
-  LogicalPlanVisitor,
-} from '../plan/visitor.js';
+import { LogicalOpOrId, LogicalPlanVisitor } from '../plan/visitor.js';
+import { resolveArgs } from '../utils/invoke.js';
 
 export type CalculationParams = {
   args: LogicalOpOrId[];
   impl: (...args: any[]) => any;
   literal?: boolean;
+  aggregates?: operators.AggregateCall[];
 };
 
 // avoid creating a new function every time
@@ -26,10 +24,52 @@ function callImpl(a: CalculationParams) {
 function getArgs(a: CalculationParams | ASTIdentifier) {
   return a instanceof ASTIdentifier ? a : a.args;
 }
+function getAggrs(a: CalculationParams | ASTIdentifier) {
+  return (a instanceof ASTIdentifier ? null : a.aggregates) ?? [];
+}
 function getWhenThenArgs(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier]
 ) {
   return [getArgs(a[0]), getArgs(a[1])];
+}
+function getWhenThenAggrs(
+  a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier]
+) {
+  return [getAggrs(a[0]), getAggrs(a[1])];
+}
+function* cartesian(iters: Iterable<any>[]): Iterable<any[]> {
+  if (iters.length === 0) {
+    return [];
+  }
+
+  for (const val of iters[0]) {
+    if (iters.length === 1) {
+      yield [val];
+    } else {
+      for (const rest of cartesian(iters.slice(1))) {
+        yield [val, ...rest];
+      }
+    }
+  }
+}
+function isQuantifier(op: any) {
+  return op instanceof operators.Quantifier;
+}
+function toArray<T>(a: Iterable<T>) {
+  return Array.isArray(a) ? a : Array.from(a);
+}
+function ret2<T>(a: any, i: T) {
+  return i;
+}
+function getQuantifierIndices(
+  args: LogicalOpOrId[],
+  type: operators.QuantifierType
+) {
+  return args
+    .map(ret2)
+    .filter(
+      (i) => args[i] instanceof operators.Quantifier && args[i].type === type
+    );
 }
 
 export class CalculationBuilder
@@ -68,16 +108,47 @@ export class CalculationBuilder
 
     return {
       args: children.flatMap(getArgs),
-      impl: (...args: any[]) => {
-        let i = 0;
-        const resolvedArgs = children.map((ch) => {
-          if (ch instanceof ASTIdentifier) {
-            return args[i++];
+      impl: operator.args.some(isQuantifier)
+        ? (...args: any[]) => {
+            const resolvedArgs = resolveArgs(args, children);
+            const anyIs = getQuantifierIndices(
+              operator.args,
+              operators.QuantifierType.ANY
+            );
+            const allIs = getQuantifierIndices(
+              operator.args,
+              operators.QuantifierType.ALL
+            );
+            let anys = anyIs.map((i) => resolvedArgs[i]);
+            let alls = allIs.map((i) => resolvedArgs[i]);
+
+            if (anys.length + alls.length > 1) {
+              anys = anys.map(toArray);
+              alls = alls.map(toArray);
+            }
+            anyLoop: for (const anyVals of anys.length
+              ? cartesian(anys)
+              : [[]]) {
+              for (const allVals of alls.length ? cartesian(alls) : [[]]) {
+                for (let i = 0; i < anyIs.length; i++) {
+                  resolvedArgs[anyIs[i]] = anyVals[i];
+                }
+                for (let i = 0; i < allIs.length; i++) {
+                  resolvedArgs[allIs[i]] = allVals[i];
+                }
+                if (!operator.impl(...resolvedArgs)) {
+                  continue anyLoop;
+                }
+              }
+              return true;
+            }
+            return false;
           }
-          return ch.impl(...args.slice(i, (i += ch.args.length)));
-        });
-        return operator.impl(...resolvedArgs);
-      },
+        : (...args: any[]) => {
+            const resolvedArgs = resolveArgs(args, children);
+            return operator.impl(...resolvedArgs);
+          },
+      aggregates: children.flatMap(getAggrs),
     };
   }
   visitLiteral(operator: operators.Literal): CalculationParams {
@@ -102,8 +173,19 @@ export class CalculationBuilder
       | (ASTIdentifier | LogicalOpOrId[])[]
       | (ASTIdentifier | LogicalOpOrId[])
     )[] = whenthens.map(getWhenThenArgs);
-    if (cond) args.unshift(getArgs(cond));
-    if (defaultCase) args.push(getArgs(defaultCase));
+    const aggrs: (
+      | operators.AggregateCall
+      | operators.AggregateCall[]
+      | operators.AggregateCall[][]
+    )[] = whenthens.map(getWhenThenAggrs);
+    if (cond) {
+      args.unshift(getArgs(cond));
+      aggrs.push(getAggrs(cond));
+    }
+    if (defaultCase) {
+      args.push(getArgs(defaultCase));
+      aggrs.push(getAggrs(defaultCase));
+    }
 
     if ((cond as CalculationParams).literal) {
       const resolvedCond = (cond as CalculationParams).impl();
@@ -161,6 +243,7 @@ export class CalculationBuilder
         i -= t instanceof ASTIdentifier ? 1 : t.args.length;
         return resolve(t);
       },
+      aggregates: aggrs.flat(2),
     };
   }
   visitCartesianProduct(
@@ -195,6 +278,39 @@ export class CalculationBuilder
     return { args: [operator], impl: ret1 };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitLimit(operator: operators.Limit): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitUnion(operator: operators.Union): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitUnionAll(operator: operators.UnionAll): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitIntersection(operator: operators.Intersection): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitDifference(operator: operators.Difference): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitDistinct(operator: operators.Distinct): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitNullSource(operator: operators.NullSource): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitAggregate(operator: operators.AggregateCall): CalculationParams {
+    return { args: [operator.fieldName], impl: ret1, aggregates: [operator] };
+  }
+  visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
+    return { args: [operator], impl: ret1 };
+  }
+  visitQuantifier(operator: operators.Quantifier): CalculationParams {
     return { args: [operator], impl: ret1 };
   }
 }
