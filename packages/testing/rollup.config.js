@@ -27,7 +27,7 @@ export default [
       copy({
         targets: [
           { src: 'src/showcase/index.html', dest: 'dist/showcase' },
-          { src: 'src/showcase/styles.css', dest: 'dist/showcase' },
+          { src: 'src/showcase/index.css', dest: 'dist/showcase' },
         ],
       }),
     ],

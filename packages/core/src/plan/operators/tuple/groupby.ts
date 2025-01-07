@@ -12,6 +12,7 @@ export class GroupBy implements LogicalPlanTupleOperator {
 
   constructor(
     public lang: string,
+    /** in order to calculate schema, we need aliases for calculations */
     public keys: Aliased<ASTIdentifier | Calculation>[],
     public aggs: AggregateCall[],
     public source: LogicalPlanTupleOperator

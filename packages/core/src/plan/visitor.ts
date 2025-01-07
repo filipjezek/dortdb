@@ -25,8 +25,6 @@ export interface LogicalPlanVisitor<T> {
   visitConditional(operator: operators.Conditional): T;
   visitCartesianProduct(operator: operators.CartesianProduct): T;
   visitJoin(operator: operators.Join): T;
-  visitLeftOuterJoin(operator: operators.LeftOuterJoin): T;
-  visitFullOuterJoin(operator: operators.FullOuterJoin): T;
   visitProjectionConcat(operator: operators.ProjectionConcat): T;
   visitMapToItem(operator: operators.MapToItem): T;
   visitMapFromItem(operator: operators.MapFromItem): T;
@@ -35,7 +33,6 @@ export interface LogicalPlanVisitor<T> {
   visitGroupBy(operator: operators.GroupBy): T;
   visitLimit(operator: operators.Limit): T;
   visitUnion(operator: operators.Union): T;
-  visitUnionAll(operator: operators.UnionAll): T;
   visitIntersection(operator: operators.Intersection): T;
   visitDifference(operator: operators.Difference): T;
   visitDistinct(operator: operators.Distinct): T;

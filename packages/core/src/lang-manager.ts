@@ -64,8 +64,10 @@ export class LanguageManager {
         'castables',
       ] as const) {
         ims[type] = (ims[type] as any) ?? {};
-        for (const item of ext[type]) {
-          ims[type][item.name] = item;
+        if (ext[type]) {
+          for (const item of ext[type]) {
+            ims[type][item.name] = item;
+          }
         }
       }
     }
@@ -166,7 +168,7 @@ export class LanguageManager {
       this.implementations[LanguageManager.allLangs][schema]?.[type][name];
     if (!impl && throwOnMissing)
       throw new Error(
-        `${type.slice(1)} not found: [${lang}] ${
+        `${type.slice(0, -1)} not found: [${lang}] ${
           schema === LanguageManager.defaultSchema ? '<default>' : schema
         }.${name}`
       );

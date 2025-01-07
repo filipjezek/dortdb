@@ -27,7 +27,10 @@ export class AggregateCall implements LogicalPlanOperator {
     /** name of this aggregate in its {@link GroupBy} operator */
     public fieldName: ASTIdentifier
   ) {
-    this._postGSource = new TupleSource(lang, null);
+    this._postGSource = new TupleSource(
+      lang,
+      ASTIdentifier.fromParts(['<partition>'])
+    );
     this._postGSource.schema = [];
     this.postGroupOp = this._postGSource;
   }

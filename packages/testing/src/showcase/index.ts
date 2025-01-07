@@ -1,17 +1,22 @@
-import { DortDB } from '@dortdb/core';
+import { DortDB, LogicalPlanVisitor } from '@dortdb/core';
 import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
+import { GraphBuilder } from './graph-builder.js';
 
 const db = new DortDB({
   mainLang: SQL,
-  additionalLangs: [XQuery, Cypher],
+  additionalLangs: [],
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   const textarea = document.getElementById('code-input') as HTMLTextAreaElement;
   const parseButton = document.getElementById('action-parse');
   const errorOutput = document.getElementById('error-output');
+  const svg = document.getElementById('svg-output') as any as SVGSVGElement;
+  const vmap: Record<string, LogicalPlanVisitor<SVGGElement>> = {};
+  const treeBuilder = new GraphBuilder(svg, vmap);
+  vmap['sql'] = treeBuilder;
 
   function clearOutput() {
     errorOutput.classList.add('hidden');
@@ -28,6 +33,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const ast = db.parse(textarea.value);
       console.log(ast);
+      const plan = db.buildPlan(ast.value[0]);
+      console.log(plan);
+      treeBuilder.drawTree(plan);
     } catch (err) {
       handleError(err as any);
     }

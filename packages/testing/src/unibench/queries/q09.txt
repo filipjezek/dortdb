@@ -15,20 +15,14 @@ WITH topVendors AS (
 SELECT
   id,
   (
-    SELECT count(*) FROM customers
-    WHERE gender = 'male' AND EXISTS (
+    SELECT
+      count(*) FILTER (WHERE gender = 'male') / count(*) FILTER (WHERE gender = 'female')
+    FROM customers
+    WHERE EXISTS (
       SELECT 1 FROM orders WHERE personId = customers.id
       AND orderlines @> ARRAY(ROW(topVendors.id AS brand))
     )
-  ) / 
-  (
-    LANG xquery
-    count(distinct-values(
-      for $custId in Invoices/Invoice.xml[.//brand = $vendors:id]/PersonId/text()
-      where (LANG sql SELECT gender FROM customers WHERE id = custId) = 'female'
-      return $custId
-    ))
-  ) m2fRatio,
+  )
   ARRAY(
     LANG cypher
     MATCH (post)-[:hasTag]->({id: topVendors.id})

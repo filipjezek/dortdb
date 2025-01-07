@@ -254,12 +254,6 @@ export class CalculationBuilder
   visitJoin(operator: operators.Join): CalculationParams {
     return { args: [operator], impl: ret1 };
   }
-  visitLeftOuterJoin(operator: operators.LeftOuterJoin): CalculationParams {
-    return { args: [operator], impl: ret1 };
-  }
-  visitFullOuterJoin(operator: operators.FullOuterJoin): CalculationParams {
-    return { args: [operator], impl: ret1 };
-  }
   visitProjectionConcat(
     operator: operators.ProjectionConcat
   ): CalculationParams {
@@ -284,9 +278,6 @@ export class CalculationBuilder
     return { args: [operator], impl: ret1 };
   }
   visitUnion(operator: operators.Union): CalculationParams {
-    return { args: [operator], impl: ret1 };
-  }
-  visitUnionAll(operator: operators.UnionAll): CalculationParams {
     return { args: [operator], impl: ret1 };
   }
   visitIntersection(operator: operators.Intersection): CalculationParams {

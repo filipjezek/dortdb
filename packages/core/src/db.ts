@@ -1,3 +1,4 @@
+import { ASTNode } from './ast.js';
 import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
 
@@ -19,6 +20,12 @@ export class DortDB<LangNames extends string> {
       .getLang(this.config.mainLang.name)
       .createParser(this.langMgr)
       .parse(query);
+  }
+
+  public buildPlan(query: ASTNode) {
+    const Visitor = this.langMgr.getLang(this.config.mainLang.name).visitors
+      .logicalPlanBuilder;
+    return query.accept(new Visitor(this.langMgr));
   }
 }
 

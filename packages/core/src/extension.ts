@@ -1,3 +1,6 @@
+import { aggregates } from './aggregates/index.js';
+import { ASTIdentifier } from './ast.js';
+import { castables } from './castables/index.js';
 import { operators } from './operators/index.js';
 
 export interface Operator {
@@ -8,6 +11,7 @@ export interface Operator {
 export interface Fn {
   name: string;
   impl: (...args: any[]) => any;
+  schema?: ASTIdentifier[];
 }
 
 export interface AggregateFn {
@@ -29,9 +33,9 @@ export interface Castable {
 
 export interface Extension<LangNames extends string = string> {
   schema?: string;
-  operators: Operator[];
-  functions: Fn[];
-  aggregates: AggregateFn[];
+  operators?: Operator[];
+  functions?: Fn[];
+  aggregates?: AggregateFn[];
   castables?: Castable[];
   scope?: LangNames[];
 }
@@ -39,5 +43,6 @@ export interface Extension<LangNames extends string = string> {
 export const core: Extension = {
   operators: operators,
   functions: [],
-  aggregates: [],
+  aggregates: aggregates,
+  castables: castables,
 };

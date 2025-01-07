@@ -16,29 +16,26 @@ describe('AST Expressions', () => {
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
-            new ASTOperator('sql', new astSQL.ASTIdentifier('~'), [
-              new ASTOperator('sql', new astSQL.ASTIdentifier('-'), [
-                new ASTOperator('sql', new astSQL.ASTIdentifier('+'), [
+            new ASTOperator('sql', new astSQL.SQLIdentifier('~'), [
+              new ASTOperator('sql', new astSQL.SQLIdentifier('-'), [
+                new ASTOperator('sql', new astSQL.SQLIdentifier('+'), [
                   new astSQL.ASTNumberLiteral('1'),
-                  new ASTOperator('sql', new astSQL.ASTIdentifier('*'), [
+                  new ASTOperator('sql', new astSQL.SQLIdentifier('*'), [
                     new astSQL.ASTNumberLiteral('2'),
                     new astSQL.ASTNumberLiteral('3'),
                   ]),
                 ]),
-                new ASTOperator('sql', new astSQL.ASTIdentifier('^'), [
+                new ASTOperator('sql', new astSQL.SQLIdentifier('^'), [
                   new astSQL.ASTNumberLiteral('5'),
                   new astSQL.ASTNumberLiteral('8'),
                 ]),
               ]),
               new astSQL.ASTCast(
                 new astSQL.ASTSubscript(
-                  new astSQL.ASTFieldSelector(
-                    'b',
-                    new astSQL.ASTIdentifier('a')
-                  ),
+                  new astSQL.SQLIdentifier('b', 'a'),
                   new astSQL.ASTNumberLiteral('3')
                 ),
-                'int'
+                new astSQL.SQLIdentifier('int')
               ),
             ]),
           ])
@@ -51,8 +48,8 @@ describe('AST Expressions', () => {
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
-            new ASTOperator('sql', new astSQL.ASTIdentifier('-'), [
-              new ASTOperator('sql', new astSQL.ASTIdentifier('-'), [
+            new ASTOperator('sql', new astSQL.SQLIdentifier('-'), [
+              new ASTOperator('sql', new astSQL.SQLIdentifier('-'), [
                 new astSQL.ASTNumberLiteral('1'),
                 new astSQL.ASTNumberLiteral('2'),
               ]),
@@ -71,7 +68,7 @@ describe('AST Expressions', () => {
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
-            new ASTFunction('sql', new astSQL.ASTIdentifier('foo'), [
+            new ASTFunction('sql', new astSQL.SQLIdentifier('foo'), [
               new astSQL.ASTNumberLiteral('1'),
               new astSQL.ASTNumberLiteral('2'),
               new astSQL.ASTNumberLiteral('3'),
@@ -86,7 +83,7 @@ describe('AST Expressions', () => {
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
-            new ASTFunction('sql', new astSQL.ASTIdentifier('foo'), [
+            new ASTFunction('sql', new astSQL.SQLIdentifier('foo'), [
               new astSQL.SelectStatement(
                 new astSQL.SelectSet([new astSQL.ASTNumberLiteral('1')])
               ),
@@ -101,7 +98,7 @@ describe('AST Expressions', () => {
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
-            new ASTFunction('sql', new astSQL.ASTIdentifier('foo'), [
+            new ASTFunction('sql', new astSQL.SQLIdentifier('foo'), [
               new astSQL.SelectStatement(
                 new astSQL.SelectSet([new astSQL.ASTNumberLiteral('1')])
               ),
@@ -126,7 +123,7 @@ describe('AST Expressions', () => {
           const expected = [
             new astSQL.SelectStatement(
               new astSQL.SelectSet([
-                new ASTOperator('sql', new astSQL.ASTIdentifier(operator), [
+                new ASTOperator('sql', new astSQL.SQLIdentifier(operator), [
                   new astSQL.ASTNumberLiteral('1'),
                   new astSQL.ASTQuantifier(
                     quantifier,
@@ -179,7 +176,7 @@ describe('AST Expressions', () => {
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
             new astSQL.ASTCase(
-              new astSQL.ASTFieldSelector('a'),
+              new astSQL.SQLIdentifier('a'),
               [
                 [
                   new astSQL.ASTNumberLiteral('2'),

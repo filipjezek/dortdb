@@ -1,6 +1,11 @@
 import { AdditionalTokens, Keywords } from './tokens.js';
 import { ASTNode, ASTOperator, LanguageManager } from '@dortdb/core';
-import { SQLIdentifier, SelectSet } from '../ast/index.js';
+import {
+  ASTTableAlias,
+  JoinClause,
+  SQLIdentifier,
+  SelectSet,
+} from '../ast/index.js';
 
 export interface YyContext {
   Keywords: typeof Keywords;
@@ -21,6 +26,6 @@ export interface YyContext {
   saveRemainingInput: (input: string) => void;
   wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
   makeOp: (op: string | SQLIdentifier, operands: ASTNode[]) => ASTOperator;
-  allFrom: (src: ASTNode) => SelectSet;
+  allFrom: (src: SQLIdentifier | ASTTableAlias | JoinClause) => SelectSet;
   ast: Record<string, any>;
 }

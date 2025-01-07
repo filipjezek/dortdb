@@ -10,7 +10,8 @@ export class CartesianProduct implements LogicalPlanTupleOperator {
     public left: LogicalPlanTupleOperator,
     public right: LogicalPlanTupleOperator
   ) {
-    this.schema = left.schema.concat(right.schema);
+    this.schema =
+      left.schema && right.schema && left.schema.concat(right.schema);
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
@@ -19,6 +20,9 @@ export class CartesianProduct implements LogicalPlanTupleOperator {
 }
 
 export class Join extends CartesianProduct {
+  public leftOuter = false;
+  public rightOuter = false;
+
   constructor(
     lang: string,
     left: LogicalPlanTupleOperator,
@@ -30,17 +34,5 @@ export class Join extends CartesianProduct {
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitJoin(this);
-  }
-}
-
-export class LeftOuterJoin extends Join {
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitLeftOuterJoin(this);
-  }
-}
-
-export class FullOuterJoin extends Join {
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitFullOuterJoin(this);
   }
 }

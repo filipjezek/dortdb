@@ -55,3 +55,13 @@ h1 {
     }
   }
 }
+
+#svg-output {
+  display: block;
+  margin: 10px auto;
+}
+
+.scroll-container {
+  overflow: auto;
+  max-width: 100%;
+}

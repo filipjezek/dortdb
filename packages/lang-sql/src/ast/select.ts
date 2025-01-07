@@ -8,7 +8,7 @@ import { WindowSpec } from './window.js';
 
 export class SelectStatement implements ASTNode {
   constructor(
-    public selectSet: SelectSet,
+    public selectSet: SelectSet | ValuesClause,
     public orderBy?: OrderByItem[],
     public limit?: ASTNode,
     public offset?: ASTNode,
@@ -46,10 +46,8 @@ export enum SelectSetOpType {
 
 export class SelectSetOp implements ASTNode {
   type: SelectSetOpType;
-  distinct: boolean;
 
-  constructor(public next: SelectStatement, distinct: string, type: string) {
-    this.distinct = distinct?.toLowerCase() === 'distinct';
+  constructor(public next: SelectSet, public distinct: boolean, type: string) {
     this.type = type.toLowerCase() as SelectSetOpType;
   }
 

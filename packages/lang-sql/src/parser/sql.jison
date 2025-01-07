@@ -152,30 +152,20 @@ select-set:
 		$$ = new yy.ast.SelectSet($3, $5, $6, $7, $8, $2, $9);
 	} ;
 
-select-set-or-subquery:
-	select-set
-	| LPAR subquery RPAR { $$ = yy.allFrom($2); } ;
-
 select-set-list:
 	select-set
-	| LPAR subquery RPAR setop select-set-or-subquery {
-		$$ = yy.allFrom($2);
-		$$.setOp = new yy.ast.SelectSetOp($5, undefined, $4);
-	}
-	| LPAR subquery RPAR setop-modifier setop select-set-or-subquery {
-		$$ = yy.allFrom($2);
-		$$.setOp = new yy.ast.SelectSetOp($6, $4, $5);
-	}
-	| select-set-list setop select-set-or-subquery { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($3, undefined, $2); }
-	| select-set-list setop-modifier setop select-set-or-subquery { $$ = $1; $$.setOp = new yy.ast.SelectSetOp($4, $2, $3); } ;
+	| select-set setop all_opt LPAR subquery RPAR { $$ = $1; $1.setOp = new yy.ast.SelectSetOp(yy.allFrom($5), !$3, $2); }
+	| LPAR subquery RPAR setop all_opt LPAR subquery RPAR { $$ = yy.allFrom($2); $$.setOp = new yy.ast.SelectSetOp(yy.allFrom($7), !$5, $4); }
+	| select-set setop all_opt select-set-list { $$ = $1; $1.setOp = new yy.ast.SelectSetOp($4, !$3, $2); }
+	| LPAR subquery RPAR setop all_opt select-set-list { $$ = yy.allFrom($2); $$.setOp = new yy.ast.SelectSetOp($6, !$5, $4); } ;
 
-setop-modifier:
+distinct-or-all:
 	ALL
 	| DISTINCT ;
 
 select-list:
-	expression alias_opt { $$ = [$2 ? new yy.ast.ASTAlias($1, $2) : $1]; }
-	| select-list COMMA expression alias_opt { $$ = $1; $$.push($4 ? new yy.ast.ASTAlias($3, $4) : $3); } ;
+	expression alias_opt { $$ = [$2 ? new yy.ast.ASTExpressionAlias($1, $2) : $1]; }
+	| select-list COMMA expression alias_opt { $$ = $1; $$.push($4 ? new yy.ast.ASTExpressionAlias($3, $4) : $3); } ;
 
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
@@ -200,8 +190,8 @@ with-clause:
 	} ;
 
 with-query-name:
-	ID AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.ASTIdentifier($1), [], $5, $3); }
-	| ID LPAR column-list RPAR AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.ASTIdentifier($1), $3, $8, $6); } ;
+	ID AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.SQLIdentifier($1), [], $5, $3); }
+	| ID LPAR column-list RPAR AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.SQLIdentifier($1), $3, $8, $6); } ;
 
 with-query-search:
 	with-query-name
@@ -209,7 +199,7 @@ with-query-search:
 		$$ = $1;
 		$$.searchType = $3;
 		$$.searchCols = $6;
-		$$.searchName = new yy.ast.ASTIdentifier($8);
+		$$.searchName = new yy.ast.SQLIdentifier($8);
 	};
 
 with-query-cycle:
@@ -217,14 +207,14 @@ with-query-cycle:
 	| with-query-search CYCLE column-list SET ID USING ID {
 		$$ = $1;
 		$$.cycleCols = $3;
-		$$.cycleMarkName = new yy.ast.ASTIdentifier($5);
-		$$.cyclePathName = new yy.ast.ASTIdentifier($7);
+		$$.cycleMarkName = new yy.ast.SQLIdentifier($5);
+		$$.cyclePathName = new yy.ast.SQLIdentifier($7);
 	}
 	| with-query-search CYCLE column-list SET ID TO expression DEFAULT expression USING ID {
 		$$ = $1;
 		$$.cycleCols = $3;
-		$$.cycleMarkName = new yy.ast.ASTIdentifier($5);
-		$$.cyclePathName = new yy.ast.ASTIdentifier($11);
+		$$.cycleMarkName = new yy.ast.SQLIdentifier($5);
+		$$.cyclePathName = new yy.ast.SQLIdentifier($11);
 		$$.cycleMarkVal = $7;
 		$$.cycleMarkDefault = $9;
 	};
@@ -259,8 +249,8 @@ join-condition:
 	| USING LPAR column-list RPAR { $$ = $3; } ;
 
 column-list:
-	ID { $$ = [new yy.ast.ASTIdentifier($1)]; }
-	| column-list COMMA ID { $$ = $1; $$.push(new yy.ast.ASTIdentifier($3)); } ;
+	ID { $$ = [new yy.ast.SQLIdentifier($1)]; }
+	| column-list COMMA ID { $$ = $1; $$.push(new yy.ast.SQLIdentifier($3)); } ;
 
 where-clause:
 	WHERE expression { $$ = $2; } ;
@@ -316,17 +306,19 @@ limit-clause:
 // expressions
 
 scoped-id:
-	ID { $$ = new yy.ast.ASTIdentifier($1); }
-	| ID DOT ID { $$ = new yy.ast.ASTIdentifier($3, $1); } ;
+	ID { $$ = new yy.ast.SQLIdentifier($1); }
+	| ID DOT ID { $$ = new yy.ast.SQLIdentifier($3, $1); } ;
 
 field-selector:
-	STAR { $$ = new yy.ast.ASTIdentifier(yy.ast.allAttrs); }
-	| scoped-id { $$ = new yy.ast.ASTIdentifier($1.idOriginal, $1.schemaOriginal && new yy.ast.ASTIdentifier($1.schemaOriginal)); }
-	| ID DOT ID DOT ID { $$ = new yy.ast.ASTIdentifier($3, new yy.ast.ASTIdentifier($2, $1)); }
-	| scoped-id DOTSTAR { $$ = new yy.ast.ASTIdentifier(yy.ast.allAttrs, new yy.ast.ASTIdentifier($1)); } ;
+	STAR { $$ = new yy.ast.SQLIdentifier(yy.ast.allAttrs); }
+	| scoped-id { $$ = $1; }
+	| ID DOT ID DOT ID { $$ = new yy.ast.SQLIdentifier($5, $1, $3); }
+	| scoped-id DOTSTAR { $$ = new yy.ast.SQLIdentifier(yy.ast.allAttrs, ...$1.schemasOriginal); } ;
 
 table-alias:
-	AS ID { $$ = new yy.ast.ASTTableAlias($2); }
+	ID { $$ = new yy.ast.ASTTableAlias($1); }
+	| ID LPAR column-list RPAR { $$ = new yy.ast.ASTTableAlias($1, $3); }
+	| AS ID { $$ = new yy.ast.ASTTableAlias($2); }
 	| AS ID LPAR column-list RPAR { $$ = new yy.ast.ASTTableAlias($2, $4); } ;
 
 subquery:
@@ -377,7 +369,7 @@ function-call:
 	| scoped-id LPAR expression-list orderby-clause RPAR filter-clause_opt {
 		$$ = new yy.ast.ASTAggregate($1, $3, undefined, $4, $6);
 	}
-	| scoped-id LPAR setop-modifier expression-list orderby-clause_opt RPAR filter-clause_opt {
+	| scoped-id LPAR distinct-or-all expression-list orderby-clause_opt RPAR filter-clause_opt {
 		$$ = new yy.ast.ASTAggregate($1, $4, $3, $5, $7);
 	}
 	| scoped-id LPAR expression-list RPAR WITHIN GROUP LPAR expression-list orderby-clause_opt RPAR filter-clause_opt {
@@ -459,8 +451,8 @@ expression-list_opt-list:
 
 cast-or-subscript-expression:
 	primary-expression
-	| CAST LPAR expression AS ID braces_opt RPAR { $$ = new yy.ast.ASTCast($3, new yy.ast.ASTIdentifier($5), !!$6); }
-	| cast-or-subscript-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, new yy.ast.ASTIdentifier($3), !!$4); }
+	| CAST LPAR expression AS ID braces_opt RPAR { $$ = new yy.ast.ASTCast($3, new yy.ast.SQLIdentifier($5), !!$6); }
+	| cast-or-subscript-expression DBLCOLON ID braces_opt { $$ = new yy.ast.ASTCast($1, new yy.ast.SQLIdentifier($3), !!$4); }
 	| cast-or-subscript-expression LBRA expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3); }
 	| cast-or-subscript-expression LBRA expression COLON expression RBRA { $$ = new yy.ast.ASTSubscript($1, $3, $5); };
 
@@ -562,7 +554,8 @@ not_opt:
 	| NOT ;
 
 alias_opt:
-	| AS ID { $$ = new yy.ast.ASTIdentifier($2); } ;
+	| ID { $$ = $1; }
+	| AS ID { $$ = $2; } ;
 
 table-alias_opt:
 	| table-alias ;
@@ -638,3 +631,6 @@ recursive_opt:
 materialized_opt:
 	| NOT MATERIALIZED { $$ = false; }
 	| MATERIALIZED { $$ = true; } ;
+
+all_opt:
+	| ALL ;

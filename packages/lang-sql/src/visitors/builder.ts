@@ -4,42 +4,18 @@ import {
   ASTFunction,
   ASTIdentifier,
   LogicalPlanOperator,
-  Limit,
   LangSwitch,
   LanguageManager,
-  Projection,
   Aliased,
   ASTNode,
-  CartesianProduct,
-  Selection,
-  Calculation,
   UnsupportedError,
   allAttrs,
   CalculationParams,
   LogicalPlanVisitor,
-  Literal,
-  FnCall,
   LogicalOpOrId,
-  OrderBy,
   utils,
-  Intersection,
-  Difference,
-  Union,
-  Distinct,
-  UnionAll,
-  NullSource,
-  GroupBy,
   LogicalPlanTupleOperator,
-  Conditional,
-  AggregateCall,
-  TupleSource,
-  Order,
-  MapFromItem,
-  ProjectionIndex,
-  TupleFnSource,
-  MapToItem,
-  QuantifierType,
-  Quantifier,
+  operators,
 } from '@dortdb/core';
 import {
   ASTTableAlias,
@@ -92,9 +68,9 @@ function ret1<T>(x: T): T {
   return x;
 }
 function getAggrs([item]: Aliased<
-  Calculation | ASTIdentifier
->): AggregateCall[] {
-  return item instanceof Calculation ? item.aggregates ?? [] : [];
+  operators.Calculation | ASTIdentifier
+>): operators.AggregateCall[] {
+  return item instanceof operators.Calculation ? item.aggregates ?? [] : [];
 }
 function assertOne<T>(x: Iterable<T>): T {
   const iter = x[Symbol.iterator]();
@@ -125,10 +101,10 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
   private processNode(item: ASTNode): LogicalOpOrId {
     return item instanceof ASTIdentifier ? item : item.accept(this);
   }
-  private toCalc(node: ASTNode): Calculation | ASTIdentifier {
+  private toCalc(node: ASTNode): operators.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
     const calcParams = node.accept(this).accept(this.calcBuilders);
-    return new Calculation(
+    return new operators.Calculation(
       'sql',
       calcParams.impl,
       calcParams.args,
@@ -138,20 +114,30 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
   }
 
   visitStringLiteral(node: ASTStringLiteral): LogicalPlanOperator {
-    return new Literal('sql', node.value);
+    return new operators.Literal('sql', node.value);
   }
   visitNumberLiteral(node: ASTNumberLiteral): LogicalPlanOperator {
-    return new Literal('sql', node.value);
+    return new operators.Literal('sql', node.value);
   }
   visitArray(node: ASTArray): LogicalPlanOperator {
     if (Array.isArray(node.items)) {
-      return new FnCall('sql', node.items.map(this.processNode), Array, true);
+      return new operators.FnCall(
+        'sql',
+        node.items.map(this.processNode),
+        Array,
+        true
+      );
     }
-    return new FnCall('sql', [node.items.accept(this)], Array.from, true);
+    return new operators.FnCall(
+      'sql',
+      [node.items.accept(this)],
+      Array.from,
+      true
+    );
   }
   visitRow(node: ASTRow): LogicalPlanOperator {
     const attrs = node.items.map(this.processAttr);
-    return new FnCall(
+    return new operators.FnCall(
       'sql',
       attrs.map((x) => x[0]),
       (...args) => {
@@ -164,11 +150,11 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     );
   }
   visitParam(node: ASTParam): LogicalPlanOperator {
-    return new FnCall('sql', [toId(node.name)], ret1, true);
+    return new operators.FnCall('sql', [toId(node.name)], ret1, true);
   }
   visitCast(node: ASTCast): LogicalPlanOperator {
     const impl = this.langMgr.getCast('sql', ...idToPair(node.type));
-    return new FnCall(
+    return new operators.FnCall(
       'sql',
       [node.expr.accept(this)],
       node.isArray
@@ -185,33 +171,33 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     const expr = node.expr.accept(this);
     const index = node.from.accept(this);
     return node.to
-      ? new FnCall(
+      ? new operators.FnCall(
           'sql',
           [expr, index, node.to.accept(this)],
           (e, f, t) => e.slice(f, t),
           true
         )
-      : new FnCall('sql', [expr, index], (e, i) => e[i], true);
+      : new operators.FnCall('sql', [expr, index], (e, i) => e[i], true);
   }
   visitExists(node: ASTExists): LogicalPlanOperator {
     let res = node.query.accept(this) as LogicalPlanOperator;
-    res = new Limit('sql', 0, 1, res);
+    res = new operators.Limit('sql', 0, 1, res);
     const col = toId('count');
-    res = new GroupBy(
+    res = new operators.GroupBy(
       'sql',
       [],
       [
-        new AggregateCall(
+        new operators.AggregateCall(
           'sql',
           [toId(allAttrs)],
           this.langMgr.getAggr('sql', 'count'),
           col
         ),
       ],
-      res as Limit
+      res as operators.Limit
     );
-    res = new MapToItem('sql', col, res as GroupBy);
-    return new FnCall('sql', [res], assertOne);
+    res = new operators.MapToItem('sql', col, res as operators.GroupBy);
+    return new operators.FnCall('sql', [res], assertOne);
   }
 
   visitQuantifier(node: ASTQuantifier): LogicalPlanOperator {
@@ -223,19 +209,19 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     switch (node.parentOp) {
       case '>':
       case '>=':
-        agg = node.quantifier === QuantifierType.ALL ? 'max' : 'min';
+        agg = node.quantifier === operators.QuantifierType.ALL ? 'max' : 'min';
         break;
       case '<':
       case '<=':
-        agg = node.quantifier === QuantifierType.ALL ? 'min' : 'max';
+        agg = node.quantifier === operators.QuantifierType.ALL ? 'min' : 'max';
         break;
     }
     if (agg) {
-      query = new GroupBy(
+      query = new operators.GroupBy(
         'sql',
         [],
         [
-          new AggregateCall(
+          new operators.AggregateCall(
             'sql',
             [col],
             this.langMgr.getAggr('sql', agg),
@@ -244,13 +230,17 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
         ],
         query as LogicalPlanTupleOperator
       );
-      return new FnCall('sql', [new MapToItem('sql', col, query)], assertOne);
+      return new operators.FnCall(
+        'sql',
+        [new operators.MapToItem('sql', col, query)],
+        assertOne
+      );
     }
 
-    return new Quantifier('sql', node.quantifier, query);
+    return new operators.Quantifier('sql', node.quantifier, query);
   }
   visitIdentifier(node: ASTIdentifier): LogicalPlanOperator {
-    return new FnCall('sql', [node], ret1, true);
+    return new operators.FnCall('sql', [node], ret1, true);
   }
   visitSQLIdentifier(node: SQLIdentifier): LogicalPlanOperator {
     return this.visitIdentifier(node);
@@ -266,7 +256,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
             ?.map((x) => x.parts.join('.'))
             .join(', ')})`
         );
-      return new Projection(
+      return new operators.Projection(
         'sql',
         node.columns.map((x, i) => [
           src.schema[i],
@@ -275,7 +265,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
         src
       );
     }
-    return new Projection(
+    return new operators.Projection(
       'sql',
       src.schema.map((x) => [x, overrideTable(node.name, x)]),
       src
@@ -285,7 +275,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     throw new Error('Method not implemented.');
   }
 
-  private processOrderItem(x: OrderByItem): Order {
+  private processOrderItem(x: OrderByItem): operators.Order {
     return {
       ascending: x.ascending,
       key: this.toCalc(x.expression),
@@ -295,9 +285,13 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
   visitSelectStatement(node: SelectStatement) {
     if (node.withQueries?.length)
       throw new UnsupportedError('With queries not supported');
-    let op = this.visitSelectSet(node.selectSet);
+    let op = node.selectSet.accept(this) as LogicalPlanTupleOperator;
     if (node.orderBy?.length) {
-      op = new OrderBy('sql', node.orderBy.map(this.processOrderItem), op);
+      op = new operators.OrderBy(
+        'sql',
+        node.orderBy.map(this.processOrderItem),
+        op
+      );
     }
     if (node.limit || node.offset) {
       op = this.buildLimit(node, op);
@@ -311,10 +305,10 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
       throw new Error('Limit must be a number constant');
     if (offset && !utils.assertCalcLiteral(offset, 'number'))
       throw new Error('Offset must be a number constant');
-    return new Limit(
+    return new operators.Limit(
       'sql',
-      offset ? (offset as Calculation).impl() : 0,
-      limit ? (limit as Calculation).impl() : Infinity,
+      offset ? (offset as operators.Calculation).impl() : 0,
+      limit ? (limit as operators.Calculation).impl() : Infinity,
       op
     );
   }
@@ -330,37 +324,42 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     let next = node.next.accept(this) as LogicalPlanTupleOperator;
     switch (node.type) {
       case SelectSetOpType.UNION:
-        return node.distinct
-          ? new UnionAll('sql', left, next)
-          : new Union('sql', left, next);
+        next = new operators.Union('sql', left, next);
+        break;
       case SelectSetOpType.INTERSECT:
-        return new Intersection('sql', left, next);
+        next = new operators.Intersection('sql', left, next);
+        break;
       case SelectSetOpType.EXCEPT:
-        return new Difference('sql', left, next);
+        next = new operators.Difference('sql', left, next);
+        break;
     }
+    if (node.distinct) {
+      next = new operators.Distinct('sql', allAttrs, next);
+    }
+    return next;
   }
 
   visitSelectSet(node: SelectSet): LogicalPlanTupleOperator {
     let op = node.from
-      ? (node.from.accept(this) as LogicalPlanTupleOperator)
-      : new NullSource('sql');
+      ? this.renameSrcTable(node.from)[0]
+      : new operators.NullSource('sql');
     const items = node.items.map(this.processAttr);
     const aggregates = items.flatMap(getAggrs);
     if (node.windows) {
       throw new UnsupportedError('Window functions not supported');
     }
     if (node.where) {
-      op = new Selection('sql', this.toCalc(node.where), op);
+      op = new operators.Selection('sql', this.toCalc(node.where), op);
     }
     if (aggregates.length) {
       op = this.visitGroupByClause(node.groupBy, op, aggregates);
     }
     if (node.having) {
-      op = new Selection('sql', this.toCalc(node.having), op);
+      op = new operators.Selection('sql', this.toCalc(node.having), op);
     }
-    op = new Projection('sql', items, op);
+    op = new operators.Projection('sql', items, op);
     if (node.distinct) {
-      op = new Distinct(
+      op = new operators.Distinct(
         'sql',
         node.distinct === true ? allAttrs : node.distinct.map(this.toCalc),
         op
@@ -372,7 +371,9 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     return op;
   }
 
-  private processAttr(attr: ASTNode): Aliased<ASTIdentifier | Calculation> {
+  private processAttr(
+    attr: ASTNode
+  ): Aliased<ASTIdentifier | operators.Calculation> {
     if (attr instanceof SQLIdentifier) {
       return [attr, attr];
     }
@@ -394,12 +395,17 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
   visitGroupByClause(
     node: GroupByClause,
     src: LogicalPlanTupleOperator = null,
-    aggregates: AggregateCall[] = []
+    aggregates: operators.AggregateCall[] = []
   ): LogicalPlanTupleOperator {
-    if (node.type !== GroupByType.BASIC)
-      throw new UnsupportedError(`Group by type "${node.type}" not supported`);
-    const attrs = (node.items as ASTNode[]).map(this.processAttr);
-    const res = new GroupBy('sql', attrs, aggregates, src);
+    let attrs: Aliased<ASTIdentifier | operators.Calculation>[] = [];
+    if (node) {
+      if (node.type !== GroupByType.BASIC)
+        throw new UnsupportedError(
+          `Group by type "${node.type}" not supported`
+        );
+      attrs = (node.items as ASTNode[]).map(this.processAttr);
+    }
+    const res = new operators.GroupBy('sql', attrs, aggregates, src);
     for (const aggr of aggregates) {
       aggr.postGroupSource.schema.push(...res.schema);
     }
@@ -411,13 +417,18 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
   ): [LogicalPlanTupleOperator, ASTIdentifier] {
     const src =
       node instanceof ASTIdentifier
-        ? new TupleSource('sql', node)
+        ? new operators.TupleSource('sql', node)
         : (node.accept(this) as LogicalPlanTupleOperator);
     if (node instanceof JoinClause) return [src, null];
-    const name = node instanceof ASTIdentifier ? node : toId(node.name);
-    if (!src.schema) return [src, name];
+    const name =
+      node instanceof ASTIdentifier ? node : node.name && toId(node.name);
+    /* no name can only happen with setops:
+       SELECT x, y FROM t
+       UNION (SELECT x, y FROM t) <-- no name (not allowed elsewhere)
+    */
+    if (!src.schema || !name) return [src, name];
     return [
-      new Projection(
+      new operators.Projection(
         'sql',
         src.schema.map((x) => [x, overrideTable(name, x)]),
         src
@@ -430,20 +441,25 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     if (node.lateral) throw new UnsupportedError('Lateral joins not supported');
     const [left, leftName] = this.renameSrcTable(node.tableLeft);
     const [right, rightName] = this.renameSrcTable(node.tableRight);
-    // TODO: outer joins
-    let op: LogicalPlanTupleOperator = new CartesianProduct('sql', left, right);
+
+    // TODO: implement outer join types
+    let op: LogicalPlanTupleOperator = new operators.CartesianProduct(
+      'sql',
+      left,
+      right
+    );
 
     if (node.condition) {
-      op = new Selection('sql', this.toCalc(node.condition), op);
+      op = new operators.Selection('sql', this.toCalc(node.condition), op);
     } else if (node.using) {
       if (!leftName)
         throw new Error('Using can be only used with two named relations');
 
       const usingRight = node.using.map((x) => overrideTable(rightName, x));
       const rightSet = Trie.from(usingRight);
-      op = new Selection(
+      op = new operators.Selection(
         'sql',
-        new Calculation(
+        new operators.Calculation(
           'sql',
           (...args) => {
             const half = args.length / 2;
@@ -456,7 +472,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
         ),
         op
       );
-      op = new Projection(
+      op = new operators.Projection(
         'sql',
         op.schema.filter((x) => !rightSet.has(x)).map((x) => [x, x]),
         op
@@ -465,7 +481,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     return op;
   }
   visitCase(node: ASTCase): LogicalPlanOperator {
-    return new Conditional(
+    return new operators.Conditional(
       'sql',
       node.expr && this.processNode(node.expr),
       node.whenThen.map(([w, t]) => [this.processNode(w), this.processNode(t)]),
@@ -478,7 +494,9 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
       x.filter((x) => x instanceof ASTIdentifier || x.args.length > 0)
     );
 
-    return new TupleFnSource('sql', external, function* (...args) {
+    const res = new operators.TupleFnSource('sql', external, function* (
+      ...args
+    ) {
       let argI = 0;
       for (let i = 0; i < calcs.length; i++) {
         const res: Record<string, any> = {};
@@ -492,12 +510,14 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
         yield res;
       }
     });
+    res.schema = calcs[0].map((_, i) => toId('col' + i));
+    return res;
   }
   visitAggregate(node: ASTAggregate): LogicalPlanOperator {
     const impl = this.langMgr.getAggr(node.lang, ...idToPair(node.id));
     if (node.withinGroupArgs)
       throw new UnsupportedError('Within group not supported');
-    const res = new AggregateCall(
+    const res = new operators.AggregateCall(
       node.lang,
       node.args.map(this.toCalc),
       impl,
@@ -505,17 +525,21 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     );
 
     if (node.filter) {
-      res.postGroupOp = new Selection(
+      res.postGroupOp = new operators.Selection(
         'sql',
         this.toCalc(node.filter),
         res.postGroupOp
       );
     }
     if (node.distinct) {
-      res.postGroupOp = new Distinct('sql', res.args, res.postGroupOp);
+      res.postGroupOp = new operators.Distinct(
+        'sql',
+        res.args,
+        res.postGroupOp
+      );
     }
     if (node.orderBy) {
-      res.postGroupOp = new OrderBy(
+      res.postGroupOp = new operators.OrderBy(
         'sql',
         node.orderBy.map(this.processOrderItem),
         res.postGroupOp
@@ -531,13 +555,14 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
   }
   visitTableFn(node: TableFn): LogicalPlanOperator {
     const impl = this.langMgr.getFn(node.lang, ...idToPair(node.id));
-    let res: LogicalPlanTupleOperator = new TupleFnSource(
+    let res: LogicalPlanTupleOperator = new operators.TupleFnSource(
       'sql',
       node.args.map(this.toCalc),
       impl.impl
     );
+    if (impl.schema) res.schema = [...impl.schema];
     if (node.withOrdinality)
-      res = new ProjectionIndex('sql', toId('ordinality'), res);
+      res = new operators.ProjectionIndex('sql', toId('ordinality'), res);
     return res;
   }
   visitRowsFrom(node: RowsFrom): LogicalPlanOperator {
@@ -547,10 +572,10 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     throw new UnsupportedError('With queries not supported');
   }
   visitLiteral<U>(node: ASTLiteral<U>): LogicalPlanOperator {
-    return new Literal('sql', node.value);
+    return new operators.Literal('sql', node.value);
   }
   visitOperator(node: ASTOperator): LogicalPlanOperator {
-    return new FnCall(
+    return new operators.FnCall(
       node.lang,
       node.operands.map((x) => x.accept(this)),
       this.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
@@ -565,14 +590,14 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
       this.langMgr.getFn(node.lang, id, schema, true); // throw the error
 
     if ('init' in impl) {
-      return new AggregateCall(
+      return new operators.AggregateCall(
         node.lang,
         node.args.map(this.toCalc),
         impl,
         toId(this.stringifier.visitFunction(node))
       );
     }
-    return new FnCall(
+    return new operators.FnCall(
       node.lang,
       node.args.map(this.processNode),
       this.langMgr.getFn(node.lang, id, schema).impl

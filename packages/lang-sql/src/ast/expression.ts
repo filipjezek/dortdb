@@ -4,7 +4,7 @@ import {
   ASTIdentifier,
   ASTFunction,
   allAttrs,
-  QuantifierType,
+  operators,
 } from '@dortdb/core';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
@@ -23,14 +23,19 @@ export class ASTStringLiteral extends ASTLiteral<string> {
 }
 
 export class SQLIdentifier extends ASTIdentifier {
+  public schemasOriginal: string[];
+
   constructor(
     public idOriginal: string | typeof allAttrs,
-    public schemaOriginal?: string
+    /** from least to most specific */
+    ...schemasOriginal: string[]
   ) {
     super();
     this.parts =
       idOriginal === allAttrs ? [idOriginal] : [parseIdentifier(idOriginal)];
-    if (schemaOriginal) this.parts.push(parseIdentifier(schemaOriginal));
+    this.parts.unshift(
+      ...schemasOriginal.filter((x) => !!x).map(parseIdentifier)
+    );
   }
 
   accept<T>(visitor: SQLVisitor<T>): T {
@@ -115,11 +120,11 @@ export class ASTExists implements ASTNode {
 }
 
 export class ASTQuantifier implements ASTNode {
-  public quantifier: QuantifierType;
+  public quantifier: operators.QuantifierType;
   public parentOp: string | ASTIdentifier;
 
   constructor(quantifier: string, public query: ASTNode) {
-    this.quantifier = quantifier.toLowerCase() as QuantifierType;
+    this.quantifier = quantifier.toLowerCase() as operators.QuantifierType;
   }
 
   accept<T>(visitor: SQLVisitor<T>): T {

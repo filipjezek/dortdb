@@ -11,14 +11,12 @@ import { YyContext } from './parser/yycontext.js';
 import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
 import { coalesce } from './functions/coalesce.js';
-import { sum } from './functions/sum.js';
-import { count } from './functions/count.js';
 import { SQLLogicalPlanBuilder } from './visitors/builder.js';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',
   operators: [],
-  aggregates: [sum, count],
+  aggregates: [],
   functions: [coalesce],
   createParser,
   visitors: {
@@ -46,8 +44,7 @@ function createParser(mgr: LanguageManager) {
       typeof op === 'string'
         ? new ASTOperator('sql', new ast.SQLIdentifier(op), args)
         : new ASTOperator('sql', op, args),
-    allFrom: (src) =>
-      new ast.SelectSet([new yy.ast.ASTFieldSelector('*'), src]),
+    allFrom: (src) => new ast.SelectSet([new ast.SQLIdentifier(allAttrs)], src),
     ast: {
       ...ast,
       ASTLiteral,

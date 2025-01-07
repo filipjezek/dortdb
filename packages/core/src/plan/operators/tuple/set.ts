@@ -21,12 +21,6 @@ export class Union extends SetOperator {
   }
 }
 
-export class UnionAll extends SetOperator {
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitUnionAll(this);
-  }
-}
-
 export class Intersection extends SetOperator {
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitIntersection(this);

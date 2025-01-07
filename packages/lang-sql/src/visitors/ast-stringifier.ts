@@ -94,6 +94,9 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     let id = node.parts.map(this.visitSchemaPart).join('.');
     return id;
   }
+  visitSQLIdentifier(node: SQLIdentifier): string {
+    return this.visitIdentifier(node);
+  }
   private addQuotes(str: string, quot: '"' | "'") {
     return quot + str.replaceAll(quot, quot + quot) + quot;
   }
