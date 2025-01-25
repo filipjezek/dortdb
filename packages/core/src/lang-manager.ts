@@ -1,8 +1,10 @@
-import { ASTVisitor } from './ast.js';
 import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
-import { LogicalPlanOperator } from './plan/visitor.js';
 import { makePath } from './utils/make-path.js';
-import { coreVisitors, LogicalPlanVisitors } from './visitors/index.js';
+import {
+  coreVisitors,
+  LogicalPlanBuilder,
+  LogicalPlanVisitors,
+} from './visitors/index.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -19,7 +21,7 @@ export interface Language<Name extends string = string> {
   createParser: (mgr: LanguageManager) => Parser;
   visitors: Partial<LogicalPlanVisitors> & {
     logicalPlanBuilder: {
-      new (langMgr: LanguageManager): ASTVisitor<LogicalPlanOperator>;
+      new (langMgr: LanguageManager): LogicalPlanBuilder;
     };
   };
 }

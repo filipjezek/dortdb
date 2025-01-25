@@ -1,15 +1,14 @@
-import { ASTIdentifier } from '../../../ast.js';
 import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
 
-export abstract class SetOperator implements LogicalPlanTupleOperator {
-  public schema: ASTIdentifier[];
-
+export abstract class SetOperator extends LogicalPlanTupleOperator {
   constructor(
     public lang: string,
     public left: LogicalPlanTupleOperator,
     public right: LogicalPlanTupleOperator
   ) {
+    super();
     this.schema = left.schema;
+    this.schemaSet = left.schemaSet;
   }
 
   abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;

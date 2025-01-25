@@ -7,15 +7,15 @@ export interface Order {
   ascending: boolean;
   nullsFirst: boolean;
 }
-export class OrderBy implements LogicalPlanTupleOperator {
-  public schema: ASTIdentifier[];
-
+export class OrderBy extends LogicalPlanTupleOperator {
   constructor(
     public lang: string,
     public orders: Order[],
     public source: LogicalPlanTupleOperator
   ) {
+    super();
     this.schema = source.schema;
+    this.schemaSet = source.schemaSet;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

@@ -1,9 +1,11 @@
+import { Trie } from 'mnemonist';
 import { ASTIdentifier } from '../../ast.js';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
 } from '../visitor.js';
+import { schemaToTrie } from '../../utils/trie.js';
 
 export class MapToItem implements LogicalPlanOperator {
   constructor(
@@ -27,15 +29,15 @@ export class MapToItem implements LogicalPlanOperator {
   }
 }
 
-export class MapFromItem implements LogicalPlanTupleOperator {
-  public schema: ASTIdentifier[];
-
+export class MapFromItem extends LogicalPlanTupleOperator {
   constructor(
     public lang: string,
     public key: ASTIdentifier,
     public source: LogicalPlanOperator
   ) {
+    super();
     this.schema = [key];
+    this.schemaSet = schemaToTrie(this.schema);
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

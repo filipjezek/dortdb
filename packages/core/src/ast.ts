@@ -37,8 +37,13 @@ export class ASTFunction implements ASTNode {
 }
 
 export const allAttrs = Symbol('all attrs');
+export const boundParam = Symbol('bound param');
+
 export class ASTIdentifier implements ASTNode {
   public parts: (string | symbol)[] = [];
+  [Symbol.iterator]() {
+    return this.parts[Symbol.iterator]();
+  }
 
   accept<T>(visitor: ASTVisitor<T>): T {
     return visitor.visitIdentifier(this);

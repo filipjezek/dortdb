@@ -1,17 +1,20 @@
-import { ASTIdentifier } from '../../../ast.js';
+import { Trie } from 'mnemonist';
 import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 
-export class CartesianProduct implements LogicalPlanTupleOperator {
-  public schema: ASTIdentifier[];
-
+export class CartesianProduct extends LogicalPlanTupleOperator {
   constructor(
     public lang: string,
     public left: LogicalPlanTupleOperator,
     public right: LogicalPlanTupleOperator
   ) {
+    super();
     this.schema =
-      left.schema && right.schema && left.schema.concat(right.schema);
+      left.schema && right.schema
+        ? left.schema.concat(right.schema)
+        : left.schema || right.schema || [];
+    this.schemaSet = schemaToTrie(this.schema);
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

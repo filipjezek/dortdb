@@ -4,6 +4,7 @@ import {
   Language,
   LanguageManager,
   allAttrs,
+  boundParam,
 } from '@dortdb/core';
 import { sqlLexer as Lexer, sqlParser as Parser } from './parser/sql.cjs';
 import { Keywords, AdditionalTokens } from './parser/tokens.js';
@@ -51,6 +52,7 @@ function createParser(mgr: LanguageManager) {
       ASTOperator,
       ASTFunction,
       allAttrs,
+      boundParam,
     },
   };
 

@@ -1,5 +1,6 @@
+import { ASTNode, ASTVisitor } from '../ast.js';
 import { LanguageManager } from '../lang-manager.js';
-import { LogicalPlanVisitor } from '../plan/visitor.js';
+import { LogicalPlanOperator, LogicalPlanVisitor } from '../plan/visitor.js';
 import {
   CalculationBuilder,
   CalculationParams,
@@ -17,6 +18,10 @@ export interface LogicalPlanVisitors {
    * Combines fncalls, literals etc. into a single function with clearly specified inputs
    */
   calculationBuilder: VisitorConstr<CalculationParams>;
+}
+
+export interface LogicalPlanBuilder extends ASTVisitor<LogicalPlanOperator> {
+  buildPlan(node: ASTNode): LogicalPlanOperator;
 }
 
 export const coreVisitors = {

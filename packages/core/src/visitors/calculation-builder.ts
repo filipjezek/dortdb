@@ -1,7 +1,11 @@
-import { ASTIdentifier } from '../ast.js';
+import { allAttrs, ASTIdentifier } from '../ast.js';
 import { LanguageManager } from '../lang-manager.js';
 import * as operators from '../plan/operators/index.js';
-import { LogicalOpOrId, LogicalPlanVisitor } from '../plan/visitor.js';
+import {
+  LogicalOpOrId,
+  LogicalPlanTupleOperator,
+  LogicalPlanVisitor,
+} from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
 
 export type CalculationParams = {
@@ -14,6 +18,15 @@ export type CalculationParams = {
 // avoid creating a new function every time
 function ret1<T>(a: T): T {
   return a;
+}
+function ret1ToItem<T extends LogicalPlanTupleOperator>(
+  a: T
+): operators.MapToItem {
+  return new operators.MapToItem(
+    a.lang,
+    a.schema.length === 1 ? a.schema[0] : ASTIdentifier.fromParts([allAttrs]),
+    a
+  );
 }
 function isLit(a: CalculationParams | ASTIdentifier) {
   return (a as CalculationParams).literal;
@@ -84,13 +97,13 @@ export class CalculationBuilder
   }
 
   visitProjection(operator: operators.Projection): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitSelection(operator: operators.Selection): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitTupleSource(operator: operators.TupleSource): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitItemSource(operator: operators.ItemSource): CalculationParams {
     return { args: [operator], impl: ret1 };
@@ -249,45 +262,48 @@ export class CalculationBuilder
   visitCartesianProduct(
     operator: operators.CartesianProduct
   ): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitJoin(operator: operators.Join): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitProjectionConcat(
     operator: operators.ProjectionConcat
   ): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitMapToItem(operator: operators.MapToItem): CalculationParams {
     return { args: [operator], impl: ret1 };
   }
   visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitOrderBy(operator: operators.OrderBy): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitLimit(operator: operators.Limit): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return {
+      args: [operator],
+      impl: 'schema' in operator.source ? ret1ToItem : ret1,
+    };
   }
   visitUnion(operator: operators.Union): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitIntersection(operator: operators.Intersection): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitDifference(operator: operators.Difference): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitDistinct(operator: operators.Distinct): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitNullSource(operator: operators.NullSource): CalculationParams {
     return { args: [operator], impl: ret1 };
@@ -299,7 +315,7 @@ export class CalculationBuilder
     return { args: [operator], impl: ret1 };
   }
   visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1ToItem };
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
     return { args: [operator], impl: ret1 };

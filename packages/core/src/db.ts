@@ -25,7 +25,7 @@ export class DortDB<LangNames extends string> {
   public buildPlan(query: ASTNode) {
     const Visitor = this.langMgr.getLang(this.config.mainLang.name).visitors
       .logicalPlanBuilder;
-    return query.accept(new Visitor(this.langMgr));
+    return new Visitor(this.langMgr).buildPlan(query);
   }
 }
 

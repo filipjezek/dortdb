@@ -2,15 +2,15 @@ import { ASTIdentifier } from '../../../ast.js';
 import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
-export class Selection implements LogicalPlanTupleOperator {
-  public schema: ASTIdentifier[];
-
+export class Selection extends LogicalPlanTupleOperator {
   constructor(
     public lang: string,
     public condition: Calculation | ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {
+    super();
     this.schema = source.schema;
+    this.schemaSet = source.schemaSet;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

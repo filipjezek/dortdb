@@ -420,7 +420,7 @@ export class GraphBuilder implements LogicalPlanVisitor<SVGGElement> {
         )}</span>`
     );
     let parent = this.drawNode(
-      `&gamma;(${keys.join(', ')}; ${aggs.join(', ')})`,
+      `&gamma;([${keys.join(', ')}]; [${aggs.join(', ')}])`,
       operator.schema,
       'groupby'
     );

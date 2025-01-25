@@ -16,6 +16,8 @@ import {
   utils,
   LogicalPlanTupleOperator,
   operators,
+  LogicalPlanBuilder,
+  boundParam,
 } from '@dortdb/core';
 import {
   ASTTableAlias,
@@ -49,7 +51,7 @@ import {
 } from '../ast/index.js';
 import { SQLVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
-import { Trie } from 'mnemonist';
+import { SchemaInferrer } from './schema-inferrer.js';
 
 function toId(id: string | symbol): ASTIdentifier {
   return SQLIdentifier.fromParts([id]);
@@ -66,6 +68,9 @@ function overrideTable(
 }
 function ret1<T>(x: T): T {
   return x;
+}
+function retI1<T>(x: [any, T, ...any]): T {
+  return x[1];
 }
 function getAggrs([item]: Aliased<
   operators.Calculation | ASTIdentifier
@@ -86,16 +91,27 @@ function idToPair(id: ASTIdentifier): [string, string] {
   ];
 }
 
-export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
+export class SQLLogicalPlanBuilder
+  implements SQLVisitor<LogicalPlanOperator>, LogicalPlanBuilder
+{
   private stringifier = new ASTDeterministicStringifier();
+  private inferrerMap: Record<string, SchemaInferrer> = {};
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
 
   constructor(private langMgr: LanguageManager) {
     this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
+    this.inferrerMap['sql'] = new SchemaInferrer(this.inferrerMap, langMgr);
+
     this.processNode = this.processNode.bind(this);
     this.processAttr = this.processAttr.bind(this);
     this.toCalc = this.toCalc.bind(this);
     this.processOrderItem = this.processOrderItem.bind(this);
+  }
+
+  buildPlan(node: ASTNode): LogicalPlanOperator {
+    const plan = node.accept(this);
+    plan.accept(this.inferrerMap);
+    return plan;
   }
 
   private processNode(item: ASTNode): LogicalOpOrId {
@@ -150,7 +166,12 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     );
   }
   visitParam(node: ASTParam): LogicalPlanOperator {
-    return new operators.FnCall('sql', [toId(node.name)], ret1, true);
+    return new operators.FnCall(
+      'sql',
+      [SQLIdentifier.fromParts([boundParam, node.name])],
+      ret1,
+      true
+    );
   }
   visitCast(node: ASTCast): LogicalPlanOperator {
     const impl = this.langMgr.getCast('sql', ...idToPair(node.type));
@@ -282,16 +303,44 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
       nullsFirst: x.nullsFirst,
     };
   }
+  private processOrderBy(
+    op: LogicalPlanTupleOperator,
+    node: SelectStatement
+  ): LogicalPlanTupleOperator {
+    const orderItems = node.orderBy.map(this.processOrderItem);
+    let proj = op instanceof operators.Distinct ? op.source : op;
+    op = new operators.OrderBy('sql', orderItems, op);
+    if (proj instanceof operators.Projection) {
+      // otherwise it's a set op
+      op = new operators.Projection('sql', proj.attrs.slice(), op);
+      for (const oitem of orderItems) {
+        if (
+          oitem.key instanceof ASTIdentifier &&
+          !proj.schemaSet.has(oitem.key.parts)
+        ) {
+          proj.addToSchema(oitem.key);
+          proj.attrs.push([oitem.key, oitem.key]);
+        } else if (oitem.key instanceof operators.Calculation) {
+          for (const attr of this.inferrerMap['sql'].visitCalculation(
+            oitem.key
+          )) {
+            if (!proj.schemaSet.has(attr)) {
+              const id = ASTIdentifier.fromParts(attr);
+              proj.addToSchema(id);
+              proj.attrs.push([id, id]);
+            }
+          }
+        }
+      }
+    }
+    return op;
+  }
   visitSelectStatement(node: SelectStatement) {
     if (node.withQueries?.length)
       throw new UnsupportedError('With queries not supported');
     let op = node.selectSet.accept(this) as LogicalPlanTupleOperator;
     if (node.orderBy?.length) {
-      op = new operators.OrderBy(
-        'sql',
-        node.orderBy.map(this.processOrderItem),
-        op
-      );
+      op = this.processOrderBy(op, node);
     }
     if (node.limit || node.offset) {
       op = this.buildLimit(node, op);
@@ -407,7 +456,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
     }
     const res = new operators.GroupBy('sql', attrs, aggregates, src);
     for (const aggr of aggregates) {
-      aggr.postGroupSource.schema.push(...res.schema);
+      aggr.postGroupSource.schema.push(...attrs.map(retI1));
     }
     return res;
   }
@@ -426,7 +475,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
        SELECT x, y FROM t
        UNION (SELECT x, y FROM t) <-- no name (not allowed elsewhere)
     */
-    if (!src.schema || !name) return [src, name];
+    if (!src.schema?.length || !name) return [src, name];
     return [
       new operators.Projection(
         'sql',
@@ -456,7 +505,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
         throw new Error('Using can be only used with two named relations');
 
       const usingRight = node.using.map((x) => overrideTable(rightName, x));
-      const rightSet = Trie.from(usingRight);
+      const rightSet = utils.schemaToTrie(usingRight);
       op = new operators.Selection(
         'sql',
         new operators.Calculation(
@@ -474,7 +523,7 @@ export class SQLLogicalPlanBuilder implements SQLVisitor<LogicalPlanOperator> {
       );
       op = new operators.Projection(
         'sql',
-        op.schema.filter((x) => !rightSet.has(x)).map((x) => [x, x]),
+        op.schema.filter((x) => !rightSet.has(x.parts)).map((x) => [x, x]),
         op
       );
     }
