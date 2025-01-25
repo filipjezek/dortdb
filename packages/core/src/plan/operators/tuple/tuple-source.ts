@@ -23,6 +23,8 @@ export class TupleSource extends LogicalPlanTupleOperator {
 }
 
 export class TupleFnSource extends LogicalPlanTupleOperator {
+  public alias?: ASTIdentifier;
+
   constructor(
     public lang: string,
     public args: (ASTIdentifier | Calculation)[],

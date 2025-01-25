@@ -106,29 +106,46 @@ export class SchemaInferrer
     throw new Error('Method not implemented.');
   }
 
-  private getRelName(operator: LogicalPlanTupleOperator) {
-    // joins are made of either TupleSources or Projections based on table aliases
+  private getRelNames(
+    operator: LogicalPlanTupleOperator
+  ): Trie<(string | symbol)[]> {
+    // joins are made of either TupleSources or Projections based on table aliases or other joins
     if (operator instanceof operators.TupleSource) {
       return operator.name instanceof ASTIdentifier
-        ? operator.name
-        : operator.name[1];
+        ? utils.schemaToTrie([operator.name])
+        : utils.schemaToTrie([operator.name[1]]);
     }
-    return ASTIdentifier.fromParts(operator.schema[0].parts.slice(0, -1));
+    if (operator instanceof operators.TupleFnSource) {
+      // alias for table functions is required in our grammar
+      return utils.schemaToTrie([operator.alias]);
+    }
+
+    if (operator instanceof operators.CartesianProduct) {
+      const res = this.getRelNames(operator.left);
+      for (const item of this.getRelNames(operator.right)) {
+        res.add(item);
+      }
+      return res;
+    }
+
+    const res = new Trie<(string | symbol)[]>(Array);
+    res.add(operator.schema[0].parts.slice(0, -1));
+    return res;
   }
   visitCartesianProduct(
     operator: operators.CartesianProduct
   ): Trie<(string | symbol)[]> {
     const external = new Trie<(string | symbol)[]>(Array);
-    const leftName = this.getRelName(operator.left);
-    const rightName = this.getRelName(operator.right);
+    const leftNames = this.getRelNames(operator.left);
+    const rightNames = this.getRelNames(operator.right);
 
     for (const item of operator.schema) {
       if (item.parts.length === 1) {
         throw new Error(`Ambiguous column name: ${item.parts[0]?.toString()}`);
       }
-      if (isTableAttr(item, leftName)) {
+      if (isTableAttr(item, leftNames)) {
         operator.left.addToSchema(item);
-      } else if (isTableAttr(item, rightName)) {
+      } else if (isTableAttr(item, rightNames)) {
         operator.right.addToSchema(item);
       } else {
         external.add(item.parts);
@@ -261,7 +278,15 @@ export class SchemaInferrer
   visitTupleFnSource(
     operator: operators.TupleFnSource
   ): Trie<(string | symbol)[]> {
-    return this.visitCalculation(operator);
+    const external = this.visitCalculation(operator);
+    if (operator.alias) {
+      for (const attr of operator.schema) {
+        if (attr.parts.length > 1 && !isTableAttr(attr, operator.alias)) {
+          external.add(attr.parts);
+        }
+      }
+    }
+    return external;
   }
   visitQuantifier(operator: operators.Quantifier): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');

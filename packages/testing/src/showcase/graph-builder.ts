@@ -522,8 +522,11 @@ export class GraphBuilder implements LogicalPlanVisitor<SVGGElement> {
   ): SVGGElement {
     const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
+    const alias = (operator as operators.TupleFnSource).alias
+      ? `${this.stringifyId((operator as operators.TupleFnSource).alias)}=`
+      : '';
     const parent = this.drawNode(
-      `function(${args.join(', ')})`,
+      `${alias}function(${args.join(', ')})`,
       (operator as operators.TupleFnSource).schema,
       'source-' +
         (operator instanceof operators.ItemFnSource ? 'item' : 'tuple')

@@ -267,8 +267,11 @@ export class SQLLogicalPlanBuilder
     return this.visitIdentifier(node);
   }
   visitTableAlias(node: ASTTableAlias): LogicalPlanTupleOperator {
-    const src = node.table.accept(this) as LogicalPlanTupleOperator;
-    if (node.columns) {
+    const src =
+      node.table instanceof ASTIdentifier
+        ? new operators.TupleSource('sql', node.table)
+        : (node.table.accept(this) as LogicalPlanTupleOperator);
+    if (node.columns?.length) {
       if (node.columns.length !== src.schema?.length)
         throw new Error(
           `Column count mismatch: ${
@@ -285,6 +288,17 @@ export class SQLLogicalPlanBuilder
         ]),
         src
       );
+    }
+    if (src instanceof operators.TupleFnSource) {
+      src.alias = ASTIdentifier.fromParts([node.name]);
+      return src;
+    }
+    if (src instanceof operators.TupleSource) {
+      src.name = [
+        src.name as ASTIdentifier,
+        ASTIdentifier.fromParts([node.name]),
+      ];
+      return src;
     }
     return new operators.Projection(
       'sql',
@@ -390,7 +404,7 @@ export class SQLLogicalPlanBuilder
 
   visitSelectSet(node: SelectSet): LogicalPlanTupleOperator {
     let op = node.from
-      ? this.renameSrcTable(node.from)[0]
+      ? this.getTableName(node.from)[0]
       : new operators.NullSource('sql');
     const items = node.items.map(this.processAttr);
     const aggregates = items.flatMap(getAggrs);
@@ -461,7 +475,7 @@ export class SQLLogicalPlanBuilder
     return res;
   }
 
-  private renameSrcTable(
+  private getTableName(
     node: ASTIdentifier | ASTTableAlias | JoinClause
   ): [LogicalPlanTupleOperator, ASTIdentifier] {
     const src =
@@ -471,25 +485,13 @@ export class SQLLogicalPlanBuilder
     if (node instanceof JoinClause) return [src, null];
     const name =
       node instanceof ASTIdentifier ? node : node.name && toId(node.name);
-    /* no name can only happen with setops:
-       SELECT x, y FROM t
-       UNION (SELECT x, y FROM t) <-- no name (not allowed elsewhere)
-    */
-    if (!src.schema?.length || !name) return [src, name];
-    return [
-      new operators.Projection(
-        'sql',
-        src.schema.map((x) => [x, overrideTable(name, x)]),
-        src
-      ),
-      name,
-    ];
+    return [src, name];
   }
   visitJoinClause(node: JoinClause): LogicalPlanTupleOperator {
     if (node.natural) throw new UnsupportedError('Natural joins not supported');
     if (node.lateral) throw new UnsupportedError('Lateral joins not supported');
-    const [left, leftName] = this.renameSrcTable(node.tableLeft);
-    const [right, rightName] = this.renameSrcTable(node.tableRight);
+    const [left, leftName] = this.getTableName(node.tableLeft);
+    const [right, rightName] = this.getTableName(node.tableRight);
 
     // TODO: implement outer join types
     let op: LogicalPlanTupleOperator = new operators.CartesianProduct(

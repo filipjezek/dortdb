@@ -170,7 +170,7 @@ select-list:
 one-table:
 	scoped-id table-alias_opt { if ($2) {$2.table = $1; $$ = $2;} else { $$ = $1; } }
 	| LPAR subquery RPAR table-alias { $4.table = $2; $$ = $4; }
-	| table-function-call table-alias { $$ = $2; $2.table = $1; } ;
+	| table-function-call ;
 
 table-function-call:
 	simple-function-call table-alias { $$ = $2; $2.table = new yy.ast.TableFn($1.id, $1.args); }
