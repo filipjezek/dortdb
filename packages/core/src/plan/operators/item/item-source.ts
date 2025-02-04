@@ -7,7 +7,7 @@ import {
 
 export class ItemSource implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>
   ) {}
 
@@ -18,7 +18,7 @@ export class ItemSource implements LogicalPlanOperator {
 
 export class ItemFnSource implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public args: (ASTIdentifier | LogicalPlanOperator)[],
     public impl: (...args: any[]) => Iterable<any>
   ) {}

@@ -4,7 +4,7 @@ import { Calculation } from '../item/calculation.js';
 
 export class Distinct extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public attrs: (ASTIdentifier | Calculation)[] | typeof allAttrs,
     public source: LogicalPlanTupleOperator
   ) {

@@ -14,7 +14,7 @@ export class ASTLiteral<T> implements ASTNode {
 
 export class ASTOperator implements ASTNode {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public id: ASTIdentifier,
     public operands: ASTNode[]
   ) {}
@@ -26,7 +26,7 @@ export class ASTOperator implements ASTNode {
 
 export class ASTFunction implements ASTNode {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public id: ASTIdentifier,
     public args: ASTNode[]
   ) {}
@@ -54,10 +54,18 @@ export class ASTIdentifier implements ASTNode {
     ret.parts = parts;
     return ret;
   }
+
+  public equals(other: ASTIdentifier): boolean {
+    if (this.parts.length !== other.parts.length) return false;
+    for (let i = 0; i < this.parts.length; i++) {
+      if (this.parts[i] !== other.parts[i]) return false;
+    }
+    return true;
+  }
 }
 
 export class LangSwitch implements ASTNode {
-  constructor(public lang: string, public node: ASTNode) {}
+  constructor(public lang: Lowercase<string>, public node: ASTNode) {}
 
   accept<T>(visitor: ASTVisitor<T>): T {
     return visitor.visitLangSwitch(this);

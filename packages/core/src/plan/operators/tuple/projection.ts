@@ -10,7 +10,7 @@ import { schemaToTrie } from '../../../utils/trie.js';
 
 export class Projection extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public attrs: Aliased<ASTIdentifier | Calculation>[],
     public source: LogicalPlanTupleOperator
   ) {
@@ -25,18 +25,20 @@ export class Projection extends LogicalPlanTupleOperator {
 }
 
 /**
- * dependent join
+ * dependent join, mapping can introduce columns which override the source
  */
 export class ProjectionConcat extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     /** mapping must be interpreted in the context of the source */
     public mapping: LogicalPlanTupleOperator,
     public outer: boolean,
     public source: LogicalPlanTupleOperator
   ) {
     super();
-    this.schema = source.schema.concat(mapping.schema);
+    this.schema = source.schema
+      .filter((x) => !mapping.schemaSet.has(x.parts))
+      .concat(mapping.schema);
     this.schemaSet = schemaToTrie(this.schema);
   }
 
@@ -47,7 +49,7 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
 
 export class ProjectionIndex extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public indexCol: ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {

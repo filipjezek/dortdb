@@ -1,14 +1,28 @@
-import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
 
 export abstract class SetOperator extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
-    public left: LogicalPlanTupleOperator,
-    public right: LogicalPlanTupleOperator
+    public lang: Lowercase<string>,
+    public left: LogicalPlanOperator,
+    public right: LogicalPlanOperator
   ) {
     super();
-    this.schema = left.schema;
-    this.schemaSet = left.schemaSet;
+    if (
+      left instanceof LogicalPlanTupleOperator !==
+      right instanceof LogicalPlanTupleOperator
+    ) {
+      throw new Error(
+        'Both sides of a set operator must be either tuple or non-tuple operators'
+      );
+    }
+    if (left instanceof LogicalPlanTupleOperator) {
+      this.schema = left.schema;
+      this.schemaSet = left.schemaSet;
+    }
   }
 
   abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;

@@ -651,7 +651,7 @@ export class SQLLogicalPlanBuilder
     return new operators.FnCall(
       node.lang,
       node.args.map(this.processNode),
-      this.langMgr.getFn(node.lang, id, schema).impl
+      impl.impl
     );
   }
   visitLangSwitch(node: LangSwitch): LogicalPlanOperator {

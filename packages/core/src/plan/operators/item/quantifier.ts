@@ -6,7 +6,7 @@ export enum QuantifierType {
 }
 export class Quantifier implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public type: QuantifierType,
     public query: LogicalPlanOperator
   ) {}

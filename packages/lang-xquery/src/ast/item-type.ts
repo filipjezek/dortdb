@@ -1,5 +1,5 @@
 import { ASTNode } from '@dortdb/core';
-import { ASTName, ASTStringLiteral } from './expression.js';
+import { XQueryIdentifier, ASTStringLiteral } from './expression.js';
 import { XQueryVisitor } from './visitor.js';
 
 export enum ItemKind {
@@ -19,7 +19,10 @@ export enum ItemKind {
   SCHEMA_ATTRIBUTE = 'schema-attribute',
 }
 export class ASTItemType implements ASTNode {
-  constructor(public kind?: ItemKind | null, public name: ASTName | '*' = '*') {
+  constructor(
+    public kind?: ItemKind | null,
+    public name: XQueryIdentifier | '*' = '*'
+  ) {
     if (
       this.name instanceof ASTStringLiteral &&
       this.kind !== ItemKind.PROCESSING_INSTRUCTION

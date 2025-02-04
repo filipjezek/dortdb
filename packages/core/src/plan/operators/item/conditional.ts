@@ -3,7 +3,7 @@ import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 
 export class Conditional implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public condition: LogicalPlanOperator | ASTIdentifier,
     public whenThens: [
       LogicalPlanOperator | ASTIdentifier,

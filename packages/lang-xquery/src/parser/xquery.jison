@@ -331,8 +331,8 @@ variable:
 	DOLLAR name { $$ = new yy.ast.ASTVariable($2); } ;
 
 name:
-	QNAME { $$ = new yy.ast.ASTName($1); }
-	| NCNAME { $$ = new yy.ast.ASTName($1); } ;
+	QNAME { $$ = new yy.ast.XQueryIdentifier($1); }
+	| NCNAME { $$ = new yy.ast.XQueryIdentifier($1); } ;
 
 par-expr:
 	LPAR nested-lang RPAR { $$ = $2; }
@@ -461,9 +461,9 @@ computed-constructor:
 	DOCUMENT cur-expr { $$ = new yy.ast.ComputedConstructor($1, $2); }
 	| ELEMENT name-or-expr cur-opt-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
 	| ATTRIBUTE name-or-expr cur-opt-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
-	| NAMESPACE NCNAME cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, new yy.ast.ASTName($2)); }
+	| NAMESPACE NCNAME cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, new yy.ast.XQueryIdentifier($2)); }
 	| NAMESPACE cur-expr cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
-	| PROC_INSTR NCNAME cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, new yy.ast.ASTName($2)); }
+	| PROC_INSTR NCNAME cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, new yy.ast.XQueryIdentifier($2)); }
 	| PROC_INSTR cur-expr cur-expr { $$ = new yy.ast.ComputedConstructor($1, $3, $2); }
 	| TEXT cur-expr { $$ = new yy.ast.ComputedConstructor($1, $2); }
 	| COMMENT cur-expr { $$ = new yy.ast.ComputedConstructor($1, $2); } ;
@@ -505,7 +505,7 @@ primary-expr:
 	| ordered-expr
 	|	constructor-expr
 	| inline-function-expr
-	| DOT { $$ = new yy.ast.CurrentItemRef(); } ;
+	| DOT { $$ = yy.ast.DOT; } ;
 
 postfix-expr:
 	primary-expr
@@ -531,8 +531,8 @@ argument:
 
 path-expr:
 	relative-path-expr {
-		if ($1.length === 1 && $1[0].axis === yy.ast.AxisType.CHILD && $1[0].nodeTest.kind === null && !$1[0].predicates.length) {
-			$$ = new yy.ast.PathExpr([$1[0].nodeTest.name]);
+		if ($1.length === 1 && !($1[0] instanceof yy.ast.PathAxis)) {
+			$$ = $1[0];
 		} else {
 			$$ = new yy.ast.PathExpr($1);
 		}
@@ -569,7 +569,7 @@ axis-step:
 node-test:
 	kind-test
 	| name-or-star { $$ = new yy.ast.ASTItemType(null, $1); }
-	| QNAME_WILDCARD { $$ = new yy.ast.ASTItemType(null, new yy.ast.ASTName($1)); } ;
+	| QNAME_WILDCARD { $$ = new yy.ast.ASTItemType(null, new yy.ast.XQueryIdentifier($1)); } ;
 
 axis-keyword:
 	CHILD

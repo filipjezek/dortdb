@@ -9,7 +9,7 @@ import { schemaToTrie } from '../../utils/trie.js';
 
 export class MapToItem implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public key: ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {
@@ -31,7 +31,7 @@ export class MapToItem implements LogicalPlanOperator {
 
 export class MapFromItem extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public key: ASTIdentifier,
     public source: LogicalPlanOperator
   ) {

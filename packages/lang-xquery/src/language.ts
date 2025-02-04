@@ -1,5 +1,6 @@
 import {
   ASTFunction,
+  ASTNode,
   ASTOperator,
   Language,
   LanguageManager,
@@ -12,6 +13,8 @@ import { Keywords, AdditionalTokens } from './parser/tokens.js';
 import { YyContext } from './parser/yycontext.js';
 import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
+import { XQueryLogicalPlanBuilder } from './visitors/builder.js';
+import { DOT } from './utils/dot.js';
 
 export const XQuery: Language<'xquery'> = {
   name: 'xquery',
@@ -19,6 +22,9 @@ export const XQuery: Language<'xquery'> = {
   aggregates: [],
   functions: [],
   createParser,
+  visitors: {
+    logicalPlanBuilder: XQueryLogicalPlanBuilder,
+  },
 };
 
 function createParser(mgr: LanguageManager) {
@@ -36,7 +42,8 @@ function createParser(mgr: LanguageManager) {
 
     messageQueue: [],
     saveRemainingInput: (input) => (remainingInput = input),
-    makeOp: (op, args) => new ASTOperator('xquery', new ast.ASTName(op), args),
+    makeOp: (op, args) =>
+      new ASTOperator('xquery', new ast.XQueryIdentifier(op), args),
     resetText: (yy) => {
       const temp = yy.textContent;
       yy.textContent = '';
@@ -47,6 +54,7 @@ function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
+      DOT,
       argPlaceholder: Symbol('argPlaceholder'),
     },
   };

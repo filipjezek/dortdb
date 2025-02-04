@@ -21,7 +21,7 @@ export class AggregateCall implements LogicalPlanOperator {
   private _postGSource: LogicalPlanTupleOperator;
 
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public args: (Calculation | ASTIdentifier)[],
     public impl: AggregateFn,
     /** name of this aggregate in its {@link GroupBy} operator */

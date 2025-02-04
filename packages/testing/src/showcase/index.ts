@@ -5,7 +5,7 @@ import { XQuery } from '@dortdb/lang-xquery';
 import { GraphBuilder } from './graph-builder.js';
 
 const db = new DortDB({
-  mainLang: SQL,
+  mainLang: XQuery,
   additionalLangs: [],
 });
 
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const ast = db.parse(textarea.value);
       console.log(ast);
-      const plan = db.buildPlan(ast.value[0]);
+      const plan = db.buildPlan(ast.value);
       console.log(plan);
       treeBuilder.drawTree(plan);
     } catch (err) {

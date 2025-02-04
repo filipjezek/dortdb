@@ -6,6 +6,7 @@ import {
   LogicalPlanVisitor,
   operators,
 } from '@dortdb/core';
+import { TreeJoin, XQueryLogicalPlanVisitor } from '@dortdb/lang-xquery';
 
 function sum(args: number[]) {
   return args.reduce((a, b) => a + b, 0);
@@ -20,7 +21,11 @@ interface Branch {
   src?: SVGGraphicsElement;
 }
 
-export class GraphBuilder implements LogicalPlanVisitor<SVGGElement> {
+export class GraphBuilder
+  implements
+    LogicalPlanVisitor<SVGGElement>,
+    XQueryLogicalPlanVisitor<SVGGElement>
+{
   private readonly drawingContainer: SVGGElement;
   private readonly textContainer = document.createElement('p');
 
@@ -550,5 +555,14 @@ export class GraphBuilder implements LogicalPlanVisitor<SVGGElement> {
   }
   visitQuantifier(operator: operators.Quantifier): SVGGElement {
     throw new Error('Method not implemented.');
+  }
+
+  visitTreeJoin(operator: TreeJoin): SVGGElement {
+    const parent = this.drawNode('TreeJoin', operator.schema);
+    return this.drawBranches(
+      parent,
+      { el: operator.source.accept(this.vmap) },
+      { el: operator.step.accept(this.vmap), edgeType: 'djoin' }
+    );
   }
 }

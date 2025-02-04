@@ -5,7 +5,7 @@ import { schemaToTrie } from '../../../utils/trie.js';
 
 export class CartesianProduct extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public left: LogicalPlanTupleOperator,
     public right: LogicalPlanTupleOperator
   ) {
@@ -27,7 +27,7 @@ export class Join extends CartesianProduct {
   public rightOuter = false;
 
   constructor(
-    lang: string,
+    lang: Lowercase<string>,
     left: LogicalPlanTupleOperator,
     right: LogicalPlanTupleOperator,
     public on: Calculation

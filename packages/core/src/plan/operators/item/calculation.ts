@@ -11,7 +11,7 @@ import { AggregateCall } from './aggregate-call.js';
  */
 export class Calculation implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public impl: (...args: any[]) => any,
     public args: LogicalOpOrId[],
     public aggregates: AggregateCall[] = [],

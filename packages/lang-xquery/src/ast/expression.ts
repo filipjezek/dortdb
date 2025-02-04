@@ -24,30 +24,22 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
   }
 }
 
-export class ASTName implements ASTIdentifier {
-  public schema: string;
-  public id: string;
-
+export class XQueryIdentifier extends ASTIdentifier {
   constructor(public original: string) {
+    super();
     if (!original) return;
-    [this.schema, this.id] = parseName(original);
+    this.parts = parseName(original);
   }
 
   accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitName(this);
-  }
-
-  equals(other: ASTName) {
-    return this.schema === other.schema && this.id === other.id;
+    return visitor.visitXQueryIdentifier(this);
   }
 }
 
-export class ASTVariable extends ASTName {
-  constructor(name: ASTName) {
+export class ASTVariable extends XQueryIdentifier {
+  constructor(name: XQueryIdentifier) {
     super(null);
-    this.schema = name.schema;
-    this.id = name.id;
-    this.original = name.original;
+    this.parts = name.parts;
   }
 
   accept<T>(visitor: XQueryVisitor<T>): T {
@@ -117,7 +109,7 @@ export class InstanceOfExpr implements ASTNode {
 }
 
 export class CastExpr implements ASTNode {
-  constructor(public expr: ASTNode, public type: ASTName) {}
+  constructor(public expr: ASTNode, public type: XQueryIdentifier) {}
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitCastExpr(this);

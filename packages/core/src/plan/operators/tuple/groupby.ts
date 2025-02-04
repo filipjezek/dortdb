@@ -11,7 +11,7 @@ import { schemaToTrie } from '../../../utils/trie.js';
 
 export class GroupBy extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     /** in order to calculate schema, we need aliases for calculations */
     public keys: Aliased<ASTIdentifier | Calculation>[],
     public aggs: AggregateCall[],

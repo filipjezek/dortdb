@@ -1,5 +1,5 @@
 import { ASTNode } from '@dortdb/core';
-import { ASTName, ASTStringLiteral } from './expression.js';
+import { XQueryIdentifier, ASTStringLiteral } from './expression.js';
 import { XQueryVisitor } from './visitor.js';
 
 export class Prolog implements ASTNode {
@@ -17,7 +17,7 @@ export type Declaration =
   | EmptyOrderDeclaration;
 
 export class NSDeclaration {
-  constructor(public prefix: ASTName, public uri: ASTStringLiteral) {}
+  constructor(public prefix: XQueryIdentifier, public uri: ASTStringLiteral) {}
 }
 
 export class DefaultNSDeclaration implements ASTNode {

@@ -3,7 +3,7 @@ import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 
 export class FnCall implements LogicalPlanOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public args: (ASTIdentifier | LogicalPlanOperator)[],
     public impl: (...args: any[]) => any,
     /**

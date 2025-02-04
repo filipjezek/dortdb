@@ -4,7 +4,7 @@ import { Calculation } from '../item/calculation.js';
 
 export class Selection extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public condition: Calculation | ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {

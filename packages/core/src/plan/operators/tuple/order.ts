@@ -9,7 +9,7 @@ export interface Order {
 }
 export class OrderBy extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public orders: Order[],
     public source: LogicalPlanTupleOperator
   ) {

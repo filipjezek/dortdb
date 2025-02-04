@@ -9,7 +9,7 @@ import { Calculation } from '../item/calculation.js';
 
 export class TupleSource extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>
   ) {
     super();
@@ -26,7 +26,7 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
   public alias?: ASTIdentifier;
 
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
     public impl: (...args: any[]) => Iterable<any>
   ) {

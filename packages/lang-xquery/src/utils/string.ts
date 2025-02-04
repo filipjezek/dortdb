@@ -1,3 +1,5 @@
+import { ASTIdentifier } from '@dortdb/core';
+
 export function parseStringLiteral(original: string): string {
   const delim = original[0];
   let value = '';
@@ -41,11 +43,20 @@ export function interpretEscape(esc: string): string {
   }
 }
 
-export function parseName(original: string): [string, string] {
+export function parseName(original: string): string[] {
   if (original.startsWith('Q{')) {
     const end = original.indexOf('}');
     return [original.slice(2, end), original.slice(end + 1)];
   }
   const parts = original.split(':');
-  return parts.length === 1 ? ['', parts[0]] : [parts[0], parts[1]];
+  return parts;
+}
+
+export function idToStr(id: ASTIdentifier): string {
+  let res = '';
+  if (id.parts.length > 1) {
+    res += id.parts[id.parts.length - 2].toString() + ':';
+  }
+  res += id.parts[id.parts.length - 1].toString();
+  return res;
 }

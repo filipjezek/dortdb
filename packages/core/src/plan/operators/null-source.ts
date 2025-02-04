@@ -4,7 +4,7 @@ import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../visitor.js';
 export class NullSource extends LogicalPlanTupleOperator {
   public schema: ASTIdentifier[] = null;
 
-  constructor(public lang: string) {
+  constructor(public lang: Lowercase<string>) {
     super();
   }
 

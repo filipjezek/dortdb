@@ -1,6 +1,7 @@
 import { ASTNode } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { ASTItemType } from './item-type.js';
+import { ASTVariable } from './expression.js';
 
 export class PathExpr implements ASTNode {
   constructor(public steps: ASTNode[], public start?: '/' | '//') {}
@@ -40,11 +41,5 @@ export class PathAxis implements ASTNode {
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitPathAxis(this);
-  }
-}
-
-export class CurrentItemRef implements ASTNode {
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitCurrentItemRef(this);
   }
 }

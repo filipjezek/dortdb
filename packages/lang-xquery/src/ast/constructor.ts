@@ -1,13 +1,13 @@
 import { ASTNode } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
-import { ASTName } from './expression.js';
+import { XQueryIdentifier } from './expression.js';
 
 export class DirectElementConstructor implements ASTNode {
   public content: DirConstrContent;
 
   constructor(
-    public name: ASTName,
-    public attributes: [ASTName, DirConstrContent][],
+    public name: XQueryIdentifier,
+    public attributes: [XQueryIdentifier, DirConstrContent][],
     content: (ASTNode[] | ASTNode | string)[] = []
   ) {
     this.content = new DirConstrContent(content);
@@ -55,7 +55,7 @@ export class ComputedConstructor implements ASTNode {
   constructor(
     public type: ConstructorType,
     public content: ASTNode[],
-    public name?: ASTName | ASTNode
+    public name?: XQueryIdentifier | ASTNode
   ) {}
 
   accept<T>(visitor: XQueryVisitor<T>): T {

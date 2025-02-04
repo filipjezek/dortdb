@@ -1,6 +1,6 @@
 import { ASTVisitor } from '@dortdb/core';
 import {
-  ASTName,
+  XQueryIdentifier,
   ASTNumberLiteral,
   ASTSequenceType,
   ASTStringLiteral,
@@ -36,7 +36,7 @@ import {
   Prolog,
 } from './prolog.js';
 import { ASTItemType } from './item-type.js';
-import { CurrentItemRef, PathAxis, PathExpr, PathPredicate } from './path.js';
+import { PathAxis, PathExpr, PathPredicate } from './path.js';
 import {
   ComputedConstructor,
   DirConstrContent,
@@ -59,7 +59,7 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitNSDeclaration(node: NSDeclaration): T;
   visitStringLiteral(node: ASTStringLiteral): T;
   visitNumberLiteral(node: ASTNumberLiteral): T;
-  visitName(node: ASTName): T;
+  visitXQueryIdentifier(node: XQueryIdentifier): T;
   visitVariable(node: ASTVariable): T;
   visitFLWORExpr(node: FLWORExpr): T;
   visitFLWORFor(node: FLWORFor): T;
@@ -83,7 +83,6 @@ export interface XQueryVisitor<T> extends ASTVisitor<T> {
   visitPathAxis(node: PathAxis): T;
   visitFilterExpr(node: FilterExpr): T;
   visitDynamicFunctionCall(node: DynamicFunctionCall): T;
-  visitCurrentItemRef(node: CurrentItemRef): T;
   visitSequenceConstructor(node: SequenceConstructor): T;
   visitOrderedExpr(node: OrderedExpr): T;
   visitDirectElementConstructor(node: DirectElementConstructor): T;

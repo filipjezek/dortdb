@@ -3,14 +3,14 @@ import * as operators from './operators/index.js';
 import { Trie } from 'mnemonist';
 
 export interface LogicalPlanOperator {
-  lang: string;
+  lang: Lowercase<string>;
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
 }
 export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
   public schema: ASTIdentifier[];
   public schemaSet: Trie<(string | symbol)[]>;
-  public lang: string;
+  public lang: Lowercase<string>;
 
   abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
   /** will preserve object references */

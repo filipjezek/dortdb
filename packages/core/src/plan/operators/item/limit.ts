@@ -6,7 +6,7 @@ import {
 
 export class Limit extends LogicalPlanTupleOperator {
   constructor(
-    public lang: string,
+    public lang: Lowercase<string>,
     public skip: number,
     public limit: number,
     public source: LogicalPlanOperator
