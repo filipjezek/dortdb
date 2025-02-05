@@ -1,6 +1,8 @@
 import {
+  aggregates,
   ASTFunction,
   ASTOperator,
+  LangSwitch,
   Language,
   LanguageManager,
 } from '@dortdb/core';
@@ -19,7 +21,7 @@ import { castables } from './castables/index.js';
 export const XQuery: Language<'xquery'> = {
   name: 'xquery',
   operators: [],
-  aggregates: [],
+  aggregates: [{ ...aggregates.count, schema: 'fn' }],
   functions: [],
   castables,
   createParser,
@@ -55,6 +57,7 @@ function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
+      LangSwitch,
       DOT,
       argPlaceholder: Symbol('argPlaceholder'),
     },
@@ -63,7 +66,7 @@ function createParser(mgr: LanguageManager) {
   const parser = new Parser(yy, new Lexer(yy));
   return {
     parse: (input: string) => {
-      const result = parser.parse(input);
+      const result = [parser.parse(input)];
       return {
         value: result,
         remainingInput,

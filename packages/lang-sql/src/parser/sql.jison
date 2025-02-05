@@ -323,7 +323,7 @@ table-alias:
 
 subquery:
 	select-stmt
-	| LANGSWITCH { $$ = yy.messageQueue.shift(); } ;
+	| LANGSWITCH { $$ = new yy.ast.LangSwitch($1, yy.messageQueue.shift()); } ;
 
 query-quantifier:
 	ALL

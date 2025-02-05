@@ -140,16 +140,10 @@ export class SQLLogicalPlanBuilder
       return new operators.FnCall(
         'sql',
         node.items.map(this.processNode),
-        Array,
-        true
+        Array.of
       );
     }
-    return new operators.FnCall(
-      'sql',
-      [node.items.accept(this)],
-      Array.from,
-      true
-    );
+    return new operators.FnCall('sql', [node.items.accept(this)], Array.from);
   }
   visitRow(node: ASTRow): LogicalPlanOperator {
     const attrs = node.items.map(this.processAttr);
@@ -179,12 +173,12 @@ export class SQLLogicalPlanBuilder
       'sql',
       [node.expr.accept(this)],
       node.isArray
-        ? impl.convert
-        : (x) => {
+        ? (x) => {
             Array.isArray(x)
               ? x.map(impl.convert)
               : Array.from(x).map(impl.convert);
-          },
+          }
+        : impl.convert,
       !node.isArray && impl.pure
     );
   }
@@ -611,7 +605,9 @@ export class SQLLogicalPlanBuilder
       node.args.map(this.toCalc),
       impl.impl
     );
-    if (impl.schema) res.schema = [...impl.schema];
+    if (impl.outputSchema) {
+      res.addToSchema(impl.outputSchema);
+    }
     if (node.withOrdinality)
       res = new operators.ProjectionIndex('sql', toId('ordinality'), res);
     return res;
@@ -635,10 +631,7 @@ export class SQLLogicalPlanBuilder
   }
   visitFunction(node: ASTFunction): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
-    const impl =
-      this.langMgr.getFn(node.lang, id, schema, false) ??
-      this.langMgr.getAggr(node.lang, id, schema, false) ??
-      this.langMgr.getFn(node.lang, id, schema, true); // throw the error
+    const impl = this.langMgr.getFnOrAggr('sql', id, schema); // throw the error
 
     if ('init' in impl) {
       return new operators.AggregateCall(

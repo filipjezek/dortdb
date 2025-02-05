@@ -1,4 +1,4 @@
-import { Trie } from 'mnemonist';
+import { Trie, TrieMap } from 'mnemonist';
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
@@ -28,6 +28,11 @@ export class Projection extends LogicalPlanTupleOperator {
  * dependent join, mapping can introduce columns which override the source
  */
 export class ProjectionConcat extends LogicalPlanTupleOperator {
+  /**
+   * empty value for the outer join
+   */
+  public emptyVal = new TrieMap<(symbol | string)[], any>(Array);
+
   constructor(
     public lang: Lowercase<string>,
     /** mapping must be interpreted in the context of the source */

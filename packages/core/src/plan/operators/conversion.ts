@@ -1,4 +1,3 @@
-import { Trie } from 'mnemonist';
 import { ASTIdentifier } from '../../ast.js';
 import {
   LogicalPlanOperator,

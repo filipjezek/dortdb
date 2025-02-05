@@ -54,7 +54,7 @@ export enum Quantifier {
 }
 export class QuantifiedExpr implements ASTNode {
   constructor(
-    public quantifier: string,
+    public quantifier: Quantifier,
     public variables: [ASTVariable, ASTNode][],
     public expr: ASTNode
   ) {}

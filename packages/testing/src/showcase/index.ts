@@ -6,7 +6,7 @@ import { GraphBuilder } from './graph-builder.js';
 
 const db = new DortDB({
   mainLang: XQuery,
-  additionalLangs: [],
+  additionalLangs: [SQL],
 });
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const ast = db.parse(textarea.value);
       console.log(ast);
-      const plan = db.buildPlan(ast.value);
+      const plan = db.buildPlan(ast.value[0]);
       console.log(plan);
       treeBuilder.drawTree(plan);
     } catch (err) {

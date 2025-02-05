@@ -265,8 +265,16 @@ flwor-body-clause:
 where-clause:
 	WHERE expr { $$ = new yy.ast.FLWORWhere($2); } ;
 
+groupby-binding-list:
+	groupby-binding { $$ = [$1]; }
+	| groupby-binding-list COMMA groupby-binding { $$ = $1; $$.push($3); } ;
+
+groupby-binding:
+	let-binding
+	| variable { $$ = [$1, $1]; } ;
+
 groupby-clause:
-	GROUPBY let-binding-list { $$ = new yy.ast.FLWORGroupBy($2); } ;
+	GROUPBY groupby-binding-list { $$ = new yy.ast.FLWORGroupBy($2); } ;
 
 orderby-clause:
 	stable_opt ORDERBY orderby-list { $$ = new yy.ast.FLWOROrderBy($3, $1); } ;
@@ -484,7 +492,7 @@ param-list:
 	| param-list COMMA variable { $$ = $1; $$.push($3); } ;
 
 nested-lang:
-	LANGSWITCH { $$ = yy.messageQueue.shift(); } ;
+	LANGSWITCH { $$ = new yy.ast.LangSwitch($1, yy.messageQueue.shift()); } ;
 
 primary-expr:
 	number-literal

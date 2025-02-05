@@ -3,10 +3,15 @@ import {
   allAttrs,
   ASTIdentifier,
   LogicalPlanOperator,
+  LogicalPlanTupleOperator,
   LogicalPlanVisitor,
   operators,
 } from '@dortdb/core';
-import { TreeJoin, XQueryLogicalPlanVisitor } from '@dortdb/lang-xquery';
+import {
+  ProjectionSize,
+  TreeJoin,
+  XQueryLogicalPlanVisitor,
+} from '@dortdb/lang-xquery';
 
 function sum(args: number[]) {
   return args.reduce((a, b) => a + b, 0);
@@ -93,20 +98,43 @@ export class GraphBuilder
     this.drawingContainer = this.container.querySelector('#drawing-container');
   }
 
+  private getNodeColor(lang: string): string {
+    /*
+    cyrb53 (c) 2018 bryc (github.com/bryc)
+    License: Public domain (or MIT if needed). Attribution appreciated.
+    A fast and simple 53-bit string hash function with decent collision resistance.
+    Largely inspired by MurmurHash2/3, but with a focus on speed/simplicity.
+    */
+    const seed = 42;
+    let h1 = 0xdeadbeef ^ seed,
+      h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0, ch; i < lang.length; i++) {
+      ch = lang.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+    return `hsla(${hash % 1000}, 64%, 50%, 0.4)`;
+  }
+
   private drawNode(
     text: string,
-    schema?: ASTIdentifier[],
+    operator: LogicalPlanOperator,
     textClass = ''
   ): SVGGElement {
     const schemaTemplate =
-      schema &&
-      `<div class="schema">[${schema
+      operator instanceof LogicalPlanTupleOperator &&
+      `<div class="schema">[${operator.schema
         .map((id) => this.stringifyId(id))
         .join(', ')}]</div>`;
 
     this.drawingContainer.innerHTML = `<foreignObject height="2000" width="200">
       <div class="${textClass}">
-        ${schemaTemplate ?? ''}
+        ${schemaTemplate || ''}
         ${text}
       </div>
     </foreignObject>`;
@@ -120,7 +148,9 @@ export class GraphBuilder
     <g>
       <rect width="${textBBox.width + PADDING * 2}" height="${
       textBBox.height + PADDING * 2
-    }"></rect>
+    }" style="filter: drop-shadow(0 0 5px ${this.getNodeColor(
+      operator.lang
+    )})"></rect>
     </g>
     `;
     this.drawingContainer.firstElementChild.appendChild(foEl);
@@ -183,11 +213,20 @@ export class GraphBuilder
       .forEach((el) => el.remove());
     const root = plan.accept(this.vmap);
     this.drawingContainer.innerHTML = '';
-    root.setAttribute('transform', `translate(${STROKE}, ${STROKE})`);
+    root.setAttribute(
+      'transform',
+      `translate(${STROKE + PADDING}, ${STROKE + PADDING})`
+    );
     this.container.appendChild(root);
     const bbox = root.getBBox();
-    this.container.setAttribute('width', `${bbox.width + STROKE * 2}`);
-    this.container.setAttribute('height', `${bbox.height + STROKE * 2}`);
+    this.container.setAttribute(
+      'width',
+      `${bbox.width + STROKE * 2 + PADDING * 2}`
+    );
+    this.container.setAttribute(
+      'height',
+      `${bbox.height + STROKE * 2 + PADDING * 2}`
+    );
   }
 
   private drawBranches(parent: SVGGraphicsElement, ...branches: Branch[]) {
@@ -265,7 +304,7 @@ export class GraphBuilder
     const attrs = operator.attrs.map((a) => this.processAttr(a, calcI));
     const parent = this.drawNode(
       `&pi;(${attrs.map((a) => a).join(', ')})`,
-      operator.schema
+      operator
     );
     const calcs = operator.attrs
       .filter((a) => a[0] instanceof operators.Calculation)
@@ -290,7 +329,7 @@ export class GraphBuilder
   visitSelection(operator: operators.Selection): SVGGElement {
     const src = operator.source.accept(this.vmap);
     const arg = this.processArg(operator.condition, { i: 0 });
-    const parent = this.drawNode(`&sigma;(${arg})`, operator.schema);
+    const parent = this.drawNode(`&sigma;(${arg})`, operator);
     return operator.condition instanceof ASTIdentifier
       ? this.drawBranches(parent, { el: src })
       : this.drawBranches(
@@ -308,14 +347,14 @@ export class GraphBuilder
       operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
         : this.processAttr(operator.name, { i: 0 });
-    return this.drawNode(name, operator.schema, 'source-tuple');
+    return this.drawNode(name, operator, 'source-tuple');
   }
   visitItemSource(operator: operators.ItemSource): SVGGElement {
     const name =
       operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
         : this.processAttr(operator.name, { i: 0 });
-    return this.drawNode(name, null, 'source-item');
+    return this.drawNode(name, operator, 'source-item');
   }
   visitFnCall(operator: operators.FnCall): SVGGElement {
     throw new Error('Method not implemented.');
@@ -326,7 +365,7 @@ export class GraphBuilder
   visitCalculation(operator: operators.Calculation): SVGGElement {
     let opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
-    const parent = this.drawNode(`calc(${args.join(', ')})`);
+    const parent = this.drawNode(`calc(${args.join(', ')})`, operator);
     const ops = operator.args
       .filter((a) => !(a instanceof ASTIdentifier))
       .map((a) => (a as LogicalPlanOperator).accept(this.vmap))
@@ -340,7 +379,7 @@ export class GraphBuilder
     throw new Error('Method not implemented.');
   }
   visitCartesianProduct(operator: operators.CartesianProduct): SVGGElement {
-    const parent = this.drawNode('&times;', operator.schema);
+    const parent = this.drawNode('&times;', operator);
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
@@ -353,7 +392,7 @@ export class GraphBuilder
       `${operator.leftOuter ? '&deg;' : ''}&bowtie;${
         operator.rightOuter ? '&deg;' : ''
       }(${condition})`,
-      operator.schema
+      operator
     );
     return this.drawBranches(
       parent,
@@ -369,7 +408,7 @@ export class GraphBuilder
   visitProjectionConcat(operator: operators.ProjectionConcat): SVGGElement {
     const parent = this.drawNode(
       (operator.outer ? '&deg;' : '') + '&bowtie;&#x0362;',
-      operator.schema
+      operator
     );
     return this.drawBranches(
       parent,
@@ -378,20 +417,23 @@ export class GraphBuilder
     );
   }
   visitMapToItem(operator: operators.MapToItem): SVGGElement {
-    const parent = this.drawNode(`toItem(${this.stringifyId(operator.key)})`);
+    const parent = this.drawNode(
+      `toItem(${this.stringifyId(operator.key)})`,
+      operator
+    );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitMapFromItem(operator: operators.MapFromItem): SVGGElement {
     const parent = this.drawNode(
       `fromItem(${this.stringifyId(operator.key)})`,
-      operator.schema
+      operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): SVGGElement {
     const parent = this.drawNode(
       `index(${this.stringifyId(operator.indexCol)})`,
-      operator.schema
+      operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
@@ -400,7 +442,7 @@ export class GraphBuilder
     const args = operator.orders.map(
       (o) => this.processArg(o.key, opI) + (o.ascending ? '' : '&darr;')
     );
-    const parent = this.drawNode(`&tau;(${args.join(', ')})`, operator.schema);
+    const parent = this.drawNode(`&tau;(${args.join(', ')})`, operator);
     return this.drawBranches(
       parent,
       { el: operator.source.accept(this.vmap) },
@@ -426,7 +468,7 @@ export class GraphBuilder
     );
     let parent = this.drawNode(
       `&gamma;([${keys.join(', ')}]; [${aggs.join(', ')}])`,
-      operator.schema,
+      operator,
       'groupby'
     );
     parent = this.drawBranches(
@@ -464,12 +506,12 @@ export class GraphBuilder
   visitLimit(operator: operators.Limit): SVGGElement {
     const parent = this.drawNode(
       `limit(${operator.limit}, ${operator.skip})`,
-      operator.schema
+      operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitUnion(operator: operators.Union): SVGGElement {
-    const parent = this.drawNode('&cup;', operator.schema);
+    const parent = this.drawNode('&cup;', operator);
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
@@ -477,7 +519,7 @@ export class GraphBuilder
     );
   }
   visitIntersection(operator: operators.Intersection): SVGGElement {
-    const parent = this.drawNode('&cap;', operator.schema);
+    const parent = this.drawNode('&cap;', operator);
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
@@ -485,7 +527,7 @@ export class GraphBuilder
     );
   }
   visitDifference(operator: operators.Difference): SVGGElement {
-    const parent = this.drawNode('&setminus;', operator.schema);
+    const parent = this.drawNode('&setminus;', operator);
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
@@ -494,14 +536,14 @@ export class GraphBuilder
   }
   visitDistinct(operator: operators.Distinct): SVGGElement {
     if (operator.attrs === allAttrs) {
-      const parent = this.drawNode('&delta;(*)', operator.schema);
+      const parent = this.drawNode('&delta;(*)', operator);
       return this.drawBranches(parent, {
         el: operator.source.accept(this.vmap),
       });
     }
     const opI = { i: 0 };
     const args = operator.attrs.map((a) => this.processArg(a, opI));
-    const parent = this.drawNode(`&delta;(${args.join(', ')})`);
+    const parent = this.drawNode(`&delta;(${args.join(', ')})`, operator);
     return this.drawBranches(
       parent,
       { el: operator.source.accept(this.vmap) },
@@ -516,7 +558,7 @@ export class GraphBuilder
     );
   }
   visitNullSource(operator: operators.NullSource): SVGGElement {
-    return this.drawNode('&square;', operator.schema, 'source-tuple');
+    return this.drawNode('&square;', operator, 'source-tuple');
   }
   visitAggregate(operator: operators.AggregateCall): SVGGElement {
     throw new Error('Method not implemented.');
@@ -532,7 +574,7 @@ export class GraphBuilder
       : '';
     const parent = this.drawNode(
       `${alias}function(${args.join(', ')})`,
-      (operator as operators.TupleFnSource).schema,
+      operator,
       'source-' +
         (operator instanceof operators.ItemFnSource ? 'item' : 'tuple')
     );
@@ -558,11 +600,19 @@ export class GraphBuilder
   }
 
   visitTreeJoin(operator: TreeJoin): SVGGElement {
-    const parent = this.drawNode('TreeJoin', operator.schema);
+    const parent = this.drawNode('TreeJoin', operator);
     return this.drawBranches(
       parent,
       { el: operator.source.accept(this.vmap) },
       { el: operator.step.accept(this.vmap), edgeType: 'djoin' }
     );
+  }
+
+  visitProjectionSize(operator: ProjectionSize): SVGGElement {
+    const parent = this.drawNode(
+      `size(${this.stringifyId(operator.sizeCol)})`,
+      operator
+    );
+    return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
 }

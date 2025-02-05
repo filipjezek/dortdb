@@ -1,16 +1,17 @@
+import { TrieMap } from 'mnemonist';
 import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
-import { makePath } from './utils/make-path.js';
 import {
   coreVisitors,
   LogicalPlanBuilder,
   LogicalPlanVisitors,
 } from './visitors/index.js';
+import { ASTNode } from './ast.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
 }
 export interface ParseResult {
-  value: any;
+  value: ASTNode[];
   remainingInput: string;
 }
 export interface Language<Name extends string = string> {
@@ -27,50 +28,35 @@ export interface Language<Name extends string = string> {
   };
 }
 
-interface Implementations {
-  operators: Record<string, Operator>;
-  functions: Record<string, Fn>;
-  aggregates: Record<string, AggregateFn>;
-  castables: Record<string, Castable>;
-}
-
 export class LanguageManager {
   private langs: Record<string, Language> = {};
   private static readonly allLangs = Symbol('allLangs');
-  private static readonly defaultSchema = Symbol('defaultSchema');
-  private implementations: Record<
-    string | (typeof LanguageManager)['allLangs'],
-    Record<string | (typeof LanguageManager)['defaultSchema'], Implementations>
-  > = {
-    [LanguageManager.allLangs]: {
-      [LanguageManager.defaultSchema]: {
-        operators: {},
-        functions: {},
-        aggregates: {},
-        castables: {},
-      },
-    },
-  };
+
+  private operators = new TrieMap<(string | symbol)[], Operator>(Array);
+  private functions = new TrieMap<(string | symbol)[], Fn>(Array);
+  private aggregates = new TrieMap<(string | symbol)[], AggregateFn>(Array);
+  private castables = new TrieMap<(string | symbol)[], Castable>(Array);
 
   public registerExtension(ext: Extension) {
     const scope = ext.scope ?? ([LanguageManager.allLangs] as const);
-    const schema = ext.schema ?? LanguageManager.defaultSchema;
+    const types = [
+      'operators',
+      'functions',
+      'aggregates',
+      'castables',
+    ] as const;
 
     for (const lang of scope) {
-      makePath(this.implementations, lang, schema);
-      const ims = this.implementations[lang][schema];
-
-      for (const type of [
-        'operators',
-        'functions',
-        'aggregates',
-        'castables',
-      ] as const) {
-        ims[type] = (ims[type] as any) ?? {};
-        if (ext[type]) {
-          for (const item of ext[type]) {
-            ims[type][item.name] = item;
-          }
+      for (const type of types) {
+        for (const op of ext[type] ?? []) {
+          this[type].set(
+            [
+              lang,
+              (op as AggregateFn | Fn | Castable).schema ?? ext.schema,
+              op.name,
+            ],
+            op as any
+          );
         }
       }
     }
@@ -99,82 +85,60 @@ export class LanguageManager {
     return vmap;
   }
 
-  public getOp(
-    lang: string,
-    name: string,
-    schema?: string,
-    throwOnMissing = true
-  ): Operator {
-    return this.getImplementation(
-      'operators',
-      lang,
-      name,
-      schema,
-      throwOnMissing
-    );
+  public getOp(lang: string, name: string, schema?: string | symbol): Operator {
+    return this.getImplementation('operators', lang, name, schema);
   }
-  public getFn(
-    lang: string,
-    name: string,
-    schema?: string,
-    throwOnMissing = true
-  ): Fn {
-    return this.getImplementation(
-      'functions',
-      lang,
-      name,
-      schema,
-      throwOnMissing
-    );
+  public getFn(lang: string, name: string, schema?: string | symbol): Fn {
+    return this.getImplementation('functions', lang, name, schema);
   }
   public getAggr(
     lang: string,
     name: string,
-    schema?: string,
-    throwOnMissing = true
+    schema?: string | symbol
   ): AggregateFn {
-    return this.getImplementation(
-      'aggregates',
-      lang,
-      name,
-      schema,
-      throwOnMissing
-    );
+    return this.getImplementation('aggregates', lang, name, schema);
   }
   public getCast(
     lang: string,
     name: string,
-    schema?: string,
-    throwOnMissing = true
+    schema?: string | symbol
   ): Castable {
-    return this.getImplementation(
-      'castables',
-      lang,
-      name,
-      schema,
-      throwOnMissing
-    );
+    return this.getImplementation('castables', lang, name, schema);
+  }
+  public getFnOrAggr(
+    lang: string,
+    name: string,
+    schema?: string | symbol
+  ): Fn | AggregateFn {
+    const res =
+      this.getImplementation('functions', lang, name, schema, false) ??
+      this.getImplementation('aggregates', lang, name, schema, false);
+    if (!res)
+      throw new Error(
+        `Function or aggregate not found: [${lang}] ${
+          schema ? schema.toString() : '<default>'
+        }.${name}`
+      );
+    return res;
   }
 
-  private getImplementation<T extends keyof Implementations>(
+  private getImplementation<
+    T extends 'operators' | 'functions' | 'aggregates' | 'castables'
+  >(
     type: T,
     lang: string,
     name: string,
-    schema:
-      | string
-      | (typeof LanguageManager)['defaultSchema'] = LanguageManager.defaultSchema,
+    schema: string | symbol,
     throwOnMissing = true
-  ): Implementations[T][string] {
-    let impl = this.implementations[lang]?.[schema]?.[type][name];
-    impl =
-      impl ??
-      this.implementations[LanguageManager.allLangs][schema]?.[type][name];
+  ): Extension[T][number] {
+    let impl = this[type].get([lang, schema, name]);
+    impl = impl ?? this[type].get([LanguageManager.allLangs, schema, name]);
     if (!impl && throwOnMissing)
       throw new Error(
         `${type.slice(0, -1)} not found: [${lang}] ${
-          schema === LanguageManager.defaultSchema ? '<default>' : schema
+          schema ? schema.toString() : '<default>'
         }.${name}`
       );
-    return impl as Implementations[T][string];
+    return impl as Extension[T][number];
   }
 }

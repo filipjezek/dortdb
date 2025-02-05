@@ -1,6 +1,7 @@
 import {
   ASTFunction,
   ASTOperator,
+  LangSwitch,
   Language,
   LanguageManager,
   allAttrs,
@@ -52,6 +53,7 @@ function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
+      LangSwitch,
       allAttrs,
       boundParam,
     },

@@ -9,3 +9,6 @@ export * from './errors.js';
 export * from './plan/context.js';
 
 export * as utils from './utils/index.js';
+export * as aggregates from './aggregates/index.js';
+export * as castables from './castables/index.js';
+export * as langOperators from './operators/index.js';

@@ -1,3 +1,2 @@
-import * as math from './math.js';
-
-export const aggregates = [...Object.values(math)];
+export * from './math.js';
+export * from './data-structures.js';

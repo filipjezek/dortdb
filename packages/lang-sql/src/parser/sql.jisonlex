@@ -114,6 +114,7 @@ DEC       [0-9]
   }
   this.yy.messageQueue.push(res.value);
   this._input = res.remainingInput;
+  yytext = langName;
   return this.yy.AdditionalTokens.LANGSWITCH;
 }
 %}

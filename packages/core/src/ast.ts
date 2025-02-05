@@ -65,7 +65,12 @@ export class ASTIdentifier implements ASTNode {
 }
 
 export class LangSwitch implements ASTNode {
-  constructor(public lang: Lowercase<string>, public node: ASTNode) {}
+  public node: ASTNode;
+  constructor(public lang: Lowercase<string>, nodes: ASTNode[]) {
+    if (nodes.length !== 1)
+      throw new Error('LangSwitch must contain exactly one statement');
+    this.node = nodes[0];
+  }
 
   accept<T>(visitor: ASTVisitor<T>): T {
     return visitor.visitLangSwitch(this);
