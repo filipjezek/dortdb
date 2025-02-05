@@ -18,8 +18,11 @@ import {
 } from '@dortdb/core';
 import { XQueryVisitor } from '../ast/visitor.js';
 import * as AST from '../ast/index.js';
-import { DOT } from '../utils/dot.js';
+import { DOT, POS } from '../utils/dot.js';
 import { TreeJoin } from '../plan/tree-join.js';
+import { treeStep } from '../utils/tree-step.js';
+import { FnContext } from '../functions/fn-context.js';
+import { toBool } from '../castables/basic-types.js';
 
 function ret1<T>(x: T): T {
   return x;
@@ -33,6 +36,11 @@ function idToPair(id: ASTIdentifier): [string, string] {
 function toId(id: string | symbol): ASTIdentifier {
   return AST.XQueryIdentifier.fromParts([id]);
 }
+function toTuples(op: LogicalPlanOperator) {
+  return op instanceof LogicalPlanTupleOperator
+    ? op
+    : new operators.MapFromItem('xquery', DOT, op);
+}
 
 export class XQueryLogicalPlanBuilder
   implements XQueryVisitor<LogicalPlanOperator>, LogicalPlanBuilder
@@ -45,6 +53,8 @@ export class XQueryLogicalPlanBuilder
 
     this.toCalc = this.toCalc.bind(this);
     this.processNode = this.processNode.bind(this);
+    this.acceptThis = this.acceptThis.bind(this);
+    this.toCalcParams = this.toCalcParams.bind(this);
   }
 
   buildPlan(node: ASTNode): LogicalPlanOperator {
@@ -67,8 +77,15 @@ export class XQueryLogicalPlanBuilder
       calcParams.literal
     );
   }
+
   private processNode(item: ASTNode): LogicalOpOrId {
-    return item instanceof ASTIdentifier ? item : item.accept(this);
+    return item instanceof AST.ASTVariable ? item : item.accept(this);
+  }
+  private acceptThis(item: ASTNode): LogicalPlanOperator {
+    return item.accept(this);
+  }
+  private toCalcParams(node: ASTNode) {
+    return node.accept(this).accept(this.calcBuilders);
   }
 
   visitProlog(node: AST.Prolog): LogicalPlanOperator {
@@ -169,9 +186,7 @@ export class XQueryLogicalPlanBuilder
     const attrs: Aliased<ASTIdentifier | operators.Calculation>[] =
       res.schema.map((x) => [x, x] as Aliased);
     for (const [varName, expr] of node.bindings) {
-      attrs.push([varName, this.toCalc(expr)] as Aliased<
-        ASTIdentifier | operators.Calculation
-      >);
+      attrs.push([this.toCalc(expr), varName]);
     }
     return new operators.Projection('xquery', attrs, res);
   }
@@ -248,11 +263,7 @@ export class XQueryLogicalPlanBuilder
         );
       }
     } else {
-      const temp = first.accept(this);
-      res =
-        temp instanceof LogicalPlanTupleOperator
-          ? temp
-          : new operators.MapFromItem('xquery', DOT, temp);
+      res = toTuples(first.accept(this));
     }
 
     this.operatorStack.push(res);
@@ -263,7 +274,9 @@ export class XQueryLogicalPlanBuilder
       return this.operatorStack.pop();
     }
     if (step instanceof AST.FilterExpr) {
+      return this.maybeProjectConcat(this.visitFilterExpr(step));
     } else if (step instanceof AST.PathAxis) {
+      return step.accept(this) as LogicalPlanTupleOperator;
     } else {
       const calc = this.toCalc(step, false);
       return new TreeJoin('xquery', calc, this.operatorStack.pop());
@@ -279,16 +292,54 @@ export class XQueryLogicalPlanBuilder
       this.operatorStack.push(res);
     }
     this.operatorStack.pop();
-    return res;
+    return new operators.MapToItem('xquery', DOT, res);
   }
-  visitPathPredicate(node: AST.PathPredicate): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+
+  /**
+   * called only from {@link XQueryLogicalPlanBuilder#visitPathAxis}
+   * or {@link XQueryLogicalPlanBuilder#visitFilterExpr}
+   */
+  visitPathPredicate(
+    node: AST.PathPredicate,
+    src?: LogicalPlanTupleOperator
+  ): LogicalPlanTupleOperator {
+    const calcParams = node.exprs.map(this.toCalcParams);
+    let argI = 0;
+    const args = calcParams.flatMap((p) => p.args);
+    args.push(POS);
+    const calc = new operators.Calculation(
+      'xquery',
+      (...args) => {
+        const pos = args[args.length - 1];
+        const res = calcParams.flatMap((p, i) =>
+          p.impl(args.slice(argI, (argI += p.args.length)))
+        );
+        return typeof res === 'number' ? res === pos : toBool.convert(res);
+      },
+      args
+    );
+    return new operators.Selection('xquery', calc, src);
   }
   visitPathAxis(node: AST.PathAxis): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    let res: LogicalPlanTupleOperator = new TreeJoin(
+      'xquery',
+      new operators.Calculation('xquery', treeStep(node.nodeTest, node.axis), [
+        DOT,
+      ]),
+      this.operatorStack.pop()
+    );
+    for (const pred of node.predicates) {
+      res = this.visitPathPredicate(pred, res);
+    }
+    return res;
   }
-  visitFilterExpr(node: AST.FilterExpr): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+  visitFilterExpr(node: AST.FilterExpr): LogicalPlanTupleOperator {
+    let res = node.expr.accept(this);
+    res = new operators.ProjectionIndex('xquery', POS, toTuples(res));
+    return this.visitPathPredicate(
+      node.predicate,
+      res as LogicalPlanTupleOperator
+    );
   }
   visitDynamicFunctionCall(node: AST.DynamicFunctionCall): LogicalPlanOperator {
     throw new Error('Method not implemented.');
@@ -297,7 +348,7 @@ export class XQueryLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
   visitOrderedExpr(node: AST.OrderedExpr): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    throw new UnsupportedError('Ordered expressions not supported');
   }
   visitDirectElementConstructor(
     node: AST.DirectElementConstructor
@@ -358,7 +409,6 @@ export class XQueryLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
   visitIdentifier(node: ASTIdentifier): LogicalPlanOperator {
-    xx;
-    return new operators.FnCall('xquery', [DOT], ret1, true);
+    throw new Error('Method not implemented.');
   }
 }

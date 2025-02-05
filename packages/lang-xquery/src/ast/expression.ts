@@ -2,6 +2,7 @@ import { ASTLiteral, ASTNode, ASTIdentifier } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { parseName, parseStringLiteral } from '../utils/string.js';
 import { ASTItemType } from './item-type.js';
+import { PathPredicate } from './path.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(public original: string) {
@@ -117,7 +118,7 @@ export class CastExpr implements ASTNode {
 }
 
 export class FilterExpr implements ASTNode {
-  constructor(public expr: ASTNode, public predicate: ASTNode) {}
+  constructor(public expr: ASTNode, public predicate: PathPredicate) {}
 
   accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitFilterExpr(this);

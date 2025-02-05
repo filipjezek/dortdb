@@ -19,6 +19,7 @@ export const SQL: Language<'sql'> = {
   operators: [],
   aggregates: [],
   functions: [coalesce],
+  castables: [],
   createParser,
   visitors: {
     logicalPlanBuilder: SQLLogicalPlanBuilder,

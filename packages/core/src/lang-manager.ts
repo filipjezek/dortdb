@@ -18,6 +18,7 @@ export interface Language<Name extends string = string> {
   operators: Operator[];
   functions: Fn[];
   aggregates: AggregateFn[];
+  castables: Castable[];
   createParser: (mgr: LanguageManager) => Parser;
   visitors: Partial<LogicalPlanVisitors> & {
     logicalPlanBuilder: {

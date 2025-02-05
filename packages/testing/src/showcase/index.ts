@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const svg = document.getElementById('svg-output') as any as SVGSVGElement;
   const vmap: Record<string, LogicalPlanVisitor<SVGGElement>> = {};
   const treeBuilder = new GraphBuilder(svg, vmap);
-  vmap['sql'] = treeBuilder;
+  vmap['sql'] = vmap['xquery'] = vmap['cypher'] = treeBuilder;
 
   function clearOutput() {
     errorOutput.classList.add('hidden');

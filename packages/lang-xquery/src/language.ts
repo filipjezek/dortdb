@@ -1,6 +1,5 @@
 import {
   ASTFunction,
-  ASTNode,
   ASTOperator,
   Language,
   LanguageManager,
@@ -15,12 +14,14 @@ import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
 import { XQueryLogicalPlanBuilder } from './visitors/builder.js';
 import { DOT } from './utils/dot.js';
+import { castables } from './castables/index.js';
 
 export const XQuery: Language<'xquery'> = {
   name: 'xquery',
   operators: [],
   aggregates: [],
   functions: [],
+  castables,
   createParser,
   visitors: {
     logicalPlanBuilder: XQueryLogicalPlanBuilder,

@@ -54,7 +54,10 @@ export class ProjectionIndex extends LogicalPlanTupleOperator {
     public source: LogicalPlanTupleOperator
   ) {
     super();
-    this.schema = [...source.schema, indexCol];
+    this.schema = [
+      ...source.schema.filter((x) => !x.equals(indexCol)),
+      indexCol,
+    ];
     this.schemaSet = schemaToTrie(this.schema);
   }
 
