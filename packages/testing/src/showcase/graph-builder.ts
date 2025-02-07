@@ -77,11 +77,13 @@ export class GraphBuilder
         rect {
           fill: white;
           stroke: #888888;
-          filter: drop-shadow(0 0 5px var(--lang-color));
 
           &:has(+ foreignObject > .groupby) {
             stroke: white;
           }
+        }
+        polygon {
+          fill: transparent;
         }
         line {
           stroke: #888888;
@@ -124,10 +126,11 @@ export class GraphBuilder
     foEl.setAttribute('height', textBBox.height + '');
 
     this.drawingContainer.innerHTML = `
-    <g>
+    <g style="--lang-color: ${strToColor(operator.lang)}">
       <rect width="${textBBox.width + PADDING * 2}" height="${
       textBBox.height + PADDING * 2
-    }" style="--lang-color: ${strToColor(operator.lang)}"></rect>
+    }" />
+      <polygon points="0,0 0,10 10,0" />
     </g>
     `;
     this.drawingContainer.firstElementChild.appendChild(foEl);

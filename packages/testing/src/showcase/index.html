@@ -9,13 +9,35 @@
   </head>
   <body>
     <h1>DortDB Showcase</h1>
-    <div class="input-container">
+    <form class="input-container">
       <textarea id="code-input"></textarea>
       <div class="actions">
-        <button id="action-parse" type="button">Parse</button>
+        <select name="lang">
+          <option value="sql">SQL</option>
+          <option value="xquery" selected>XQuery</option>
+        </select>
+        <button id="action-parse" type="submit">Parse</button>
       </div>
-    </div>
+    </form>
     <pre id="error-output" class="hidden"></pre>
+    <form>
+      <fieldset>
+        <legend>Language indicators:</legend>
+        <label
+          ><input type="checkbox" value="shadows" name="lang-indicator-type" />
+          Shadows</label
+        >
+        <label
+          ><input
+            type="checkbox"
+            value="triangles"
+            name="lang-indicator-type"
+            checked
+          />
+          Triangles</label
+        >
+      </fieldset>
+    </form>
     <div class="scroll-container">
       <svg xmlns="http://www.w3.org/2000/svg" id="svg-output"></svg>
     </div>

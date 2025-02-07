@@ -18,5 +18,5 @@ export function strToColor(str: string) {
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
   h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
-  return `hsla(${hash % 1000}, 64%, 50%, 0.4)`;
+  return `hsl(${hash % 1000}, 64%, 50%)`;
 }
