@@ -19,12 +19,12 @@ export interface AggregateFn {
   name: string;
   schema?: string | symbol;
   init: () => any;
-  step: (acc: any, val: any) => any;
+  step: (state: any, ...vals: any[]) => any;
   /**
    * Optional inverse step function for speeding up window functions
    */
-  stepInverse?: (acc: any, val: any) => any;
-  result: (acc: any) => any;
+  stepInverse?: (state: any, ...vals: any[]) => any;
+  result: (state: any) => any;
 }
 
 export interface Castable {

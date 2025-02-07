@@ -58,6 +58,9 @@ function collectArg(name: ASTIdentifier): operators.AggregateCall {
     name
   );
 }
+function iterValue(val: any) {
+  return Array.isArray(val) ? val : [val];
+}
 
 export class XQueryLogicalPlanBuilder
   implements XQueryVisitor<LogicalPlanOperator>, LogicalPlanBuilder
@@ -327,7 +330,11 @@ export class XQueryLogicalPlanBuilder
     const stackTop = this.operatorStack[this.operatorStack.length - 1];
     if (first instanceof AST.ASTVariable) {
       if (stackTop?.schemaSet.has(first.parts)) {
-        res = new operators.Projection('xquery', [[first, DOT]], stackTop);
+        res = new operators.MapFromItem(
+          'xquery',
+          DOT,
+          new operators.ItemFnSource('xquery', [first], iterValue)
+        );
       } else {
         res = new operators.MapFromItem(
           'xquery',

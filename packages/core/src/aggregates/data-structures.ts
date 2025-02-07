@@ -3,13 +3,13 @@ import { AggregateFn } from '../extension.js';
 export const collect: AggregateFn = {
   name: 'collect',
   init: () => [],
-  step: (acc, val) => {
-    acc.push(val);
-    return acc;
+  step: (state, val) => {
+    state.push(val);
+    return state;
   },
-  stepInverse: (acc, _) => {
-    (acc as any[]).shift();
-    return acc;
+  stepInverse: (state, _) => {
+    (state as any[]).shift();
+    return state;
   },
-  result: (acc) => acc,
+  result: (state) => state,
 };

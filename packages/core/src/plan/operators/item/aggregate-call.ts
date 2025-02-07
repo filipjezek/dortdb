@@ -1,3 +1,4 @@
+import { Trie } from 'mnemonist';
 import { ASTIdentifier } from '../../../ast.js';
 import { AggregateFn } from '../../../extension.js';
 import {
@@ -32,6 +33,7 @@ export class AggregateCall implements LogicalPlanOperator {
       ASTIdentifier.fromParts(['<partition>'])
     );
     this._postGSource.schema = [];
+    this._postGSource.schemaSet = new Trie<(string | symbol)[]>(Array);
     this.postGroupOp = this._postGSource;
   }
 

@@ -49,7 +49,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
 
   visitLangSwitch(node: LangSwitch): string {
-    throw new Error('Method not implemented.');
+    return `lang_${node.lang}`;
   }
   visitStringLiteral(node: ASTStringLiteral): string {
     return this.addQuotes(node.value, "'");
