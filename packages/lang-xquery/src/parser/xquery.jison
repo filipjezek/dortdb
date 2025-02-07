@@ -197,7 +197,8 @@ expr:
 	| or-expr ;
 
 flwor-expr:
-	flwor-initial flwor-body flwor-return { $2.unshift($1); $2.push($3); $$ = new yy.ast.FLWORExpr($2); } ;
+	flwor-initial flwor-body flwor-return { $2.unshift($1); $2.push($3); $$ = new yy.ast.FLWORExpr($2); }
+	| flwor-initial flwor-return { $$ = new yy.ast.FLWORExpr([$1, $3]); } ;
 
 flwor-initial:
 	for-clause

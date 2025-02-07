@@ -109,6 +109,7 @@ export class GraphBuilder
   ): SVGGElement {
     const schemaTemplate =
       operator instanceof LogicalPlanTupleOperator &&
+      operator.schema &&
       `<div class="schema">[${operator.schema
         .map((id) => this.stringifyId(id))
         .join(', ')}]</div>`;
