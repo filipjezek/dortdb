@@ -123,6 +123,8 @@ export class SchemaInferrer
     if (operator instanceof operators.CartesianProduct) {
       const res = this.getRelNames(operator.left);
       for (const item of this.getRelNames(operator.right)) {
+        if (res.has(item))
+          throw new Error('Duplicate table alias: ' + item.join('.'));
         res.add(item);
       }
       return res;
@@ -138,6 +140,10 @@ export class SchemaInferrer
     const external = new Trie<(string | symbol)[]>(Array);
     const leftNames = this.getRelNames(operator.left);
     const rightNames = this.getRelNames(operator.right);
+    for (const item of leftNames) {
+      if (rightNames.has(item))
+        throw new Error('Duplicate table alias: ' + item.join('.'));
+    }
 
     for (const item of operator.schema) {
       if (item.parts.length === 1) {

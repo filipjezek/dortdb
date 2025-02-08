@@ -1,10 +1,15 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 
+export interface PlanOpAsArg {
+  op: LogicalPlanOperator;
+  acceptSequence?: boolean;
+}
+
 export class FnCall implements LogicalPlanOperator {
   constructor(
     public lang: Lowercase<string>,
-    public args: (ASTIdentifier | LogicalPlanOperator)[],
+    public args: (ASTIdentifier | PlanOpAsArg)[],
     public impl: (...args: any[]) => any,
     /**
      * Function is pure if it has no side effects and always returns the same output for the same input.

@@ -77,6 +77,8 @@ export class XQueryLogicalPlanBuilder
     this.toCalcParams = this.toCalcParams.bind(this);
     this.processOrderItem = this.processOrderItem.bind(this);
     this.processGroupByItem = this.processGroupByItem.bind(this);
+    this.processFnArg = this.processFnArg.bind(this);
+    this.processOpArg = this.processOpArg.bind(this);
   }
 
   buildPlan(node: ASTNode): LogicalPlanOperator {
@@ -102,6 +104,9 @@ export class XQueryLogicalPlanBuilder
 
   private processNode(item: ASTNode): LogicalOpOrId {
     return item instanceof AST.ASTVariable ? item : item.accept(this);
+  }
+  private processFnArg(item: ASTNode): operators.PlanOpAsArg | ASTIdentifier {
+    return item instanceof AST.ASTVariable ? item : { op: item.accept(this) };
   }
   private acceptThis(item: ASTNode): LogicalPlanOperator {
     return item.accept(this);
@@ -317,7 +322,7 @@ export class XQueryLogicalPlanBuilder
     const impl = this.langMgr.getCast('xquery', ...idToPair(node.type));
     return new operators.FnCall(
       'sql',
-      [node.expr.accept(this)],
+      [{ op: node.expr.accept(this) }],
       impl.convert,
       impl.pure
     );
@@ -366,16 +371,13 @@ export class XQueryLogicalPlanBuilder
     src?: LogicalPlanTupleOperator
   ): LogicalPlanTupleOperator {
     const calcParams = node.exprs.map(this.toCalcParams);
-    let argI = 0;
     const args = calcParams.flatMap((p) => p.args);
     args.push(POS);
     const calc = new operators.Calculation(
       'xquery',
       (...args) => {
         const pos = args[args.length - 1];
-        const res = calcParams.flatMap((p, i) =>
-          p.impl(args.slice(argI, (argI += p.args.length)))
-        );
+        const res = utils.resolveArgs(args, calcParams).flat();
         return typeof res === 'number' ? res === pos : toBool.convert(res);
       },
       args
@@ -402,14 +404,14 @@ export class XQueryLogicalPlanBuilder
     return this.visitPathPredicate(node.predicate, res);
   }
   visitDynamicFunctionCall(node: AST.DynamicFunctionCall): LogicalPlanOperator {
-    const args = node.args.map(this.processNode);
-    args.push(node.nameOrExpr.accept(this));
+    const args = node.args.map(this.processFnArg);
+    args.push({ op: node.nameOrExpr.accept(this) });
     return new operators.FnCall('xquery', args, (...as) => as.pop()(...as));
   }
   visitSequenceConstructor(node: AST.SequenceConstructor): LogicalPlanOperator {
     return new operators.FnCall(
       'xquery',
-      node.items.map(this.processNode),
+      node.items.map(this.processFnArg),
       Array.of
     );
   }
@@ -447,13 +449,13 @@ export class XQueryLogicalPlanBuilder
     throw new UnsupportedError('Inline functions not supported');
   }
   visitBoundFunction(node: AST.BoundFunction): LogicalPlanOperator {
-    const args = node.boundArgs.map(retI1).map(this.processNode);
+    const args = node.boundArgs.map(retI1).map(this.processFnArg);
     const impl =
       node.nameOrExpr instanceof ASTIdentifier &&
       !(node.nameOrExpr instanceof AST.ASTVariable)
         ? this.langMgr.getFn('xquery', ...idToPair(node.nameOrExpr)).impl
         : null;
-    if (!impl) args.push(node.nameOrExpr.accept(this));
+    if (!impl) args.push({ op: node.nameOrExpr.accept(this) });
     const boundIndices = new Set(node.boundArgs.map(retI0));
 
     return new operators.FnCall('xquery', args, (...bound) => {
@@ -473,10 +475,18 @@ export class XQueryLogicalPlanBuilder
   visitLiteral<U>(node: ASTLiteral<U>): LogicalPlanOperator {
     return new operators.Literal('xquery', node.value);
   }
+  private processOpArg(item: ASTNode): operators.PlanOpAsArg {
+    return {
+      op:
+        item instanceof AST.ASTVariable
+          ? new operators.FnCall('xquery', [item], ret1)
+          : item.accept(this),
+    };
+  }
   visitOperator(node: ASTOperator): LogicalPlanOperator {
     return new operators.FnCall(
       'xquery',
-      node.operands.map((x) => x.accept(this)),
+      node.operands.map(this.processOpArg),
       this.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
       true
     );
@@ -488,7 +498,7 @@ export class XQueryLogicalPlanBuilder
     // TODO: aggregates?
     return new operators.FnCall(
       node.lang,
-      node.args.map(this.processNode),
+      node.args.map(this.processFnArg),
       impl.impl
     );
   }
@@ -497,11 +507,7 @@ export class XQueryLogicalPlanBuilder
       node.lang
     ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(node.node);
     if (nested instanceof LogicalPlanTupleOperator) {
-      return new operators.MapToItem(
-        'xquery',
-        nested.schema.length === 1 ? nested.schema[0] : toId(allAttrs),
-        nested
-      );
+      return new operators.MapToItem('xquery', null, nested);
     }
     return nested;
   }

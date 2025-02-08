@@ -6,10 +6,13 @@ export function resolveArgs(
   children: (ASTIdentifier | CalculationParams)[]
 ) {
   let i = 0;
-  return children.map((ch) => {
+  const res: any[] = [];
+  for (const ch of children) {
     if (ch instanceof ASTIdentifier) {
-      return args[i++];
+      res.push(args[i++]);
+    } else {
+      res.push(ch.impl(...args.slice(i, (i += ch.args.length))));
     }
-    return ch.impl(...args.slice(i, (i += ch.args.length)));
-  });
+  }
+  return res;
 }

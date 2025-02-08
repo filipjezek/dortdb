@@ -1,4 +1,4 @@
-import { ASTIdentifier } from '../../ast.js';
+import { allAttrs, ASTIdentifier } from '../../ast.js';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
@@ -13,13 +13,10 @@ export class MapToItem implements LogicalPlanOperator {
     public source: LogicalPlanTupleOperator
   ) {
     if (!key) {
-      if (source.schema?.length !== 1)
-        throw new Error(
-          `MapToItem: Cannot infer key from source schema - [${source.schema
-            .map((s) => s.parts.join('.'))
-            .join(', ')}]`
-        );
-      this.key = source.schema[0];
+      this.key =
+        source.schema?.length === 1
+          ? source.schema[0]
+          : ASTIdentifier.fromParts([allAttrs]);
     }
   }
 
