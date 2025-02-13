@@ -15,4 +15,10 @@ export class Conditional implements LogicalPlanOperator {
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitConditional(this);
   }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    throw new Error('Method not implemented.');
+  }
 }

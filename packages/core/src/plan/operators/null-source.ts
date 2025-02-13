@@ -1,5 +1,9 @@
 import { ASTIdentifier } from '../../ast.js';
-import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../visitor.js';
+import {
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+  LogicalPlanVisitor,
+} from '../visitor.js';
 
 export class NullSource extends LogicalPlanTupleOperator {
   public schema: ASTIdentifier[] = null;
@@ -10,5 +14,11 @@ export class NullSource extends LogicalPlanTupleOperator {
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitNullSource(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    throw new Error('Method not implemented.');
   }
 }

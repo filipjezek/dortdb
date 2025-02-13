@@ -4,15 +4,26 @@ import { Trie } from 'mnemonist';
 
 export interface LogicalPlanOperator {
   lang: Lowercase<string>;
+  parent?: LogicalPlanOperator;
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void;
 }
 export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
   public schema: ASTIdentifier[];
   public schemaSet: Trie<(string | symbol)[]>;
   public lang: Lowercase<string>;
+  public parent?: LogicalPlanOperator;
 
   abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
+  abstract replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void;
+
   /** will preserve object references */
   public addToSchema(
     item: ASTIdentifier | ASTIdentifier[] | Trie<(string | symbol)[]>

@@ -1,8 +1,8 @@
 import { ASTIdentifier } from '../ast.js';
 
 export function overrideSource(
-  id: ASTIdentifier,
-  table: ASTIdentifier | string
+  table: ASTIdentifier | string,
+  id: ASTIdentifier
 ) {
   return ASTIdentifier.fromParts(
     table instanceof ASTIdentifier

@@ -23,19 +23,10 @@ import * as AST from '../ast/index.js';
 import { SQLVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { SchemaInferrer } from './schema-inferrer.js';
+import { Using } from '../plan/using.js';
 
 function toId(id: string | symbol): ASTIdentifier {
   return AST.SQLIdentifier.fromParts([id]);
-}
-function overrideTable(
-  name: string | ASTIdentifier,
-  attr: ASTIdentifier
-): ASTIdentifier {
-  return AST.SQLIdentifier.fromParts(
-    (name instanceof ASTIdentifier ? name.parts : [name]).concat([
-      attr.parts[attr.parts.length - 1],
-    ])
-  );
 }
 function ret1<T>(x: T): T {
   return x;
@@ -273,7 +264,7 @@ export class SQLLogicalPlanBuilder
     }
     return new operators.Projection(
       'sql',
-      src.schema.map((x) => [x, overrideTable(node.name, x)]),
+      src.schema.map((x) => [x, utils.overrideSource(node.name, x)]),
       src
     );
   }
@@ -477,28 +468,33 @@ export class SQLLogicalPlanBuilder
       if (!leftName)
         throw new Error('Using can be only used with two named relations');
 
-      const usingRight = node.using.map((x) => overrideTable(rightName, x));
+      const usingRight = node.using.map((x) =>
+        utils.overrideSource(rightName, x)
+      );
       const rightSet = utils.schemaToTrie(usingRight);
-      op = new operators.Selection(
+      op = new Using(
         'sql',
-        new operators.Calculation(
-          'sql',
-          (...args) => {
-            const half = args.length / 2;
-            for (let i = 0; i < half; i++) {
-              if (args[i] !== args[i + half]) return false;
-            }
-            return true;
-          },
-          usingRight.concat(node.using.map((x) => overrideTable(leftName, x)))
-        ),
-        op
+        node.using,
+        leftName,
+        rightName,
+        op as operators.CartesianProduct
       );
-      op = new operators.Projection(
-        'sql',
-        op.schema.filter((x) => !rightSet.has(x.parts)).map((x) => [x, x]),
-        op
-      );
+      // new operators.Calculation(
+      //   'sql',
+      //   (...args) => {
+      //     const half = args.length / 2;
+      //     for (let i = 0; i < half; i++) {
+      //       if (args[i] !== args[i + half]) return false;
+      //     }
+      //     return true;
+      //   },
+      //   usingRight.concat(node.using.map((x) => utils.overrideSource(leftName, x)))
+      // )
+      // op = new operators.Projection(
+      //   'sql',
+      //   op.schema.filter((x) => !rightSet.has(x.parts)).map((x) => [x, x]),
+      //   op
+      // );
     }
     return op;
   }

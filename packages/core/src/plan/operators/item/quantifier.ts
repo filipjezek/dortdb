@@ -14,4 +14,10 @@ export class Quantifier implements LogicalPlanOperator {
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitQuantifier(this);
   }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    throw new Error('Method not implemented.');
+  }
 }

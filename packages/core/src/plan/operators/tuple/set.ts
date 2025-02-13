@@ -23,9 +23,21 @@ export abstract class SetOperator extends LogicalPlanTupleOperator {
       this.schema = left.schema;
       this.schemaSet = left.schemaSet;
     }
+    left.parent = this;
+    right.parent = this;
   }
 
   abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    if (this.left === current) {
+      this.left = replacement;
+    } else {
+      this.right = replacement;
+    }
+  }
 }
 
 export class Union extends SetOperator {

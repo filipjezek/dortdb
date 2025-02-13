@@ -1,12 +1,17 @@
-import { LogicalPlanTupleOperator, operators, utils } from '@dortdb/core';
+import {
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+  operators,
+  utils,
+} from '@dortdb/core';
 import { XQueryLogicalPlanVisitor } from './index.js';
 import { DOT, LEN, POS } from '../utils/dot.js';
 
 const ctxCols = [DOT, POS, LEN];
 
 /**
- * Similar to {@link ProjectionConcat}, also provides xquery focus context.
- * The {@link Calculation} output in `step` will be spread into multiple output
+ * Similar to {@link operators.ProjectionConcat}, also provides xquery focus context.
+ * The {@link operators.Calculation} output in `step` will be spread into multiple output
  * tuples if it is an array. Removes duplicates of `Node` values.
  */
 export class TreeJoin extends LogicalPlanTupleOperator {
@@ -16,6 +21,8 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    source.parent = this;
+    step.parent = this;
     this.schema = source.schema.slice();
 
     for (const col of ctxCols) {
@@ -25,5 +32,18 @@ export class TreeJoin extends LogicalPlanTupleOperator {
   }
   accept<T>(visitors: Record<string, XQueryLogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitTreeJoin(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    if (current === this.source) {
+      this.source = replacement as LogicalPlanTupleOperator;
+    } else {
+      this.step = replacement as operators.Calculation;
+    }
+    this.clearSchema();
+    this.addToSchema(this.source.schema);
+    this.addToSchema(ctxCols);
   }
 }

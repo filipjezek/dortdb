@@ -2,13 +2,13 @@ import { Trie } from 'mnemonist';
 import { ASTIdentifier } from '../../../ast.js';
 import { AggregateFn } from '../../../extension.js';
 import {
-  LogicalOpOrId,
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
 } from '../../visitor.js';
 import { TupleSource } from '../tuple/tuple-source.js';
 import { Calculation } from './calculation.js';
+import { GroupBy } from '../tuple/groupby.js';
 
 export class AggregateCall implements LogicalPlanOperator {
   /**
@@ -20,6 +20,7 @@ export class AggregateCall implements LogicalPlanOperator {
     return this._postGSource;
   }
   private _postGSource: LogicalPlanTupleOperator;
+  public parent: Calculation;
 
   constructor(
     public lang: Lowercase<string>,
@@ -39,5 +40,11 @@ export class AggregateCall implements LogicalPlanOperator {
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitAggregate(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    throw new Error('Method not implemented.');
   }
 }

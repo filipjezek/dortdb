@@ -1,5 +1,9 @@
 import { ASTIdentifier } from '../../../ast.js';
-import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Selection extends LogicalPlanTupleOperator {
@@ -11,9 +15,21 @@ export class Selection extends LogicalPlanTupleOperator {
     super();
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
+    if (condition instanceof Calculation) condition.parent = this;
+    source.parent = this;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitSelection(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    if (current === this.condition) {
+      this.condition = replacement as Calculation;
+    } else {
+      this.source = replacement as LogicalPlanTupleOperator;
+    }
   }
 }

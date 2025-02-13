@@ -14,9 +14,16 @@ export class Limit extends LogicalPlanTupleOperator {
     super();
     this.schema = (source as LogicalPlanTupleOperator).schema;
     this.schemaSet = (source as LogicalPlanTupleOperator).schemaSet;
+    source.parent = this;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitLimit(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    this.source = replacement;
   }
 }

@@ -9,8 +9,22 @@ import {
 } from '@dortdb/core';
 import { Trie } from 'mnemonist';
 import { isTableAttr } from '../utils/is-table-attr.js';
+import { Using } from '../plan/using.js';
 
 const EMPTY = new Trie<(string | symbol)[]>(Array);
+function toPair<T>(x: T): [T, T] {
+  return [x, x];
+}
+function zip<T, U>(a: T[], b: U[]): [T, U][] {
+  const res: [T, U][] = [];
+  for (let i = 0; i < a.length; i++) {
+    res.push([a[i], b[i]]);
+  }
+  return res;
+}
+function retI1<T>(a: [unknown, T, ...unknown[]]): T {
+  return a[1];
+}
 
 /**
  * Infers the schema of a logical plan.
@@ -296,5 +310,50 @@ export class SchemaInferrer
   }
   visitQuantifier(operator: operators.Quantifier): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');
+  }
+
+  visitUsing(operator: Using): Trie<(string | symbol)[]> {
+    const condition = new operators.Calculation(
+      'sql',
+      (...args) => {
+        const half = args.length / 2;
+        for (let i = 0; i < half; i++) {
+          if (args[i] !== args[i + half]) return false;
+        }
+        return true;
+      },
+      operator.overriddenCols.concat(
+        operator.columns.map((c) => utils.overrideSource(operator.rightName, c))
+      )
+    );
+    let replacement: LogicalPlanTupleOperator = new operators.Selection(
+      'sql',
+      condition,
+      operator.source
+    );
+
+    const projectedCols = zip(operator.overriddenCols, operator.columns);
+    projectedCols.push(
+      ...replacement.schema
+        .filter((x) => !operator.toRemove.has(x.parts))
+        .map(toPair)
+    );
+    // some columns might have been inferred from above, so we will get them this way
+    operator.removeFromSchema(projectedCols.map(retI1));
+    for (const item of operator.schema) {
+      projectedCols.push([item, item]);
+    }
+    replacement = new operators.Projection('sql', projectedCols, replacement);
+
+    if (
+      (operator.parent as LogicalPlanTupleOperator).schema === operator.schema
+    ) {
+      // need to preserve references
+      operator.clearSchema();
+      operator.addToSchema(replacement.schema);
+      replacement.schema = operator.schema;
+    }
+    operator.parent.replaceChild(operator, replacement);
+    return replacement.accept(this.vmap);
   }
 }

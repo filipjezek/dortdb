@@ -1,5 +1,8 @@
-import { Trie } from 'mnemonist';
-import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 
@@ -15,10 +18,25 @@ export class CartesianProduct extends LogicalPlanTupleOperator {
         ? left.schema.concat(right.schema)
         : left.schema || right.schema || [];
     this.schemaSet = schemaToTrie(this.schema);
+    left.parent = this;
+    right.parent = this;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitCartesianProduct(this);
+  }
+  replaceChild(
+    current: LogicalPlanTupleOperator,
+    replacement: LogicalPlanTupleOperator
+  ): void {
+    if (current === this.left) {
+      this.left = replacement as LogicalPlanTupleOperator;
+    } else {
+      this.right = replacement as LogicalPlanTupleOperator;
+    }
+    this.clearSchema();
+    this.addToSchema(this.left.schema);
+    this.addToSchema(this.right.schema);
   }
 }
 
@@ -33,9 +51,23 @@ export class Join extends CartesianProduct {
     public on: Calculation
   ) {
     super(lang, left, right);
+    on.parent = this;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitJoin(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    if (current === this.on) {
+      this.on = replacement as Calculation;
+    } else {
+      super.replaceChild(
+        current as LogicalPlanTupleOperator,
+        replacement as LogicalPlanTupleOperator
+      );
+    }
   }
 }

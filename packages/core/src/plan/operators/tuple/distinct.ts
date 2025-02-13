@@ -1,5 +1,9 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
-import { LogicalPlanTupleOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Distinct extends LogicalPlanTupleOperator {
@@ -11,9 +15,23 @@ export class Distinct extends LogicalPlanTupleOperator {
     super();
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
+    source.parent = this;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitDistinct(this);
+  }
+  replaceChild(
+    current: LogicalPlanOperator,
+    replacement: LogicalPlanOperator
+  ): void {
+    if (this.source === current) {
+      this.source = replacement as LogicalPlanTupleOperator;
+    } else {
+      const index = (this.attrs as Calculation[]).indexOf(
+        current as Calculation
+      );
+      (this.attrs as Calculation[])[index] = replacement as Calculation;
+    }
   }
 }
