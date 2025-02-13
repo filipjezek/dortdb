@@ -7,8 +7,8 @@
   "scripts": {
     "test": "npm run jison && node --import tsx --test \"tests/**/*.spec.ts\"",
     "jison": "ts-jison src/parser/xquery.jison src/parser/xquery.jisonlex -o src/parser/xquery.cjs",
-    "rollup": "rollup -c rollup.config.js",
-    "rollup:watch": "rollup -c rollup.config.js --watch",
+    "rollup": "nx rollup:build",
+    "rollup:watch": "nx rollup:build --watch",
     "build": "npm run jison && npm run rollup",
     "start": "node dist/index.js"
   },

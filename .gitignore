@@ -2,3 +2,7 @@
 node_modules
 .rollup.cache
 test-package
+
+
+.nx/cache
+.nx/workspace-data

@@ -5,11 +5,11 @@
   "description": "Cypher parser and executor for DortDB",
   "main": "dist/index.js",
   "scripts": {
-    "test": "npm run jison && rollup -c rollup.test.config.js && node --test \"dist/**/*.spec.js\"",
+    "test": "npm run jison && nx rollup:build -c rollup.test.config.js && node --test \"dist/**/*.spec.js\"",
     "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs",
     "antlr": "antlr4ng -Dlanguage=TypeScript -o src/parser/generated/ -visitor -no-listener -long-messages -Xexact-output-dir src/parser/Cypher.g4",
-    "rollup": "rollup -c rollup.config.js",
-    "rollup:watch": "rollup -c rollup.config.js --watch",
+    "rollup": "nx rollup:build",
+    "rollup:watch": "nx rollup:build --watch",
     "build": "npm run jison && npm run rollup",
     "start": "node dist/index.js"
   },
