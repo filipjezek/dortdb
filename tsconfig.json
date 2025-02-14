@@ -18,6 +18,9 @@
       "path": "./packages/testing/_showcase"
     },
     {
+      "path": "./packages/testing/showcase"
+    },
+    {
       "path": "./packages/testing/unibench"
     }
   ]
