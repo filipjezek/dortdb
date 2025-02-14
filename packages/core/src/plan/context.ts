@@ -35,6 +35,7 @@ export class ExecutionContext {
       refs = refs[allAttrs];
       return last === allAttrs ? refs : refs[last];
     }
+    return null;
   }
 
   public enterScope(): void {

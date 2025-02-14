@@ -8,11 +8,12 @@ import { Calculation } from '../item/calculation.js';
 
 export class Distinct extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public attrs: (ASTIdentifier | Calculation)[] | typeof allAttrs,
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     source.parent = this;

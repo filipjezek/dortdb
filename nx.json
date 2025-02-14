@@ -1,33 +1,54 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "namedInputs": {
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "production": [
+      "default",
+      "!{projectRoot}/.eslintrc.json",
+      "!{projectRoot}/eslint.config.mjs",
+      "!{projectRoot}/**/?(*.)+(spec|test).[jt]s?(x)?(.snap)",
+      "!{projectRoot}/tsconfig.spec.json",
+      "!{projectRoot}/jest.config.[jt]s",
+      "!{projectRoot}/src/test-setup.[jt]s",
+      "!{projectRoot}/test-setup.[jt]s"
+    ],
+    "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
+  },
   "targetDefaults": {
     "build": {
-      "dependsOn": ["^build"],
+      "executor": "@nx/js:swc",
+      "cache": true,
+      "dependsOn": ["^build", "jison"],
+      "inputs": ["production", "^production"],
       "outputs": ["{projectRoot}/dist"],
-      "cache": true
+      "options": {
+        "main": "{projectRoot}/src/index.ts",
+        "tsConfig": "{projectRoot}/tsconfig.lib.json",
+        "outputPath": "{projectRoot}/dist",
+        "stripLeadingPaths": true
+      }
     },
     "jison": {
-      "outputs": ["{projectRoot}/src/parser/*.cjs"],
-      "cache": true
-    },
-    "rollup": {
-      "outputs": ["{projectRoot}/dist"],
+      "inputs": ["{projectRoot}/src/parser/*.jison(lex)?"],
       "cache": true
     },
     "test": {
-      "cache": true
-    },
-    "antlr": {
-      "cache": true
+      "dependsOn": ["^build", "jison"]
     }
   },
   "plugins": [
     {
-      "plugin": "@nx/rollup/plugin",
+      "plugin": "@nx/js/typescript",
       "options": {
-        "buildTargetName": "rollup:build",
-        "buildDepsTargetName": "build-deps",
-        "watchDepsTargetName": "watch-deps"
+        "typecheck": {
+          "targetName": "typecheck"
+        },
+        "xxxbuild": {
+          "targetName": "build",
+          "configName": "tsconfig.lib.json",
+          "buildDepsName": "build-deps",
+          "watchDepsName": "watch-deps"
+        }
       }
     }
   ]

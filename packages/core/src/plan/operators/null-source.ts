@@ -6,10 +6,9 @@ import {
 } from '../visitor.js';
 
 export class NullSource extends LogicalPlanTupleOperator {
-  public schema: ASTIdentifier[] = null;
-
-  constructor(public lang: Lowercase<string>) {
+  constructor(lang: Lowercase<string>) {
     super();
+    this.lang = lang;
   }
 
   accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {

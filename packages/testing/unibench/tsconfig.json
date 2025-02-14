@@ -1,0 +1,25 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "../../lang-xquery"
+    },
+    {
+      "path": "../../lang-sql"
+    },
+    {
+      "path": "../../lang-cypher"
+    },
+    {
+      "path": "../../core"
+    },
+    {
+      "path": "./tsconfig.lib.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    }
+  ]
+}

@@ -6,11 +6,12 @@ import {
 
 export abstract class SetOperator extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public left: LogicalPlanOperator,
     public right: LogicalPlanOperator
   ) {
     super();
+    this.lang = lang;
     if (
       left instanceof LogicalPlanTupleOperator !==
       right instanceof LogicalPlanTupleOperator
@@ -27,7 +28,9 @@ export abstract class SetOperator extends LogicalPlanTupleOperator {
     right.parent = this;
   }
 
-  abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
+  abstract override accept<T>(
+    visitors: Record<string, LogicalPlanVisitor<T>>
+  ): T;
   replaceChild(
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator

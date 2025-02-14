@@ -18,6 +18,10 @@ export const Cypher: Language<'cypher'> = {
   operators: [],
   aggregates: [],
   functions: [],
+  castables: [],
+  visitors: {
+    logicalPlanBuilder: null,
+  },
   createParser,
 };
 
@@ -37,7 +41,7 @@ function createParser(mgr: LanguageManager) {
       typeof op === 'string'
         ? new ASTOperator(
             'cypher',
-            new ast.ASTIdentifier(op.toLowerCase()),
+            new ast.CypherIdentifier(op.toLowerCase()),
             args
           )
         : new ASTOperator('cypher', op, args),

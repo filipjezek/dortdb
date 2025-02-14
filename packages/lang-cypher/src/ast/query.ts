@@ -1,7 +1,7 @@
 import { ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { PatternElChain } from './pattern.js';
-import { ASTIdentifier } from './literal.js';
+import { CypherIdentifier } from './literal.js';
 import { FnCallWrapper, PropLookup } from './expression.js';
 
 export enum SetOpType {
@@ -31,7 +31,7 @@ export type QueryStatement =
 
 export class Query implements ASTNode {
   public setOp: SetOp;
-  public from?: ASTIdentifier;
+  public from?: CypherIdentifier;
 
   constructor(public statements: QueryStatement[]) {}
 
@@ -50,7 +50,7 @@ export class MatchClause implements ASTNode {
 }
 
 export class UnwindClause implements ASTNode {
-  constructor(public expr: ASTNode, public variable: ASTIdentifier) {}
+  constructor(public expr: ASTNode, public variable: CypherIdentifier) {}
 
   accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitUnwindClause(this);
@@ -99,8 +99,8 @@ export class SetClause implements ASTNode {
 export class SetItem implements ASTNode {
   public add = false;
   constructor(
-    public key: ASTIdentifier | PropLookup,
-    public value: ASTNode | ASTIdentifier[]
+    public key: CypherIdentifier | PropLookup,
+    public value: ASTNode | CypherIdentifier[]
   ) {}
 
   accept<T>(visitor: CypherVisitor<T>): T {
@@ -118,8 +118,8 @@ export class RemoveClause implements ASTNode {
 
 export class RemoveItem implements ASTNode {
   constructor(
-    public key: ASTIdentifier | PropLookup,
-    public labels?: ASTIdentifier[]
+    public key: CypherIdentifier | PropLookup,
+    public labels?: CypherIdentifier[]
   ) {}
 
   accept<T>(visitor: CypherVisitor<T>): T {
@@ -137,7 +137,7 @@ export class DeleteClause implements ASTNode {
 
 export class ProjectionBody implements ASTNode {
   constructor(
-    public items: ('*' | ASTNode | [ASTNode, ASTIdentifier])[],
+    public items: ('*' | ASTNode | [ASTNode, CypherIdentifier])[],
     public order?: OrderItem[],
     public skip?: ASTNode,
     public limit?: ASTNode,

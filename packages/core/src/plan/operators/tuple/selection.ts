@@ -8,11 +8,12 @@ import { Calculation } from '../item/calculation.js';
 
 export class Selection extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public condition: Calculation | ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     if (condition instanceof Calculation) condition.parent = this;

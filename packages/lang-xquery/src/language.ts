@@ -1,11 +1,11 @@
 import {
-  aggregates,
   ASTFunction,
   ASTOperator,
   LangSwitch,
   Language,
   LanguageManager,
 } from '@dortdb/core';
+import { count } from '@dortdb/core/aggregates';
 import {
   xqueryLexer as Lexer,
   xqueryParser as Parser,
@@ -21,7 +21,7 @@ import { castables } from './castables/index.js';
 export const XQuery: Language<'xquery'> = {
   name: 'xquery',
   operators: [],
-  aggregates: [{ ...aggregates.count, schema: 'fn' }],
+  aggregates: [{ ...count, schema: 'fn' }],
   functions: [],
   castables,
   createParser,

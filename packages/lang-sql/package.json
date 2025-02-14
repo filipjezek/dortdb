@@ -3,32 +3,33 @@
   "type": "module",
   "version": "1.0.0",
   "description": "SQL parser and executor for DortDB",
-  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./ast": "./dist/ast/index.js",
+    "./package.json": "./package.json"
+  },
+  "repository": "filipjezek/dortdb",
   "scripts": {
-    "test": "npm run jison && node --import tsx --test \"tests/**/*.spec.ts\"",
-    "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.cjs",
-    "rollup": "nx rollup:build",
-    "rollup:watch": "nx rollup:build --watch",
-    "build": "npm run jison && npm run rollup",
-    "start": "node dist/index.js"
+    "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.cjs"
   },
   "author": "dortdb",
   "license": "ISC",
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^25.0.7",
-    "@types/emscripten": "^1.39.10",
-    "@types/node": "^22.2.0",
-    "esbuild": "^0.20.2",
-    "rollup": "^4.14.3",
-    "rollup-plugin-dts": "^6.1.0",
-    "rollup-plugin-esbuild": "^6.1.1",
-    "tsx": "^4.17.0",
-    "typescript": "^5.4.5"
+  "nx": {
+    "targets": {
+      "build": {},
+      "jison": {
+        "outputs": [
+          "{projectRoot}/src/parser/sql.cjs"
+        ]
+      }
+    }
   },
+  "devDependencies": {},
   "peerDependencies": {
     "@dortdb/core": "^1.0.0"
   },
   "dependencies": {
+    "@swc/helpers": "^0.5.15",
     "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "mnemonist": "^0.39.8",
     "tslib": "^2.6.2"

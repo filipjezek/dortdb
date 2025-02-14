@@ -12,11 +12,12 @@ import { arrSetParent } from '../../../utils/arr-set-parent.js';
 
 export class Projection extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public attrs: Aliased<ASTIdentifier | Calculation>[],
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = attrs.map((a) => a[1]);
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;
@@ -51,13 +52,14 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
   public emptyVal = new TrieMap<(symbol | string)[], any>(Array);
 
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     /** mapping must be interpreted in the context of the source */
     public mapping: LogicalPlanTupleOperator,
     public outer: boolean,
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = source.schema
       .filter((x) => !mapping.schemaSet.has(x.parts))
       .concat(mapping.schema);
@@ -87,11 +89,12 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
 
 export class ProjectionIndex extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public indexCol: ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = [
       ...source.schema.filter((x) => !x.equals(indexCol)),
       indexCol,

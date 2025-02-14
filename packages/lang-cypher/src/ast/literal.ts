@@ -1,26 +1,21 @@
-import {
-  ASTIdentifier as ASTIdentAttrs,
-  ASTLiteral,
-  ASTNode,
-  ASTVisitor,
-} from '@dortdb/core';
+import { ASTIdentifier, ASTLiteral, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { parseStringLiteral } from '../utils/string.js';
 
-export class ASTIdentifier implements ASTIdentAttrs {
-  public schema?: string;
-  public id: string;
-
+export class CypherIdentifier extends ASTIdentifier {
   constructor(public idOriginal: string, public schemaOriginal?: string) {
+    super();
     if (!schemaOriginal) {
-      [idOriginal, schemaOriginal] = this.splitId(idOriginal);
+      [this.idOriginal, this.schemaOriginal] = this.splitId(idOriginal);
     }
-    this.id = this.parseId(idOriginal);
-    this.schema = schemaOriginal && this.parseId(schemaOriginal);
+    if (this.schemaOriginal) {
+      this.parts.push(this.parseId(this.schemaOriginal));
+    }
+    this.parts.push(this.parseId(this.idOriginal));
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitIdentifier(this);
+  override accept<T>(visitor: CypherVisitor<T>): T {
+    return visitor.visitCypherIdentifier(this);
   }
 
   private parseId(id: string): string {
@@ -52,22 +47,22 @@ export class ASTIdentifier implements ASTIdentAttrs {
 }
 
 export class ASTStringLiteral extends ASTLiteral<string> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, null);
     this.value = parseStringLiteral(original);
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
+  override accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitStringLiteral(this);
   }
 }
 
 export class ASTNumberLiteral extends ASTLiteral<number> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, +original);
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
+  override accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitNumberLiteral(this);
   }
 }
@@ -89,12 +84,12 @@ export class ASTMapLiteral implements ASTNode {
 }
 
 export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, null);
     this.value = this.parse(original);
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
+  override accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitBooleanLiteral(this);
   }
 

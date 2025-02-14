@@ -2,11 +2,11 @@ import {
   ASTIdentifier,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
-  operators,
-  utils,
 } from '@dortdb/core';
 import { SchemaInferrer } from '../visitors/schema-inferrer.js';
 import { Trie } from 'mnemonist';
+import { CartesianProduct } from '@dortdb/core/plan';
+import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
 
 /**
  * This operator is a temporary operator which is replaced by {@link operators.Projection} and {@link operators.Selection}
@@ -17,13 +17,14 @@ export class Using extends LogicalPlanTupleOperator {
   public overriddenCols: ASTIdentifier[];
 
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public columns: ASTIdentifier[],
     public leftName: ASTIdentifier,
     public rightName: ASTIdentifier,
-    public source: operators.CartesianProduct
+    public source: CartesianProduct
   ) {
     super();
+    this.lang = lang;
     this.schema = [];
     this.schemaSet = new Trie<(string | symbol)[]>(Array);
     this.calculateSchema();
@@ -41,18 +42,18 @@ export class Using extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator
   ): void {
-    this.source = replacement as operators.CartesianProduct;
+    this.source = replacement as CartesianProduct;
     this.clearSchema();
     this.calculateSchema();
   }
 
   calculateSchema(): void {
     this.overriddenCols = this.columns.map((c) =>
-      utils.overrideSource(this.leftName, c)
+      overrideSource(this.leftName, c)
     );
-    this.toRemove = utils.schemaToTrie(this.overriddenCols);
+    this.toRemove = schemaToTrie(this.overriddenCols);
     for (const col of this.columns) {
-      this.toRemove.add(utils.overrideSource(this.rightName, col).parts);
+      this.toRemove.add(overrideSource(this.rightName, col).parts);
     }
     this.addToSchema(
       this.source.schema.filter((s) => !this.toRemove.has(s.parts))

@@ -5,18 +5,18 @@ import { ASTItemType } from './item-type.js';
 import { PathPredicate } from './path.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, null);
     this.value = parseStringLiteral(original);
   }
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
+  override accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitStringLiteral(this);
   }
 }
 
 export class ASTNumberLiteral extends ASTLiteral<number> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, +original);
   }
 
@@ -32,7 +32,7 @@ export class XQueryIdentifier extends ASTIdentifier {
     this.parts = parseName(original);
   }
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
+  override accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitXQueryIdentifier(this);
   }
 }
@@ -43,7 +43,7 @@ export class ASTVariable extends XQueryIdentifier {
     this.parts = name.parts;
   }
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
+  override accept<T>(visitor: XQueryVisitor<T>): T {
     return visitor.visitVariable(this);
   }
 }

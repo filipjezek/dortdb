@@ -93,4 +93,5 @@ function getAttrs(node: Node, name: ASTIdentifier | '*'): any[] {
   } else if (name.parts.length === 1) {
     return [(node as any)[name.parts[0]]];
   }
+  return [];
 }

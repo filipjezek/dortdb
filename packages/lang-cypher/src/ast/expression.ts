@@ -1,13 +1,15 @@
 import { ASTFunction, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
-import { ASTIdentifier } from './literal.js';
+import { CypherIdentifier } from './literal.js';
 import { PatternElChain } from './pattern.js';
 
 export class FnCallWrapper implements ASTNode {
   /**
    * Yield items can be a single identifier, a pair of identifiers (1st AS 2nd), or a wildcard.
    */
-  public yieldItems: (ASTIdentifier | [ASTIdentifier, ASTIdentifier])[] | '*';
+  public yieldItems:
+    | (CypherIdentifier | [CypherIdentifier, CypherIdentifier])[]
+    | '*';
   public where: ASTNode;
 
   constructor(public fn: ASTFunction, public distinct: boolean) {}
@@ -40,7 +42,7 @@ export class QuantifiedExpr implements ASTNode {
 
   constructor(
     quantifier: string,
-    public variable: ASTIdentifier,
+    public variable: CypherIdentifier,
     public expr: ASTNode,
     public where?: ASTNode
   ) {
@@ -52,12 +54,12 @@ export class QuantifiedExpr implements ASTNode {
   }
 }
 
-export class ASTParameter extends ASTIdentifier {
+export class ASTParameter extends CypherIdentifier {
   constructor(idOriginal: string) {
     super(idOriginal);
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
+  override accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitParameter(this);
   }
 }
@@ -76,7 +78,7 @@ export class PatternComprehension implements ASTNode {
 
 export class ListComprehension implements ASTNode {
   constructor(
-    public variable: ASTIdentifier,
+    public variable: CypherIdentifier,
     public source: ASTNode,
     public where?: ASTNode,
     public expr?: ASTNode
@@ -108,7 +110,7 @@ export class CountAll implements ASTNode {
 }
 
 export class LabelFilterExpr implements ASTNode {
-  constructor(public expr: ASTNode, public labels: ASTIdentifier[]) {}
+  constructor(public expr: ASTNode, public labels: CypherIdentifier[]) {}
 
   accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitLabelFilterExpr(this);
@@ -127,7 +129,7 @@ export class SubscriptExpr implements ASTNode {
 }
 
 export class PropLookup implements ASTNode {
-  constructor(public expr: ASTNode, public prop: ASTIdentifier) {}
+  constructor(public expr: ASTNode, public prop: CypherIdentifier) {}
 
   accept<T>(visitor: CypherVisitor<T>): T {
     return visitor.visitPropLookup(this);

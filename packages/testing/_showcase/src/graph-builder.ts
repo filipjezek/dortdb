@@ -5,14 +5,14 @@ import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
-  operators,
 } from '@dortdb/core';
+import * as plan from '@dortdb/core/plan';
 import {
   ProjectionSize,
   TreeJoin,
   XQueryLogicalPlanVisitor,
 } from '@dortdb/lang-xquery';
-import { strToColor } from '../utils/str-to-color.js';
+import { strToColor } from './utils/str-to-color.js';
 
 function sum(args: number[]) {
   return args.reduce((a, b) => a + b, 0);
@@ -177,7 +177,7 @@ export class GraphBuilder
   }
 
   private processAttr(
-    [attr, alias]: Aliased<ASTIdentifier | operators.Calculation>,
+    [attr, alias]: Aliased<ASTIdentifier | plan.Calculation>,
     counter: { i: number }
   ): string {
     const aliasStr = this.stringifyId(alias);
@@ -279,7 +279,7 @@ export class GraphBuilder
     return edge;
   }
 
-  visitProjection(operator: operators.Projection): SVGGElement {
+  visitProjection(operator: plan.Projection): SVGGElement {
     const src = operator.source.accept(this.vmap);
     const calcI = { i: 0 };
     const attrs = operator.attrs.map((a) => this.processAttr(a, calcI));
@@ -288,8 +288,8 @@ export class GraphBuilder
       operator
     );
     const calcs = operator.attrs
-      .filter((a) => a[0] instanceof operators.Calculation)
-      .map(([a]) => this.visitCalculation(a as operators.Calculation))
+      .filter((a) => a[0] instanceof plan.Calculation)
+      .map(([a]) => this.visitCalculation(a as plan.Calculation))
       .map((el, i) => ({
         el,
         edgeType: 'djoin',
@@ -307,7 +307,7 @@ export class GraphBuilder
       : `<span class="placeholder placeholder-${counter.i++}">_</span>`;
   }
 
-  visitSelection(operator: operators.Selection): SVGGElement {
+  visitSelection(operator: plan.Selection): SVGGElement {
     const src = operator.source.accept(this.vmap);
     const arg = this.processArg(operator.condition, { i: 0 });
     const parent = this.drawNode(`&sigma;(${arg})`, operator);
@@ -323,27 +323,27 @@ export class GraphBuilder
           }
         );
   }
-  visitTupleSource(operator: operators.TupleSource): SVGGElement {
+  visitTupleSource(operator: plan.TupleSource): SVGGElement {
     const name =
       operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
         : this.processAttr(operator.name, { i: 0 });
     return this.drawNode(name, operator, 'source-tuple');
   }
-  visitItemSource(operator: operators.ItemSource): SVGGElement {
+  visitItemSource(operator: plan.ItemSource): SVGGElement {
     const name =
       operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
         : this.processAttr(operator.name, { i: 0 });
     return this.drawNode(name, operator, 'source-item');
   }
-  visitFnCall(operator: operators.FnCall): SVGGElement {
+  visitFnCall(operator: plan.FnCall): SVGGElement {
     throw new Error('Method not implemented.');
   }
-  visitLiteral(operator: operators.Literal): SVGGElement {
+  visitLiteral(operator: plan.Literal): SVGGElement {
     throw new Error('Method not implemented.');
   }
-  visitCalculation(operator: operators.Calculation): SVGGElement {
+  visitCalculation(operator: plan.Calculation): SVGGElement {
     let opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
     const parent = this.drawNode(`calc(${args.join(', ')})`, operator);
@@ -356,10 +356,10 @@ export class GraphBuilder
       }));
     return this.drawBranches(parent, ...ops);
   }
-  visitConditional(operator: operators.Conditional): SVGGElement {
+  visitConditional(operator: plan.Conditional): SVGGElement {
     throw new Error('Method not implemented.');
   }
-  visitCartesianProduct(operator: operators.CartesianProduct): SVGGElement {
+  visitCartesianProduct(operator: plan.CartesianProduct): SVGGElement {
     const parent = this.drawNode('&times;', operator);
     return this.drawBranches(
       parent,
@@ -367,7 +367,7 @@ export class GraphBuilder
       { el: operator.right.accept(this.vmap) }
     );
   }
-  visitJoin(operator: operators.Join): SVGGElement {
+  visitJoin(operator: plan.Join): SVGGElement {
     const condition = this.processArg(operator.on, { i: 0 });
     const parent = this.drawNode(
       `${operator.leftOuter ? '&deg;' : ''}&bowtie;${
@@ -386,7 +386,7 @@ export class GraphBuilder
       { el: operator.right.accept(this.vmap) }
     );
   }
-  visitProjectionConcat(operator: operators.ProjectionConcat): SVGGElement {
+  visitProjectionConcat(operator: plan.ProjectionConcat): SVGGElement {
     const parent = this.drawNode(
       (operator.outer ? '&deg;' : '') + '&bowtie;&#x0362;',
       operator
@@ -397,28 +397,28 @@ export class GraphBuilder
       { el: operator.mapping.accept(this.vmap), edgeType: 'djoin' }
     );
   }
-  visitMapToItem(operator: operators.MapToItem): SVGGElement {
+  visitMapToItem(operator: plan.MapToItem): SVGGElement {
     const parent = this.drawNode(
       `toItem(${this.stringifyId(operator.key)})`,
       operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
-  visitMapFromItem(operator: operators.MapFromItem): SVGGElement {
+  visitMapFromItem(operator: plan.MapFromItem): SVGGElement {
     const parent = this.drawNode(
       `fromItem(${this.stringifyId(operator.key)})`,
       operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
-  visitProjectionIndex(operator: operators.ProjectionIndex): SVGGElement {
+  visitProjectionIndex(operator: plan.ProjectionIndex): SVGGElement {
     const parent = this.drawNode(
       `index(${this.stringifyId(operator.indexCol)})`,
       operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
-  visitOrderBy(operator: operators.OrderBy): SVGGElement {
+  visitOrderBy(operator: plan.OrderBy): SVGGElement {
     let opI = { i: 0 };
     const args = operator.orders.map(
       (o) => this.processArg(o.key, opI) + (o.ascending ? '' : '&darr;')
@@ -428,7 +428,7 @@ export class GraphBuilder
       parent,
       { el: operator.source.accept(this.vmap) },
       ...operator.orders
-        .filter((o) => o.key instanceof operators.Calculation)
+        .filter((o) => o.key instanceof plan.Calculation)
         .map((o) => (o.key as LogicalPlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
@@ -437,7 +437,7 @@ export class GraphBuilder
         }))
     );
   }
-  visitGroupBy(operator: operators.GroupBy): SVGGElement {
+  visitGroupBy(operator: plan.GroupBy): SVGGElement {
     let opI = { i: 0 };
     const keys = operator.keys.map((k) => this.processAttr(k, opI));
     const kChildren = opI.i;
@@ -455,7 +455,7 @@ export class GraphBuilder
     parent = this.drawBranches(
       parent,
       ...operator.keys
-        .filter((k) => k instanceof operators.Calculation)
+        .filter((k) => k instanceof plan.Calculation)
         .map((k) => (k as LogicalPlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
@@ -484,14 +484,14 @@ export class GraphBuilder
 
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
-  visitLimit(operator: operators.Limit): SVGGElement {
+  visitLimit(operator: plan.Limit): SVGGElement {
     const parent = this.drawNode(
       `limit(${operator.limit}, ${operator.skip})`,
       operator
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
-  visitUnion(operator: operators.Union): SVGGElement {
+  visitUnion(operator: plan.Union): SVGGElement {
     const parent = this.drawNode('&cup;', operator);
     return this.drawBranches(
       parent,
@@ -499,7 +499,7 @@ export class GraphBuilder
       { el: operator.right.accept(this.vmap) }
     );
   }
-  visitIntersection(operator: operators.Intersection): SVGGElement {
+  visitIntersection(operator: plan.Intersection): SVGGElement {
     const parent = this.drawNode('&cap;', operator);
     return this.drawBranches(
       parent,
@@ -507,7 +507,7 @@ export class GraphBuilder
       { el: operator.right.accept(this.vmap) }
     );
   }
-  visitDifference(operator: operators.Difference): SVGGElement {
+  visitDifference(operator: plan.Difference): SVGGElement {
     const parent = this.drawNode('&setminus;', operator);
     return this.drawBranches(
       parent,
@@ -515,7 +515,7 @@ export class GraphBuilder
       { el: operator.right.accept(this.vmap) }
     );
   }
-  visitDistinct(operator: operators.Distinct): SVGGElement {
+  visitDistinct(operator: plan.Distinct): SVGGElement {
     if (operator.attrs === allAttrs) {
       const parent = this.drawNode('&delta;(*)', operator);
       return this.drawBranches(parent, {
@@ -529,7 +529,7 @@ export class GraphBuilder
       parent,
       { el: operator.source.accept(this.vmap) },
       ...operator.attrs
-        .filter((a) => a instanceof operators.Calculation)
+        .filter((a) => a instanceof plan.Calculation)
         .map((a) => (a as LogicalPlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
@@ -538,31 +538,30 @@ export class GraphBuilder
         }))
     );
   }
-  visitNullSource(operator: operators.NullSource): SVGGElement {
+  visitNullSource(operator: plan.NullSource): SVGGElement {
     return this.drawNode('&square;', operator, 'source-tuple');
   }
-  visitAggregate(operator: operators.AggregateCall): SVGGElement {
+  visitAggregate(operator: plan.AggregateCall): SVGGElement {
     throw new Error('Method not implemented.');
   }
 
   private visitFnSource(
-    operator: operators.ItemFnSource | operators.TupleFnSource
+    operator: plan.ItemFnSource | plan.TupleFnSource
   ): SVGGElement {
     const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
-    const alias = (operator as operators.TupleFnSource).alias
-      ? `${this.stringifyId((operator as operators.TupleFnSource).alias)}=`
+    const alias = (operator as plan.TupleFnSource).alias
+      ? `${this.stringifyId((operator as plan.TupleFnSource).alias)}=`
       : '';
     const parent = this.drawNode(
       `${alias}function(${args.join(', ')})`,
       operator,
-      'source-' +
-        (operator instanceof operators.ItemFnSource ? 'item' : 'tuple')
+      'source-' + (operator instanceof plan.ItemFnSource ? 'item' : 'tuple')
     );
     return this.drawBranches(
       parent,
       ...operator.args
-        .filter((a) => a instanceof operators.Calculation)
+        .filter((a) => a instanceof plan.Calculation)
         .map((a) => (a as LogicalPlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
@@ -570,13 +569,13 @@ export class GraphBuilder
         }))
     );
   }
-  visitItemFnSource(operator: operators.ItemFnSource): SVGGElement {
+  visitItemFnSource(operator: plan.ItemFnSource): SVGGElement {
     return this.visitFnSource(operator);
   }
-  visitTupleFnSource(operator: operators.TupleFnSource): SVGGElement {
+  visitTupleFnSource(operator: plan.TupleFnSource): SVGGElement {
     return this.visitFnSource(operator);
   }
-  visitQuantifier(operator: operators.Quantifier): SVGGElement {
+  visitQuantifier(operator: plan.Quantifier): SVGGElement {
     throw new Error('Method not implemented.');
   }
 

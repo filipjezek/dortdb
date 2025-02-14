@@ -8,11 +8,12 @@ import { schemaToTrie } from '../../../utils/trie.js';
 
 export class CartesianProduct extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public left: LogicalPlanTupleOperator,
     public right: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema =
       left.schema && right.schema
         ? left.schema.concat(right.schema)
@@ -54,10 +55,10 @@ export class Join extends CartesianProduct {
     on.parent = this;
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
+  override accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitJoin(this);
   }
-  replaceChild(
+  override replaceChild(
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator
   ): void {

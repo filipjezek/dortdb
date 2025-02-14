@@ -324,7 +324,7 @@ pattern-el-chain:
   | pattern-el-chain rel-pattern node-pattern { $$ = $1; $$.chain.push($2, $3); } ;
 
 node-pattern:
-  PARENVAR { $$ = new yy.ast.NodePattern(new yy.ast.ASTIdentifier($1.slice(1, -1).trim())); }
+  PARENVAR { $$ = new yy.ast.NodePattern(new yy.ast.CypherIdentifier($1.slice(1, -1).trim())); }
   | LPAR variable node-label-list_opt properties_opt RPAR {
     $$ = new yy.ast.NodePattern($2, $3, $4);
   }
@@ -499,7 +499,7 @@ quantifier:
 
 function-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
-  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 existential-subquery:
   EXISTS LCUR regular-query RCUR { $$ = new yy.ast.ASTExists(); $$.query = $3; }
@@ -508,12 +508,12 @@ existential-subquery:
 
 explicit-procedure-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
-  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.slice(0, -1)), $3, $2); } ;
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 implicit-procedure-invocation:
   symbolic-name { $$ = yy.wrapFn($1); }
   | symbolic-name DOT symbolic-name {
-    $$ = yy.wrapFn(new yy.ast.ASTIdentifier($1.idOriginal, $2.idOriginal));
+    $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.idOriginal, $2.idOriginal));
   } ;
 
 variable:
@@ -606,10 +606,10 @@ reserved-word:
 
 schema-name:
   symbolic-name
-  | reserved-word { $$ = new yy.ast.ASTIdentifier($1); } ;
+  | reserved-word { $$ = new yy.ast.CypherIdentifier($1); } ;
 
 symbolic-name:
-  ID { $$ = new yy.ast.ASTIdentifier($1); } ;
+  ID { $$ = new yy.ast.CypherIdentifier($1); } ;
 
 // optionals
 

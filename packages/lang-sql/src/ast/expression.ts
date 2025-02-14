@@ -4,20 +4,20 @@ import {
   ASTIdentifier,
   ASTFunction,
   allAttrs,
-  operators,
 } from '@dortdb/core';
+import * as plan from '@dortdb/core/plan';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
 import { OrderByItem } from './select.js';
 import { WindowSpec } from './window.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, null);
     this.value = parseStringLiteral(original);
   }
 
-  accept<T>(visitor: SQLVisitor<T>): T {
+  override accept<T>(visitor: SQLVisitor<T>): T {
     return visitor.visitStringLiteral(this);
   }
 }
@@ -38,13 +38,13 @@ export class SQLIdentifier extends ASTIdentifier {
     );
   }
 
-  accept<T>(visitor: SQLVisitor<T>): T {
+  override accept<T>(visitor: SQLVisitor<T>): T {
     return visitor.visitSQLIdentifier(this);
   }
 }
 
 export class ASTNumberLiteral extends ASTLiteral<number> {
-  constructor(public original: string) {
+  constructor(original: string) {
     super(original, +original);
   }
 
@@ -120,11 +120,11 @@ export class ASTExists implements ASTNode {
 }
 
 export class ASTQuantifier implements ASTNode {
-  public quantifier: operators.QuantifierType;
+  public quantifier: plan.QuantifierType;
   public parentOp: string | ASTIdentifier;
 
   constructor(quantifier: string, public query: ASTNode) {
-    this.quantifier = quantifier.toLowerCase() as operators.QuantifierType;
+    this.quantifier = quantifier.toLowerCase() as plan.QuantifierType;
   }
 
   accept<T>(visitor: SQLVisitor<T>): T {

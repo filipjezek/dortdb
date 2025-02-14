@@ -4,13 +4,10 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { Extract } from 'unzipper';
 
-export const DATA_DIR = resolve(
-  import.meta.dirname,
-  '../../dist/unibench/data'
-);
+export const DATA_DIR = resolve(import.meta.dirname, '../dist/unibench/data');
 
 export async function prepareData() {
-  if (!(await fs.stat(resolve(DATA_DIR, 'Dataset')).catch(() => null))) {
+  if (!(await fs.stat(resolve(DATA_DIR, 'Dataset')).catch(() => {}))) {
     await downloadData();
   }
 }

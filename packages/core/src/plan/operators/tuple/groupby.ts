@@ -12,13 +12,14 @@ import { arrSetParent } from '../../../utils/arr-set-parent.js';
 
 export class GroupBy extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     /** in order to calculate schema, we need aliases for calculations */
     public keys: Aliased<ASTIdentifier | Calculation>[],
     public aggs: AggregateCall[],
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = keys.map((k) => k[1]).concat(aggs.map((a) => a.fieldName));
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;

@@ -3,19 +3,32 @@
   "type": "module",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "nx rollup:build && tsc -d --emitDeclarationOnly"
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json",
+    "./operators": "./dist/operators/index.js",
+    "./aggregates": "./dist/aggregates/index.js",
+    "./castables": "./dist/castables/index.js",
+    "./utils": "./dist/utils/index.js",
+    "./plan": "./dist/plan/operators/index.js",
+    "./ast": "./dist/ast.js"
   },
+  "files": [
+    "dist",
+    "!**/*.tsbuildinfo"
+  ],
+  "repository": "filipjezek/dortdb",
   "author": "dortdb",
   "license": "ISC",
-  "devDependencies": {
-    "rollup": "^4.16.4",
-    "rollup-plugin-esbuild": "^6.1.1"
+  "nx": {
+    "sourceRoot": "packages/core/src",
+    "targets": {
+      "build": {}
+    }
   },
+  "devDependencies": {},
   "dependencies": {
+    "@swc/helpers": "^0.5.15",
     "mnemonist": "^0.39.8"
   }
 }

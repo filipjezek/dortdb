@@ -4,12 +4,12 @@ import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
-  operators,
-  utils,
 } from '@dortdb/core';
+import * as plan from '@dortdb/core/plan';
 import { Trie } from 'mnemonist';
 import { isTableAttr } from '../utils/is-table-attr.js';
 import { Using } from '../plan/using.js';
+import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
 
 const EMPTY = new Trie<(string | symbol)[]>(Array);
 function toPair<T>(x: T): [T, T] {
@@ -48,11 +48,9 @@ export class SchemaInferrer
     return EMPTY;
   }
 
-  visitProjection(operator: operators.Projection): Trie<(string | symbol)[]> {
+  visitProjection(operator: plan.Projection): Trie<(string | symbol)[]> {
     // additional appended attrs through upper operators
-    const external = utils.schemaToTrie(
-      operator.schema.slice(operator.attrs.length)
-    );
+    const external = schemaToTrie(operator.schema.slice(operator.attrs.length));
     operator.removeFromSchema(external);
 
     for (const attr of operator.attrs) {
@@ -74,11 +72,11 @@ export class SchemaInferrer
       operator.addToSchema(arg.accept(this.vmap));
     }
   }
-  visitSelection(operator: operators.Selection): Trie<(string | symbol)[]> {
+  visitSelection(operator: plan.Selection): Trie<(string | symbol)[]> {
     this.processArg(operator, operator.condition);
     return operator.source.accept(this.vmap);
   }
-  visitTupleSource(operator: operators.TupleSource): Trie<(string | symbol)[]> {
+  visitTupleSource(operator: plan.TupleSource): Trie<(string | symbol)[]> {
     const external = new Trie<(string | symbol)[]>(Array);
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
@@ -89,20 +87,17 @@ export class SchemaInferrer
     }
     return external;
   }
-  visitItemSource(operator: operators.ItemSource): Trie<(string | symbol)[]> {
+  visitItemSource(operator: plan.ItemSource): Trie<(string | symbol)[]> {
     return EMPTY;
   }
-  visitFnCall(operator: operators.FnCall): Trie<(string | symbol)[]> {
+  visitFnCall(operator: plan.FnCall): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');
   }
-  visitLiteral(operator: operators.Literal): Trie<(string | symbol)[]> {
+  visitLiteral(operator: plan.Literal): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');
   }
   visitCalculation(
-    operator:
-      | operators.Calculation
-      | operators.ItemFnSource
-      | operators.TupleFnSource
+    operator: plan.Calculation | plan.ItemFnSource | plan.TupleFnSource
   ): Trie<(string | symbol)[]> {
     const external = new Trie<(string | symbol)[]>(Array);
     for (const arg of operator.args) {
@@ -116,7 +111,7 @@ export class SchemaInferrer
     }
     return external;
   }
-  visitConditional(operator: operators.Conditional): Trie<(string | symbol)[]> {
+  visitConditional(operator: plan.Conditional): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');
   }
 
@@ -124,17 +119,17 @@ export class SchemaInferrer
     operator: LogicalPlanTupleOperator
   ): Trie<(string | symbol)[]> {
     // joins are made of either TupleSources or Projections based on table aliases or other joins
-    if (operator instanceof operators.TupleSource) {
+    if (operator instanceof plan.TupleSource) {
       return operator.name instanceof ASTIdentifier
-        ? utils.schemaToTrie([operator.name])
-        : utils.schemaToTrie([operator.name[1]]);
+        ? schemaToTrie([operator.name])
+        : schemaToTrie([operator.name[1]]);
     }
-    if (operator instanceof operators.TupleFnSource) {
+    if (operator instanceof plan.TupleFnSource) {
       // alias for table functions is required in our grammar
-      return utils.schemaToTrie([operator.alias]);
+      return schemaToTrie([operator.alias]);
     }
 
-    if (operator instanceof operators.CartesianProduct) {
+    if (operator instanceof plan.CartesianProduct) {
       const res = this.getRelNames(operator.left);
       for (const item of this.getRelNames(operator.right)) {
         if (res.has(item))
@@ -149,7 +144,7 @@ export class SchemaInferrer
     return res;
   }
   visitCartesianProduct(
-    operator: operators.CartesianProduct
+    operator: plan.CartesianProduct
   ): Trie<(string | symbol)[]> {
     const external = new Trie<(string | symbol)[]>(Array);
     const leftNames = this.getRelNames(operator.left);
@@ -186,14 +181,14 @@ export class SchemaInferrer
 
     return external;
   }
-  visitJoin(operator: operators.Join): Trie<(string | symbol)[]> {
+  visitJoin(operator: plan.Join): Trie<(string | symbol)[]> {
     if (operator.on) {
       this.processArg(operator, operator.on);
     }
     return this.visitCartesianProduct(operator);
   }
   visitProjectionConcat(
-    operator: operators.ProjectionConcat
+    operator: plan.ProjectionConcat
   ): Trie<(string | symbol)[]> {
     const horizontal =
       operator.mapping.lang === 'sql'
@@ -207,10 +202,10 @@ export class SchemaInferrer
     );
     return vertical;
   }
-  visitMapToItem(operator: operators.MapToItem): Trie<(string | symbol)[]> {
+  visitMapToItem(operator: plan.MapToItem): Trie<(string | symbol)[]> {
     return this.downCond(operator);
   }
-  visitMapFromItem(operator: operators.MapFromItem): Trie<(string | symbol)[]> {
+  visitMapFromItem(operator: plan.MapFromItem): Trie<(string | symbol)[]> {
     const external = this.downCond(operator);
     while (operator.schema.length > 1) {
       external.add(operator.schema[1].parts);
@@ -219,7 +214,7 @@ export class SchemaInferrer
     return external;
   }
   visitProjectionIndex(
-    operator: operators.ProjectionIndex
+    operator: plan.ProjectionIndex
   ): Trie<(string | symbol)[]> {
     const external = this.downCond(operator);
     operator.removeFromSchema(external);
@@ -231,12 +226,12 @@ export class SchemaInferrer
 
     return external;
   }
-  visitOrderBy(operator: operators.OrderBy): Trie<(string | symbol)[]> {
+  visitOrderBy(operator: plan.OrderBy): Trie<(string | symbol)[]> {
     return operator.source.accept(this.vmap);
   }
-  visitGroupBy(operator: operators.GroupBy): Trie<(string | symbol)[]> {
+  visitGroupBy(operator: plan.GroupBy): Trie<(string | symbol)[]> {
     // additional appended attrs through upper operators
-    const external = utils.schemaToTrie(
+    const external = schemaToTrie(
       operator.schema.slice(operator.keys.length + operator.aggs.length)
     );
     operator.removeFromSchema(external);
@@ -255,11 +250,11 @@ export class SchemaInferrer
     }
     return external;
   }
-  visitLimit(operator: operators.Limit): Trie<(string | symbol)[]> {
+  visitLimit(operator: plan.Limit): Trie<(string | symbol)[]> {
     return operator.source.accept(this.vmap);
   }
 
-  private processSetOp(operator: operators.SetOperator) {
+  private processSetOp(operator: plan.SetOperator) {
     const left =
       operator.left.lang === 'sql' ? operator.left.accept(this.vmap) : EMPTY;
     const right =
@@ -270,34 +265,28 @@ export class SchemaInferrer
     return left;
   }
 
-  visitUnion(operator: operators.Union): Trie<(string | symbol)[]> {
+  visitUnion(operator: plan.Union): Trie<(string | symbol)[]> {
     return this.processSetOp(operator);
   }
-  visitIntersection(
-    operator: operators.Intersection
-  ): Trie<(string | symbol)[]> {
+  visitIntersection(operator: plan.Intersection): Trie<(string | symbol)[]> {
     return this.processSetOp(operator);
   }
-  visitDifference(operator: operators.Difference): Trie<(string | symbol)[]> {
+  visitDifference(operator: plan.Difference): Trie<(string | symbol)[]> {
     return this.processSetOp(operator);
   }
-  visitDistinct(operator: operators.Distinct): Trie<(string | symbol)[]> {
+  visitDistinct(operator: plan.Distinct): Trie<(string | symbol)[]> {
     return operator.source.accept(this.vmap);
   }
-  visitNullSource(operator: operators.NullSource): Trie<(string | symbol)[]> {
+  visitNullSource(operator: plan.NullSource): Trie<(string | symbol)[]> {
     return EMPTY;
   }
-  visitAggregate(operator: operators.AggregateCall): Trie<(string | symbol)[]> {
+  visitAggregate(operator: plan.AggregateCall): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');
   }
-  visitItemFnSource(
-    operator: operators.ItemFnSource
-  ): Trie<(string | symbol)[]> {
+  visitItemFnSource(operator: plan.ItemFnSource): Trie<(string | symbol)[]> {
     return this.visitCalculation(operator);
   }
-  visitTupleFnSource(
-    operator: operators.TupleFnSource
-  ): Trie<(string | symbol)[]> {
+  visitTupleFnSource(operator: plan.TupleFnSource): Trie<(string | symbol)[]> {
     const external = this.visitCalculation(operator);
     if (operator.alias) {
       for (const attr of operator.schema) {
@@ -308,12 +297,12 @@ export class SchemaInferrer
     }
     return external;
   }
-  visitQuantifier(operator: operators.Quantifier): Trie<(string | symbol)[]> {
+  visitQuantifier(operator: plan.Quantifier): Trie<(string | symbol)[]> {
     throw new Error('Method not implemented.');
   }
 
   visitUsing(operator: Using): Trie<(string | symbol)[]> {
-    const condition = new operators.Calculation(
+    const condition = new plan.Calculation(
       'sql',
       (...args) => {
         const half = args.length / 2;
@@ -323,10 +312,10 @@ export class SchemaInferrer
         return true;
       },
       operator.overriddenCols.concat(
-        operator.columns.map((c) => utils.overrideSource(operator.rightName, c))
+        operator.columns.map((c) => overrideSource(operator.rightName, c))
       )
     );
-    let replacement: LogicalPlanTupleOperator = new operators.Selection(
+    let replacement: LogicalPlanTupleOperator = new plan.Selection(
       'sql',
       condition,
       operator.source
@@ -343,7 +332,7 @@ export class SchemaInferrer
     for (const item of operator.schema) {
       projectedCols.push([item, item]);
     }
-    replacement = new operators.Projection('sql', projectedCols, replacement);
+    replacement = new plan.Projection('sql', projectedCols, replacement);
 
     if (
       (operator.parent as LogicalPlanTupleOperator).schema === operator.schema

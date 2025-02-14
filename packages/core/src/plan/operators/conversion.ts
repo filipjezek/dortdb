@@ -36,11 +36,12 @@ export class MapToItem implements LogicalPlanOperator {
 
 export class MapFromItem extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public key: ASTIdentifier,
     public source: LogicalPlanOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = [key];
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;

@@ -11,10 +11,11 @@ import { arrSetParent } from '../../../utils/arr-set-parent.js';
 
 export class TupleSource extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>
   ) {
     super();
+    this.lang = lang;
     this.schema = [];
     this.schemaSet = new Trie<(string | symbol)[]>(Array);
   }
@@ -34,11 +35,12 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
   public alias?: ASTIdentifier;
 
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
     public impl: (...args: any[]) => Iterable<any>
   ) {
     super();
+    this.lang = lang;
     this.schema = [];
     this.schemaSet = new Trie<(string | symbol)[]>(Array);
     arrSetParent(this.args, this);

@@ -14,11 +14,12 @@ export interface Order {
 }
 export class OrderBy extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public orders: Order[],
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     source.parent = this;

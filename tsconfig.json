@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/lang-cypher"
+    },
+    {
+      "path": "./packages/lang-sql"
+    },
+    {
+      "path": "./packages/lang-xquery"
+    },
+    {
+      "path": "./packages/testing/_showcase"
+    },
+    {
+      "path": "./packages/testing/unibench"
+    }
+  ]
+}

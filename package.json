@@ -5,14 +5,24 @@
   "private": true,
   "description": "",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/testing/*"
   ],
   "author": "dortdb",
   "license": "ISC",
   "devDependencies": {
+    "@nx/jest": "^20.4.3",
     "@nx/rollup": "20.4.3",
+    "@swc-node/register": "^1.10.9",
+    "@swc/cli": "^0.6.0",
+    "@swc/core": "^1.10.16",
+    "@swc/jest": "^0.2.37",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
     "nx": "20.4.3",
-    "rollup": "^4.14.0"
-  },
-  "dependencies": {}
+    "rollup": "^4.14.0",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
 }

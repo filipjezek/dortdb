@@ -1,15 +1,17 @@
-import { ASTIdentifier, LogicalPlanTupleOperator, utils } from '@dortdb/core';
+import { ASTIdentifier, LogicalPlanTupleOperator } from '@dortdb/core';
 import { XQueryLogicalPlanVisitor } from './index.js';
+import { schemaToTrie } from '@dortdb/core/utils';
 
 export class ProjectionSize extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
+    lang: Lowercase<string>,
     public sizeCol: ASTIdentifier,
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     this.schema = [...source.schema.filter((x) => !x.equals(sizeCol)), sizeCol];
-    this.schemaSet = utils.schemaToTrie(this.schema);
+    this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;
   }
 

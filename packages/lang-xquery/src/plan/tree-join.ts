@@ -1,9 +1,6 @@
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  operators,
-  utils,
-} from '@dortdb/core';
+import { LogicalPlanOperator, LogicalPlanTupleOperator } from '@dortdb/core';
+import { schemaToTrie } from '@dortdb/core/utils';
+import { Calculation } from '@dortdb/core/plan';
 import { XQueryLogicalPlanVisitor } from './index.js';
 import { DOT, LEN, POS } from '../utils/dot.js';
 
@@ -16,11 +13,12 @@ const ctxCols = [DOT, POS, LEN];
  */
 export class TreeJoin extends LogicalPlanTupleOperator {
   constructor(
-    public lang: Lowercase<string>,
-    public step: operators.Calculation,
+    lang: Lowercase<string>,
+    public step: Calculation,
     public source: LogicalPlanTupleOperator
   ) {
     super();
+    this.lang = lang;
     source.parent = this;
     step.parent = this;
     this.schema = source.schema.slice();
@@ -28,7 +26,7 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     for (const col of ctxCols) {
       if (!source.schemaSet.has(col.parts)) this.schema.push(col);
     }
-    this.schemaSet = utils.schemaToTrie(this.schema);
+    this.schemaSet = schemaToTrie(this.schema);
   }
   accept<T>(visitors: Record<string, XQueryLogicalPlanVisitor<T>>): T {
     return visitors[this.lang].visitTreeJoin(this);
@@ -40,7 +38,7 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     if (current === this.source) {
       this.source = replacement as LogicalPlanTupleOperator;
     } else {
-      this.step = replacement as operators.Calculation;
+      this.step = replacement as Calculation;
     }
     this.clearSchema();
     this.addToSchema(this.source.schema);
