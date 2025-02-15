@@ -1,5 +1,5 @@
 {
-  "name": "showcase",
+  "name": "@dortdb/showcase",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "prefix": "dort",
@@ -10,7 +10,7 @@
       "executor": "@angular-devkit/build-angular:application",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist",
+        "outputPath": "packages/testing/showcase/dist",
         "index": "packages/testing/showcase/src/index.html",
         "browser": "packages/testing/showcase/src/main.ts",
         "polyfills": ["zone.js"],
@@ -22,7 +22,10 @@
             "input": "packages/testing/showcase/public"
           }
         ],
-        "styles": ["packages/testing/showcase/src/styles.scss"],
+        "styles": [
+          "@angular/material/prebuilt-themes/azure-blue.css",
+          "packages/testing/showcase/src/styles.scss"
+        ],
         "scripts": []
       },
       "configurations": {
@@ -53,10 +56,10 @@
       "executor": "@angular-devkit/build-angular:dev-server",
       "configurations": {
         "production": {
-          "buildTarget": "showcase:build:production"
+          "buildTarget": "@dortdb/showcase:build:production"
         },
         "development": {
-          "buildTarget": "showcase:build:development"
+          "buildTarget": "@dortdb/showcase:build:development"
         }
       },
       "defaultConfiguration": "development"
@@ -64,7 +67,7 @@
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n",
       "options": {
-        "buildTarget": "showcase:build"
+        "buildTarget": "@dortdb/showcase:build"
       }
     },
     "lint": {
@@ -80,7 +83,7 @@
     "serve-static": {
       "executor": "@nx/web:file-server",
       "options": {
-        "buildTarget": "showcase:build",
+        "buildTarget": "@dortdb/showcase:build",
         "port": 4200,
         "staticFilePath": "dist/packages/testing/showcase/browser",
         "spa": true

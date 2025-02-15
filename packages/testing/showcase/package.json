@@ -5,16 +5,8 @@
   "description": "",
   "repository": "filipjezek/dortdb",
   "private": true,
-  "scripts": {
-    "start": "node dist/index.js"
-  },
   "author": "dortdb",
   "license": "ISC",
-  "nx": {
-    "targets": {
-      "build": {}
-    }
-  },
   "peerDependencies": {
     "@dortdb/core": "^1.0.0",
     "@dortdb/lang-cypher": "^1.0.0",
@@ -23,10 +15,12 @@
   },
   "dependencies": {
     "@angular/animations": "^19.1.6",
+    "@angular/cdk": "~19.1.4",
     "@angular/common": "^19.1.6",
     "@angular/compiler": "^19.1.6",
     "@angular/core": "^19.1.6",
     "@angular/forms": "^19.1.6",
+    "@angular/material": "^19.1.4",
     "@angular/platform-browser": "^19.1.6",
     "@angular/platform-browser-dynamic": "^19.1.6",
     "@angular/router": "^19.1.6",

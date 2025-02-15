@@ -1,0 +1,39 @@
+svg {
+  display: block;
+  margin: 10px auto;
+
+  &.shadows ::ng-deep {
+    rect {
+      filter: drop-shadow(0 0 5px var(--lang-color));
+      stroke: var(--lang-color);
+    }
+  }
+  &.triangles ::ng-deep {
+    polygon {
+      fill: var(--lang-color);
+    }
+  }
+}
+
+.scroll-container {
+  overflow: auto;
+  max-width: 100%;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+  width: fit-content;
+  margin: auto;
+  font-size: 0.95em;
+  display: flex;
+  align-items: center;
+
+  legend {
+    float: left;
+    margin-right: 5px;
+  }
+  mat-checkbox {
+    margin-left: 15px;
+  }
+}

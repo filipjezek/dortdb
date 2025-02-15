@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { NxWelcomeComponent } from './nx-welcome.component';
+import { MatToolbar } from '@angular/material/toolbar';
+import { LightToggleComponent } from './light-toggle/light-toggle.component';
 
 @Component({
-  imports: [NxWelcomeComponent, RouterModule],
+  imports: [RouterModule, MatToolbar, LightToggleComponent],
   selector: 'dort-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',

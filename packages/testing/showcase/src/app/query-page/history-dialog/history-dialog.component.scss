@@ -1,0 +1,27 @@
+@use '@angular/material' as mat;
+
+.history-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  pre {
+    white-space: nowrap;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    font-size: 0.8em;
+  }
+}
+
+button.clear {
+  @include mat.button-overrides(
+    (
+      text-label-text-color: var(--mat-sys-error),
+    )
+  );
+}
+.empty {
+  color: var(--mat-sys-disabled);
+  font-style: italic;
+}

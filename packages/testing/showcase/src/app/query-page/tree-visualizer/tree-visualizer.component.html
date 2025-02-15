@@ -1,0 +1,15 @@
+<form [formGroup]="form">
+  <fieldset>
+    <legend>Language indicators:</legend>
+    <mat-checkbox formControlName="shadows">Shadows</mat-checkbox>
+    <mat-checkbox formControlName="triangles">Triangles</mat-checkbox>
+  </fieldset>
+</form>
+<div class="scroll-container">
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    id="svg-output-{{ id }}"
+    #svg
+    [ngClass]="form.value"
+  ></svg>
+</div>

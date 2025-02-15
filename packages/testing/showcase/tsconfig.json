@@ -12,6 +12,21 @@
     },
     {
       "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
+    },
+    {
+      "path": "../../lang-xquery"
+    },
+    {
+      "path": "../../lang-sql"
+    },
+    {
+      "path": "../../lang-cypher"
+    },
+    {
+      "path": "../../core"
     }
   ],
   "angularCompilerOptions": {

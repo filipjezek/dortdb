@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>History</h2>
+<mat-dialog-content>
+  <mat-action-list>
+    @for (_ of history.items; track _) {
+      @let item = history.items[$count - $index - 1];
+      <button mat-list-item [mat-dialog-close]="item">
+        <span class="history-line">
+          <pre [title]="item">{{ item }}</pre>
+          <button
+            mat-icon-button
+            matListItemIcon
+            (click)="$event.stopPropagation(); history.remove(item)"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        </span>
+      </button>
+    } @empty {
+      <p class="empty">No history</p>
+    }
+  </mat-action-list>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button
+    mat-button
+    mat-dialog-close
+    (click)="history.clear()"
+    class="clear"
+    [disabled]="!history.items.length"
+  >
+    Delete all
+  </button>
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

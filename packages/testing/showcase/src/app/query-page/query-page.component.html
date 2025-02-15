@@ -1,0 +1,40 @@
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <form class="input-container" [formGroup]="form">
+      <textarea formControlName="query"></textarea>
+      <div class="actions">
+        <mat-form-field>
+          <mat-label>Default language</mat-label>
+          <mat-select formControlName="lang">
+            <mat-option value="sql">SQL</mat-option>
+            <mat-option value="xquery">XQuery</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button type="button" mat-stroked-button (click)="openHistory()">
+          History
+        </button>
+        <button
+          type="button"
+          mat-flat-button
+          (click)="parse()"
+          [disabled]="!form.valid"
+        >
+          Parse
+        </button>
+      </div>
+    </form>
+  </mat-card-content>
+</mat-card>
+@if (error) {
+  <mat-card class="error-output">
+    <mat-card-content>
+      <pre>{{ error.message }}</pre>
+    </mat-card-content>
+  </mat-card>
+}
+<mat-card appearance="outlined">
+  <mat-card-content>
+    <dort-tree-visualizer
+      [plan]="plan"
+    ></dort-tree-visualizer> </mat-card-content
+></mat-card>

@@ -15,8 +15,19 @@
   "author": "dortdb",
   "license": "ISC",
   "nx": {
+    "sourceRoot": "packages/lang-cypher/src",
     "targets": {
-      "build": {},
+      "build": {
+        "options": {
+          "assets": [
+            {
+              "glob": "parser/cypher.cjs",
+              "input": "{projectRoot}/src",
+              "output": "."
+            }
+          ]
+        }
+      },
       "jison": {
         "outputs": [
           "{projectRoot}/src/parser/cypher.cjs"

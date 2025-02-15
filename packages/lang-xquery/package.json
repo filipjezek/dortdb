@@ -15,8 +15,19 @@
   "author": "dortdb",
   "license": "ISC",
   "nx": {
+    "sourceRoot": "packages/lang-xquery/src",
     "targets": {
-      "build": {},
+      "build": {
+        "options": {
+          "assets": [
+            {
+              "glob": "parser/xquery.cjs",
+              "input": "{projectRoot}/src",
+              "output": "."
+            }
+          ]
+        }
+      },
       "jison": {
         "outputs": [
           "{projectRoot}/src/parser/xquery.cjs"

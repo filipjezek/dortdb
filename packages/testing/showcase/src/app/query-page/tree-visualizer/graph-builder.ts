@@ -12,7 +12,7 @@ import {
   TreeJoin,
   XQueryLogicalPlanVisitor,
 } from '@dortdb/lang-xquery';
-import { strToColor } from './utils/str-to-color.js';
+import { strToColor } from '../../utils/str-to-color';
 
 function sum(args: number[]) {
   return args.reduce((a, b) => a + b, 0);
@@ -37,7 +37,7 @@ export class GraphBuilder
 
   constructor(
     private readonly container: SVGSVGElement,
-    private vmap: Record<string, LogicalPlanVisitor<SVGGElement>>
+    private vmap: Record<string, LogicalPlanVisitor<SVGGElement>>,
   ) {
     this.container.innerHTML = `
       <style>
@@ -52,6 +52,7 @@ export class GraphBuilder
           word-wrap: break-word;
           width: fit-content;
           text-align: center;
+          color: var(--mat-sys-on-surface);
 
           &.source-tuple {
             font-weight: bold;
@@ -69,21 +70,26 @@ export class GraphBuilder
           }
           .schema {
             font-size: 12px;
-            color: #888888;
+            color: var(--mat-sys-outline);
             font-weight: normal;
             margin: 0 auto 4px;
           }
         }
         rect {
-          fill: white;
-          stroke: #888888;
+          fill: var(--mat-sys-surface);
+          stroke: var(--mat-sys-outline);
 
-          &:has(+ foreignObject > .groupby) {
-            stroke: white;
+          &:has(~ foreignObject > .groupby) {
+            stroke: var(--mat-sys-surface) !important;
+            filter: none !important;
           }
         }
         polygon {
           fill: transparent;
+
+          &:has(~ foreignObject > .groupby) {
+            fill: transparent !important;
+          }
         }
         line {
           stroke: #888888;
@@ -102,53 +108,61 @@ export class GraphBuilder
     this.drawingContainer = this.container.querySelector('#drawing-container');
   }
 
-  private drawNode(
-    text: string,
-    operator: LogicalPlanOperator,
-    textClass = ''
-  ): SVGGElement {
-    const schemaTemplate =
+  private getSchemaTemplate(operator: LogicalPlanOperator) {
+    return (
       operator instanceof LogicalPlanTupleOperator &&
       operator.schema &&
       `<div class="schema">[${operator.schema
         .map((id) => this.stringifyId(id))
-        .join(', ')}]</div>`;
+        .join(', ')}]</div>`
+    );
+  }
 
-    this.drawingContainer.innerHTML = `<foreignObject height="2000" width="200">
+  private markup<T extends Element>(template: string): T {
+    this.drawingContainer.innerHTML = template;
+    return this.drawingContainer.firstElementChild as T;
+  }
+
+  private drawNode(
+    text: string,
+    operator: LogicalPlanOperator,
+    textClass = '',
+  ): SVGGElement {
+    const schemaTemplate = this.getSchemaTemplate(operator);
+
+    const foEl = this.markup(`<foreignObject height="2000" width="200">
       <div class="${textClass}">
         ${schemaTemplate || ''}
         ${text}
       </div>
-    </foreignObject>`;
-    const foEl = this.drawingContainer.firstElementChild as SVGTextElement;
+    </foreignObject>`);
     const textEl = foEl.firstElementChild as HTMLElement;
     const textBBox = textEl.getBoundingClientRect();
     foEl.setAttribute('width', textBBox.width + '');
     foEl.setAttribute('height', textBBox.height + '');
-
-    this.drawingContainer.innerHTML = `
-    <g style="--lang-color: ${strToColor(operator.lang)}">
-      <rect width="${textBBox.width + PADDING * 2}" height="${
-      textBBox.height + PADDING * 2
-    }" />
-      <polygon points="0,0 0,10 10,0" />
-    </g>
-    `;
-    this.drawingContainer.firstElementChild.appendChild(foEl);
     foEl.setAttribute(
       'y',
-      (textBBox.height - textBBox.height) / 2 + PADDING + ''
+      (textBBox.height - textBBox.height) / 2 + PADDING + '',
     );
     foEl.setAttribute(
       'x',
-      (textBBox.width - textBBox.width) / 2 + PADDING + ''
+      (textBBox.width - textBBox.width) / 2 + PADDING + '',
     );
-    return this.drawingContainer.firstElementChild as SVGGElement;
+
+    const result = this.markup<SVGGElement>(`
+    <g style="--lang-color: ${strToColor(operator.lang)}">
+      <rect width="${textBBox.width + PADDING * 2}" height="${
+        textBBox.height + PADDING * 2
+      }" />
+      <polygon points="0,0 0,10 10,0" />
+    </g>
+    `);
+    result.appendChild(foEl);
+    return result;
   }
 
   private getG(): SVGGElement {
-    this.drawingContainer.innerHTML = '<g></g>';
-    return this.drawingContainer.firstElementChild as SVGGElement;
+    return this.markup('<g></g>');
   }
   private escapeHtml(text: string) {
     this.textContainer.textContent = text;
@@ -163,8 +177,8 @@ export class GraphBuilder
         typeof x === 'string'
           ? this.escapeHtml(x)
           : x === allAttrs
-          ? '*'
-          : x?.toString()
+            ? '*'
+            : x?.toString(),
       )
       .join('.');
     if (full.length < 18) {
@@ -172,13 +186,13 @@ export class GraphBuilder
     }
     return `<span title="${this.escapeAttr(full)}">${full.slice(
       0,
-      15
+      15,
     )}&hellip;</span>`;
   }
 
   private processAttr(
     [attr, alias]: Aliased<ASTIdentifier | plan.Calculation>,
-    counter: { i: number }
+    counter: { i: number },
   ): string {
     const aliasStr = this.stringifyId(alias);
     if (attr instanceof ASTIdentifier) {
@@ -196,17 +210,17 @@ export class GraphBuilder
     this.drawingContainer.innerHTML = '';
     root.setAttribute(
       'transform',
-      `translate(${STROKE + PADDING}, ${STROKE + PADDING})`
+      `translate(${STROKE + PADDING}, ${STROKE + PADDING})`,
     );
     this.container.appendChild(root);
     const bbox = root.getBBox();
     this.container.setAttribute(
       'width',
-      `${bbox.width + STROKE * 2 + PADDING * 2}`
+      `${bbox.width + STROKE * 2 + PADDING * 2}`,
     );
     this.container.setAttribute(
       'height',
-      `${bbox.height + STROKE * 2 + PADDING * 2}`
+      `${bbox.height + STROKE * 2 + PADDING * 2}`,
     );
   }
 
@@ -221,14 +235,14 @@ export class GraphBuilder
 
     parent.setAttribute(
       'transform',
-      `translate(${(totalWidth - parentBBox.width) / 2 + ''}, 0)`
+      `translate(${(totalWidth - parentBBox.width) / 2 + ''}, 0)`,
     );
     const srcBBoxes = branches.map((b) => b.src?.getBoundingClientRect());
     let x = (totalWidth - childrenWidth) / 2;
     for (let i = 0; i < branches.length; i++) {
       branches[i].el.setAttribute(
         'transform',
-        `translate(${x}, ${parentBBox.height + CHILD_OFFSET})`
+        `translate(${x}, ${parentBBox.height + CHILD_OFFSET})`,
       );
 
       const edge = this.drawEdge(
@@ -237,7 +251,7 @@ export class GraphBuilder
         bboxes[i],
         parentBBox,
         totalWidth,
-        x
+        x,
       );
       if (branches[i].src) {
         parent.insertAdjacentElement('afterend', edge);
@@ -255,24 +269,23 @@ export class GraphBuilder
     bbox: DOMRect,
     parent: DOMRect,
     totalWidth: number,
-    x: number
+    x: number,
   ) {
-    if (srcBBox) {
-      this.drawingContainer.innerHTML = `<line
+    const edge = this.markup(
+      srcBBox
+        ? `<line
         x1="${srcBBox.x - parent.x + srcBBox.width / 2}"
         y1="${srcBBox.y - parent.y + srcBBox.height}"
         x2="${x + bbox.width / 2}"
         y2="${parent.height + CHILD_OFFSET}"
-      ></line>`;
-    } else {
-      this.drawingContainer.innerHTML = `<line
+      ></line>`
+        : `<line
         x1="${totalWidth / 2}"
         y1="${parent.height / 2}"
         x2="${x + bbox.width / 2}"
         y2="${parent.height + CHILD_OFFSET}"
-      ></line>`;
-    }
-    const edge = this.drawingContainer.firstElementChild;
+      ></line>`,
+    );
     if (edgeType) {
       edge.classList.add(edgeType);
     }
@@ -285,7 +298,7 @@ export class GraphBuilder
     const attrs = operator.attrs.map((a) => this.processAttr(a, calcI));
     const parent = this.drawNode(
       `&pi;(${attrs.map((a) => a).join(', ')})`,
-      operator
+      operator,
     );
     const calcs = operator.attrs
       .filter((a) => a[0] instanceof plan.Calculation)
@@ -300,7 +313,7 @@ export class GraphBuilder
 
   private processArg(
     arg: ASTIdentifier | LogicalPlanOperator,
-    counter: { i: number }
+    counter: { i: number },
   ) {
     return arg instanceof ASTIdentifier
       ? this.stringifyId(arg)
@@ -320,7 +333,7 @@ export class GraphBuilder
             el: operator.condition.accept(this.vmap),
             edgeType: 'djoin',
             src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
-          }
+          },
         );
   }
   visitTupleSource(operator: plan.TupleSource): SVGGElement {
@@ -364,7 +377,7 @@ export class GraphBuilder
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
-      { el: operator.right.accept(this.vmap) }
+      { el: operator.right.accept(this.vmap) },
     );
   }
   visitJoin(operator: plan.Join): SVGGElement {
@@ -373,7 +386,7 @@ export class GraphBuilder
       `${operator.leftOuter ? '&deg;' : ''}&bowtie;${
         operator.rightOuter ? '&deg;' : ''
       }(${condition})`,
-      operator
+      operator,
     );
     return this.drawBranches(
       parent,
@@ -383,45 +396,45 @@ export class GraphBuilder
         edgeType: 'djoin',
         src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
       },
-      { el: operator.right.accept(this.vmap) }
+      { el: operator.right.accept(this.vmap) },
     );
   }
   visitProjectionConcat(operator: plan.ProjectionConcat): SVGGElement {
     const parent = this.drawNode(
       (operator.outer ? '&deg;' : '') + '&bowtie;&#x0362;',
-      operator
+      operator,
     );
     return this.drawBranches(
       parent,
       { el: operator.source.accept(this.vmap) },
-      { el: operator.mapping.accept(this.vmap), edgeType: 'djoin' }
+      { el: operator.mapping.accept(this.vmap), edgeType: 'djoin' },
     );
   }
   visitMapToItem(operator: plan.MapToItem): SVGGElement {
     const parent = this.drawNode(
       `toItem(${this.stringifyId(operator.key)})`,
-      operator
+      operator,
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitMapFromItem(operator: plan.MapFromItem): SVGGElement {
     const parent = this.drawNode(
       `fromItem(${this.stringifyId(operator.key)})`,
-      operator
+      operator,
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitProjectionIndex(operator: plan.ProjectionIndex): SVGGElement {
     const parent = this.drawNode(
       `index(${this.stringifyId(operator.indexCol)})`,
-      operator
+      operator,
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitOrderBy(operator: plan.OrderBy): SVGGElement {
     let opI = { i: 0 };
     const args = operator.orders.map(
-      (o) => this.processArg(o.key, opI) + (o.ascending ? '' : '&darr;')
+      (o) => this.processArg(o.key, opI) + (o.ascending ? '' : '&darr;'),
     );
     const parent = this.drawNode(`&tau;(${args.join(', ')})`, operator);
     return this.drawBranches(
@@ -434,7 +447,7 @@ export class GraphBuilder
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
           edgeType: 'djoin',
-        }))
+        })),
     );
   }
   visitGroupBy(operator: plan.GroupBy): SVGGElement {
@@ -444,13 +457,13 @@ export class GraphBuilder
     const aggs = operator.aggs.map(
       (a) =>
         `<span class="placeholder placeholder-${opI.i++}">${this.stringifyId(
-          a.fieldName
-        )}</span>`
+          a.fieldName,
+        )}</span>`,
     );
     let parent = this.drawNode(
       `&gamma;([${keys.join(', ')}]; [${aggs.join(', ')}])`,
       operator,
-      'groupby'
+      'groupby',
     );
     parent = this.drawBranches(
       parent,
@@ -466,28 +479,30 @@ export class GraphBuilder
         el: a.postGroupOp.accept(this.vmap),
         edgeType: 'group-op',
         src: parent.querySelector<SVGGraphicsElement>(
-          `.placeholder-${i + kChildren}`
+          `.placeholder-${i + kChildren}`,
         ),
-      }))
+      })),
     );
+    parent.setAttribute('transform', `translate(${PADDING}, ${PADDING})`);
     this.drawingContainer.appendChild(parent);
     const bbox = parent.getBBox();
-    this.drawingContainer.innerHTML = `<g><rect
+    const groupbyWrapper = this
+      .markup<SVGGElement>(`<g style="--lang-color: ${strToColor(operator.lang)}"><rect
       x="0"
       y="0"
       width="${bbox.width + PADDING * 2}"
       height="${bbox.height + PADDING * 2}"
-    ></rect></g>`;
-    parent.setAttribute('transform', `translate(${PADDING}, ${PADDING})`);
-    this.drawingContainer.firstElementChild.appendChild(parent);
-    parent = this.drawingContainer.firstElementChild as SVGGElement;
+    ></rect><polygon points="0,0 0,10 10,0" /></g>`);
+    groupbyWrapper.appendChild(parent);
 
-    return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
+    return this.drawBranches(groupbyWrapper, {
+      el: operator.source.accept(this.vmap),
+    });
   }
   visitLimit(operator: plan.Limit): SVGGElement {
     const parent = this.drawNode(
       `limit(${operator.limit}, ${operator.skip})`,
-      operator
+      operator,
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
@@ -496,7 +511,7 @@ export class GraphBuilder
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
-      { el: operator.right.accept(this.vmap) }
+      { el: operator.right.accept(this.vmap) },
     );
   }
   visitIntersection(operator: plan.Intersection): SVGGElement {
@@ -504,7 +519,7 @@ export class GraphBuilder
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
-      { el: operator.right.accept(this.vmap) }
+      { el: operator.right.accept(this.vmap) },
     );
   }
   visitDifference(operator: plan.Difference): SVGGElement {
@@ -512,7 +527,7 @@ export class GraphBuilder
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
-      { el: operator.right.accept(this.vmap) }
+      { el: operator.right.accept(this.vmap) },
     );
   }
   visitDistinct(operator: plan.Distinct): SVGGElement {
@@ -535,7 +550,7 @@ export class GraphBuilder
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
           edgeType: 'djoin',
-        }))
+        })),
     );
   }
   visitNullSource(operator: plan.NullSource): SVGGElement {
@@ -546,7 +561,7 @@ export class GraphBuilder
   }
 
   private visitFnSource(
-    operator: plan.ItemFnSource | plan.TupleFnSource
+    operator: plan.ItemFnSource | plan.TupleFnSource,
   ): SVGGElement {
     const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
@@ -556,7 +571,7 @@ export class GraphBuilder
     const parent = this.drawNode(
       `${alias}function(${args.join(', ')})`,
       operator,
-      'source-' + (operator instanceof plan.ItemFnSource ? 'item' : 'tuple')
+      'source-' + (operator instanceof plan.ItemFnSource ? 'item' : 'tuple'),
     );
     return this.drawBranches(
       parent,
@@ -566,7 +581,7 @@ export class GraphBuilder
         .map((el, i) => ({
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
-        }))
+        })),
     );
   }
   visitItemFnSource(operator: plan.ItemFnSource): SVGGElement {
@@ -584,14 +599,14 @@ export class GraphBuilder
     return this.drawBranches(
       parent,
       { el: operator.source.accept(this.vmap) },
-      { el: operator.step.accept(this.vmap), edgeType: 'djoin' }
+      { el: operator.step.accept(this.vmap), edgeType: 'djoin' },
     );
   }
 
   visitProjectionSize(operator: ProjectionSize): SVGGElement {
     const parent = this.drawNode(
       `size(${this.stringifyId(operator.sizeCol)})`,
-      operator
+      operator,
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }

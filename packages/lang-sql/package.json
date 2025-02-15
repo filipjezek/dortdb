@@ -15,8 +15,19 @@
   "author": "dortdb",
   "license": "ISC",
   "nx": {
+    "sourceRoot": "packages/lang-sql/src",
     "targets": {
-      "build": {},
+      "build": {
+        "options": {
+          "assets": [
+            {
+              "glob": "parser/sql.cjs",
+              "input": "{projectRoot}/src",
+              "output": "."
+            }
+          ]
+        }
+      },
       "jison": {
         "outputs": [
           "{projectRoot}/src/parser/sql.cjs"

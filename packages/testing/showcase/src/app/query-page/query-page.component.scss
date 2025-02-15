@@ -1,0 +1,55 @@
+@use '@angular/material' as mat;
+
+:host {
+  display: block;
+}
+
+textarea,
+pre {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+h1 {
+  padding: 10px;
+}
+
+.error-output {
+  overflow-x: auto;
+  color: var(--mat-sys-on-error);
+  @include mat.card-overrides(
+    (
+      elevated-container-color: var(--mat-sys-error),
+    )
+  );
+
+  pre {
+    margin-top: 0;
+    font-size: 0.9em;
+  }
+}
+.input-container {
+  width: 100%;
+  display: flex;
+  align-items: end;
+  padding: 10px;
+
+  textarea {
+    flex-basis: 100%;
+    margin-right: 10px;
+    resize: vertical;
+    min-height: 180px;
+  }
+
+  .actions {
+    flex-basis: 200px;
+
+    * {
+      width: 170px;
+      margin-top: 5px;
+    }
+  }
+}
+
+mat-card {
+  margin: 16px;
+}
