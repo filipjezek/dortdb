@@ -35,7 +35,7 @@ jobs:
         uses: actions/configure-pages@v4
 
       - name: Build
-        run: npx nx build showcase
+        run: npx nx build showcase --base-href https://filipjezek.github.io/dortdb/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
