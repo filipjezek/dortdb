@@ -27,6 +27,7 @@ import { collect } from '@dortdb/core/aggregates';
 import { resolveArgs, schemaToTrie } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
 import { ItemSourceResolver } from './item-source-resolver.js';
+import { TrieMap } from 'mnemonist';
 
 function ret1<T>(x: T): T {
   return x;
@@ -585,19 +586,96 @@ export class XQueryLogicalPlanBuilder
       true,
     );
   }
+
+  private renameAggSource(
+    src: LogicalPlanTupleOperator,
+    dot: ASTIdentifier,
+    len: ASTIdentifier,
+    pos: ASTIdentifier,
+  ) {
+    if (!src.schemaSet.has(LEN.parts)) {
+      src = new ProjectionSize('xquery', LEN, src);
+    }
+    if (!src.schemaSet.has(POS.parts)) {
+      src = new plan.ProjectionIndex('xquery', POS, src);
+    }
+    return new plan.Projection(
+      'xquery',
+      [
+        [DOT, dot],
+        [LEN, len],
+        [POS, pos],
+      ],
+      src,
+    );
+  }
+  private joinAggArgs(args: LogicalPlanTupleOperator[]) {
+    const colNames = args.map((_, i) => toId(i + ''));
+    const posNames = args.map((_, i) => toId('i' + i));
+    const countNames = args.map((_, i) => toId('c' + i));
+    let joined: LogicalPlanTupleOperator = this.renameAggSource(
+      args[0],
+      colNames[0],
+      countNames[0],
+      posNames[0],
+    );
+    for (let i = 1; i < args.length; i++) {
+      joined = new plan.Join(
+        'xquery',
+        joined,
+        this.renameAggSource(args[i], colNames[i], countNames[i], posNames[i]),
+        new plan.Calculation(
+          'xquery',
+          (i1, i2, c1, c2) => i1 === i2 || c1 === 1 || c2 === 1,
+          [posNames[i - 1], posNames[i], countNames[i - 1], countNames[i]],
+        ),
+      );
+      (joined as plan.Join).leftOuter = (joined as plan.Join).rightOuter = true;
+    }
+    return joined;
+  }
+
   visitFunction(
     node: ASTFunction,
     src: LogicalPlanTupleOperator,
   ): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
-    const impl = this.langMgr.getFn(node.lang, id, schema);
+    const impl = this.langMgr.getFnOrAggr(node.lang, id, schema);
 
-    // TODO: aggregates?
-    return new plan.FnCall(
-      node.lang,
-      node.args.map((x) => this.processFnArg(x, src)),
-      impl.impl,
-    );
+    if ('impl' in impl) {
+      return new plan.FnCall(
+        node.lang,
+        node.args.map((x) => this.processFnArg(x, src)),
+        impl.impl,
+      );
+    }
+
+    const args = node.args.map((x) => toTuples(x.accept(this, src)));
+    let gb: plan.GroupBy;
+    if (args.length === 1) {
+      gb = new plan.GroupBy(
+        'xquery',
+        [],
+        [new plan.AggregateCall('xquery', [DOT], impl, DOT)],
+        args[0],
+      );
+    } else {
+      gb = new plan.GroupBy(
+        'xquery',
+        [],
+        [
+          new plan.AggregateCall(
+            'xquery',
+            args.map((_, i) => toId(i + '')),
+            impl,
+            DOT,
+          ),
+        ],
+        this.joinAggArgs(args),
+      );
+    }
+
+    return new plan.MapToItem('xquery', DOT, gb);
   }
   visitLangSwitch(
     node: LangSwitch,
