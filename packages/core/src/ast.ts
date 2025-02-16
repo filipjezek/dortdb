@@ -1,14 +1,15 @@
-import { LanguageManager } from './lang-manager.js';
-
 export interface ASTNode {
-  accept<T>(visitor: ASTVisitor<T>): T;
+  accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret;
 }
 
 export class ASTLiteral<T> implements ASTNode {
-  constructor(public original: string, public value: T) {}
+  constructor(
+    public original: string,
+    public value: T,
+  ) {}
 
-  accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.visitLiteral(this);
+  accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitLiteral(this, arg);
   }
 }
 
@@ -16,11 +17,11 @@ export class ASTOperator implements ASTNode {
   constructor(
     public lang: Lowercase<string>,
     public id: ASTIdentifier,
-    public operands: ASTNode[]
+    public operands: ASTNode[],
   ) {}
 
-  accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.visitOperator(this);
+  accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitOperator(this, arg);
   }
 }
 
@@ -28,11 +29,11 @@ export class ASTFunction implements ASTNode {
   constructor(
     public lang: Lowercase<string>,
     public id: ASTIdentifier,
-    public args: ASTNode[]
+    public args: ASTNode[],
   ) {}
 
-  accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.visitFunction(this);
+  accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFunction(this, arg);
   }
 }
 
@@ -45,8 +46,8 @@ export class ASTIdentifier implements ASTNode {
     return this.parts[Symbol.iterator]();
   }
 
-  accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.visitIdentifier(this);
+  accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitIdentifier(this, arg);
   }
 
   static fromParts(parts: (string | symbol)[]): ASTIdentifier {
@@ -66,21 +67,24 @@ export class ASTIdentifier implements ASTNode {
 
 export class LangSwitch implements ASTNode {
   public node: ASTNode;
-  constructor(public lang: Lowercase<string>, nodes: ASTNode[]) {
+  constructor(
+    public lang: Lowercase<string>,
+    nodes: ASTNode[],
+  ) {
     if (nodes.length !== 1)
       throw new Error('LangSwitch must contain exactly one statement');
     this.node = nodes[0];
   }
 
-  accept<T>(visitor: ASTVisitor<T>): T {
-    return visitor.visitLangSwitch(this);
+  accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitLangSwitch(this, arg);
   }
 }
 
-export interface ASTVisitor<T> {
-  visitLiteral<U>(node: ASTLiteral<U>): T;
-  visitOperator(node: ASTOperator): T;
-  visitFunction(node: ASTFunction): T;
-  visitLangSwitch(node: LangSwitch): T;
-  visitIdentifier(node: ASTIdentifier): T;
+export interface ASTVisitor<Ret, Arg = never> {
+  visitLiteral<T>(node: ASTLiteral<T>, arg?: Arg): Ret;
+  visitOperator(node: ASTOperator, arg?: Arg): Ret;
+  visitFunction(node: ASTFunction, arg?: Arg): Ret;
+  visitLangSwitch(node: LangSwitch, arg?: Arg): Ret;
+  visitIdentifier(node: ASTIdentifier, arg?: Arg): Ret;
 }

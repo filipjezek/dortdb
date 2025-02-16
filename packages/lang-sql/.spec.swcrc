@@ -11,7 +11,8 @@
       "legacyDecorator": true
     },
     "keepClassNames": true,
-    "externalHelpers": true
+    "externalHelpers": true,
+    "loose": true
   },
   "module": {
     "type": "es6"

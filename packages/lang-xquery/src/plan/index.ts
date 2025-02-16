@@ -4,7 +4,8 @@ import { ProjectionSize } from './projection-size.js';
 export * from './tree-join.js';
 export * from './projection-size.js';
 
-export interface XQueryLogicalPlanVisitor<T> extends LogicalPlanVisitor<T> {
-  visitTreeJoin(operator: TreeJoin): T;
-  visitProjectionSize(operator: ProjectionSize): T;
+export interface XQueryLogicalPlanVisitor<Ret, Arg = never>
+  extends LogicalPlanVisitor<Ret, Arg> {
+  visitTreeJoin(operator: TreeJoin, arg?: Arg): Ret;
+  visitProjectionSize(operator: ProjectionSize, arg?: Arg): Ret;
 }

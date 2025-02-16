@@ -10,7 +10,7 @@ export class Selection extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public condition: Calculation | ASTIdentifier,
-    public source: LogicalPlanTupleOperator
+    public source: LogicalPlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -20,12 +20,15 @@ export class Selection extends LogicalPlanTupleOperator {
     source.parent = this;
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitSelection(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitSelection(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     if (current === this.condition) {
       this.condition = replacement as Calculation;

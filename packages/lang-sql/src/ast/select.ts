@@ -12,11 +12,11 @@ export class SelectStatement implements ASTNode {
     public orderBy?: OrderByItem[],
     public limit?: ASTNode,
     public offset?: ASTNode,
-    public withQueries?: WithQuery[]
+    public withQueries?: WithQuery[],
   ) {}
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitSelectStatement(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSelectStatement(this, arg);
   }
 }
 
@@ -30,11 +30,11 @@ export class SelectSet implements ASTNode {
     public groupBy?: GroupByClause,
     public having?: ASTNode,
     public distinct: boolean | ASTNode[] = false,
-    public windows?: Record<string, WindowSpec>
+    public windows?: Record<string, WindowSpec>,
   ) {}
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitSelectSet(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSelectSet(this, arg);
   }
 }
 
@@ -47,12 +47,16 @@ export enum SelectSetOpType {
 export class SelectSetOp implements ASTNode {
   type: SelectSetOpType;
 
-  constructor(public next: SelectSet, public distinct: boolean, type: string) {
+  constructor(
+    public next: SelectSet,
+    public distinct: boolean,
+    type: string,
+  ) {
     this.type = type.toLowerCase() as SelectSetOpType;
   }
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitSelectSetOp(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSelectSetOp(this, arg);
   }
 }
 
@@ -63,7 +67,7 @@ export class OrderByItem {
   constructor(
     public expression: ASTNode,
     direction?: string,
-    nullsFirst?: boolean
+    nullsFirst?: boolean,
   ) {
     this.ascending =
       direction === undefined || direction.toLowerCase() === 'asc';
@@ -79,12 +83,15 @@ export enum GroupByType {
 }
 export class GroupByClause implements ASTNode {
   public type: GroupByType;
-  constructor(public items: ASTNode[] | ASTNode[][], type: string) {
+  constructor(
+    public items: ASTNode[] | ASTNode[][],
+    type: string,
+  ) {
     this.type = type.toLowerCase() as GroupByType;
   }
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitGroupByClause(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitGroupByClause(this, arg);
   }
 }
 
@@ -105,7 +112,7 @@ export class JoinClause implements ASTNode {
     public tableRight: ASTTableAlias | ASTIdentifier | JoinClause,
     public joinType: JoinType,
     joinCond?: ASTNode | ASTIdentifier[],
-    public lateral = false
+    public lateral = false,
   ) {
     if (joinCond instanceof Array) {
       this.using = joinCond;
@@ -114,16 +121,16 @@ export class JoinClause implements ASTNode {
     }
   }
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitJoinClause(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitJoinClause(this, arg);
   }
 }
 
 export class ValuesClause implements ASTNode {
   constructor(public values: ASTNode[][]) {}
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitValues(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitValues(this, arg);
   }
 }
 
@@ -131,20 +138,23 @@ export class TableFn extends ASTFunction {
   constructor(
     id: ASTIdentifier,
     args: ASTNode[],
-    public withOrdinality = false
+    public withOrdinality = false,
   ) {
     super('sql', id, args);
   }
 
-  override accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitTableFn(this);
+  override accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitTableFn(this, arg);
   }
 }
 
 export class RowsFrom implements ASTNode {
-  constructor(public tableFns: TableFn[], public withOrdinality = false) {}
+  constructor(
+    public tableFns: TableFn[],
+    public withOrdinality = false,
+  ) {}
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitRowsFrom(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitRowsFrom(this, arg);
   }
 }

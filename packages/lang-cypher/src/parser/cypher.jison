@@ -131,9 +131,9 @@ scope-exit:
 root:
 	scope-exit { return null; }
 	| scope-exit error { return null; }
-  | full-query scope-exit { return $1; }
-	| full-query scope-exit error { return $1; }
-  | full-query { return $1; } ;
+  | full-query scope-exit { return [$1]; }
+	| full-query scope-exit error { return [$1]; }
+  | full-query { return [$1]; } ;
 
 full-query:
   regular-query semicolon_opt

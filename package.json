@@ -1,6 +1,5 @@
 {
   "name": "@dortdb/project",
-  "type": "module",
   "version": "0.0.0",
   "private": true,
   "description": "",
@@ -8,6 +7,9 @@
     "packages/*",
     "packages/testing/*"
   ],
+  "scripts": {
+    "watch": "nx watch -p showcase -d -- nx run-many -t build -p %NX_PROJECT_NAME% --exclude=showcase"
+  },
   "author": "dortdb",
   "license": "ISC",
   "devDependencies": {

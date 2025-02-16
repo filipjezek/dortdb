@@ -12,7 +12,7 @@ import { arrSetParent } from '../../../utils/arr-set-parent.js';
 export class TupleSource extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
-    public name: ASTIdentifier | Aliased<ASTIdentifier>
+    public name: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {
     super();
     this.lang = lang;
@@ -20,12 +20,15 @@ export class TupleSource extends LogicalPlanTupleOperator {
     this.schemaSet = new Trie<(string | symbol)[]>(Array);
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitTupleSource(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitTupleSource(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
   }
@@ -37,7 +40,7 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
-    public impl: (...args: any[]) => Iterable<any>
+    public impl: (...args: any[]) => Iterable<any>,
   ) {
     super();
     this.lang = lang;
@@ -46,12 +49,15 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
     arrSetParent(this.args, this);
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitTupleFnSource(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitTupleFnSource(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;

@@ -16,7 +16,7 @@ export class GroupBy extends LogicalPlanTupleOperator {
     /** in order to calculate schema, we need aliases for calculations */
     public keys: Aliased<ASTIdentifier | Calculation>[],
     public aggs: AggregateCall[],
-    public source: LogicalPlanTupleOperator
+    public source: LogicalPlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -25,17 +25,20 @@ export class GroupBy extends LogicalPlanTupleOperator {
     source.parent = this;
     arrSetParent(
       keys.map((k) => k[0]),
-      this
+      this,
     );
     arrSetParent(aggs, this);
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitGroupBy(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitGroupBy(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     if (current === this.source) {
       this.source = replacement as LogicalPlanTupleOperator;

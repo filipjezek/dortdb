@@ -12,7 +12,7 @@ export class MapToItem implements LogicalPlanOperator {
   constructor(
     public lang: Lowercase<string>,
     public key: ASTIdentifier,
-    public source: LogicalPlanTupleOperator
+    public source: LogicalPlanTupleOperator,
   ) {
     if (!key) {
       this.key =
@@ -23,12 +23,15 @@ export class MapToItem implements LogicalPlanOperator {
     source.parent = this;
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitMapToItem(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitMapToItem(this, arg);
   }
   replaceChild(
     current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator
+    replacement: LogicalPlanTupleOperator,
   ): void {
     this.source = replacement;
   }
@@ -38,7 +41,7 @@ export class MapFromItem extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public key: ASTIdentifier,
-    public source: LogicalPlanOperator
+    public source: LogicalPlanOperator,
   ) {
     super();
     this.lang = lang;
@@ -47,12 +50,15 @@ export class MapFromItem extends LogicalPlanTupleOperator {
     source.parent = this;
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitMapFromItem(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitMapFromItem(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     this.source = replacement;
   }

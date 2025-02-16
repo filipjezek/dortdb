@@ -9,7 +9,7 @@ export class Limit extends LogicalPlanTupleOperator {
     lang: Lowercase<string>,
     public skip: number,
     public limit: number,
-    public source: LogicalPlanOperator
+    public source: LogicalPlanOperator,
   ) {
     super();
     this.lang = lang;
@@ -18,12 +18,15 @@ export class Limit extends LogicalPlanTupleOperator {
     source.parent = this;
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitLimit(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitLimit(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     this.source = replacement;
   }

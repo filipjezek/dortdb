@@ -9,6 +9,7 @@
     "./operators": "./dist/operators/index.js",
     "./aggregates": "./dist/aggregates/index.js",
     "./castables": "./dist/castables/index.js",
+    "./fns": "./dist/functions/index.js",
     "./utils": "./dist/utils/index.js",
     "./plan": "./dist/plan/operators/index.js",
     "./ast": "./dist/ast.js"

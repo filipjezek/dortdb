@@ -21,19 +21,19 @@ export enum ItemKind {
 export class ASTItemType implements ASTNode {
   constructor(
     public kind?: ItemKind | null,
-    public name: XQueryIdentifier | '*' = '*'
+    public name: XQueryIdentifier | '*' = '*',
   ) {
     if (
       this.name instanceof ASTStringLiteral &&
       this.kind !== ItemKind.PROCESSING_INSTRUCTION
     ) {
       throw new Error(
-        'Only processing-instruction can have a string literal name'
+        'Only processing-instruction can have a string literal name',
       );
     }
   }
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitItemType(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitItemType(this, arg);
   }
 }

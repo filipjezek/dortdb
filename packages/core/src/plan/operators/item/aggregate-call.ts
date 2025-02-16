@@ -27,23 +27,26 @@ export class AggregateCall implements LogicalPlanOperator {
     public args: (Calculation | ASTIdentifier)[],
     public impl: AggregateFn,
     /** name of this aggregate in its {@link GroupBy} operator */
-    public fieldName: ASTIdentifier
+    public fieldName: ASTIdentifier,
   ) {
     this._postGSource = new TupleSource(
       lang,
-      ASTIdentifier.fromParts(['<partition>'])
+      ASTIdentifier.fromParts(['<partition>']),
     );
     this._postGSource.schema = [];
     this._postGSource.schemaSet = new Trie<(string | symbol)[]>(Array);
     this.postGroupOp = this._postGSource;
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitAggregate(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitAggregate(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
   }

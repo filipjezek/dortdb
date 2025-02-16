@@ -330,6 +330,93 @@ if-expr:
 
 // expression
 
+keyword:
+	WINDOW
+	| WHERE
+	| WHEN
+	| UNORDERED
+	| UNION
+	| TUMBLING
+	| TO
+	| THEN
+	| TEXT
+	| SWITCH
+	| START
+	| STABLE
+	| SOME
+	| SLIDING
+	| SELF
+	| SCHEMA_ELEMENT
+	| SCHEMA_ATTRIBUTE
+	| SATISFIES
+	| RETURN
+	| PROC_INSTR
+	| PREVIOUS
+	| PRECEDING_SIBLING
+	| PRECEDING
+	| PARENT
+	| ORDERING
+	| ORDERED
+	| ORDERBY
+	| ORDER
+	| OR
+	| ONLY
+	| NODE
+	| NEXT
+	| KW_NEQ
+	| NAMESPACENODE
+	| NAMESPACE
+	| MOD
+	| KW_LT
+	| LET
+	| LEAST
+	| KW_LTE
+	| ITEM
+	| IS
+	| INTERSECT
+	| INSTANCEOF
+	| IN
+	| IF
+	| IDIV
+	| KW_GT
+	| GROUPBY
+	| GREATEST
+	| KW_GTE
+	| FUNCTION
+	| FOR
+	| FOLLOWING_SIBLING
+	| FOLLOWING
+	| EXCEPT
+	| EVERY
+	| KW_EQ
+	| END
+	| EMPTYSEQ
+	| EMPTY
+	| ELSE
+	| ELEMENT
+	| DOCUMENT_NODE
+	| DOCUMENT
+	| DIV
+	| DESCENDING
+	| DESCENDANT_OR_SELF
+	| DESCENDANT
+	| DEFAULT
+	| DECLARE
+	| COUNT
+	| COMMENT
+	| CHILD
+	| CAST
+	| CASE
+	| BASEURI
+	| ATTRIBUTE
+	| AT
+	| ASCENDING
+	| AS
+	| AND
+	| ANCESTOR_OR_SELF
+	| ANCESTOR
+	| ALLOWING ;
+
 string-literal:
 	STRING { $$ = new yy.ast.ASTStringLiteral($1); } ;
 
@@ -459,8 +546,9 @@ dir-attr-content-part:
 
 /* this rule only serves to switch lexer state and retry */
 dir-elem-constr-meta:
-	LT NCNAME { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
-	| LT QNAME { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); } ;
+	LT NCNAME { console.log('matched ncname', $2); yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
+	| LT keyword { console.log('matched keyword', $2); yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
+	| LT QNAME { console.log('matched qname', $2); yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); } ;
 dir-comment-constr-meta:
 	LT EMPH { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<!'); } ;
 dir-pi-constr-meta:

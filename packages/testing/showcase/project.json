@@ -54,6 +54,19 @@
     },
     "serve": {
       "executor": "@angular-devkit/build-angular:dev-server",
+      "options": {
+        "forceEsbuild": false,
+        "prebundle": {
+          "exclude": [
+            "@dortdb/core",
+            "@dortdb/lang-cypher",
+            "@dortdb/lang-sql",
+            "@dortdb/lang-xquery",
+            "@ts-jison/parser",
+            "@ts-jison/lexer"
+          ]
+        }
+      },
       "configurations": {
         "production": {
           "buildTarget": "@dortdb/showcase:build:production"
@@ -83,9 +96,9 @@
     "serve-static": {
       "executor": "@nx/web:file-server",
       "options": {
-        "buildTarget": "@dortdb/showcase:build",
+        "buildTarget": "@dortdb/showcase:build:development",
         "port": 4200,
-        "staticFilePath": "dist/packages/testing/showcase/browser",
+        "staticFilePath": "packages/testing/showcase/dist/browser",
         "spa": true
       }
     }

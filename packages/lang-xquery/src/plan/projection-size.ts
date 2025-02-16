@@ -6,7 +6,7 @@ export class ProjectionSize extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public sizeCol: ASTIdentifier,
-    public source: LogicalPlanTupleOperator
+    public source: LogicalPlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -15,12 +15,15 @@ export class ProjectionSize extends LogicalPlanTupleOperator {
     source.parent = this;
   }
 
-  accept<T>(visitors: Record<string, XQueryLogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitProjectionSize(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, XQueryLogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitProjectionSize(this, arg);
   }
   replaceChild(
     current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator
+    replacement: LogicalPlanTupleOperator,
   ): void {
     this.source = replacement;
     this.clearSchema();

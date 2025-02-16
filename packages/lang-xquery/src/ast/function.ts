@@ -3,28 +3,34 @@ import { XQueryVisitor } from './visitor.js';
 import { ASTVariable } from './expression.js';
 
 export class InlineFunction implements ASTNode {
-  constructor(public args: ASTVariable[], public body: ASTNode[]) {}
+  constructor(
+    public args: ASTVariable[],
+    public body: ASTNode[],
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitInlineFn(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitInlineFn(this, arg);
   }
 }
 
 export class DynamicFunctionCall implements ASTNode {
-  constructor(public nameOrExpr: ASTNode, public args: ASTNode[] = []) {}
+  constructor(
+    public nameOrExpr: ASTNode,
+    public args: ASTNode[] = [],
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitDynamicFunctionCall(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitDynamicFunctionCall(this, arg);
   }
 }
 
 export class BoundFunction implements ASTNode {
   constructor(
     public nameOrExpr: ASTNode,
-    public boundArgs: [number, ASTNode][]
+    public boundArgs: [number, ASTNode][],
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitBoundFunction(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitBoundFunction(this, arg);
   }
 }

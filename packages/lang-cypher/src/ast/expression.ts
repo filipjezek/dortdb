@@ -12,10 +12,13 @@ export class FnCallWrapper implements ASTNode {
     | '*';
   public where: ASTNode;
 
-  constructor(public fn: ASTFunction, public distinct: boolean) {}
+  constructor(
+    public fn: ASTFunction,
+    public distinct: boolean,
+  ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitFnCallWrapper(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitFnCallWrapper(this, arg);
   }
 }
 
@@ -26,8 +29,8 @@ export class ExistsSubquery implements ASTNode {
 
   constructor() {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitExistsSubquery(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitExistsSubquery(this, arg);
   }
 }
 
@@ -44,13 +47,13 @@ export class QuantifiedExpr implements ASTNode {
     quantifier: string,
     public variable: CypherIdentifier,
     public expr: ASTNode,
-    public where?: ASTNode
+    public where?: ASTNode,
   ) {
     this.quantifier = quantifier.toLowerCase() as Quantifier;
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitQuantifiedExpr(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitQuantifiedExpr(this, arg);
   }
 }
 
@@ -59,8 +62,8 @@ export class ASTParameter extends CypherIdentifier {
     super(idOriginal);
   }
 
-  override accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitParameter(this);
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitParameter(this, arg);
   }
 }
 
@@ -68,11 +71,11 @@ export class PatternComprehension implements ASTNode {
   constructor(
     public pattern: PatternElChain,
     public where: ASTNode | undefined,
-    public expr: ASTNode
+    public expr: ASTNode,
   ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitPatternComprehension(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitPatternComprehension(this, arg);
   }
 }
 
@@ -81,11 +84,11 @@ export class ListComprehension implements ASTNode {
     public variable: CypherIdentifier,
     public source: ASTNode,
     public where?: ASTNode,
-    public expr?: ASTNode
+    public expr?: ASTNode,
   ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitListComprehension(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitListComprehension(this, arg);
   }
 }
 
@@ -93,45 +96,51 @@ export class CaseExpr implements ASTNode {
   constructor(
     public expr: ASTNode | undefined,
     public whenThens: [ASTNode, ASTNode][],
-    public elseExpr?: ASTNode
+    public elseExpr?: ASTNode,
   ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitCaseExpr(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitCaseExpr(this, arg);
   }
 }
 
 export class CountAll implements ASTNode {
   constructor() {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitCountAll(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitCountAll(this, arg);
   }
 }
 
 export class LabelFilterExpr implements ASTNode {
-  constructor(public expr: ASTNode, public labels: CypherIdentifier[]) {}
+  constructor(
+    public expr: ASTNode,
+    public labels: CypherIdentifier[],
+  ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitLabelFilterExpr(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitLabelFilterExpr(this, arg);
   }
 }
 
 export class SubscriptExpr implements ASTNode {
   constructor(
     public expr: ASTNode,
-    public subscript: [ASTNode] | [ASTNode, ASTNode]
+    public subscript: [ASTNode] | [ASTNode, ASTNode],
   ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitSubscriptExpr(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitSubscriptExpr(this, arg);
   }
 }
 
 export class PropLookup implements ASTNode {
-  constructor(public expr: ASTNode, public prop: CypherIdentifier) {}
+  constructor(
+    public expr: ASTNode,
+    public prop: CypherIdentifier,
+  ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitPropLookup(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitPropLookup(this, arg);
   }
 }

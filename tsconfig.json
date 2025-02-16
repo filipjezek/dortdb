@@ -15,9 +15,6 @@
       "path": "./packages/lang-xquery"
     },
     {
-      "path": "./packages/testing/_showcase"
-    },
-    {
       "path": "./packages/testing/showcase"
     },
     {

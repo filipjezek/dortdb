@@ -15,8 +15,8 @@ export class PatternElChain implements ASTNode {
     this.chain = Array.isArray(chain) ? chain : [chain];
   }
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitPatternElChain(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitPatternElChain(this, arg);
   }
 }
 
@@ -24,11 +24,11 @@ export class NodePattern implements ASTNode {
   constructor(
     public variable: CypherIdentifier | undefined,
     public labels: CypherIdentifier[] = [],
-    public props?: ASTMapLiteral | ASTParameter
+    public props?: ASTMapLiteral | ASTParameter,
   ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitNodePattern(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitNodePattern(this, arg);
   }
 }
 
@@ -41,10 +41,10 @@ export class RelPattern implements ASTNode {
     public range?:
       | [ASTNumberLiteral | undefined]
       | [ASTNumberLiteral, ASTNumberLiteral],
-    public props?: ASTMapLiteral | ASTParameter
+    public props?: ASTMapLiteral | ASTParameter,
   ) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitRelPattern(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitRelPattern(this, arg);
   }
 }

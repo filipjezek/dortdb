@@ -15,15 +15,18 @@ export class FnCall implements LogicalPlanOperator {
      * Function is pure if it has no side effects and always returns the same output for the same input.
      * This means that a function creating a new object every time it is called is not pure.
      */
-    public pure = false
+    public pure = false,
   ) {}
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitFnCall(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitFnCall(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
   }

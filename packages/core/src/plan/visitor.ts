@@ -6,28 +6,32 @@ export interface LogicalPlanOperator {
   lang: Lowercase<string>;
   parent?: LogicalPlanOperator;
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret;
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void;
 }
 export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
   public schema: ASTIdentifier[];
-  public schemaSet: Trie<(string | symbol)[]>;
+  public schemaSet: IdSet;
   public lang: Lowercase<string>;
   public parent?: LogicalPlanOperator;
 
-  abstract accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T;
+  abstract accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret;
   abstract replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void;
 
   /** will preserve object references */
-  public addToSchema(
-    item: ASTIdentifier | ASTIdentifier[] | Trie<(string | symbol)[]>
-  ) {
+  public addToSchema(item: ASTIdentifier | ASTIdentifier[] | IdSet) {
     if (Array.isArray(item)) {
       for (const i of item) {
         if (!this.schemaSet.has(i.parts)) {
@@ -50,9 +54,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
     }
   }
   /** will preserve object references */
-  public removeFromSchema(
-    item: ASTIdentifier | ASTIdentifier[] | Trie<(string | symbol)[]>
-  ) {
+  public removeFromSchema(item: ASTIdentifier | ASTIdentifier[] | IdSet) {
     let removed = false;
     if (Array.isArray(item)) {
       for (const i of item) {
@@ -86,31 +88,33 @@ export type LogicalOpOrId = LogicalPlanOperator | ASTIdentifier;
 
 export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
-export interface LogicalPlanVisitor<T> {
-  visitProjection(operator: operators.Projection): T;
-  visitSelection(operator: operators.Selection): T;
-  visitTupleSource(operator: operators.TupleSource): T;
-  visitItemSource(operator: operators.ItemSource): T;
-  visitFnCall(operator: operators.FnCall): T;
-  visitLiteral(operator: operators.Literal): T;
-  visitCalculation(operator: operators.Calculation): T;
-  visitConditional(operator: operators.Conditional): T;
-  visitCartesianProduct(operator: operators.CartesianProduct): T;
-  visitJoin(operator: operators.Join): T;
-  visitProjectionConcat(operator: operators.ProjectionConcat): T;
-  visitMapToItem(operator: operators.MapToItem): T;
-  visitMapFromItem(operator: operators.MapFromItem): T;
-  visitProjectionIndex(operator: operators.ProjectionIndex): T;
-  visitOrderBy(operator: operators.OrderBy): T;
-  visitGroupBy(operator: operators.GroupBy): T;
-  visitLimit(operator: operators.Limit): T;
-  visitUnion(operator: operators.Union): T;
-  visitIntersection(operator: operators.Intersection): T;
-  visitDifference(operator: operators.Difference): T;
-  visitDistinct(operator: operators.Distinct): T;
-  visitNullSource(operator: operators.NullSource): T;
-  visitAggregate(operator: operators.AggregateCall): T;
-  visitItemFnSource(operator: operators.ItemFnSource): T;
-  visitTupleFnSource(operator: operators.TupleFnSource): T;
-  visitQuantifier(operator: operators.Quantifier): T;
+export type IdSet = Trie<(string | symbol)[]>;
+
+export interface LogicalPlanVisitor<Ret, Arg = never> {
+  visitProjection(operator: operators.Projection, arg?: Arg): Ret;
+  visitSelection(operator: operators.Selection, arg?: Arg): Ret;
+  visitTupleSource(operator: operators.TupleSource, arg?: Arg): Ret;
+  visitItemSource(operator: operators.ItemSource, arg?: Arg): Ret;
+  visitFnCall(operator: operators.FnCall, arg?: Arg): Ret;
+  visitLiteral(operator: operators.Literal, arg?: Arg): Ret;
+  visitCalculation(operator: operators.Calculation, arg?: Arg): Ret;
+  visitConditional(operator: operators.Conditional, arg?: Arg): Ret;
+  visitCartesianProduct(operator: operators.CartesianProduct, arg?: Arg): Ret;
+  visitJoin(operator: operators.Join, arg?: Arg): Ret;
+  visitProjectionConcat(operator: operators.ProjectionConcat, arg?: Arg): Ret;
+  visitMapToItem(operator: operators.MapToItem, arg?: Arg): Ret;
+  visitMapFromItem(operator: operators.MapFromItem, arg?: Arg): Ret;
+  visitProjectionIndex(operator: operators.ProjectionIndex, arg?: Arg): Ret;
+  visitOrderBy(operator: operators.OrderBy, arg?: Arg): Ret;
+  visitGroupBy(operator: operators.GroupBy, arg?: Arg): Ret;
+  visitLimit(operator: operators.Limit, arg?: Arg): Ret;
+  visitUnion(operator: operators.Union, arg?: Arg): Ret;
+  visitIntersection(operator: operators.Intersection, arg?: Arg): Ret;
+  visitDifference(operator: operators.Difference, arg?: Arg): Ret;
+  visitDistinct(operator: operators.Distinct, arg?: Arg): Ret;
+  visitNullSource(operator: operators.NullSource, arg?: Arg): Ret;
+  visitAggregate(operator: operators.AggregateCall, arg?: Arg): Ret;
+  visitItemFnSource(operator: operators.ItemFnSource, arg?: Arg): Ret;
+  visitTupleFnSource(operator: operators.TupleFnSource, arg?: Arg): Ret;
+  visitQuantifier(operator: operators.Quantifier, arg?: Arg): Ret;
 }

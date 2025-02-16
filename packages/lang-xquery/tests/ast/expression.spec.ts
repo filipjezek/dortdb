@@ -1,7 +1,5 @@
-import { describe, it } from 'node:test';
-import { ASTFunction, ASTNode, DortDB } from '@dortdb/core';
+import { ASTFunction, DortDB } from '@dortdb/core';
 import { XQuery } from '../../src/index.js';
-import assert from 'node:assert/strict';
 import * as astXQuery from '../../src/ast/index.js';
 import { ASTOperator } from '@dortdb/core';
 
@@ -9,215 +7,211 @@ describe('AST Expressions', () => {
   const db = new DortDB({
     mainLang: XQuery,
   });
-  const wrapPath = (lit: ASTNode) => new astXQuery.PathExpr([lit]);
+  const getExpr = (query: string) =>
+    (db.parse(query).value[0] as astXQuery.Module).body[0];
 
   describe('operators', () => {
     it('should preserve operator precedence', () => {
-      const result = db.parse('1 + 2 * 3 - 5 div 8 cast as foo < 3').value.body;
-      const expected = [
-        new ASTOperator('xquery', new astXQuery.ASTName('<'), [
-          new ASTOperator('xquery', new astXQuery.ASTName('-'), [
-            new ASTOperator('xquery', new astXQuery.ASTName('+'), [
-              wrapPath(new astXQuery.ASTNumberLiteral('1')),
-              new ASTOperator('xquery', new astXQuery.ASTName('*'), [
-                wrapPath(new astXQuery.ASTNumberLiteral('2')),
-                wrapPath(new astXQuery.ASTNumberLiteral('3')),
+      const result = getExpr('1 + 2 * 3 - 5 div 8 cast as foo < 3');
+      const expected = new ASTOperator(
+        'xquery',
+        new astXQuery.XQueryIdentifier('<'),
+        [
+          new ASTOperator('xquery', new astXQuery.XQueryIdentifier('-'), [
+            new ASTOperator('xquery', new astXQuery.XQueryIdentifier('+'), [
+              new astXQuery.ASTNumberLiteral('1'),
+              new ASTOperator('xquery', new astXQuery.XQueryIdentifier('*'), [
+                new astXQuery.ASTNumberLiteral('2'),
+                new astXQuery.ASTNumberLiteral('3'),
               ]),
             ]),
-            new ASTOperator('xquery', new astXQuery.ASTName('div'), [
-              wrapPath(new astXQuery.ASTNumberLiteral('5')),
+            new ASTOperator('xquery', new astXQuery.XQueryIdentifier('div'), [
+              new astXQuery.ASTNumberLiteral('5'),
               new astXQuery.CastExpr(
-                wrapPath(new astXQuery.ASTNumberLiteral('8')),
-                new astXQuery.ASTName('foo')
+                new astXQuery.ASTNumberLiteral('8'),
+                new astXQuery.XQueryIdentifier('foo'),
               ),
             ]),
           ]),
-          wrapPath(new astXQuery.ASTNumberLiteral('3')),
-        ]),
-      ];
-      assert.deepEqual(result, expected);
+          new astXQuery.ASTNumberLiteral('3'),
+        ],
+      );
+      expect(result).toEqual(expected);
     });
 
     it('should preserve associativity', () => {
-      const result = db.parse('1 - 2 - 3').value.body;
-      const expected = [
-        new ASTOperator('xquery', new astXQuery.ASTName('-'), [
-          new ASTOperator('xquery', new astXQuery.ASTName('-'), [
-            wrapPath(new astXQuery.ASTNumberLiteral('1')),
-            wrapPath(new astXQuery.ASTNumberLiteral('2')),
+      const result = getExpr('1 - 2 - 3');
+      const expected = new ASTOperator(
+        'xquery',
+        new astXQuery.XQueryIdentifier('-'),
+        [
+          new ASTOperator('xquery', new astXQuery.XQueryIdentifier('-'), [
+            new astXQuery.ASTNumberLiteral('1'),
+            new astXQuery.ASTNumberLiteral('2'),
           ]),
-          wrapPath(new astXQuery.ASTNumberLiteral('3')),
-        ]),
-      ];
-      assert.deepEqual(result, expected);
+          new astXQuery.ASTNumberLiteral('3'),
+        ],
+      );
+      expect(result).toEqual(expected);
     });
   });
 
   describe('function calls', () => {
     it('should parse function calls', () => {
-      const result = db.parse('foo:bar(1, 2)').value.body[0];
-      const expected = wrapPath(
-        new ASTFunction('xquery', new astXQuery.ASTName('foo:bar'), [
-          wrapPath(new astXQuery.ASTNumberLiteral('1')),
-          wrapPath(new astXQuery.ASTNumberLiteral('2')),
-        ])
+      const result = getExpr('foo:bar(1, 2)');
+      const expected = new ASTFunction(
+        'xquery',
+        new astXQuery.XQueryIdentifier('foo:bar'),
+        [
+          new astXQuery.ASTNumberLiteral('1'),
+          new astXQuery.ASTNumberLiteral('2'),
+        ],
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
 
     it('should parse dynamic function calls', () => {
-      const result = db.parse('$x(1, 2)').value.body[0];
-      const expected = wrapPath(
-        new astXQuery.DynamicFunctionCall(
-          new astXQuery.ASTVariable(new astXQuery.ASTName('x')),
-          [
-            wrapPath(new astXQuery.ASTNumberLiteral('1')),
-            wrapPath(new astXQuery.ASTNumberLiteral('2')),
-          ]
-        )
+      const result = getExpr('$x(1, 2)');
+      const expected = new astXQuery.DynamicFunctionCall(
+        new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+        [
+          new astXQuery.ASTNumberLiteral('1'),
+          new astXQuery.ASTNumberLiteral('2'),
+        ],
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
 
     it('should parse bound function calls', () => {
-      const result = db.parse('foo:bar(1, ?, 2)').value.body[0];
-      const expected = wrapPath(
-        new astXQuery.BoundFunction(new astXQuery.ASTName('foo:bar'), [
-          [0, wrapPath(new astXQuery.ASTNumberLiteral('1'))],
-          [2, wrapPath(new astXQuery.ASTNumberLiteral('2'))],
-        ])
+      const result = getExpr('foo:bar(1, ?, 2)');
+      const expected = new astXQuery.BoundFunction(
+        new astXQuery.XQueryIdentifier('foo:bar'),
+        [
+          [0, new astXQuery.ASTNumberLiteral('1')],
+          [2, new astXQuery.ASTNumberLiteral('2')],
+        ],
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
 
     it('should parse bound dynamic function calls', () => {
-      const result = db.parse('$x(1, ?, 2)').value.body[0];
-      const expected = wrapPath(
-        new astXQuery.BoundFunction(
-          new astXQuery.ASTVariable(new astXQuery.ASTName('x')),
-          [
-            [0, wrapPath(new astXQuery.ASTNumberLiteral('1'))],
-            [2, wrapPath(new astXQuery.ASTNumberLiteral('2'))],
-          ]
-        )
+      const result = getExpr('$x(1, ?, 2)');
+      const expected = new astXQuery.BoundFunction(
+        new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+        [
+          [0, new astXQuery.ASTNumberLiteral('1')],
+          [2, new astXQuery.ASTNumberLiteral('2')],
+        ],
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
   });
 
   describe('quantified queries', () => {
     it('should parse quantified queries', () => {
-      const result = db.parse('every $x in (1, 2) satisfies $x = 1').value
-        .body[0];
+      const result = getExpr('every $x in (1, 2) satisfies $x = 1');
       const expected = new astXQuery.QuantifiedExpr(
-        'every',
+        astXQuery.Quantifier.EVERY,
         [
           [
-            new astXQuery.ASTVariable(new astXQuery.ASTName('x')),
-            wrapPath(
-              new astXQuery.SequenceConstructor([
-                wrapPath(new astXQuery.ASTNumberLiteral('1')),
-                wrapPath(new astXQuery.ASTNumberLiteral('2')),
-              ])
-            ),
+            new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+            new astXQuery.SequenceConstructor([
+              new astXQuery.ASTNumberLiteral('1'),
+              new astXQuery.ASTNumberLiteral('2'),
+            ]),
           ],
         ],
-        new ASTOperator('xquery', new astXQuery.ASTName('='), [
-          wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('x'))),
-          wrapPath(new astXQuery.ASTNumberLiteral('1')),
-        ])
+        new ASTOperator('xquery', new astXQuery.XQueryIdentifier('='), [
+          new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+          new astXQuery.ASTNumberLiteral('1'),
+        ]),
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
 
     it('should parse quantified queries with multiple variables', () => {
-      const result = db.parse(
-        'some $x in (1, 2), $y in (3, 4) satisfies $x * $y = 6'
-      ).value.body[0];
+      const result = getExpr(
+        'some $x in (1, 2), $y in (3, 4) satisfies $x * $y = 6',
+      );
       const expected = new astXQuery.QuantifiedExpr(
-        'some',
+        astXQuery.Quantifier.SOME,
         [
           [
-            new astXQuery.ASTVariable(new astXQuery.ASTName('x')),
-            wrapPath(
-              new astXQuery.SequenceConstructor([
-                wrapPath(new astXQuery.ASTNumberLiteral('1')),
-                wrapPath(new astXQuery.ASTNumberLiteral('2')),
-              ])
-            ),
+            new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+            new astXQuery.SequenceConstructor([
+              new astXQuery.ASTNumberLiteral('1'),
+              new astXQuery.ASTNumberLiteral('2'),
+            ]),
           ],
           [
-            new astXQuery.ASTVariable(new astXQuery.ASTName('y')),
-            wrapPath(
-              new astXQuery.SequenceConstructor([
-                wrapPath(new astXQuery.ASTNumberLiteral('3')),
-                wrapPath(new astXQuery.ASTNumberLiteral('4')),
-              ])
-            ),
+            new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('y')),
+            new astXQuery.SequenceConstructor([
+              new astXQuery.ASTNumberLiteral('3'),
+              new astXQuery.ASTNumberLiteral('4'),
+            ]),
           ],
         ],
-        new ASTOperator('xquery', new astXQuery.ASTName('='), [
-          new ASTOperator('xquery', new astXQuery.ASTName('*'), [
-            wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('x'))),
-            wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('y'))),
+        new ASTOperator('xquery', new astXQuery.XQueryIdentifier('='), [
+          new ASTOperator('xquery', new astXQuery.XQueryIdentifier('*'), [
+            new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+            new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('y')),
           ]),
-          wrapPath(new astXQuery.ASTNumberLiteral('6')),
-        ])
+          new astXQuery.ASTNumberLiteral('6'),
+        ]),
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
   });
 
   describe('switch expressions', () => {
     it('should parse switch expressions', () => {
-      const result = db.parse(
-        'switch ($x) case 1 return 2 case 2 case 3 return 4 default return 5'
-      ).value.body[0];
+      const result = getExpr(
+        'switch ($x) case 1 return 2 case 2 case 3 return 4 default return 5',
+      );
       const expected = new astXQuery.SwitchExpr(
-        wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('x'))),
+        new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
         [
           [
-            [wrapPath(new astXQuery.ASTNumberLiteral('1'))],
-            wrapPath(new astXQuery.ASTNumberLiteral('2')),
+            [new astXQuery.ASTNumberLiteral('1')],
+            new astXQuery.ASTNumberLiteral('2'),
           ],
           [
             [
-              wrapPath(new astXQuery.ASTNumberLiteral('2')),
-              wrapPath(new astXQuery.ASTNumberLiteral('3')),
+              new astXQuery.ASTNumberLiteral('2'),
+              new astXQuery.ASTNumberLiteral('3'),
             ],
-            wrapPath(new astXQuery.ASTNumberLiteral('4')),
+            new astXQuery.ASTNumberLiteral('4'),
           ],
         ],
-        wrapPath(new astXQuery.ASTNumberLiteral('5'))
+        new astXQuery.ASTNumberLiteral('5'),
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
   });
 
   describe('if expressions', () => {
     it('should parse if expressions', () => {
-      const result = db.parse('if ($x) then 1 else 2').value.body[0];
+      const result = getExpr('if ($x) then 1 else 2');
       const expected = new astXQuery.IfExpr(
-        wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('x'))),
-        wrapPath(new astXQuery.ASTNumberLiteral('1')),
-        wrapPath(new astXQuery.ASTNumberLiteral('2'))
+        new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
+        new astXQuery.ASTNumberLiteral('1'),
+        new astXQuery.ASTNumberLiteral('2'),
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
 
     it('should parse nested if expressions', () => {
-      const result = db.parse('if ($x) then if ($y) then 1 else 2 else 3').value
-        .body[0];
+      const result = getExpr('if ($x) then if ($y) then 1 else 2 else 3');
       const expected = new astXQuery.IfExpr(
-        wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('x'))),
+        new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
         new astXQuery.IfExpr(
-          wrapPath(new astXQuery.ASTVariable(new astXQuery.ASTName('y'))),
-          wrapPath(new astXQuery.ASTNumberLiteral('1')),
-          wrapPath(new astXQuery.ASTNumberLiteral('2'))
+          new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('y')),
+          new astXQuery.ASTNumberLiteral('1'),
+          new astXQuery.ASTNumberLiteral('2'),
         ),
-        wrapPath(new astXQuery.ASTNumberLiteral('3'))
+        new astXQuery.ASTNumberLiteral('3'),
       );
-      assert.deepEqual(result, expected);
+      expect(result).toEqual(expected);
     });
   });
 
@@ -227,11 +221,8 @@ describe('AST Expressions', () => {
       ['1.2', 1.2],
       ['1.2e2', 1.2e2],
     ]) {
-      const result = db.parse(`${original}`).value.body;
-      assert.deepEqual(
-        (result[0].steps[0] as astXQuery.ASTNumberLiteral).value,
-        expected
-      );
+      const result = getExpr(`${original}`);
+      expect((result as astXQuery.ASTNumberLiteral).value).toEqual(expected);
     }
   });
 
@@ -242,18 +233,15 @@ describe('AST Expressions', () => {
       ['"hello"', 'hello'],
       ['"hel""lo"', 'hel"lo'],
     ]) {
-      const result = db.parse(`${original}`).value.body;
-      assert.deepEqual(
-        (result[0].steps[0] as astXQuery.ASTStringLiteral).value,
-        expected
-      );
+      const result = getExpr(`${original}`);
+      expect((result as astXQuery.ASTStringLiteral).value).toEqual(expected);
     }
   });
 
   describe('comments', () => {
     it('should ignore block comments', () => {
-      const result = db.parse('(: com (: 3 :) \nment :)1').value.body;
-      assert.deepEqual(result, [wrapPath(new astXQuery.ASTNumberLiteral('1'))]);
+      const result = getExpr('(: com (: 3 :) \nment :)1');
+      expect(result).toEqual(new astXQuery.ASTNumberLiteral('1'));
     });
   });
 });

@@ -485,8 +485,8 @@ additive-or-quantified-expression:
 
 userop-expression:
 	additive-expression
-	| userop-expression USEROP additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); $3.parentOp = $2; }
-	| userop-expression OPERATOR LPAR scoped-id RPAR additive-or-quantified-expression { $$ = yy.makeOp($4, [$1, $6]); $6.parentOp = $4; } ;
+	| userop-expression USEROP additive-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); yy.parentOp($3, $2); }
+	| userop-expression OPERATOR LPAR scoped-id RPAR additive-or-quantified-expression { $$ = yy.makeOp($4, [$1, $6]); yy.parentOp($6, $4); } ;
 
 userop-or-quantified-expression:
 	userop-expression
@@ -496,20 +496,20 @@ string-set-range-expression:
 	userop-expression
 	| userop-expression not_opt BETWEEN userop-or-quantified-expression AND userop-or-quantified-expression {
 		$$ = yy.wrapNot(yy.makeOp($3, [$1, $4, $6]), $2);
-		$4.parentOp = '>=';
-		$6.parentOp = '<=';
+		yy.parentOp($4, '>=');
+		yy.parentOp($6, '<=');
 	}
 	| userop-expression not_opt IN LPAR expression-list RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
 	| userop-expression not_opt IN LPAR subquery RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
-	| userop-expression not_opt LIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); $4.parentOp = 'LIKE'; }
-	| userop-expression not_opt ILIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); $4.parentOp = 'ILIKE'; } ;
+	| userop-expression not_opt LIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); yy.parentOp($4, 'LIKE'); }
+	| userop-expression not_opt ILIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); yy.parentOp($4, 'ILIKE'); } ;
 
 relational-operator:
 	LT | GT | LTE | GTE | EQ | NEQ ;
 
 relational-expression:
 	string-set-range-expression
-	| relational-expression relational-operator userop-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); $3.parentOp = $2; } ;
+	| relational-expression relational-operator userop-or-quantified-expression { $$ = yy.makeOp($2, [$1, $3]); yy.parentOp($3, $2); } ;
 
 is-expression:
 	relational-expression

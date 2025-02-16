@@ -2,6 +2,7 @@ import * as aggregates from './aggregates/index.js';
 import { ASTIdentifier } from './ast.js';
 import * as castables from './castables/index.js';
 import * as operators from './operators/index.js';
+import * as fns from './functions/index.js';
 
 export interface Operator {
   name: string;
@@ -45,7 +46,7 @@ export interface Extension<LangNames extends string = string> {
 
 export const core: Extension = {
   operators: Object.values(operators),
-  functions: [],
+  functions: Object.values(fns),
   aggregates: Object.values(aggregates),
   castables: Object.values(castables),
 };

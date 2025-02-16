@@ -5,8 +5,8 @@ import { XQueryVisitor } from './visitor.js';
 export class Prolog implements ASTNode {
   constructor(public declarations: Declaration[]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitProlog(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitProlog(this, arg);
   }
 }
 
@@ -17,25 +17,28 @@ export type Declaration =
   | EmptyOrderDeclaration;
 
 export class NSDeclaration {
-  constructor(public prefix: XQueryIdentifier, public uri: ASTStringLiteral) {}
+  constructor(
+    public prefix: XQueryIdentifier,
+    public uri: ASTStringLiteral,
+  ) {}
 }
 
 export class DefaultNSDeclaration implements ASTNode {
   constructor(
     public uri: ASTStringLiteral,
-    public type: 'element' | 'function'
+    public type: 'element' | 'function',
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitDefaultNSDeclaration(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitDefaultNSDeclaration(this, arg);
   }
 }
 
 export class BaseURIDeclaration implements ASTNode {
   constructor(public uri: ASTStringLiteral) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitBaseURIDeclaration(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitBaseURIDeclaration(this, arg);
   }
 }
 
@@ -46,23 +49,26 @@ export enum OrderingMode {
 export class OrderingDeclaration implements ASTNode {
   constructor(public mode: OrderingMode) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitOrderingDeclaration(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitOrderingDeclaration(this, arg);
   }
 }
 
 export class EmptyOrderDeclaration implements ASTNode {
   constructor(public emptyGreatest = false) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitEmptyOrderDeclaration(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitEmptyOrderDeclaration(this, arg);
   }
 }
 
 export class Module implements ASTNode {
-  constructor(public prolog: Prolog, public body: ASTNode[]) {}
+  constructor(
+    public prolog: Prolog,
+    public body: ASTNode[],
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitModule(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitModule(this, arg);
   }
 }

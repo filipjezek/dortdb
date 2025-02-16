@@ -10,8 +10,8 @@ export class ASTStringLiteral extends ASTLiteral<string> {
     this.value = parseStringLiteral(original);
   }
 
-  override accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitStringLiteral(this);
+  override accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitStringLiteral(this, arg);
   }
 }
 
@@ -20,8 +20,8 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
     super(original, +original);
   }
 
-  override accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitNumberLiteral(this);
+  override accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitNumberLiteral(this, arg);
   }
 }
 
@@ -32,8 +32,8 @@ export class XQueryIdentifier extends ASTIdentifier {
     this.parts = parseName(original);
   }
 
-  override accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitXQueryIdentifier(this);
+  override accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitXQueryIdentifier(this, arg);
   }
 }
 
@@ -43,8 +43,8 @@ export class ASTVariable extends XQueryIdentifier {
     this.parts = name.parts;
   }
 
-  override accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitVariable(this);
+  override accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitVariable(this, arg);
   }
 }
 
@@ -56,11 +56,11 @@ export class QuantifiedExpr implements ASTNode {
   constructor(
     public quantifier: Quantifier,
     public variables: [ASTVariable, ASTNode][],
-    public expr: ASTNode
+    public expr: ASTNode,
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitQuantifiedExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitQuantifiedExpr(this, arg);
   }
 }
 
@@ -68,11 +68,11 @@ export class SwitchExpr implements ASTNode {
   constructor(
     public expr: ASTNode,
     public cases: [ASTNode[], ASTNode][],
-    public defaultCase: ASTNode
+    public defaultCase: ASTNode,
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitSwitchExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSwitchExpr(this, arg);
   }
 }
 
@@ -80,11 +80,11 @@ export class IfExpr implements ASTNode {
   constructor(
     public condition: ASTNode,
     public then: ASTNode,
-    public elseExpr: ASTNode
+    public elseExpr: ASTNode,
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitIfExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitIfExpr(this, arg);
   }
 }
 
@@ -94,49 +94,64 @@ export enum Occurence {
   ONE_OR_MORE = '+',
 }
 export class ASTSequenceType implements ASTNode {
-  constructor(public type?: ASTItemType, public occurrence?: string) {}
+  constructor(
+    public type?: ASTItemType,
+    public occurrence?: string,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitSequenceType(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSequenceType(this, arg);
   }
 }
 
 export class InstanceOfExpr implements ASTNode {
-  constructor(public expr: ASTNode, public type: ASTSequenceType) {}
+  constructor(
+    public expr: ASTNode,
+    public type: ASTSequenceType,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitInstanceOfExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitInstanceOfExpr(this, arg);
   }
 }
 
 export class CastExpr implements ASTNode {
-  constructor(public expr: ASTNode, public type: XQueryIdentifier) {}
+  constructor(
+    public expr: ASTNode,
+    public type: XQueryIdentifier,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitCastExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitCastExpr(this, arg);
   }
 }
 
 export class FilterExpr implements ASTNode {
-  constructor(public expr: ASTNode, public predicate: PathPredicate) {}
+  constructor(
+    public expr: ASTNode,
+    public predicate: PathPredicate,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFilterExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFilterExpr(this, arg);
   }
 }
 
 export class SequenceConstructor implements ASTNode {
   constructor(public items: ASTNode[]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitSequenceConstructor(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSequenceConstructor(this, arg);
   }
 }
 
 export class OrderedExpr implements ASTNode {
-  constructor(public exprs: ASTNode[], public ordered: boolean) {}
+  constructor(
+    public exprs: ASTNode[],
+    public ordered: boolean,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitOrderedExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitOrderedExpr(this, arg);
   }
 }

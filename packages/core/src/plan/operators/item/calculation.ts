@@ -18,18 +18,21 @@ export class Calculation implements LogicalPlanOperator {
     public impl: (...args: any[]) => any,
     public args: LogicalOpOrId[],
     public aggregates: AggregateCall[] = [],
-    public literal = false
+    public literal = false,
   ) {
     arrSetParent(args, this);
     arrSetParent(aggregates, this);
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitCalculation(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitCalculation(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     const arr = current instanceof AggregateCall ? this.aggregates : this.args;
     const idx = arr.indexOf(current);

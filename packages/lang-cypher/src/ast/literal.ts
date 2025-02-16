@@ -3,7 +3,10 @@ import { CypherVisitor } from './visitor.js';
 import { parseStringLiteral } from '../utils/string.js';
 
 export class CypherIdentifier extends ASTIdentifier {
-  constructor(public idOriginal: string, public schemaOriginal?: string) {
+  constructor(
+    public idOriginal: string,
+    public schemaOriginal?: string,
+  ) {
     super();
     if (!schemaOriginal) {
       [this.idOriginal, this.schemaOriginal] = this.splitId(idOriginal);
@@ -14,8 +17,8 @@ export class CypherIdentifier extends ASTIdentifier {
     this.parts.push(this.parseId(this.idOriginal));
   }
 
-  override accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitCypherIdentifier(this);
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitCypherIdentifier(this, arg);
   }
 
   private parseId(id: string): string {
@@ -52,8 +55,8 @@ export class ASTStringLiteral extends ASTLiteral<string> {
     this.value = parseStringLiteral(original);
   }
 
-  override accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitStringLiteral(this);
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitStringLiteral(this, arg);
   }
 }
 
@@ -62,24 +65,24 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
     super(original, +original);
   }
 
-  override accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitNumberLiteral(this);
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitNumberLiteral(this, arg);
   }
 }
 
 export class ASTListLiteral implements ASTNode {
   constructor(public items: ASTNode[]) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitListLiteral(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitListLiteral(this, arg);
   }
 }
 
 export class ASTMapLiteral implements ASTNode {
   constructor(public items: [ASTIdentifier, ASTNode][]) {}
 
-  accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitMapLiteral(this);
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitMapLiteral(this, arg);
   }
 }
 
@@ -89,8 +92,8 @@ export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
     this.value = this.parse(original);
   }
 
-  override accept<T>(visitor: CypherVisitor<T>): T {
-    return visitor.visitBooleanLiteral(this);
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+    return visitor.visitBooleanLiteral(this, arg);
   }
 
   private parse(val: string) {

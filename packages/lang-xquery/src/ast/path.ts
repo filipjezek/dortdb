@@ -4,18 +4,21 @@ import { ASTItemType } from './item-type.js';
 import { ASTVariable } from './expression.js';
 
 export class PathExpr implements ASTNode {
-  constructor(public steps: ASTNode[], public start?: '/' | '//') {}
+  constructor(
+    public steps: ASTNode[],
+    public start?: '/' | '//',
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitPathExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitPathExpr(this, arg);
   }
 }
 
 export class PathPredicate implements ASTNode {
   constructor(public exprs: ASTNode[]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitPathPredicate(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitPathPredicate(this, arg);
   }
 }
 
@@ -37,9 +40,12 @@ export enum AxisType {
 export class PathAxis implements ASTNode {
   public predicates: PathPredicate[] = [];
 
-  constructor(public axis: AxisType, public nodeTest: ASTItemType) {}
+  constructor(
+    public axis: AxisType,
+    public nodeTest: ASTItemType,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitPathAxis(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitPathAxis(this, arg);
   }
 }

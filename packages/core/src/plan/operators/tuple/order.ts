@@ -16,7 +16,7 @@ export class OrderBy extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public orders: Order[],
-    public source: LogicalPlanTupleOperator
+    public source: LogicalPlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -25,16 +25,19 @@ export class OrderBy extends LogicalPlanTupleOperator {
     source.parent = this;
     arrSetParent(
       orders.map((o) => o.key),
-      this
+      this,
     );
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitOrderBy(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitOrderBy(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     if (current === this.source) {
       this.source = replacement as LogicalPlanTupleOperator;

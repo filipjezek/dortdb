@@ -53,7 +53,9 @@ export class QueryPageComponent {
     lang: new FormControl<'sql' | 'xquery'>('sql'),
     query: new FormControl<string>('', Validators.required),
   });
-  private lang = toSignal(this.form.get('lang').valueChanges);
+  private lang = toSignal(this.form.get('lang').valueChanges, {
+    initialValue: this.form.get('lang').value,
+  });
   private db = computed(() => {
     const lang = this.lang();
     return new DortDB({

@@ -1,0 +1,10 @@
+{
+  "jest.jestCommandLine": "npx jest",
+  "jest.virtualFolders": [
+    { "name": "lang-sql", "rootPath": "packages/lang-sql" },
+    { "name": "lang-xquery", "rootPath": "packages/lang-xquery" },
+    { "name": "lang-cypher", "rootPath": "packages/lang-cypher" },
+    { "name": "core", "rootPath": "packages/core" }
+  ],
+  "jest.runMode": { "type": "on-demand" }
+}

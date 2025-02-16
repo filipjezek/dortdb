@@ -27,5 +27,6 @@ export interface YyContext {
   wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
   makeOp: (op: string | SQLIdentifier, operands: ASTNode[]) => ASTOperator;
   allFrom: (src: SQLIdentifier | ASTTableAlias | JoinClause) => SelectSet;
+  parentOp: (op: ASTNode, parent: string) => void;
   ast: Record<string, any>;
 }

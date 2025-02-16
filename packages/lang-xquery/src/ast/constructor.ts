@@ -8,37 +8,40 @@ export class DirectElementConstructor implements ASTNode {
   constructor(
     public name: XQueryIdentifier,
     public attributes: [XQueryIdentifier, DirConstrContent][],
-    content: (ASTNode[] | ASTNode | string)[] = []
+    content: (ASTNode[] | ASTNode | string)[] = [],
   ) {
     this.content = new DirConstrContent(content);
   }
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitDirectElementConstructor(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitDirectElementConstructor(this, arg);
   }
 }
 
 export class DirConstrContent implements ASTNode {
   constructor(public content: (ASTNode[] | ASTNode | string)[]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitDirConstrContent(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitDirConstrContent(this, arg);
   }
 }
 
 export class DirectCommentConstructor implements ASTNode {
   constructor(public content: string) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitDirectCommentConstructor(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitDirectCommentConstructor(this, arg);
   }
 }
 
 export class DirectPIConstructor implements ASTNode {
-  constructor(public name: string, public content?: string) {}
+  constructor(
+    public name: string,
+    public content?: string,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitDirectPIConstructor(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitDirectPIConstructor(this, arg);
   }
 }
 
@@ -55,10 +58,10 @@ export class ComputedConstructor implements ASTNode {
   constructor(
     public type: ConstructorType,
     public content: ASTNode[],
-    public name?: XQueryIdentifier | ASTNode
+    public name?: XQueryIdentifier | ASTNode,
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitComputedConstructor(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitComputedConstructor(this, arg);
   }
 }

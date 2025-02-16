@@ -25,12 +25,12 @@ export class WindowSpec implements ASTNode {
     mode?: string,
     public start?: ASTNode,
     public end?: ASTNode,
-    public exclude: FrameExclusion = FrameExclusion.NO_OTHERS
+    public exclude: FrameExclusion = FrameExclusion.NO_OTHERS,
   ) {
     this.mode = mode && (mode.toLowerCase() as FrameMode);
   }
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitWindowSpec(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitWindowSpec(this, arg);
   }
 }

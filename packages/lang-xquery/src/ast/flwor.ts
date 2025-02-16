@@ -5,8 +5,8 @@ import { ASTVariable } from './expression.js';
 export class FLWORExpr implements ASTNode {
   constructor(public clauses: FLWORClause[]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORExpr(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORExpr(this, arg);
   }
 }
 
@@ -15,8 +15,8 @@ export type FLWORClause = FLWORFor | FLWORLet | FLWORWindow;
 export class FLWORFor implements ASTNode {
   constructor(public bindings: FLWORForBinding[]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORFor(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORFor(this, arg);
   }
 }
 
@@ -25,19 +25,19 @@ export class FLWORForBinding implements ASTNode {
     public variable: ASTVariable,
     public expr: ASTNode,
     public allowEmpty = false,
-    public posVar?: ASTVariable
+    public posVar?: ASTVariable,
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORForBinding(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORForBinding(this, arg);
   }
 }
 
 export class FLWORLet implements ASTNode {
   constructor(public bindings: [ASTVariable, ASTNode][]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORLet(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORLet(this, arg);
   }
 }
 
@@ -51,11 +51,11 @@ export class FLWORWindow implements ASTNode {
     public variable: ASTVariable,
     public expr: ASTNode,
     public start: WindowBoundary,
-    public end?: WindowBoundary
+    public end?: WindowBoundary,
   ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORWindow(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORWindow(this, arg);
   }
 }
 
@@ -67,31 +67,34 @@ export class WindowBoundary {
     public variable?: ASTVariable,
     public posVar?: ASTVariable,
     public prevVar?: ASTVariable,
-    public nextVar?: ASTVariable
+    public nextVar?: ASTVariable,
   ) {}
 }
 
 export class FLWORWhere implements ASTNode {
   constructor(public expr: ASTNode) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORWhere(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORWhere(this, arg);
   }
 }
 
 export class FLWORGroupBy implements ASTNode {
   constructor(public bindings: [ASTVariable, ASTNode][]) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORGroupBy(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORGroupBy(this, arg);
   }
 }
 
 export class FLWOROrderBy implements ASTNode {
-  constructor(public items: OrderByItem[], public stable = false) {}
+  constructor(
+    public items: OrderByItem[],
+    public stable = false,
+  ) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWOROrderBy(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWOROrderBy(this, arg);
   }
 }
 
@@ -99,22 +102,22 @@ export class OrderByItem {
   constructor(
     public expr: ASTNode,
     public ascending = false,
-    public emptyGreatest = false
+    public emptyGreatest = false,
   ) {}
 }
 
 export class FLWORCount implements ASTNode {
   constructor(public variable: ASTVariable) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORCount(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORCount(this, arg);
   }
 }
 
 export class FLWORReturn implements ASTNode {
   constructor(public expr: ASTNode) {}
 
-  accept<T>(visitor: XQueryVisitor<T>): T {
-    return visitor.visitFLWORReturn(this);
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitFLWORReturn(this, arg);
   }
 }

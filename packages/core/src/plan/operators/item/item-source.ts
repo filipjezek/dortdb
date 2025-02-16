@@ -11,15 +11,18 @@ export class ItemSource implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
   constructor(
     public lang: Lowercase<string>,
-    public name: ASTIdentifier | Aliased<ASTIdentifier>
+    public name: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {}
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitItemSource(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitItemSource(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
   }
@@ -30,17 +33,20 @@ export class ItemFnSource implements LogicalPlanOperator {
   constructor(
     public lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
-    public impl: (...args: any[]) => Iterable<any>
+    public impl: (...args: any[]) => Iterable<any>,
   ) {
     arrSetParent(this.args, this);
   }
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitItemFnSource(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitItemFnSource(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;

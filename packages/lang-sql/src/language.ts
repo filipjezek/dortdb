@@ -48,6 +48,11 @@ function createParser(mgr: LanguageManager) {
         ? new ASTOperator('sql', new ast.SQLIdentifier(op), args)
         : new ASTOperator('sql', op, args),
     allFrom: (src) => new ast.SelectSet([new ast.SQLIdentifier(allAttrs)], src),
+    parentOp: (op, parent) => {
+      if (op instanceof ast.ASTQuantifier) {
+        op.parentOp = parent;
+      }
+    },
     ast: {
       ...ast,
       ASTLiteral,

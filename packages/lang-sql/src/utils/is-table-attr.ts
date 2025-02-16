@@ -1,9 +1,9 @@
-import { ASTIdentifier } from '@dortdb/core';
+import { ASTIdentifier, IdSet } from '@dortdb/core';
 import { Trie } from 'mnemonist';
 
 export function isTableAttr(
   attr: ASTIdentifier,
-  table: ASTIdentifier | Trie<(string | symbol)[]>
+  table: ASTIdentifier | IdSet,
 ): boolean {
   if (table instanceof Trie) {
     return table.has(attr.parts.slice(0, -1));

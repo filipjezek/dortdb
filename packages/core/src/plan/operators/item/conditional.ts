@@ -7,17 +7,20 @@ export class Conditional implements LogicalPlanOperator {
     public condition: LogicalPlanOperator | ASTIdentifier,
     public whenThens: [
       LogicalPlanOperator | ASTIdentifier,
-      LogicalPlanOperator | ASTIdentifier
+      LogicalPlanOperator | ASTIdentifier,
     ][],
-    public defaultCase: LogicalPlanOperator | ASTIdentifier
+    public defaultCase: LogicalPlanOperator | ASTIdentifier,
   ) {}
 
-  accept<T>(visitors: Record<string, LogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitConditional(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitConditional(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
   }

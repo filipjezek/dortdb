@@ -24,10 +24,10 @@ export class WithQuery implements ASTNode {
     public name: SQLIdentifier,
     public colNames: SQLIdentifier[],
     public query: ASTNode,
-    public materialized?: boolean
+    public materialized?: boolean,
   ) {}
 
-  accept<T>(visitor: SQLVisitor<T>): T {
-    return visitor.visitWithQuery(this);
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitWithQuery(this, arg);
   }
 }

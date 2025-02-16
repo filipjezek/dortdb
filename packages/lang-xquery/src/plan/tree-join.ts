@@ -15,7 +15,7 @@ export class TreeJoin extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public step: Calculation,
-    public source: LogicalPlanTupleOperator
+    public source: LogicalPlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -28,12 +28,15 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     }
     this.schemaSet = schemaToTrie(this.schema);
   }
-  accept<T>(visitors: Record<string, XQueryLogicalPlanVisitor<T>>): T {
-    return visitors[this.lang].visitTreeJoin(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, XQueryLogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitTreeJoin(this, arg);
   }
   replaceChild(
     current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator
+    replacement: LogicalPlanOperator,
   ): void {
     if (current === this.source) {
       this.source = replacement as LogicalPlanTupleOperator;

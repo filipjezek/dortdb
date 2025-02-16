@@ -1,6 +1,6 @@
 export default {
   displayName: 'showcase',
-  preset: '../../jest.preset.cjs',
+  preset: '../../../jest.preset.cjs',
   setupFilesAfterEnv: ['<rootDir>/src/test-setup.ts'],
   coverageDirectory: '../../coverage/apps/showcase',
   transform: {

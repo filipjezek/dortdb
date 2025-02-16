@@ -1,5 +1,6 @@
 import {
   ASTIdentifier,
+  IdSet,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
 } from '@dortdb/core';
@@ -13,7 +14,7 @@ import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
  * in {@link SchemaInferrer}.
  */
 export class Using extends LogicalPlanTupleOperator {
-  public toRemove: Trie<(string | symbol)[]>;
+  public toRemove: IdSet;
   public overriddenCols: ASTIdentifier[];
 
   constructor(
@@ -21,7 +22,7 @@ export class Using extends LogicalPlanTupleOperator {
     public columns: ASTIdentifier[],
     public leftName: ASTIdentifier,
     public rightName: ASTIdentifier,
-    public source: CartesianProduct
+    public source: CartesianProduct,
   ) {
     super();
     this.lang = lang;
@@ -34,13 +35,13 @@ export class Using extends LogicalPlanTupleOperator {
     visitors: Record<
       string,
       LogicalPlanVisitor<T> & { visitUsing: (op: Using) => T }
-    >
+    >,
   ): T {
     return visitors[this.lang].visitUsing(this);
   }
   replaceChild(
     current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator
+    replacement: LogicalPlanTupleOperator,
   ): void {
     this.source = replacement as CartesianProduct;
     this.clearSchema();
@@ -49,14 +50,14 @@ export class Using extends LogicalPlanTupleOperator {
 
   calculateSchema(): void {
     this.overriddenCols = this.columns.map((c) =>
-      overrideSource(this.leftName, c)
+      overrideSource(this.leftName, c),
     );
     this.toRemove = schemaToTrie(this.overriddenCols);
     for (const col of this.columns) {
       this.toRemove.add(overrideSource(this.rightName, col).parts);
     }
     this.addToSchema(
-      this.source.schema.filter((s) => !this.toRemove.has(s.parts))
+      this.source.schema.filter((s) => !this.toRemove.has(s.parts)),
     );
     this.addToSchema(this.columns);
   }
