@@ -9,7 +9,7 @@ import {
 type VisitorConstr<T> = {
   new (
     visitors: Record<string, LogicalPlanVisitor<T>>,
-    langMgr: LanguageManager
+    langMgr: LanguageManager,
   ): LogicalPlanVisitor<T>;
 };
 
@@ -30,4 +30,4 @@ export const coreVisitors = {
   } satisfies LogicalPlanVisitors,
 };
 
-export type { CalculationParams } from './calculation-builder.js';
+export * from './calculation-builder.js';

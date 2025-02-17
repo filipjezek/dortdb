@@ -35,12 +35,11 @@ export class TupleSource extends LogicalPlanTupleOperator {
 }
 
 export class TupleFnSource extends LogicalPlanTupleOperator {
-  public alias?: ASTIdentifier;
-
   constructor(
     lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
     public impl: (...args: any[]) => Iterable<any>,
+    public name?: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {
     super();
     this.lang = lang;

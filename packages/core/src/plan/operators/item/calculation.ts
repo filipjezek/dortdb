@@ -7,6 +7,11 @@ import {
 import { AggregateCall } from './aggregate-call.js';
 
 /**
+ * This property identifies plan operators which are intermediate steps for {@link Calculation}
+ */
+export const CalcIntermediate = Symbol('CalcIntermediate');
+
+/**
  * This is built from literals, fncalls etc. The purpose is to
  * extract required inputs for selection, projection etc.
  */

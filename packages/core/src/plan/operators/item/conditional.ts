@@ -1,7 +1,10 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
+import { CalcIntermediate } from './calculation.js';
 
 export class Conditional implements LogicalPlanOperator {
+  public [CalcIntermediate] = true;
+
   constructor(
     public lang: Lowercase<string>,
     public condition: LogicalPlanOperator | ASTIdentifier,

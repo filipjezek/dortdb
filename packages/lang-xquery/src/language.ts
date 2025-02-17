@@ -17,6 +17,7 @@ import { ASTLiteral } from '@dortdb/core';
 import { XQueryLogicalPlanBuilder } from './visitors/builder.js';
 import { DOT } from './utils/dot.js';
 import { castables } from './castables/index.js';
+import { XQueryCalculationBuilder } from './visitors/calculation-builder.js';
 
 export const XQuery: Language<'xquery'> = {
   name: 'xquery',
@@ -27,6 +28,7 @@ export const XQuery: Language<'xquery'> = {
   createParser,
   visitors: {
     logicalPlanBuilder: XQueryLogicalPlanBuilder,
+    calculationBuilder: XQueryCalculationBuilder,
   },
 };
 

@@ -101,7 +101,12 @@ export class ItemSourceResolver
     if (known.has(srcName.parts)) {
       operator.parent.replaceChild(
         operator,
-        new ItemFnSource('xquery', [srcName], unwind.impl),
+        new ItemFnSource(
+          'xquery',
+          [srcName],
+          unwind.impl,
+          ASTIdentifier.fromParts([unwind.name]),
+        ),
       );
     }
   }

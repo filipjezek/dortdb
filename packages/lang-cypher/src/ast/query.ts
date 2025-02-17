@@ -15,7 +15,7 @@ export class SetOp implements ASTNode {
     public next: Query,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitSetOp(this, arg);
   }
 }
@@ -38,7 +38,7 @@ export class Query implements ASTNode {
 
   constructor(public statements: QueryStatement[]) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitQuery(this, arg);
   }
 }
@@ -50,7 +50,7 @@ export class MatchClause implements ASTNode {
     public where?: ASTNode,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitMatchClause(this, arg);
   }
 }
@@ -61,7 +61,7 @@ export class UnwindClause implements ASTNode {
     public variable: CypherIdentifier,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitUnwindClause(this, arg);
   }
 }
@@ -69,7 +69,7 @@ export class UnwindClause implements ASTNode {
 export class CreateClause implements ASTNode {
   constructor(public pattern: PatternElChain[]) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitCreateClause(this, arg);
   }
 }
@@ -91,7 +91,7 @@ export class MergeClause implements ASTNode {
     }
   }
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitMergeClause(this, arg);
   }
 }
@@ -106,7 +106,7 @@ export class MergeAction {
 export class SetClause implements ASTNode {
   constructor(public items: SetItem[]) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitSetClause(this, arg);
   }
 }
@@ -118,7 +118,7 @@ export class SetItem implements ASTNode {
     public value: ASTNode | CypherIdentifier[],
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitSetItem(this, arg);
   }
 }
@@ -126,7 +126,7 @@ export class SetItem implements ASTNode {
 export class RemoveClause implements ASTNode {
   constructor(public items: RemoveItem[]) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitRemoveClause(this, arg);
   }
 }
@@ -137,7 +137,7 @@ export class RemoveItem implements ASTNode {
     public labels?: CypherIdentifier[],
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitRemoveItem(this, arg);
   }
 }
@@ -148,7 +148,7 @@ export class DeleteClause implements ASTNode {
     public detach = false,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitDeleteClause(this, arg);
   }
 }
@@ -162,7 +162,7 @@ export class ProjectionBody implements ASTNode {
     public distinct = false,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitProjectionBody(this, arg);
   }
 }
@@ -173,7 +173,7 @@ export class OrderItem implements ASTNode {
     public ascending = true,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitOrderItem(this, arg);
   }
 }
@@ -181,7 +181,7 @@ export class OrderItem implements ASTNode {
 export class ReturnClause implements ASTNode {
   constructor(public body: ProjectionBody) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitReturnClause(this, arg);
   }
 }
@@ -192,7 +192,7 @@ export class WithClause implements ASTNode {
     public where?: ASTNode,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitWithClause(this, arg);
   }
 }

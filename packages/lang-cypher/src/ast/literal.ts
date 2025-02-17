@@ -17,7 +17,7 @@ export class CypherIdentifier extends ASTIdentifier {
     this.parts.push(this.parseId(this.idOriginal));
   }
 
-  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitCypherIdentifier(this, arg);
   }
 
@@ -55,7 +55,7 @@ export class ASTStringLiteral extends ASTLiteral<string> {
     this.value = parseStringLiteral(original);
   }
 
-  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitStringLiteral(this, arg);
   }
 }
@@ -65,7 +65,7 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
     super(original, +original);
   }
 
-  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitNumberLiteral(this, arg);
   }
 }
@@ -73,7 +73,7 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
 export class ASTListLiteral implements ASTNode {
   constructor(public items: ASTNode[]) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitListLiteral(this, arg);
   }
 }
@@ -81,7 +81,7 @@ export class ASTListLiteral implements ASTNode {
 export class ASTMapLiteral implements ASTNode {
   constructor(public items: [ASTIdentifier, ASTNode][]) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitMapLiteral(this, arg);
   }
 }
@@ -92,7 +92,7 @@ export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
     this.value = this.parse(original);
   }
 
-  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitBooleanLiteral(this, arg);
   }
 

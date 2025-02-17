@@ -565,11 +565,13 @@ export class GraphBuilder
   ): SVGGElement {
     const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
-    const alias = (operator as plan.TupleFnSource).alias
-      ? `${this.stringifyId((operator as plan.TupleFnSource).alias)}=`
-      : '';
+    const name = operator.name
+      ? operator.name instanceof ASTIdentifier
+        ? this.stringifyId(operator.name)
+        : this.processAttr(operator.name, { i: 0 })
+      : 'function';
     const parent = this.drawNode(
-      `${alias}function(${args.join(', ')})`,
+      `${name}(${args.join(', ')})`,
       operator,
       'source-' + (operator instanceof plan.ItemFnSource ? 'item' : 'tuple'),
     );

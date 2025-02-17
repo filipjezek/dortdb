@@ -1,4 +1,5 @@
-import { allAttrs, ASTIdentifier } from '../ast.js';
+import { ret1, ret2 } from '../internal-fns/index.js';
+import { ASTIdentifier } from '../ast.js';
 import { LanguageManager } from '../lang-manager.js';
 import * as operators from '../plan/operators/index.js';
 import {
@@ -16,16 +17,7 @@ export type CalculationParams = {
 };
 
 // avoid creating a new function every time
-function ret1<T>(a: T): T {
-  return a;
-}
-function assertOne<T>(as: Iterable<T>): T {
-  const iter = as[Symbol.iterator]();
-  const res = iter.next();
-  if (res.done) throw new Error('Empty sequence');
-  if (!iter.next().done) throw new Error('More than one element in sequence');
-  return res.value;
-}
+
 function isLit(a: CalculationParams | ASTIdentifier) {
   return (a as CalculationParams).literal;
 }
@@ -39,12 +31,12 @@ function getAggrs(a: CalculationParams | ASTIdentifier) {
   return (a instanceof ASTIdentifier ? null : a.aggregates) ?? [];
 }
 function getWhenThenArgs(
-  a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier]
+  a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
 ) {
   return [getArgs(a[0]), getArgs(a[1])];
 }
 function getWhenThenAggrs(
-  a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier]
+  a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
 ) {
   return [getAggrs(a[0]), getAggrs(a[1])];
 }
@@ -69,12 +61,9 @@ function isQuantifier(op: any) {
 function toArray<T>(a: Iterable<T>) {
   return Array.isArray(a) ? a : Array.from(a);
 }
-function ret2<T>(a: any, i: T) {
-  return i;
-}
 function getQuantifierIndices(
   args: (ASTIdentifier | operators.PlanOpAsArg)[],
-  type: operators.QuantifierType
+  type: operators.QuantifierType,
 ) {
   return args
     .map(ret2)
@@ -82,11 +71,8 @@ function getQuantifierIndices(
       (i) =>
         !(args[i] instanceof ASTIdentifier) &&
         args[i].op instanceof operators.Quantifier &&
-        args[i].op.type === type
+        args[i].op.type === type,
     );
-}
-function toItem(op: LogicalPlanTupleOperator): operators.MapToItem {
-  return new operators.MapToItem(op.lang, null, op);
 }
 
 export class CalculationBuilder
@@ -94,24 +80,36 @@ export class CalculationBuilder
 {
   constructor(
     private vmap: Record<string, LogicalPlanVisitor<CalculationParams>>,
-    private langMgr: LanguageManager
+    private langMgr: LanguageManager,
   ) {
     this.processItem = this.processItem.bind(this);
     this.processFnArg = this.processFnArg.bind(this);
     this.processWhenThen = this.processWhenThen.bind(this);
   }
 
+  protected toItem(op: LogicalPlanTupleOperator): operators.MapToItem {
+    return new operators.MapToItem(op.lang, null, op);
+  }
+
+  protected assertOne<T>(as: Iterable<T>): T {
+    const iter = as[Symbol.iterator]();
+    const res = iter.next();
+    if (res.done) throw new Error('Empty sequence');
+    if (!iter.next().done) throw new Error('More than one element in sequence');
+    return res.value;
+  }
+
   visitProjection(operator: operators.Projection): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitSelection(operator: operators.Selection): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitTupleSource(operator: operators.TupleSource): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitItemSource(operator: operators.ItemSource): CalculationParams {
-    return { args: [operator], impl: assertOne };
+    return { args: [operator], impl: this.assertOne };
   }
 
   private processItem(item: LogicalOpOrId) {
@@ -119,17 +117,17 @@ export class CalculationBuilder
   }
   private processQuantifiedFn(
     operator: operators.FnCall,
-    children: (CalculationParams | ASTIdentifier)[]
+    children: (CalculationParams | ASTIdentifier)[],
   ) {
     return (...args: any[]) => {
       const resolvedArgs = resolveArgs(args, children);
       const anyIs = getQuantifierIndices(
         operator.args,
-        operators.QuantifierType.ANY
+        operators.QuantifierType.ANY,
       );
       const allIs = getQuantifierIndices(
         operator.args,
-        operators.QuantifierType.ALL
+        operators.QuantifierType.ALL,
       );
       let anys = anyIs.map((i) => resolvedArgs[i]);
       let alls = allIs.map((i) => resolvedArgs[i]);
@@ -158,7 +156,7 @@ export class CalculationBuilder
   private processFnArg(arg: operators.PlanOpAsArg | ASTIdentifier) {
     if (arg instanceof ASTIdentifier) return arg;
     const params = arg.op.accept(this.vmap);
-    if (arg.acceptSequence && params.impl === assertOne) {
+    if (arg.acceptSequence && params.impl === this.assertOne) {
       params.impl = ret1;
     }
     return params;
@@ -191,7 +189,7 @@ export class CalculationBuilder
   private processWhenThen(item: [LogicalOpOrId, LogicalOpOrId]) {
     return [this.processItem(item[0]), this.processItem(item[1])] as [
       CalculationParams | ASTIdentifier,
-      CalculationParams | ASTIdentifier
+      CalculationParams | ASTIdentifier,
     ];
   }
   visitConditional(operator: operators.Conditional): CalculationParams {
@@ -277,83 +275,83 @@ export class CalculationBuilder
     };
   }
   visitCartesianProduct(
-    operator: operators.CartesianProduct
+    operator: operators.CartesianProduct,
   ): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitJoin(operator: operators.Join): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitProjectionConcat(
-    operator: operators.ProjectionConcat
+    operator: operators.ProjectionConcat,
   ): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitMapToItem(operator: operators.MapToItem): CalculationParams {
-    return { args: [operator], impl: assertOne };
+    return { args: [operator], impl: this.assertOne };
   }
   visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitOrderBy(operator: operators.OrderBy): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitLimit(operator: operators.Limit): CalculationParams {
     return {
-      args: ['schema' in operator.source ? toItem(operator) : operator],
-      impl: assertOne,
+      args: ['schema' in operator.source ? this.toItem(operator) : operator],
+      impl: this.assertOne,
     };
   }
   visitUnion(operator: operators.Union): CalculationParams {
     return {
       args: [
         operator.left instanceof LogicalPlanTupleOperator
-          ? toItem(operator)
+          ? this.toItem(operator)
           : operator,
       ],
-      impl: assertOne,
+      impl: this.assertOne,
     };
   }
   visitIntersection(operator: operators.Intersection): CalculationParams {
     return {
       args: [
         operator.left instanceof LogicalPlanTupleOperator
-          ? toItem(operator)
+          ? this.toItem(operator)
           : operator,
       ],
-      impl: assertOne,
+      impl: this.assertOne,
     };
   }
   visitDifference(operator: operators.Difference): CalculationParams {
     return {
       args: [
         operator.left instanceof LogicalPlanTupleOperator
-          ? toItem(operator)
+          ? this.toItem(operator)
           : operator,
       ],
-      impl: assertOne,
+      impl: this.assertOne,
     };
   }
   visitDistinct(operator: operators.Distinct): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitNullSource(operator: operators.NullSource): CalculationParams {
-    return { args: [operator], impl: assertOne };
+    return { args: [operator], impl: this.assertOne };
   }
   visitAggregate(operator: operators.AggregateCall): CalculationParams {
     return { args: [operator.fieldName], impl: ret1, aggregates: [operator] };
   }
   visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
-    return { args: [operator], impl: assertOne };
+    return { args: [operator], impl: this.assertOne };
   }
   visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
-    return { args: [toItem(operator)], impl: assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertOne };
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
     throw new Error('Method not implemented.');

@@ -12,7 +12,8 @@
     "./fns": "./dist/functions/index.js",
     "./utils": "./dist/utils/index.js",
     "./plan": "./dist/plan/operators/index.js",
-    "./ast": "./dist/ast.js"
+    "./ast": "./dist/ast.js",
+    "./internal-fns": "./dist/internal-fns/index.js"
   },
   "files": [
     "dist",

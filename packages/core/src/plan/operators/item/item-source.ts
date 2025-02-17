@@ -34,6 +34,7 @@ export class ItemFnSource implements LogicalPlanOperator {
     public lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
     public impl: (...args: any[]) => Iterable<any>,
+    public name?: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {
     arrSetParent(this.args, this);
   }

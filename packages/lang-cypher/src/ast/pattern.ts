@@ -15,7 +15,7 @@ export class PatternElChain implements ASTNode {
     this.chain = Array.isArray(chain) ? chain : [chain];
   }
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitPatternElChain(this, arg);
   }
 }
@@ -27,7 +27,7 @@ export class NodePattern implements ASTNode {
     public props?: ASTMapLiteral | ASTParameter,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitNodePattern(this, arg);
   }
 }
@@ -44,7 +44,7 @@ export class RelPattern implements ASTNode {
     public props?: ASTMapLiteral | ASTParameter,
   ) {}
 
-  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): T {
+  accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitRelPattern(this, arg);
   }
 }

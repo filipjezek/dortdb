@@ -11,20 +11,15 @@ import { Trie } from 'mnemonist';
 import { isTableAttr } from '../utils/is-table-attr.js';
 import { Using } from '../plan/using.js';
 import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
+import { retI1, toPair } from '@dortdb/core/internal-fns';
 
 const EMPTY = new Trie<(string | symbol)[]>(Array);
-function toPair<T>(x: T): [T, T] {
-  return [x, x];
-}
 function zip<T, U>(a: T[], b: U[]): [T, U][] {
   const res: [T, U][] = [];
   for (let i = 0; i < a.length; i++) {
     res.push([a[i], b[i]]);
   }
   return res;
-}
-function retI1<T>(a: [unknown, T, ...unknown[]]): T {
-  return a[1];
 }
 
 /**
@@ -81,6 +76,7 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
     for (const attr of operator.schema) {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
+        operator.removeFromSchema(attr);
         external.add(attr.parts);
       }
     }
@@ -116,14 +112,13 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
 
   private getRelNames(operator: LogicalPlanTupleOperator): IdSet {
     // joins are made of either TupleSources or Projections based on table aliases or other joins
-    if (operator instanceof plan.TupleSource) {
+    if (
+      operator instanceof plan.TupleSource ||
+      operator instanceof plan.TupleFnSource
+    ) {
       return operator.name instanceof ASTIdentifier
         ? schemaToTrie([operator.name])
         : schemaToTrie([operator.name[1]]);
-    }
-    if (operator instanceof plan.TupleFnSource) {
-      // alias for table functions is required in our grammar
-      return schemaToTrie([operator.alias]);
     }
 
     if (operator instanceof plan.CartesianProduct) {
@@ -218,6 +213,9 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
     return external;
   }
   visitOrderBy(operator: plan.OrderBy): IdSet {
+    for (const item of operator.orders) {
+      this.processArg(operator.source, item.key);
+    }
     return operator.source.accept(this.vmap);
   }
   visitGroupBy(operator: plan.GroupBy): IdSet {
@@ -234,13 +232,17 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
       for (const arg of agg.args) {
         this.processArg(operator.source, arg);
       }
-      operator.source.addToSchema(agg.postGroupOp.accept(this.vmap));
+      for (const item of agg.postGroupOp.accept(this.vmap)) {
+        external.add(item);
+      }
     }
     for (const item of this.downCond(operator)) {
       external.add(item);
     }
+
     return external;
   }
+
   visitLimit(operator: plan.Limit): IdSet {
     return operator.source.accept(this.vmap);
   }
@@ -279,9 +281,14 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
   }
   visitTupleFnSource(operator: plan.TupleFnSource): IdSet {
     const external = this.visitCalculation(operator);
-    if (operator.alias) {
+    if (operator.name) {
+      const n =
+        operator.name instanceof ASTIdentifier
+          ? operator.name
+          : operator.name[1];
       for (const attr of operator.schema) {
-        if (attr.parts.length > 1 && !isTableAttr(attr, operator.alias)) {
+        if (attr.parts.length > 1 && !isTableAttr(attr, n)) {
+          operator.removeFromSchema(attr);
           external.add(attr.parts);
         }
       }

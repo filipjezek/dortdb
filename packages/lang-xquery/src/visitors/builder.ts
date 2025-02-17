@@ -27,17 +27,8 @@ import { collect } from '@dortdb/core/aggregates';
 import { resolveArgs, schemaToTrie } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
 import { ItemSourceResolver } from './item-source-resolver.js';
-import { TrieMap } from 'mnemonist';
+import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 
-function ret1<T>(x: T): T {
-  return x;
-}
-function retI0<T>(x: [T, ...any[]]): T {
-  return x[0];
-}
-function retI1<T>(x: [any, T, ...any[]]): T {
-  return x[1];
-}
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
     id.parts[id.parts.length - 1] as string,
@@ -54,6 +45,16 @@ function toTuples(op: LogicalPlanOperator) {
 }
 function collectArg(name: ASTIdentifier): plan.AggregateCall {
   return new plan.AggregateCall('xquery', [name], collect, name);
+}
+function coalesceSeq(seq: any) {
+  if (
+    seq === null ||
+    seq === undefined ||
+    (Array.isArray(seq) && seq.length === 0)
+  ) {
+    return [null];
+  }
+  return seq;
 }
 
 export class XQueryLogicalPlanBuilder
@@ -230,9 +231,8 @@ export class XQueryLogicalPlanBuilder
     src: LogicalPlanTupleOperator,
   ): LogicalPlanOperator {
     let res = src ?? new plan.NullSource('xquery');
-    const attrs: Aliased<ASTIdentifier | plan.Calculation>[] = res.schema.map(
-      (x) => [x, x] as Aliased,
-    );
+    const attrs: Aliased<ASTIdentifier | plan.Calculation>[] =
+      res.schema.map(toPair);
     for (const [varName, expr] of node.bindings) {
       attrs.push([this.toCalc(expr, src), varName]);
     }
@@ -390,7 +390,14 @@ export class XQueryLogicalPlanBuilder
       }
       return this.visitPathAxis(
         first,
-        toTuples(new plan.ItemFnSource('xquery', [DOT], unwind.impl)),
+        toTuples(
+          new plan.ItemFnSource(
+            'xquery',
+            [DOT],
+            unwind.impl,
+            toId(unwind.name),
+          ),
+        ),
       );
     }
     const res = toTuples(first.accept(this, src));
@@ -635,6 +642,33 @@ export class XQueryLogicalPlanBuilder
     return joined;
   }
 
+  private prepareAggArg(arg: LogicalPlanOperator): LogicalPlanTupleOperator {
+    if (plan.CalcIntermediate in arg) {
+      const calcParams = arg.accept(this.calcBuilders);
+
+      if (calcParams.literal) {
+        const ret = coalesceSeq(calcParams.impl());
+        calcParams.impl = () => ret;
+      } else {
+        calcParams.impl = (...args) => coalesceSeq(calcParams.impl(...args));
+      }
+
+      arg = new plan.Calculation(
+        'xquery',
+        calcParams.impl,
+        calcParams.args,
+        calcParams.aggregates,
+        calcParams.literal,
+      );
+      arg = new plan.ItemFnSource(
+        'xquery',
+        [arg as plan.Calculation],
+        unwind.impl,
+        toId(unwind.name),
+      );
+    }
+    return toTuples(arg);
+  }
   visitFunction(
     node: ASTFunction,
     src: LogicalPlanTupleOperator,
@@ -650,7 +684,7 @@ export class XQueryLogicalPlanBuilder
       );
     }
 
-    const args = node.args.map((x) => toTuples(x.accept(this, src)));
+    const args = node.args.map((x) => this.prepareAggArg(x.accept(this, src)));
     let gb: plan.GroupBy;
     if (args.length === 1) {
       gb = new plan.GroupBy(
@@ -674,6 +708,8 @@ export class XQueryLogicalPlanBuilder
         this.joinAggArgs(args),
       );
     }
+    gb.aggs[0].postGroupOp.schema = gb.source.schema;
+    gb.aggs[0].postGroupOp.schemaSet = gb.source.schemaSet;
 
     return new plan.MapToItem('xquery', DOT, gb);
   }

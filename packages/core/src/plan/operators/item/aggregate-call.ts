@@ -10,6 +10,9 @@ import { TupleSource } from '../tuple/tuple-source.js';
 import { Calculation } from './calculation.js';
 import { GroupBy } from '../tuple/groupby.js';
 
+/**
+ * Container for aggregate calls used in {@link GroupBy}
+ */
 export class AggregateCall implements LogicalPlanOperator {
   /**
    * Before a partition is piped into the aggregate function,
