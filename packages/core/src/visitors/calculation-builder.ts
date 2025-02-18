@@ -11,7 +11,7 @@ import { resolveArgs } from '../utils/invoke.js';
 
 export type CalculationParams = {
   args: LogicalOpOrId[];
-  impl: (...args: any[]) => any;
+  impl: (...args: any[]) => unknown;
   literal?: boolean;
   aggregates?: operators.AggregateCall[];
 };
@@ -40,7 +40,7 @@ function getWhenThenAggrs(
 ) {
   return [getAggrs(a[0]), getAggrs(a[1])];
 }
-function* cartesian(iters: Iterable<any>[]): Iterable<any[]> {
+function* cartesian(iters: Iterable<unknown>[]): Iterable<unknown[]> {
   if (iters.length === 0) {
     return [];
   }
@@ -55,7 +55,7 @@ function* cartesian(iters: Iterable<any>[]): Iterable<any[]> {
     }
   }
 }
-function isQuantifier(op: any) {
+function isQuantifier(op: unknown) {
   return op instanceof operators.Quantifier;
 }
 function getQuantifierIndices(
@@ -114,7 +114,7 @@ export class CalculationBuilder
     operator: operators.FnCall,
     children: (CalculationParams | ASTIdentifier)[],
   ) {
-    return (...args: any[]) => {
+    return (...args: unknown[]) => {
       const resolvedArgs = resolveArgs(args, children);
       const anyIs = getQuantifierIndices(
         operator.args,
@@ -124,8 +124,8 @@ export class CalculationBuilder
         operator.args,
         operators.QuantifierType.ALL,
       );
-      let anys = anyIs.map((i) => resolvedArgs[i]);
-      let alls = allIs.map((i) => resolvedArgs[i]);
+      const anys = anyIs.map((i) => resolvedArgs[i]) as unknown[][];
+      const alls = allIs.map((i) => resolvedArgs[i]) as unknown[][];
 
       anyLoop: for (const anyVals of anys.length ? cartesian(anys) : [[]]) {
         for (const allVals of alls.length ? cartesian(alls) : [[]]) {
@@ -163,14 +163,14 @@ export class CalculationBuilder
       args: children.flatMap(getArgs),
       impl: operator.args.some(isQuantifier)
         ? this.processQuantifiedFn(operator, children)
-        : (...args: any[]) => {
+        : (...args: unknown[]) => {
             const resolvedArgs = resolveArgs(args, children);
             return operator.impl(...resolvedArgs);
           },
       aggregates: children.flatMap(getAggrs),
     };
   }
-  visitLiteral(operator: operators.Literal): CalculationParams {
+  visitLiteral(operator: operators.Literal<unknown>): CalculationParams {
     return { args: [], impl: () => operator.value, literal: true };
   }
   visitCalculation(operator: operators.Calculation): CalculationParams {
@@ -242,7 +242,7 @@ export class CalculationBuilder
     }
     return {
       args: args.flat(2),
-      impl: (...args: any[]) => {
+      impl: (...args: unknown[]) => {
         let i = 0;
         const resolve = (a: CalculationParams | ASTIdentifier) =>
           a instanceof ASTIdentifier

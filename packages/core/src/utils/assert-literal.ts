@@ -1,7 +1,7 @@
 import { ASTLiteral } from '../ast.js';
 import { Calculation } from '../plan/operators/index.js';
 
-export function assertLiteral(value: any, type: Function | string) {
+export function assertLiteral(value: unknown, type: Function | string) {
   return (
     value &&
     value instanceof ASTLiteral &&
@@ -11,7 +11,7 @@ export function assertLiteral(value: any, type: Function | string) {
   );
 }
 
-export function assertCalcLiteral(value: any, type: Function | string) {
+export function assertCalcLiteral(value: unknown, type: Function | string) {
   if (!value || !(value instanceof Calculation) || !value.literal) return false;
   const res = value.impl();
   return !type || typeof type === 'string'

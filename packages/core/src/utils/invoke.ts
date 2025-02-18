@@ -2,11 +2,11 @@ import { ASTIdentifier } from '../ast.js';
 import { CalculationParams } from '../visitors/calculation-builder.js';
 
 export function resolveArgs(
-  args: any[],
-  children: (ASTIdentifier | CalculationParams)[]
+  args: unknown[],
+  children: (ASTIdentifier | CalculationParams)[],
 ) {
   let i = 0;
-  const res: any[] = [];
+  const res: unknown[] = [];
   for (const ch of children) {
     if (ch instanceof ASTIdentifier) {
       res.push(args[i++]);

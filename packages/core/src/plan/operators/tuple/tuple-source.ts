@@ -38,7 +38,7 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
-    public impl: (...args: any[]) => Iterable<any>,
+    public impl: (...args: any[]) => Iterable<unknown>,
     public name?: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {
     super();

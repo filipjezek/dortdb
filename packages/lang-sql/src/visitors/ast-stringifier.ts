@@ -91,7 +91,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
       : this.addQuotes(node, '"');
   }
   visitIdentifier(node: SQLIdentifier): string {
-    let id = node.parts.map(this.visitSchemaPart).join('.');
+    const id = node.parts.map(this.visitSchemaPart).join('.');
     return id;
   }
   visitSQLIdentifier(node: SQLIdentifier): string {
@@ -112,7 +112,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     // TODO: aliases could have different names but same contents, check for duplicates
     return `${node.expression.accept(this)} AS ${this.addQuotes(
       node.alias,
-      '"'
+      '"',
     )}`;
   }
   visitSelectStatement(node: SelectStatement): string {
@@ -131,7 +131,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
         (x) =>
           `${x.expression.accept(this)} ${x.ascending ? 'ASC' : 'DESC'} NULLS ${
             x.nullsFirst ? 'FIRST' : 'LAST'
-          }`
+          }`,
       )
       .join(',');
   }
@@ -153,7 +153,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
       res += ` WINDOW ${Object.keys(node.windows)
         .toSorted()
         .map(
-          (x) => this.addQuotes(x, '"') + ' AS ' + node.windows[x].accept(this)
+          (x) => this.addQuotes(x, '"') + ' AS ' + node.windows[x].accept(this),
         )
         .join(',')}`;
     if (node.setOp) res += ` ${node.setOp.accept(this)}`;
@@ -164,7 +164,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     if (node.items[0] instanceof Array) {
       res += node.items
         .map(
-          (x) => `(${(x as ASTNode[]).map((y) => y.accept(this)).join(',')})`
+          (x) => `(${(x as ASTNode[]).map((y) => y.accept(this)).join(',')})`,
         )
         .join(',');
     } else {
@@ -291,7 +291,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
         .join(',')} SET ${node.cycleMarkName.accept(this)}`;
       if (node.cycleMarkVal) {
         res += ` TO ${node.cycleMarkVal.accept(
-          this
+          this,
         )} DEFAULT ${node.cycleMarkDefault.accept(this)}`;
       }
       res += `USING ${node.cyclePathName.accept(this)}`;
@@ -303,7 +303,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
   visitOperator(node: ASTOperator): string {
     return `${node.id.accept(this)}(${node.operands.map((x) =>
-      x.accept(this)
+      x.accept(this),
     )})`;
   }
   visitFunction(node: ASTFunction): string {

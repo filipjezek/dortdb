@@ -52,7 +52,7 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
   /**
    * empty value for the outer join
    */
-  public emptyVal = new TrieMap<(symbol | string)[], any>(Array);
+  public emptyVal = new TrieMap<(symbol | string)[], unknown>(Array);
 
   constructor(
     lang: Lowercase<string>,

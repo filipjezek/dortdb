@@ -18,9 +18,9 @@ export interface YyContext {
    * this implementation of lexer can only pass to the parser strings or numbers.
    * This way we can pass some other values
    */
-  messageQueue: any[];
+  messageQueue: unknown[];
   saveRemainingInput: (input: string) => void;
   makeOp: (op: string, args: ASTNode[]) => ASTOperator;
   resetText: (yy: YyContext) => string;
-  ast: Record<string, any>;
+  ast: Record<string, unknown>;
 }

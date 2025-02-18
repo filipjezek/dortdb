@@ -20,13 +20,13 @@ export interface YyContext {
    * this implementation of lexer can only pass to the parser strings or numbers.
    * This way we can pass some other values
    */
-  messageQueue: any[];
+  messageQueue: unknown[];
   saveRemainingInput: (input: string) => void;
   makeOp: (op: string | ASTIdentifier, operands: ASTNode[]) => ASTOperator;
   wrapFn: (
     id: ASTIdentifier,
     args?: ASTNode[],
-    distinct?: boolean
+    distinct?: boolean,
   ) => FnCallWrapper;
-  ast: Record<string, any>;
+  ast: Record<string, unknown>;
 }

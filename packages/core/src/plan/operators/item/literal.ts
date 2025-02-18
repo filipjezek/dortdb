@@ -1,12 +1,12 @@
 import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
-export class Literal implements LogicalPlanOperator {
+export class Literal<T> implements LogicalPlanOperator {
   public [CalcIntermediate] = true;
 
   constructor(
     public lang: Lowercase<string>,
-    public value: any,
+    public value: T,
   ) {}
 
   accept<Ret, Arg>(

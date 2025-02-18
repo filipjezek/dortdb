@@ -47,7 +47,7 @@ function toTuples(op: LogicalPlanOperator) {
 function collectArg(name: ASTIdentifier): plan.AggregateCall {
   return new plan.AggregateCall('xquery', [name], collect, name);
 }
-function coalesceSeq(seq: any) {
+function coalesceSeq(seq: unknown) {
   if (
     seq === null ||
     seq === undefined ||
@@ -57,7 +57,7 @@ function coalesceSeq(seq: any) {
   }
   return seq;
 }
-function appendItem(node: Node, item: any) {
+function appendItem(node: Node, item: unknown) {
   if (item instanceof Attr) {
     (node as Element).setAttributeNodeNS(item);
   } else if (item instanceof Node) {
@@ -268,7 +268,7 @@ export class XQueryLogicalPlanBuilder
     node: AST.FLWORLet,
     src: LogicalPlanTupleOperator,
   ): LogicalPlanOperator {
-    let res = src ?? new plan.NullSource('xquery');
+    const res = src ?? new plan.NullSource('xquery');
     const attrs: Aliased<ASTIdentifier | plan.Calculation>[] =
       res.schema.map(toPair);
     for (const [varName, expr] of node.bindings) {
@@ -740,7 +740,7 @@ export class XQueryLogicalPlanBuilder
 
     return new plan.FnCall('xquery', args, (...bound) => {
       const fn = impl ?? bound.pop();
-      return (...unbound: any[]) => {
+      return (...unbound: unknown[]) => {
         const fullSize = unbound.length + bound.length;
         const allArgs = Array(fullSize);
         let bi = 0;

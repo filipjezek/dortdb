@@ -22,11 +22,11 @@ export interface YyContext {
    * this implementation of lexer can only pass to the parser strings or numbers.
    * This way we can pass some other values
    */
-  messageQueue: any[];
+  messageQueue: unknown[];
   saveRemainingInput: (input: string) => void;
   wrapNot: (expr: ASTNode, not: boolean) => ASTNode;
   makeOp: (op: string | SQLIdentifier, operands: ASTNode[]) => ASTOperator;
   allFrom: (src: SQLIdentifier | ASTTableAlias | JoinClause) => SelectSet;
   parentOp: (op: ASTNode, parent: string) => void;
-  ast: Record<string, any>;
+  ast: Record<string, unknown>;
 }

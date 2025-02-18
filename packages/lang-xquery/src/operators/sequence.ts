@@ -2,7 +2,7 @@ import { Operator } from '@dortdb/core';
 
 export const to: Operator = {
   name: 'to',
-  impl: (a: any, b: any) => {
+  impl: (a, b) => {
     a = +a;
     b = +b;
     const res: number[] = [];

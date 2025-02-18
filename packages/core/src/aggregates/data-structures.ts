@@ -8,7 +8,7 @@ export const collect: AggregateFn = {
     return state;
   },
   stepInverse: (state, _) => {
-    (state as any[]).shift();
+    (state as unknown[]).shift();
     return state;
   },
   result: (state) => state,

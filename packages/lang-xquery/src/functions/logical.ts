@@ -2,7 +2,7 @@ import { Fn } from '@dortdb/core';
 
 export const not: Fn = {
   name: 'not',
-  impl: (item: any) => !item,
+  impl: (item) => !item,
 };
 
 export const trueFn: Fn = {

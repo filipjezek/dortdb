@@ -1,13 +1,13 @@
 export function ret1<T>(a: T): T {
   return a;
 }
-export function ret2<T>(a: any, i: T) {
+export function ret2<T>(a: unknown, i: T) {
   return i;
 }
-export function retI0<T>(x: [T, ...any[]]): T {
+export function retI0<T>(x: [T, ...unknown[]]): T {
   return x[0];
 }
-export function retI1<T>(x: [any, T, ...any]): T {
+export function retI1<T>(x: [unknown, T, ...unknown[]]): T {
   return x[1];
 }
 export function toPair<T>(x: T): [T, T] {

@@ -23,7 +23,7 @@ const axisMap = {
 
 export const treeStep = (
   test: ASTItemType,
-  axis: AxisType
+  axis: AxisType,
 ): ((node: Node) => Node[]) => {
   let filter: (node: Node) => number;
   if (!test.kind || test.kind === ItemKind.NODE) filter = null;
@@ -46,7 +46,7 @@ export const treeStep = (
         ? n
         : doc,
       NodeFilter.SHOW_ALL,
-      filter
+      filter,
     );
     tw.currentNode = n;
     const res: Node[] = [];
@@ -83,7 +83,10 @@ function checkNodeName(node: Element | Attr, name: ASTIdentifier): boolean {
   if (id === '*') return nodePrefix === schema;
   return nodeId === id && nodePrefix === schema;
 }
-function getAttrs(node: Node, name: ASTIdentifier | '*'): any[] {
+
+function getAttrs(node: Node, name: ASTIdentifier | '*'): Node[];
+function getAttrs(node: object, name: ASTIdentifier | '*'): unknown[];
+function getAttrs(node: Node | object, name: ASTIdentifier | '*'): unknown[] {
   if ('attributes' in node) {
     const res = Array.from((node as Element).attributes);
     if (name === '*') return res;
@@ -91,7 +94,7 @@ function getAttrs(node: Node, name: ASTIdentifier | '*'): any[] {
   } else if (name === '*') {
     return Object.values(node);
   } else if (name.parts.length === 1) {
-    return [(node as any)[name.parts[0]]];
+    return [(node as Record<string | symbol, unknown>)[name.parts[0]]];
   }
   return [];
 }

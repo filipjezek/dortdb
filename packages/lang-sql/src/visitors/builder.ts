@@ -120,7 +120,7 @@ export class SQLLogicalPlanBuilder
   visitRow(node: AST.ASTRow): LogicalPlanOperator {
     const attrs = node.items.map(this.processAttr);
     return new plan.FnCall('sql', attrs.map(attrToOpArg), (...args) => {
-      const res: Record<string | symbol, any> = {};
+      const res: Record<string | symbol, unknown> = {};
       for (let i = 0; i < args.length; i++) {
         res[attrs[i][1].parts[0]] = args[i];
       }
@@ -141,11 +141,10 @@ export class SQLLogicalPlanBuilder
       'sql',
       [{ op: node.expr.accept(this) }],
       node.isArray
-        ? (x) => {
+        ? (x) =>
             Array.isArray(x)
               ? x.map(impl.convert)
-              : Array.from(x).map(impl.convert);
-          }
+              : Array.from(x).map(impl.convert)
         : impl.convert,
       !node.isArray && impl.pure,
     );
@@ -284,7 +283,7 @@ export class SQLLogicalPlanBuilder
     node: AST.SelectStatement,
   ): LogicalPlanTupleOperator {
     const orderItems = node.orderBy.map(this.processOrderItem);
-    let proj = op instanceof plan.Distinct ? op.source : op;
+    const proj = op instanceof plan.Distinct ? op.source : op;
     op = new plan.OrderBy('sql', orderItems, op);
     if (proj instanceof plan.Projection) {
       // otherwise it's a set op
@@ -503,7 +502,7 @@ export class SQLLogicalPlanBuilder
     const res = new plan.TupleFnSource('sql', external, function* (...args) {
       let argI = 0;
       for (let i = 0; i < calcs.length; i++) {
-        const res: Record<string, any> = {};
+        const res: Record<string, unknown> = {};
         for (let j = 0; j < calcs[i].length; j++) {
           const calc = calcs[i][j];
           res['col' + j] =
