@@ -16,11 +16,15 @@ export type Declaration =
   | OrderingDeclaration
   | EmptyOrderDeclaration;
 
-export class NSDeclaration {
+export class NSDeclaration implements ASTNode {
   constructor(
     public prefix: XQueryIdentifier,
     public uri: ASTStringLiteral,
   ) {}
+
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitNSDeclaration(this, arg);
+  }
 }
 
 export class DefaultNSDeclaration implements ASTNode {

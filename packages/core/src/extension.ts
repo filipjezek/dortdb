@@ -14,6 +14,8 @@ export interface Fn {
   schema?: string | symbol;
   outputSchema?: ASTIdentifier[];
   impl: (...args: any[]) => any;
+  // no side effects, same output for same input (careful: `() => ({})` is not pure)
+  pure?: boolean;
 }
 
 export interface AggregateFn {

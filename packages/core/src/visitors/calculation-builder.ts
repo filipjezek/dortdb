@@ -58,9 +58,6 @@ function* cartesian(iters: Iterable<any>[]): Iterable<any[]> {
 function isQuantifier(op: any) {
   return op instanceof operators.Quantifier;
 }
-function toArray<T>(a: Iterable<T>) {
-  return Array.isArray(a) ? a : Array.from(a);
-}
 function getQuantifierIndices(
   args: (ASTIdentifier | operators.PlanOpAsArg)[],
   type: operators.QuantifierType,
@@ -91,25 +88,23 @@ export class CalculationBuilder
     return new operators.MapToItem(op.lang, null, op);
   }
 
-  protected assertOne<T>(as: Iterable<T>): T {
-    const iter = as[Symbol.iterator]();
-    const res = iter.next();
-    if (res.done) throw new Error('Empty sequence');
-    if (!iter.next().done) throw new Error('More than one element in sequence');
-    return res.value;
+  protected assertMaxOne<T>(vals: T[]): T {
+    if (vals.length === 0) return null;
+    if (vals.length > 1) throw new Error('More than one element in sequence');
+    return vals[0];
   }
 
   visitProjection(operator: operators.Projection): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitSelection(operator: operators.Selection): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitTupleSource(operator: operators.TupleSource): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitItemSource(operator: operators.ItemSource): CalculationParams {
-    return { args: [operator], impl: this.assertOne };
+    return { args: [operator], impl: this.assertMaxOne };
   }
 
   private processItem(item: LogicalOpOrId) {
@@ -132,10 +127,6 @@ export class CalculationBuilder
       let anys = anyIs.map((i) => resolvedArgs[i]);
       let alls = allIs.map((i) => resolvedArgs[i]);
 
-      if (anys.length + alls.length > 1) {
-        anys = anys.map(toArray);
-        alls = alls.map(toArray);
-      }
       anyLoop: for (const anyVals of anys.length ? cartesian(anys) : [[]]) {
         for (const allVals of alls.length ? cartesian(alls) : [[]]) {
           for (let i = 0; i < anyIs.length; i++) {
@@ -156,7 +147,7 @@ export class CalculationBuilder
   private processFnArg(arg: operators.PlanOpAsArg | ASTIdentifier) {
     if (arg instanceof ASTIdentifier) return arg;
     const params = arg.op.accept(this.vmap);
-    if (arg.acceptSequence && params.impl === this.assertOne) {
+    if (arg.acceptSequence && params.impl === this.assertMaxOne) {
       params.impl = ret1;
     }
     return params;
@@ -215,7 +206,7 @@ export class CalculationBuilder
       aggrs.push(getAggrs(defaultCase));
     }
 
-    if ((cond as CalculationParams).literal) {
+    if ((cond as CalculationParams)?.literal) {
       const resolvedCond = (cond as CalculationParams).impl();
       let broken = false;
       // try to compute during compilation
@@ -277,35 +268,35 @@ export class CalculationBuilder
   visitCartesianProduct(
     operator: operators.CartesianProduct,
   ): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitJoin(operator: operators.Join): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitProjectionConcat(
     operator: operators.ProjectionConcat,
   ): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitMapToItem(operator: operators.MapToItem): CalculationParams {
-    return { args: [operator], impl: this.assertOne };
+    return { args: [operator], impl: this.assertMaxOne };
   }
   visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitOrderBy(operator: operators.OrderBy): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitLimit(operator: operators.Limit): CalculationParams {
     return {
       args: ['schema' in operator.source ? this.toItem(operator) : operator],
-      impl: this.assertOne,
+      impl: this.assertMaxOne,
     };
   }
   visitUnion(operator: operators.Union): CalculationParams {
@@ -315,7 +306,7 @@ export class CalculationBuilder
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertOne,
+      impl: this.assertMaxOne,
     };
   }
   visitIntersection(operator: operators.Intersection): CalculationParams {
@@ -325,7 +316,7 @@ export class CalculationBuilder
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertOne,
+      impl: this.assertMaxOne,
     };
   }
   visitDifference(operator: operators.Difference): CalculationParams {
@@ -335,23 +326,23 @@ export class CalculationBuilder
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertOne,
+      impl: this.assertMaxOne,
     };
   }
   visitDistinct(operator: operators.Distinct): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitNullSource(operator: operators.NullSource): CalculationParams {
-    return { args: [operator], impl: this.assertOne };
+    return { args: [operator], impl: this.assertMaxOne };
   }
   visitAggregate(operator: operators.AggregateCall): CalculationParams {
     return { args: [operator.fieldName], impl: ret1, aggregates: [operator] };
   }
   visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
-    return { args: [operator], impl: this.assertOne };
+    return { args: [operator], impl: this.assertMaxOne };
   }
   visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertOne };
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
     throw new Error('Method not implemented.');

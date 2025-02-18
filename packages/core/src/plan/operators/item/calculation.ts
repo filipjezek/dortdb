@@ -21,6 +21,7 @@ export class Calculation implements LogicalPlanOperator {
   constructor(
     public lang: Lowercase<string>,
     public impl: (...args: any[]) => any,
+    /** args which are logical operators will be instantiated as arrays during execution */
     public args: LogicalOpOrId[],
     public aggregates: AggregateCall[] = [],
     public literal = false,

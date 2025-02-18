@@ -18,12 +18,14 @@ import { XQueryLogicalPlanBuilder } from './visitors/builder.js';
 import { DOT } from './utils/dot.js';
 import { castables } from './castables/index.js';
 import { XQueryCalculationBuilder } from './visitors/calculation-builder.js';
+import * as fns from './functions/index.js';
+import * as operators from './operators/index.js';
 
 export const XQuery: Language<'xquery'> = {
   name: 'xquery',
-  operators: [],
+  operators: [...Object.values(operators)],
   aggregates: [{ ...count, schema: 'fn' }],
-  functions: [],
+  functions: [...Object.values(fns)],
   castables,
   createParser,
   visitors: {

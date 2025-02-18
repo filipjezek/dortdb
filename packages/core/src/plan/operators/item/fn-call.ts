@@ -4,6 +4,9 @@ import { CalcIntermediate } from './calculation.js';
 
 export interface PlanOpAsArg {
   op: LogicalPlanOperator;
+  /** can the subquery return more than one value?
+   * if true, the subquery will be converted to an array of values
+   */
   acceptSequence?: boolean;
 }
 
@@ -16,7 +19,7 @@ export class FnCall implements LogicalPlanOperator {
     public impl: (...args: any[]) => any,
     /**
      * Function is pure if it has no side effects and always returns the same output for the same input.
-     * This means that a function creating a new object every time it is called is not pure.
+     * This means that `() => ({})` is not pure.
      */
     public pure = false,
   ) {}

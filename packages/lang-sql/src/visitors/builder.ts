@@ -114,7 +114,7 @@ export class SQLLogicalPlanBuilder
     return new plan.FnCall(
       'sql',
       [{ op: node.items.accept(this), acceptSequence: true }],
-      Array.from,
+      ret1,
     );
   }
   visitRow(node: AST.ASTRow): LogicalPlanOperator {
@@ -601,6 +601,7 @@ export class SQLLogicalPlanBuilder
       node.lang,
       node.args.map(this.processFnArg),
       impl.impl,
+      impl.pure,
     );
   }
   visitLangSwitch(node: LangSwitch): LogicalPlanOperator {
