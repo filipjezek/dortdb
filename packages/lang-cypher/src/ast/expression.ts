@@ -1,16 +1,13 @@
-import { ASTFunction, ASTNode } from '@dortdb/core';
+import { Aliased, ASTFunction, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { CypherIdentifier } from './literal.js';
 import { PatternElChain } from './pattern.js';
 
 export class FnCallWrapper implements ASTNode {
-  /**
-   * Yield items can be a single identifier, a pair of identifiers (1st AS 2nd), or a wildcard.
-   */
-  public yieldItems:
-    | (CypherIdentifier | [CypherIdentifier, CypherIdentifier])[]
-    | '*';
+  public yieldItems: (CypherIdentifier | Aliased<CypherIdentifier>)[] | '*';
   public where: ASTNode;
+  /** procedure is Cypher equivalent for table function */
+  public procedure = false;
 
   constructor(
     public fn: ASTFunction,

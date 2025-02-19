@@ -1,4 +1,4 @@
-import { ASTIdentifier, ASTLiteral, ASTNode } from '@dortdb/core';
+import { Aliased, ASTIdentifier, ASTLiteral, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { parseStringLiteral } from '../utils/string.js';
 
@@ -79,7 +79,7 @@ export class ASTListLiteral implements ASTNode {
 }
 
 export class ASTMapLiteral implements ASTNode {
-  constructor(public items: [ASTIdentifier, ASTNode][]) {}
+  constructor(public items: Aliased<ASTNode>[]) {}
 
   accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitMapLiteral(this, arg);

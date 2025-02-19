@@ -586,7 +586,7 @@ export class SQLLogicalPlanBuilder
   }
   visitFunction(node: ASTFunction): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
-    const impl = this.langMgr.getFnOrAggr('sql', id, schema); // throw the error
+    const impl = this.langMgr.getFnOrAggr('sql', id, schema);
 
     if ('init' in impl) {
       return new plan.AggregateCall(

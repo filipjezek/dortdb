@@ -357,7 +357,7 @@ export class GraphBuilder
     throw new Error('Method not implemented.');
   }
   visitCalculation(operator: plan.Calculation): SVGGElement {
-    let opI = { i: 0 };
+    const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
     const parent = this.drawNode(`calc(${args.join(', ')})`, operator);
     const ops = operator.args
@@ -432,7 +432,7 @@ export class GraphBuilder
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
   visitOrderBy(operator: plan.OrderBy): SVGGElement {
-    let opI = { i: 0 };
+    const opI = { i: 0 };
     const args = operator.orders.map(
       (o) => this.processArg(o.key, opI) + (o.ascending ? '' : '&darr;'),
     );
@@ -451,7 +451,7 @@ export class GraphBuilder
     );
   }
   visitGroupBy(operator: plan.GroupBy): SVGGElement {
-    let opI = { i: 0 };
+    const opI = { i: 0 };
     const keys = operator.keys.map((k) => this.processAttr(k, opI));
     const kChildren = opI.i;
     const aggs = operator.aggs.map(

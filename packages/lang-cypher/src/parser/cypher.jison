@@ -507,13 +507,14 @@ existential-subquery:
   | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ASTExists(); $$.pattern = $3; $$.where = $4; } ;
 
 explicit-procedure-invocation:
-  symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
-  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); } ;
+  symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); $$.procedure = true; }
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); $$.procedure = true; } ;
 
 implicit-procedure-invocation:
-  symbolic-name { $$ = yy.wrapFn($1); }
+  symbolic-name { $$ = yy.wrapFn($1); $$.procedure = true; }
   | symbolic-name DOT symbolic-name {
     $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.idOriginal, $2.idOriginal));
+    $$.procedure = true;
   } ;
 
 variable:
@@ -541,8 +542,8 @@ map-literal:
   LCUR map-entry-list_opt RCUR { $$ = new yy.ast.ASTMapLiteral($2); } ;
 
 map-entry-list:
-  schema-name COLON expression { $$ = [[$1, $3]]; }
-  | map-entry-list COMMA schema-name COLON expression { $$ = $1; $$.push([$3, $5]); } ;
+  schema-name COLON expression { $$ = [[$3, $1]]; }
+  | map-entry-list COMMA schema-name COLON expression { $$ = $1; $$.push([$5, $3]); } ;
 
 reserved-word:
   ALL

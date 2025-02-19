@@ -12,6 +12,7 @@ import { Keywords, AdditionalTokens } from './parser/tokens.js';
 import { YyContext } from './parser/yycontext.js';
 import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
+import { CypherLogicalPlanBuilder } from './visitors/builder.js';
 
 export const Cypher: Language<'cypher'> = {
   name: 'cypher',
@@ -20,7 +21,7 @@ export const Cypher: Language<'cypher'> = {
   functions: [],
   castables: [],
   visitors: {
-    logicalPlanBuilder: null,
+    logicalPlanBuilder: CypherLogicalPlanBuilder,
   },
   createParser,
 };
@@ -42,7 +43,7 @@ function createParser(mgr: LanguageManager) {
         ? new ASTOperator(
             'cypher',
             new ast.CypherIdentifier(op.toLowerCase()),
-            args
+            args,
           )
         : new ASTOperator('cypher', op, args),
     wrapFn: (id, args = [], distinct = false) =>

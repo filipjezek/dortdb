@@ -1,7 +1,7 @@
 import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
-export class Literal<T> implements LogicalPlanOperator {
+export class Literal<T = unknown> implements LogicalPlanOperator {
   public [CalcIntermediate] = true;
 
   constructor(

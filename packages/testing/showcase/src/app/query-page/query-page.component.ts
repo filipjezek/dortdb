@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { DortDB, LogicalPlanOperator } from '@dortdb/core';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
+import { Cypher } from '@dortdb/lang-cypher';
 import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.component';
 import {
   FormControl,
@@ -45,12 +46,13 @@ export class QueryPageComponent {
   private readonly allLangs = {
     sql: SQL,
     xquery: XQuery,
+    cypher: Cypher,
   };
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
 
   form = new FormGroup({
-    lang: new FormControl<'sql' | 'xquery'>('sql'),
+    lang: new FormControl<'sql' | 'xquery' | 'cypher'>('sql'),
     query: new FormControl<string>('', Validators.required),
   });
   private lang = toSignal(this.form.get('lang').valueChanges, {
