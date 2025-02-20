@@ -15,6 +15,7 @@ import {
 import * as plan from '@dortdb/core/plan';
 import * as AST from 'src/ast/index.js';
 import { CypherVisitor } from 'src/ast/visitor.js';
+import { ASTDeterministicStringifier } from './ast-stringifier.js';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -29,6 +30,7 @@ export class CypherLogicalPlanBuilder
     CypherVisitor<LogicalPlanOperator, LogicalPlanTupleOperator>
 {
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
+  private stringifier = new ASTDeterministicStringifier();
 
   constructor(private langMgr: LanguageManager) {
     this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
@@ -94,7 +96,7 @@ export class CypherLogicalPlanBuilder
         'cypher',
         node.fn.args.map(this.toCalc),
         impl,
-        ASTIdentifier.fromParts([this.stringifier.visitFunction(node)]),
+        ASTIdentifier.fromParts([this.stringifier.visitFnCallWrapper(node)]),
       );
       if (node.distinct) {
         res.postGroupOp = new plan.Distinct(
