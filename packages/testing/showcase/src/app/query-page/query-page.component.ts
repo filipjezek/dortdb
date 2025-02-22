@@ -81,7 +81,7 @@ export class QueryPageComponent {
     try {
       const ast = this.db().parse(query);
       console.log(ast);
-      this.plan = this.db().buildPlan(ast.value[0]);
+      this.plan = this.db().buildPlan(ast.value[0]).plan;
       console.log(this.plan);
     } catch (err) {
       this.error = err as Error;

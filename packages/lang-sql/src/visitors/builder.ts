@@ -15,7 +15,8 @@ import {
   LogicalOpOrId,
   LogicalPlanTupleOperator,
   LogicalPlanBuilder,
-  boundParam,
+  IdSet,
+  toInfer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -23,12 +24,11 @@ import { SQLVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { SchemaInferrer } from './schema-inferrer.js';
 import { Using } from '../plan/using.js';
-import {
-  assertCalcLiteral,
-  overrideSource,
-  schemaToTrie,
-} from '@dortdb/core/utils';
-import { ret1, retI1 } from '@dortdb/core/internal-fns';
+import { LangSwitch as PlanLangSwitch } from '../plan/langswitch.js';
+import { assertCalcLiteral, overrideSource } from '@dortdb/core/utils';
+import { ret1 } from '@dortdb/core/internal-fns';
+
+export const DEFAULT_COLUMN = toId('item');
 
 function toId(id: string | symbol): ASTIdentifier {
   return AST.SQLIdentifier.fromParts([id]);
@@ -52,7 +52,7 @@ function attrToOpArg(
 function toTuples(op: LogicalPlanOperator): LogicalPlanTupleOperator {
   return op instanceof LogicalPlanTupleOperator
     ? op
-    : new plan.MapFromItem('sql', toId('item'), op);
+    : new plan.MapFromItem('sql', DEFAULT_COLUMN, op);
 }
 
 export class SQLLogicalPlanBuilder
@@ -73,10 +73,10 @@ export class SQLLogicalPlanBuilder
     this.processOrderItem = this.processOrderItem.bind(this);
   }
 
-  buildPlan(node: ASTNode): LogicalPlanOperator {
+  buildPlan(node: ASTNode, ctx: IdSet) {
     const plan = node.accept(this);
-    plan.accept(this.inferrerMap);
-    return plan;
+    const inferred = this.inferrerMap['sql'].inferSchema(plan, ctx);
+    return { plan, inferred };
   }
 
   private processNode(item: ASTNode): LogicalOpOrId {
@@ -128,12 +128,7 @@ export class SQLLogicalPlanBuilder
     });
   }
   visitParam(node: AST.ASTParam): LogicalPlanOperator {
-    return new plan.FnCall(
-      'sql',
-      [AST.SQLIdentifier.fromParts([boundParam, node.name])],
-      ret1,
-      true,
-    );
+    return this.visitIdentifier(node);
   }
   visitCast(node: AST.ASTCast): LogicalPlanOperator {
     const impl = this.langMgr.getCast('sql', ...idToPair(node.type));
@@ -227,10 +222,13 @@ export class SQLLogicalPlanBuilder
     return this.visitIdentifier(node);
   }
   visitTableAlias(node: AST.ASTTableAlias): LogicalPlanTupleOperator {
-    const src =
-      node.table instanceof ASTIdentifier
-        ? new plan.TupleSource('sql', node.table)
-        : toTuples(node.table.accept(this));
+    let src: LogicalPlanTupleOperator;
+    if (node.table instanceof ASTIdentifier) {
+      src = new plan.TupleSource('sql', node.table);
+      src.addToSchema(ASTIdentifier.fromParts([...node.table.parts, toInfer]));
+    } else {
+      src = toTuples(node.table.accept(this));
+    }
     if (node.columns?.length) {
       if (node.columns.length !== src.schema?.length)
         throw new Error(
@@ -251,6 +249,10 @@ export class SQLLogicalPlanBuilder
     }
     if (src instanceof plan.TupleFnSource) {
       const n = ASTIdentifier.fromParts([node.name]);
+      src.removeFromSchema(
+        src.schema.filter((x) => x.parts[x.parts.length - 1] === toInfer),
+      );
+      src.addToSchema(ASTIdentifier.fromParts([...n.parts, toInfer]));
       src.name = src.name ? [src.name as ASTIdentifier, n] : n;
       return src;
     }
@@ -259,6 +261,14 @@ export class SQLLogicalPlanBuilder
         src.name as ASTIdentifier,
         ASTIdentifier.fromParts([node.name]),
       ];
+      src.removeFromSchema(
+        src.schema.filter((x) => x.parts[x.parts.length - 1] === toInfer),
+      );
+      src.addToSchema(ASTIdentifier.fromParts([node.name, toInfer]));
+      return src;
+    }
+    if (src instanceof PlanLangSwitch) {
+      src.alias = node.name;
       return src;
     }
     return new plan.Projection(
@@ -283,31 +293,7 @@ export class SQLLogicalPlanBuilder
     node: AST.SelectStatement,
   ): LogicalPlanTupleOperator {
     const orderItems = node.orderBy.map(this.processOrderItem);
-    const proj = op instanceof plan.Distinct ? op.source : op;
     op = new plan.OrderBy('sql', orderItems, op);
-    if (proj instanceof plan.Projection) {
-      // otherwise it's a set op
-      op = new plan.Projection('sql', proj.attrs.slice(), op);
-      for (const oitem of orderItems) {
-        if (
-          oitem.key instanceof ASTIdentifier &&
-          !proj.schemaSet.has(oitem.key.parts)
-        ) {
-          proj.addToSchema(oitem.key);
-          proj.attrs.push([oitem.key, oitem.key]);
-        } else if (oitem.key instanceof plan.Calculation) {
-          for (const attr of this.inferrerMap['sql'].visitCalculation(
-            oitem.key,
-          )) {
-            if (!proj.schemaSet.has(attr)) {
-              const id = ASTIdentifier.fromParts(attr);
-              proj.addToSchema(id);
-              proj.attrs.push([id, id]);
-            }
-          }
-        }
-      }
-    }
     return op;
   }
   visitSelectStatement(node: AST.SelectStatement) {
@@ -447,13 +433,14 @@ export class SQLLogicalPlanBuilder
   private getTableName(
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [LogicalPlanTupleOperator, ASTIdentifier] {
-    const src =
-      node instanceof ASTIdentifier
-        ? new plan.TupleSource('sql', node)
-        : (node.accept(this) as LogicalPlanTupleOperator);
+    if (node instanceof ASTIdentifier) {
+      const src = new plan.TupleSource('sql', node);
+      src.addToSchema(ASTIdentifier.fromParts([...node.parts, toInfer]));
+      return [src, node];
+    }
+    const src = node.accept(this) as LogicalPlanTupleOperator;
     if (node instanceof AST.JoinClause) return [src, null];
-    const name =
-      node instanceof ASTIdentifier ? node : node.name && toId(node.name);
+    const name = node.name && toId(node.name);
     return [src, name];
   }
   visitJoinClause(node: AST.JoinClause): LogicalPlanTupleOperator {
@@ -560,6 +547,7 @@ export class SQLLogicalPlanBuilder
       impl.impl,
       node.id,
     );
+    res.addToSchema(ASTIdentifier.fromParts([...node.id.parts, toInfer]));
     if (impl.outputSchema) {
       res.addToSchema(impl.outputSchema);
     }
@@ -604,7 +592,6 @@ export class SQLLogicalPlanBuilder
     );
   }
   visitLangSwitch(node: LangSwitch): LogicalPlanOperator {
-    const lang = this.langMgr.getLang(node.lang);
-    return node.node.accept(new lang.visitors.logicalPlanBuilder(this.langMgr));
+    return new PlanLangSwitch('sql', node);
   }
 }

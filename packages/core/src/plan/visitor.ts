@@ -1,3 +1,4 @@
+import { iterTrie } from '../utils/trie.js';
 import { ASTIdentifier } from '../ast.js';
 import * as operators from './operators/index.js';
 import { Trie } from 'mnemonist';
@@ -40,7 +41,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
         }
       }
     } else if (item instanceof Trie) {
-      for (const i of item) {
+      for (const i of iterTrie(item)) {
         if (!this.schemaSet.has(i)) {
           this.schema.push(ASTIdentifier.fromParts(i));
           this.schemaSet.add(i);
@@ -61,7 +62,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
         removed = this.schemaSet.delete(i.parts) || removed;
       }
     } else if (item instanceof Trie) {
-      for (const i of item) {
+      for (const i of iterTrie(item)) {
         removed = this.schemaSet.delete(i) || removed;
       }
     } else {

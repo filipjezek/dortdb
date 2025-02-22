@@ -1,3 +1,4 @@
+import { Trie } from 'mnemonist';
 import { ASTNode } from './ast.js';
 import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
@@ -10,7 +11,7 @@ export class DortDB<LangNames extends string> {
     this.langMgr.registerExtension(core);
     this.langMgr.registerLang(config.mainLang);
     this.config.additionalLangs?.forEach((lang) =>
-      this.langMgr.registerLang(lang)
+      this.langMgr.registerLang(lang),
     );
     this.config.extensions?.forEach((e) => this.langMgr.registerExtension(e));
   }
@@ -25,7 +26,10 @@ export class DortDB<LangNames extends string> {
   public buildPlan(query: ASTNode) {
     const Visitor = this.langMgr.getLang(this.config.mainLang.name).visitors
       .logicalPlanBuilder;
-    return new Visitor(this.langMgr).buildPlan(query);
+    return new Visitor(this.langMgr).buildPlan(
+      query,
+      new Trie<(symbol | string)[]>(Array),
+    );
   }
 }
 

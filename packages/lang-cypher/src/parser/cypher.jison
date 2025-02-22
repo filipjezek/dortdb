@@ -209,8 +209,8 @@ merge-actions-list:
   | merge-actions-list merge-action { $$ = $1; $$.push($2); } ;
 
 merge-action:
-  ON MATCH set-clause { $$ = new yy.ast.MergeAction('match', $3); }
-  | ON CREATE set-clause { $$ = new yy.ast.MergeAction('create', $3); } ;
+  ON MATCH set-clause { $$ = new yy.ast.MergeAction('match', $3.items); }
+  | ON CREATE set-clause { $$ = new yy.ast.MergeAction('create', $3.items); } ;
 
 set-clause:
   SET set-item-list { $$ = new yy.ast.SetClause($2); } ;
@@ -464,7 +464,7 @@ atom-no-pattern:
   | existential-subquery
   | pattern-el-chain
   | LANGSWITCH { $$ = yy.messageQueue.shift(); }
-  | LPAR expression RPAR { console.log('patterned expression!', $2); $$ = $2; } ; 
+  | LPAR expression RPAR { $$ = $2; } ; 
 
 case-expression:
   CASE case-expr-alternative-list else-clause_opt END { $$ = new yy.ast.CaseExpr(undefined, $2, $3); }
@@ -507,8 +507,8 @@ existential-subquery:
   | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ASTExists(); $$.pattern = $3; $$.where = $4; } ;
 
 explicit-procedure-invocation:
-  symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); $$.procedure = true; }
-  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); $$.procedure = true; } ;
+  symbolic-name LPAR expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); $$.procedure = true; }
+  | SCHEMANAMELPAR expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); $$.procedure = true; } ;
 
 implicit-procedure-invocation:
   symbolic-name { $$ = yy.wrapFn($1); $$.procedure = true; }

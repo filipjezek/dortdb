@@ -1,4 +1,4 @@
-import { Aliased, ASTFunction, ASTNode } from '@dortdb/core';
+import { Aliased, ASTFunction, ASTNode, boundParam } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { CypherIdentifier } from './literal.js';
 import { PatternElChain } from './pattern.js';
@@ -57,6 +57,7 @@ export class QuantifiedExpr implements ASTNode {
 export class ASTParameter extends CypherIdentifier {
   constructor(idOriginal: string) {
     super(idOriginal);
+    this.parts.unshift(boundParam);
   }
 
   override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {

@@ -554,7 +554,11 @@ export class GraphBuilder
     );
   }
   visitNullSource(operator: plan.NullSource): SVGGElement {
-    return this.drawNode('&square;', operator, 'source-tuple');
+    return this.drawNode(
+      '&square;',
+      { lang: operator.lang } as LogicalPlanOperator, // do not draw schema
+      'source-tuple',
+    );
   }
   visitAggregate(operator: plan.AggregateCall): SVGGElement {
     throw new Error('Method not implemented.');

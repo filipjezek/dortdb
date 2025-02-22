@@ -40,17 +40,7 @@ import {
   LogicalPlanVisitor,
 } from '@dortdb/core';
 import { unwind } from '@dortdb/core/fns';
-
-function union(a: IdSet, b: IdSet): IdSet {
-  const result = new Trie<(string | symbol)[]>(Array);
-  for (const id of a) {
-    result.add(id);
-  }
-  for (const id of b) {
-    result.add(id);
-  }
-  return result;
-}
+import { union } from '@dortdb/core/utils';
 
 export class ItemSourceResolver
   implements XQueryLogicalPlanVisitor<void, IdSet>

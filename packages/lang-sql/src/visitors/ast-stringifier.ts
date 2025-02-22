@@ -39,6 +39,8 @@ import { WindowSpec } from '../ast/window.js';
 import { SearchType, WithQuery } from '../ast/with.js';
 
 export class ASTDeterministicStringifier implements SQLVisitor<string> {
+  private uniqueId = 0;
+
   constructor() {
     this.processNode = this.processNode.bind(this);
     this.visitSchemaPart = this.visitSchemaPart.bind(this);
@@ -49,7 +51,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
 
   visitLangSwitch(node: LangSwitch): string {
-    return `lang_${node.lang}`;
+    return `lang_${node.lang}_${this.uniqueId++}`;
   }
   visitStringLiteral(node: ASTStringLiteral): string {
     return this.addQuotes(node.value, "'");
@@ -189,7 +191,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
   visitCase(node: ASTCase): string {
     return `CASE ${node.expr?.accept(this) ?? ''} ${node.whenThen
-      .map(([w, t]) => `WHEN ${w.accept(this)} THEN ${w.accept(this)}`)
+      .map(([w, t]) => `WHEN ${w.accept(this)} THEN ${t.accept(this)}`)
       .join(' ')} ${
       node.elseExpr ? ' ELSE ' + node.elseExpr.accept(this) : ''
     } END`;

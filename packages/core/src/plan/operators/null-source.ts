@@ -1,4 +1,4 @@
-import { ASTIdentifier } from '../../ast.js';
+import { Trie } from 'mnemonist';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
@@ -9,6 +9,8 @@ export class NullSource extends LogicalPlanTupleOperator {
   constructor(lang: Lowercase<string>) {
     super();
     this.lang = lang;
+    this.schema = [];
+    this.schemaSet = new Trie<(string | symbol)[]>(Array);
   }
 
   accept<Ret, Arg>(

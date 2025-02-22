@@ -1,4 +1,4 @@
-import { ASTLiteral, ASTNode, ASTIdentifier } from '@dortdb/core';
+import { ASTLiteral, ASTNode, ASTIdentifier, boundParam } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { parseName, parseStringLiteral } from '../utils/string.js';
 import { ASTItemType } from './item-type.js';
@@ -41,6 +41,9 @@ export class ASTVariable extends XQueryIdentifier {
   constructor(name: XQueryIdentifier) {
     super(null);
     this.parts = name.parts;
+    if (this.parts.length > 1 && this.parts[0] === 'param') {
+      this.parts[0] = boundParam;
+    }
   }
 
   override accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {

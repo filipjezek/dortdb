@@ -6,6 +6,7 @@ import {
   ASTIdentifier,
   allAttrs,
   ASTNode,
+  Aliased,
 } from '@dortdb/core';
 import {
   FnCallWrapper,
@@ -49,13 +50,27 @@ import {
 import { CypherVisitor } from 'src/ast/visitor.js';
 
 export class ASTDeterministicStringifier implements CypherVisitor<string> {
+  private uniqueId = 0;
+
   constructor() {
     this.processNode = this.processNode.bind(this);
     this.visitSchemaPart = this.visitSchemaPart.bind(this);
+    this.processAttr = this.processAttr.bind(this);
+    this.processNodeOrAttr = this.processNodeOrAttr.bind(this);
   }
 
   private processNode(x: ASTNode) {
     return x.accept(this);
+  }
+  private processNodeOrAttr(x: ASTNode | Aliased<ASTNode> | '*') {
+    return x === '*'
+      ? x
+      : x instanceof Array
+        ? this.processAttr(x)
+        : this.processNode(x);
+  }
+  private processAttr(x: Aliased<ASTNode>) {
+    return `${x[0].accept(this)} AS ${x[1].accept(this)}`;
   }
 
   private visitSchemaPart(node: string | symbol): string {
@@ -82,111 +97,193 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     return node.value.toString();
   }
   visitListLiteral(node: ASTListLiteral): string {
-    return `[${node.items.map(this.processNode).join(',')}]`;
+    return `[${node.items.map(this.processNode)}]`;
   }
   visitMapLiteral(node: ASTMapLiteral): string {
-    throw new Error('Method not implemented.');
+    const entries = node.items.map(
+      ([v, k]) => `${k.accept(this)}: ${v.accept(this)}`,
+    );
+    return `{${entries}}`;
   }
   visitBooleanLiteral(node: ASTBooleanLiteral): string {
-    throw new Error('Method not implemented.');
+    return node?.toString() ?? 'null';
   }
   visitFnCallWrapper(node: FnCallWrapper): string {
-    throw new Error('Method not implemented.');
+    let res = node.fn.id.accept(this) + '(';
+    if (node.distinct) res += 'DISTINCT ';
+    res += node.fn.args.map(this.processNode);
+    res += ')';
+    if (node.yieldItems) {
+      res += 'YIELD ';
+      if (node.yieldItems === '*') res += '*';
+      else {
+        res += node.yieldItems.map(this.processNodeOrAttr);
+      }
+    }
+    if (node.where) res += ' WHERE ' + node.where.accept(this);
+    return res;
   }
   visitExistsSubquery(node: ExistsSubquery): string {
-    throw new Error('Method not implemented.');
+    return `EXISTS {${node.query.accept(this)}}`;
   }
   visitQuantifiedExpr(node: QuantifiedExpr): string {
-    throw new Error('Method not implemented.');
+    let res = `${node.quantifier} (${node.variable.accept(this)} IN ${node.expr.accept(this)}`;
+    if (node.where) res += ' WHERE ' + node.where.accept(this);
+    return res + ')';
   }
   visitPatternElChain(node: PatternElChain): string {
-    throw new Error('Method not implemented.');
+    let chain = node.chain.map(this.processNode).join('');
+    if (node.variable) chain = node.variable.accept(this) + '=' + chain;
+    return chain;
   }
   visitParameter(node: ASTParameter): string {
-    throw new Error('Method not implemented.');
+    return '$' + this.visitIdentifier(node);
   }
   visitNodePattern(node: NodePattern): string {
-    throw new Error('Method not implemented.');
+    let res = '(';
+    if (node.variable) res += node.variable.accept(this);
+    if (node.labels.length)
+      res += ':' + node.labels.map(this.processNode).join(':');
+    if (node.props) res += ' ' + node.props.accept(this);
+    return res + ')';
+  }
+
+  private visitRange(
+    range: [ASTNode | undefined, ASTNode | undefined] | [ASTNode | undefined],
+  ) {
+    const [start, end] = range;
+    const res = start ? start.accept(this) : '';
+    return range.length === 2
+      ? res + '..' + (end ? end.accept(this) : '')
+      : res;
   }
   visitRelPattern(node: RelPattern): string {
-    throw new Error('Method not implemented.');
+    let res = '-[';
+    if (node.pointsLeft) res = '<' + res;
+    if (node.variable) res += node.variable.accept(this);
+    if (node.types.length)
+      res += ':' + node.types.map(this.processNode).join(':');
+    if (node.range) {
+      res += '*' + this.visitRange(node.range);
+    }
+    res += node.range.map((x) => (x ? this.processNode(x) : '')).join('..');
+    if (node.props) res += ' ' + node.props.accept(this);
+    return res + (node.pointsRight ? ']->' : ']-');
   }
   visitPatternComprehension(node: PatternComprehension): string {
-    throw new Error('Method not implemented.');
+    let res = '[' + node.pattern.accept(this);
+    if (node.where) res += ' WHERE ' + node.where.accept(this);
+    res += ' | ' + node.expr.accept(this) + ']';
+    return res;
   }
   visitListComprehension(node: ListComprehension): string {
-    throw new Error('Method not implemented.');
+    let res = '[' + node.expr.accept(this) + ' IN ' + node.source.accept(this);
+    if (node.where) res += ' WHERE ' + node.where.accept(this);
+    if (node.expr) res += ' | ' + node.expr.accept(this);
+    return res + ']';
   }
   visitCaseExpr(node: CaseExpr): string {
-    throw new Error('Method not implemented.');
+    return `CASE ${node.expr?.accept(this) ?? ''} ${node.whenThens
+      .map(([w, t]) => `WHEN ${w.accept(this)} THEN ${t.accept(this)}`)
+      .join(' ')} ${
+      node.elseExpr ? ' ELSE ' + node.elseExpr.accept(this) : ''
+    } END`;
   }
   visitCountAll(node: CountAll): string {
-    throw new Error('Method not implemented.');
+    return 'COUNT(*)';
   }
   visitLabelFilterExpr(node: LabelFilterExpr): string {
-    throw new Error('Method not implemented.');
+    return `${node.expr.accept(this)}:${node.labels.map(this.processNode).join(':')}`;
   }
   visitSubscriptExpr(node: SubscriptExpr): string {
-    throw new Error('Method not implemented.');
+    return node.expr.accept(this) + '[' + this.visitRange(node.subscript) + ']';
   }
   visitPropLookup(node: PropLookup): string {
-    throw new Error('Method not implemented.');
+    return node.expr.accept(this) + '.' + node.prop.accept(this);
   }
   visitSetOp(node: SetOp): string {
-    throw new Error('Method not implemented.');
+    return node.type + ' ' + node.next.accept(this);
   }
   visitQuery(node: Query): string {
-    throw new Error('Method not implemented.');
+    let res = node.from ? 'FROM ' + node.from.accept(this) : '';
+    for (const s of node.statements) {
+      res += ' ' + s.accept(this);
+    }
+    if (node.setOp) res += ' ' + node.setOp.accept(this);
+    return res;
   }
   visitMatchClause(node: MatchClause): string {
-    throw new Error('Method not implemented.');
+    let res = 'MATCH ' + node.pattern.map(this.processNode);
+    if (node.where) res += ' WHERE ' + node.where.accept(this);
+    if (node.optional) res = 'OPTIONAL ' + res;
+    return res;
   }
   visitUnwindClause(node: UnwindClause): string {
-    throw new Error('Method not implemented.');
+    return `UNWIND ${node.expr.accept(this)} AS ${node.variable.accept(this)}`;
   }
   visitCreateClause(node: CreateClause): string {
-    throw new Error('Method not implemented.');
+    return `CREATE ${node.pattern.map(this.processNode)}`;
   }
   visitMergeClause(node: MergeClause): string {
-    throw new Error('Method not implemented.');
+    let res = 'MERGE ' + this.visitPatternElChain(node.pattern);
+    if (node.onMatch)
+      res += ' ON MATCH SET ' + node.onMatch.map(this.processNode);
+    if (node.onCreate)
+      res += ' ON CREATE SET ' + node.onCreate.map(this.processNode);
+    return res;
   }
   visitSetClause(node: SetClause): string {
-    throw new Error('Method not implemented.');
+    return 'SET ' + node.items.map(this.processNode);
   }
   visitSetItem(node: SetItem): string {
-    throw new Error('Method not implemented.');
+    let res = node.key.accept(this);
+    if (Array.isArray(node.value))
+      return res + ':' + node.value.map(this.processNode).join(':');
+    res += node.add ? '+=' : '=';
+    return res + node.value.accept(this);
   }
   visitRemoveClause(node: RemoveClause): string {
-    throw new Error('Method not implemented.');
+    return 'REMOVE ' + node.items.map(this.processNode);
   }
   visitRemoveItem(node: RemoveItem): string {
-    throw new Error('Method not implemented.');
+    let res = node.key.accept(this);
+    if (node.labels?.length) {
+      res += ':' + node.labels.map(this.processNode).join(':');
+    }
+    return res;
   }
   visitDeleteClause(node: DeleteClause): string {
-    throw new Error('Method not implemented.');
+    const res = 'DELETE ' + node.exprs.map(this.processNode);
+    return node.detach ? ' DETACH ' + res : res;
   }
   visitProjectionBody(node: ProjectionBody): string {
-    throw new Error('Method not implemented.');
+    let res = node.items.map(this.processNodeOrAttr).join(',');
+    if (node.distinct) res = 'DISTINCT ' + res;
+    if (node.order) res += ' ORDER BY ' + node.order.map(this.processNode);
+    if (node.skip) res += ' SKIP ' + node.skip.accept(this);
+    if (node.limit) res += ' LIMIT ' + node.limit.accept(this);
+    return res;
   }
   visitOrderItem(node: OrderItem): string {
-    throw new Error('Method not implemented.');
+    return node.expr.accept(this) + (node.ascending ? '' : ' DESC');
   }
   visitWithClause(node: WithClause): string {
-    throw new Error('Method not implemented.');
+    const res = `WITH ${this.visitProjectionBody(node.body)}`;
+    return node.where ? res + ' WHERE ' + node.where.accept(this) : res;
   }
   visitReturnClause(node: ReturnClause): string {
-    throw new Error('Method not implemented.');
+    return 'RETURN ' + this.visitProjectionBody(node.body);
   }
   visitLiteral<T>(node: ASTLiteral<T>): string {
     throw new Error('Method not implemented.');
   }
   visitOperator(node: ASTOperator): string {
-    throw new Error('Method not implemented.');
+    return `${node.id.accept(this)}(${node.operands.map(this.processNode)})`;
   }
   visitFunction(node: ASTFunction): string {
     throw new Error('Method not implemented.');
   }
   visitLangSwitch(node: LangSwitch): string {
-    throw new Error('Method not implemented.');
+    return `lang_${node.lang}_${this.uniqueId++}`;
   }
 }

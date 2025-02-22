@@ -14,6 +14,7 @@ import * as ast from './ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
 import { coalesce } from './functions/coalesce.js';
 import { SQLLogicalPlanBuilder } from './visitors/builder.js';
+import { SQLCalculationBuilder } from './visitors/calculation-builder.js';
 
 export const SQL: Language<'sql'> = {
   name: 'sql',
@@ -24,6 +25,7 @@ export const SQL: Language<'sql'> = {
   createParser,
   visitors: {
     logicalPlanBuilder: SQLLogicalPlanBuilder,
+    calculationBuilder: SQLCalculationBuilder,
   },
 };
 

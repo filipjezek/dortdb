@@ -1,13 +1,9 @@
-import {
-  ASTIdentifier,
-  IdSet,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '@dortdb/core';
+import { ASTIdentifier, IdSet, LogicalPlanTupleOperator } from '@dortdb/core';
 import { SchemaInferrer } from '../visitors/schema-inferrer.js';
 import { Trie } from 'mnemonist';
 import { CartesianProduct } from '@dortdb/core/plan';
 import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
+import { SQLLogicalPlanVisitor } from './index.js';
 
 /**
  * This operator is a temporary operator which is replaced by {@link operators.Projection} and {@link operators.Selection}
@@ -31,13 +27,11 @@ export class Using extends LogicalPlanTupleOperator {
     this.calculateSchema();
     source.parent = this;
   }
-  accept<T>(
-    visitors: Record<
-      string,
-      LogicalPlanVisitor<T> & { visitUsing: (op: Using) => T }
-    >,
-  ): T {
-    return visitors[this.lang].visitUsing(this);
+  accept<Ret, Arg>(
+    visitors: Record<string, SQLLogicalPlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitUsing(this, arg);
   }
   replaceChild(
     current: LogicalPlanTupleOperator,

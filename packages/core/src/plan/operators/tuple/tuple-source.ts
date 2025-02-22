@@ -10,6 +10,8 @@ import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 
 export class TupleSource extends LogicalPlanTupleOperator {
+  public knownSchema = false;
+
   constructor(
     lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>,
@@ -35,6 +37,8 @@ export class TupleSource extends LogicalPlanTupleOperator {
 }
 
 export class TupleFnSource extends LogicalPlanTupleOperator {
+  public knownSchema = false;
+
   constructor(
     lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],

@@ -14,6 +14,9 @@ import {
   LogicalPlanTupleOperator,
   Aliased,
   LogicalOpOrId,
+  IdSet,
+  boundParam,
+  toInfer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -24,11 +27,11 @@ import { treeStep } from '../utils/tree-step.js';
 import { toBool } from '../castables/basic-types.js';
 import { ProjectionSize } from '../plan/projection-size.js';
 import { collect } from '@dortdb/core/aggregates';
-import { resolveArgs, schemaToTrie } from '@dortdb/core/utils';
+import { iterTrie, resolveArgs, schemaToTrie, union } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
-import { ItemSourceResolver } from './item-source-resolver.js';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { FnContext } from 'src/functions/fn-context.js';
+import { Trie } from 'mnemonist';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -66,14 +69,24 @@ function appendItem(node: Node, item: unknown) {
     node.appendChild(document.createTextNode(item.toString()));
   }
 }
+function infer(item: AST.ASTVariable, args: DescentArgs) {
+  if (item.parts[0] !== boundParam && !args.ctx.has(item.parts)) {
+    if (item.parts.length > 1 && args.ctx.has([item.parts[0], toInfer])) {
+      args.inferred.add(item.parts);
+    }
+  }
+}
+
+interface DescentArgs {
+  src?: LogicalPlanTupleOperator;
+  ctx: IdSet;
+  inferred: IdSet;
+}
 
 export class XQueryLogicalPlanBuilder
-  implements
-    XQueryVisitor<LogicalPlanOperator, LogicalPlanTupleOperator>, // Arg is for forwarding context between FLWOR clauses and path steps
-    LogicalPlanBuilder
+  implements XQueryVisitor<LogicalPlanOperator, DescentArgs>, LogicalPlanBuilder
 {
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
-  private resolverMap: Record<string, ItemSourceResolver> = {};
   private prologOptions = {
     namespaces: new Map<string, string>([
       [undefined, 'http://www.w3.org/1999/xhtml'],
@@ -83,33 +96,33 @@ export class XQueryLogicalPlanBuilder
 
   constructor(private langMgr: LanguageManager) {
     this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
-    this.resolverMap['xquery'] = new ItemSourceResolver(this.resolverMap);
-
-    this.toCalc = this.toCalc.bind(this);
-    this.processNode = this.processNode.bind(this);
-    this.processFnArg = this.processFnArg.bind(this);
-    this.toCalcParams = this.toCalcParams.bind(this);
-    this.maybeToCalc = this.maybeToCalc.bind(this);
-    this.processGroupByItem = this.processGroupByItem.bind(this);
-    this.processOrderItem = this.processOrderItem.bind(this);
-    this.processDirConstrContent = this.processDirConstrContent.bind(this);
-    this.processOpArg = this.processOpArg.bind(this);
   }
 
-  buildPlan(node: ASTNode): LogicalPlanOperator {
-    const res = node.accept(this);
-    this.resolverMap['xquery'].resolveItemSources(res);
-    return res;
+  buildPlan(node: ASTNode, ctx: IdSet) {
+    const inferred = new Trie<(string | symbol)[]>(Array);
+    const res = node.accept(this, { ctx, inferred });
+    return { plan: res, inferred };
   }
 
-  private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier;
-  private toCalc(node: ASTNode, skipVars: false): plan.Calculation;
   private toCalc(
     node: ASTNode,
+    args: DescentArgs,
+  ): plan.Calculation | ASTIdentifier;
+  private toCalc(
+    node: ASTNode,
+    args: DescentArgs,
+    skipVars: false,
+  ): plan.Calculation;
+  private toCalc(
+    node: ASTNode,
+    args: DescentArgs,
     skipVars = true,
   ): plan.Calculation | ASTIdentifier {
-    if (skipVars && node instanceof AST.ASTVariable) return node;
-    const calcParams = node.accept(this).accept(this.calcBuilders);
+    if (node instanceof AST.ASTVariable) {
+      infer(node, args);
+      if (skipVars) return node;
+    }
+    const calcParams = node.accept(this, args).accept(this.calcBuilders);
     return new plan.Calculation(
       'xquery',
       calcParams.impl,
@@ -119,8 +132,8 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
-  private maybeToCalc(item: ASTNode) {
-    const res = item.accept(this);
+  private maybeToCalc(item: ASTNode, args: DescentArgs) {
+    const res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
       const params = res.accept(this.calcBuilders);
       return new plan.Calculation(
@@ -133,62 +146,114 @@ export class XQueryLogicalPlanBuilder
     }
     return res;
   }
-  private processNode(item: ASTNode): LogicalOpOrId {
-    return item instanceof AST.ASTVariable ? item : item.accept(this);
+  private processNode(item: ASTNode, args: DescentArgs): LogicalOpOrId {
+    if (item instanceof AST.ASTVariable) {
+      infer(item, args);
+      return item;
+    }
+    return item.accept(this, args);
   }
-  private processFnArg(item: ASTNode): plan.PlanOpAsArg | ASTIdentifier {
-    return item instanceof AST.ASTVariable ? item : { op: item.accept(this) };
+  private processFnArg(
+    item: ASTNode,
+    args: DescentArgs,
+  ): plan.PlanOpAsArg | ASTIdentifier {
+    if (item instanceof AST.ASTVariable) {
+      infer(item, args);
+      return item;
+    }
+    return { op: item.accept(this, args) };
   }
-  private toCalcParams(node: ASTNode) {
-    return node.accept(this).accept(this.calcBuilders);
+  private toCalcParams(node: ASTNode, args: DescentArgs) {
+    return node.accept(this, args).accept(this.calcBuilders);
   }
 
-  visitProlog(node: AST.Prolog): LogicalPlanOperator {
+  visitProlog(node: AST.Prolog, args: DescentArgs): LogicalPlanOperator {
     for (const decl of node.declarations) {
-      decl.accept(this);
+      decl.accept(this, args);
     }
     return null;
   }
   visitDefaultNSDeclaration(
     node: AST.DefaultNSDeclaration,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     this.prologOptions.namespaces.set(undefined, node.uri.value);
     return null;
   }
-  visitBaseURIDeclaration(node: AST.BaseURIDeclaration): LogicalPlanOperator {
+  visitBaseURIDeclaration(
+    node: AST.BaseURIDeclaration,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new UnsupportedError('Base URI declaration not supported.');
   }
-  visitOrderingDeclaration(node: AST.OrderingDeclaration): LogicalPlanOperator {
+  visitOrderingDeclaration(
+    node: AST.OrderingDeclaration,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new UnsupportedError('Ordering mode declaration not supported.');
   }
   visitEmptyOrderDeclaration(
     node: AST.EmptyOrderDeclaration,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new UnsupportedError('Empty order declaration not supported.');
   }
-  visitNSDeclaration(node: AST.NSDeclaration): LogicalPlanOperator {
+  visitNSDeclaration(
+    node: AST.NSDeclaration,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     this.prologOptions.namespaces.set(
       node.prefix.parts[0] as string,
       node.uri.value,
     );
     return null;
   }
-  visitStringLiteral(node: AST.ASTStringLiteral): LogicalPlanOperator {
+  visitStringLiteral(
+    node: AST.ASTStringLiteral,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     return new plan.Literal('xquery', node.value);
   }
-  visitNumberLiteral(node: AST.ASTNumberLiteral): LogicalPlanOperator {
+  visitNumberLiteral(
+    node: AST.ASTNumberLiteral,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     return new plan.Literal('xquery', node.value);
   }
-  visitXQueryIdentifier(node: AST.XQueryIdentifier): LogicalPlanOperator {
-    return this.visitIdentifier(node);
+  visitXQueryIdentifier(
+    node: AST.XQueryIdentifier,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
+    return this.visitIdentifier(node, args);
   }
-  visitVariable(node: AST.ASTVariable): LogicalPlanOperator {
+  visitVariable(node: AST.ASTVariable, args: DescentArgs): LogicalPlanOperator {
+    if (
+      node.parts[0] === boundParam ||
+      args.ctx.has(node.parts) ||
+      args.ctx.has([node.parts[0], toInfer])
+    ) {
+      if (args.ctx.has([node.parts[0], toInfer])) {
+        args.inferred.add(node.parts);
+      }
+      return new plan.ItemFnSource(
+        'xquery',
+        [node],
+        unwind.impl,
+        ASTIdentifier.fromParts([unwind.name]),
+      );
+    }
     return new plan.ItemSource('xquery', node);
   }
-  visitFLWORExpr(node: AST.FLWORExpr): LogicalPlanOperator {
-    let res = node.clauses[0].accept(this) as LogicalPlanTupleOperator;
+  visitFLWORExpr(node: AST.FLWORExpr, args: DescentArgs): LogicalPlanOperator {
+    let res = node.clauses[0].accept(this, {
+      ...args,
+      src: null,
+    }) as LogicalPlanTupleOperator;
     for (let i = 1; i < node.clauses.length; i++) {
-      res = node.clauses[i].accept(this, res) as LogicalPlanTupleOperator;
+      res = node.clauses[i].accept(this, {
+        ...args,
+        src: res,
+      }) as LogicalPlanTupleOperator;
     }
     return res;
   }
@@ -202,30 +267,33 @@ export class XQueryLogicalPlanBuilder
     }
     return op;
   }
-  visitFLWORFor(
-    node: AST.FLWORFor,
-    src: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
-    let res = this.visitFLWORForBinding(node.bindings[0], src);
+  visitFLWORFor(node: AST.FLWORFor, args: DescentArgs): LogicalPlanOperator {
+    let res = this.visitFLWORForBinding(node.bindings[0], args);
     for (let i = 1; i < node.bindings.length; i++) {
-      res = this.visitFLWORForBinding(node.bindings[i], res);
+      res = this.visitFLWORForBinding(node.bindings[i], {
+        ...args,
+        src: res,
+      });
     }
     return res;
   }
 
   visitFLWORForBinding(
     node: AST.FLWORForBinding,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanTupleOperator {
     let res: LogicalPlanTupleOperator = new plan.MapFromItem(
       'xquery',
       node.variable,
-      this.maybeToCalc(node.expr),
+      this.maybeToCalc(node.expr, {
+        ctx: args.src ? union(args.ctx, args.src.schemaSet) : args.ctx,
+        inferred: args.inferred,
+      }),
     );
     if (node.posVar) {
       res = new plan.ProjectionIndex('xquery', node.posVar, res);
     }
-    res = this.maybeProjectConcat(res, src);
+    res = this.maybeProjectConcat(res, args.src);
     if (node.allowEmpty) {
       if (res instanceof plan.ProjectionConcat) res.outer = true;
       else
@@ -241,15 +309,19 @@ export class XQueryLogicalPlanBuilder
     }
     return res;
   }
-  visitFLWORLet(
-    node: AST.FLWORLet,
-    src: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
-    const res = src ?? new plan.NullSource('xquery');
+  visitFLWORLet(node: AST.FLWORLet, dargs: DescentArgs): LogicalPlanOperator {
+    const res = dargs.src ?? new plan.NullSource('xquery');
     const attrs: Aliased<ASTIdentifier | plan.Calculation>[] =
       res.schema.map(toPair);
+    const attrCtx = dargs.src
+      ? union(dargs.ctx, dargs.src.schemaSet)
+      : dargs.ctx;
     for (const [varName, expr] of node.bindings) {
-      const calc = this.toCalc(expr);
+      const calc = this.toCalc(
+        expr,
+        { ctx: attrCtx, inferred: dargs.inferred },
+        false,
+      );
       if (calc instanceof plan.Calculation) {
         calc.impl = (...args) => {
           const res = calc.impl(...args);
@@ -262,84 +334,117 @@ export class XQueryLogicalPlanBuilder
   }
   visitFLWORWindow(
     node: AST.FLWORWindow,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new UnsupportedError('Window clause not supported.');
   }
   visitFLWORWhere(
     node: AST.FLWORWhere,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
-    return new plan.Selection('xquery', this.toCalc(node.expr), src);
+    return new plan.Selection(
+      'xquery',
+      this.toCalc(node.expr, {
+        ctx: union(args.ctx, args.src.schemaSet),
+        inferred: args.inferred,
+      }),
+      args.src,
+    );
   }
 
   private processGroupByItem(
     item: [AST.ASTVariable, ASTNode],
+    args: DescentArgs,
   ): Aliased<ASTIdentifier | plan.Calculation> {
-    return [this.toCalc(item[1]), item[0]];
+    return [this.toCalc(item[1], args), item[0]];
   }
   visitFLWORGroupBy(
     node: AST.FLWORGroupBy,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     const keySet = schemaToTrie(node.bindings.map(retI0));
-    const keys = node.bindings.map(this.processGroupByItem);
+    const keys = node.bindings.map((x) => this.processGroupByItem(x, args));
     return new plan.GroupBy(
       'xquery',
       keys,
-      src.schema.filter((x) => !keySet.has(x.parts)).map(collectArg),
-      src,
+      args.src.schema.filter((x) => !keySet.has(x.parts)).map(collectArg),
+      args.src,
     );
   }
 
-  private processOrderItem(item: AST.OrderByItem): plan.Order {
+  private processOrderItem(
+    item: AST.OrderByItem,
+    args: DescentArgs,
+  ): plan.Order {
     return {
       ascending: item.ascending,
       nullsFirst: item.emptyGreatest !== item.ascending,
-      key: this.toCalc(item.expr),
+      key: this.toCalc(item.expr, args),
     };
   }
   visitFLWOROrderBy(
     node: AST.FLWOROrderBy,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
+    const attrCtx = union(args.ctx, args.src.schemaSet);
     return new plan.OrderBy(
       'xquery',
-      node.items.map(this.processOrderItem),
-      src,
+      node.items.map((i) =>
+        this.processOrderItem(i, { ctx: attrCtx, inferred: args.inferred }),
+      ),
+      args.src,
     );
   }
   visitFLWORCount(
     node: AST.FLWORCount,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
-    return new plan.ProjectionIndex('xquery', node.variable, src);
+    return new plan.ProjectionIndex('xquery', node.variable, args.src);
   }
   visitFLWORReturn(
     node: AST.FLWORReturn,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     if (node.expr instanceof AST.ASTVariable) {
-      return new plan.MapToItem('xquery', node.expr, src);
+      return new plan.MapToItem('xquery', node.expr, args.src);
     }
     return new plan.MapToItem(
       'xquery',
       DOT,
-      new plan.Projection('xquery', [[this.toCalc(node.expr), DOT]], src),
+      new plan.Projection(
+        'xquery',
+        [
+          [
+            this.toCalc(node.expr, {
+              ctx: union(args.ctx, args.src.schemaSet),
+              inferred: args.inferred,
+            }),
+            DOT,
+          ],
+        ],
+        args.src,
+      ),
     );
   }
 
-  visitQuantifiedExpr(node: AST.QuantifiedExpr): LogicalPlanOperator {
+  visitQuantifiedExpr(
+    node: AST.QuantifiedExpr,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     const invert = node.quantifier === AST.Quantifier.EVERY;
     let subq: LogicalPlanTupleOperator = null;
     for (const [variable, expr] of node.variables) {
       subq = this.visitFLWORForBinding(
         { expr, variable } as AST.FLWORForBinding,
-        subq,
+        { ...args, src: subq },
       );
     }
 
-    const calc = this.toCalc(node.expr, false);
+    const calc = this.toCalc(
+      node.expr,
+      { ctx: union(args.ctx, subq.schemaSet), inferred: args.inferred },
+      false,
+    );
     if (invert) calc.impl = (...args) => !calc.impl(...args);
     subq = new plan.Selection('xquery', calc, subq);
     subq = new plan.Limit('xquery', 0, 1, subq);
@@ -355,51 +460,74 @@ export class XQueryLogicalPlanBuilder
       true,
     );
   }
-  visitSwitchExpr(node: AST.SwitchExpr): LogicalPlanOperator {
+  visitSwitchExpr(
+    node: AST.SwitchExpr,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     return new plan.Conditional(
       'xquery',
-      node.expr && this.processNode(node.expr),
+      node.expr && this.processNode(node.expr, args),
       node.cases.flatMap(([ws, t]) => {
-        const then = this.processNode(t);
+        const then = this.processNode(t, args);
         return ws.map(
-          (w) => [this.processNode(w), then] as [LogicalOpOrId, LogicalOpOrId],
+          (w) =>
+            [this.processNode(w, args), then] as [LogicalOpOrId, LogicalOpOrId],
         );
       }),
-      node.defaultCase && this.processNode(node.defaultCase),
+      node.defaultCase && this.processNode(node.defaultCase, args),
     );
   }
-  visitIfExpr(node: AST.IfExpr): LogicalPlanOperator {
+  visitIfExpr(node: AST.IfExpr, args: DescentArgs): LogicalPlanOperator {
     return new plan.Conditional(
       'xquery',
       null,
-      [[this.processNode(node.condition), this.processNode(node.then)]],
-      node.elseExpr && this.processNode(node.elseExpr),
+      [
+        [
+          this.processNode(node.condition, args),
+          this.processNode(node.then, args),
+        ],
+      ],
+      node.elseExpr && this.processNode(node.elseExpr, args),
     );
   }
-  visitSequenceType(node: AST.ASTSequenceType): LogicalPlanOperator {
+  visitSequenceType(
+    node: AST.ASTSequenceType,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitInstanceOfExpr(node: AST.InstanceOfExpr): LogicalPlanOperator {
+  visitInstanceOfExpr(
+    node: AST.InstanceOfExpr,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new UnsupportedError('Instanceof not supported.');
   }
-  visitCastExpr(node: AST.CastExpr): LogicalPlanOperator {
+  visitCastExpr(node: AST.CastExpr, args: DescentArgs): LogicalPlanOperator {
     const impl = this.langMgr.getCast('xquery', ...idToPair(node.type));
     return new plan.FnCall(
       'sql',
-      [{ op: node.expr.accept(this) }],
+      [{ op: node.expr.accept(this, args) }],
       impl.convert,
       impl.pure,
     );
   }
-  visitItemType(node: AST.ASTItemType): LogicalPlanOperator {
+  visitItemType(node: AST.ASTItemType, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
 
-  private processPathStart(first: ASTNode): LogicalPlanTupleOperator {
+  private processPathStart(
+    first: ASTNode,
+    args: DescentArgs,
+  ): LogicalPlanTupleOperator {
     if (first instanceof AST.PathAxis) {
-      return this.visitPathAxis(
-        first,
-        toTuples(
+      if (!args.ctx.has(DOT.parts)) {
+        throw new Error(
+          `No clear context for path start: ${first.nodeTest.name === '*' ? '*' : first.nodeTest.name.parts.join(':')}`,
+        );
+      }
+      return this.visitPathAxis(first, {
+        ...args,
+        src: toTuples(
           new plan.ItemFnSource(
             'xquery',
             [DOT],
@@ -407,40 +535,53 @@ export class XQueryLogicalPlanBuilder
             toId(unwind.name),
           ),
         ),
-      );
+      });
     }
-    const res = toTuples(first.accept(this));
+    const res = toTuples(first.accept(this, args));
     return res;
   }
-  private processPathStep(step: ASTNode, src: LogicalPlanTupleOperator) {
+  private processPathStep(step: ASTNode, args: DescentArgs) {
     if (step === DOT) {
-      return src;
+      return args.src;
     }
     if (step instanceof AST.FilterExpr) {
-      return this.maybeProjectConcat(this.visitFilterExpr(step), src);
+      return this.maybeProjectConcat(
+        this.visitFilterExpr(step, {
+          ctx: union(args.ctx, args.src.schemaSet),
+          inferred: args.inferred,
+        }),
+        args.src,
+      );
     } else if (step instanceof AST.PathAxis) {
-      return step.accept(this, src) as LogicalPlanTupleOperator;
+      return step.accept(this, args) as LogicalPlanTupleOperator;
     } else {
-      const calc = this.toCalc(step, false);
-      return new TreeJoin('xquery', calc, src);
+      const calc = this.toCalc(
+        step,
+        { ctx: union(args.ctx, args.src.schemaSet), inferred: args.inferred },
+        false,
+      );
+      return new TreeJoin('xquery', calc, args.src);
     }
   }
-  visitPathExpr(node: AST.PathExpr): LogicalPlanOperator {
+  visitPathExpr(node: AST.PathExpr, args: DescentArgs): LogicalPlanOperator {
     if (node.start) {
       throw new UnsupportedError('Only relative paths are supported');
     }
-    let res = this.processPathStart(node.steps[0]);
+    let res = this.processPathStart(node.steps[0], args);
     for (let i = 1; i < node.steps.length; i++) {
-      res = this.processPathStep(node.steps[i], res);
+      res = this.processPathStep(node.steps[i], { ...args, src: res });
     }
     return new plan.MapToItem('xquery', DOT, res);
   }
 
   visitPathPredicate(
     node: AST.PathPredicate,
-    src: LogicalPlanTupleOperator,
+    dargs: DescentArgs,
   ): LogicalPlanTupleOperator {
-    const calcParams = node.exprs.map(this.toCalcParams);
+    const calcCtx = union(dargs.ctx, dargs.src.schemaSet);
+    const calcParams = node.exprs.map((x) =>
+      this.toCalcParams(x, { ctx: calcCtx, inferred: dargs.inferred }),
+    );
     const args = calcParams.flatMap((p) => p.args);
     args.push(POS);
     const calc = new plan.Calculation(
@@ -452,44 +593,53 @@ export class XQueryLogicalPlanBuilder
       },
       args,
     );
-    return new plan.Selection('xquery', calc, src);
+    return new plan.Selection('xquery', calc, dargs.src);
   }
   visitPathAxis(
     node: AST.PathAxis,
-    src: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanTupleOperator {
     let res: LogicalPlanTupleOperator = new TreeJoin(
       'xquery',
       new plan.Calculation('xquery', treeStep(node.nodeTest, node.axis), [DOT]),
-      src,
+      args.src,
     );
     for (const pred of node.predicates) {
-      res = this.visitPathPredicate(pred, res);
+      res = this.visitPathPredicate(pred, { ...args, src: res });
     }
     return res;
   }
-  visitFilterExpr(node: AST.FilterExpr): LogicalPlanTupleOperator {
-    let res = toTuples(node.expr.accept(this));
+  visitFilterExpr(
+    node: AST.FilterExpr,
+    args: DescentArgs,
+  ): LogicalPlanTupleOperator {
+    let res = toTuples(node.expr.accept(this, args));
     res = new plan.ProjectionIndex('xquery', POS, res);
     res = new ProjectionSize('xquery', LEN, res);
-    return this.visitPathPredicate(node.predicate, res);
+    return this.visitPathPredicate(node.predicate, { ...args, src: res });
   }
-  visitDynamicFunctionCall(node: AST.DynamicFunctionCall): LogicalPlanOperator {
-    const args = node.args.map(this.processFnArg);
-    args.push({ op: node.nameOrExpr.accept(this) });
+  visitDynamicFunctionCall(
+    node: AST.DynamicFunctionCall,
+    dargs: DescentArgs,
+  ): LogicalPlanOperator {
+    const args = node.args.map((x) => this.processFnArg(x, dargs));
+    args.push({ op: node.nameOrExpr.accept(this, dargs) });
     return new plan.FnCall('xquery', args, (...as) => as.pop()(...as));
   }
   visitSequenceConstructor(
     node: AST.SequenceConstructor,
-    src: LogicalPlanTupleOperator,
+    dargs: DescentArgs,
   ): LogicalPlanOperator {
     return new plan.FnCall(
       'xquery',
-      node.items.map(this.processFnArg),
+      node.items.map((x) => this.processFnArg(x, dargs)),
       (...args) => args.flat(Infinity),
     );
   }
-  visitOrderedExpr(node: AST.OrderedExpr): LogicalPlanOperator {
+  visitOrderedExpr(
+    node: AST.OrderedExpr,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new UnsupportedError('Ordered expressions not supported');
   }
 
@@ -510,21 +660,27 @@ export class XQueryLogicalPlanBuilder
       this.prologOptions.namespaces.get(schema);
     return [uri, schema ? `${schema}:${local}` : local];
   }
-  private processDirConstrContent(content: string | ASTNode) {
+  private processDirConstrContent(
+    content: string | ASTNode,
+    args: DescentArgs,
+  ) {
     if (typeof content === 'string') {
       return { op: new plan.Literal('xquery', content) } as plan.PlanOpAsArg;
     }
-    return this.processFnArg(content);
+    return this.processFnArg(content, args);
   }
   visitDirectElementConstructor(
     node: AST.DirectElementConstructor,
+    dargs: DescentArgs,
   ): LogicalPlanOperator {
     const [ns, qname] = this.idToQName(node.name);
     const content = node.content.content
       .flat()
-      .map(this.processDirConstrContent);
+      .map((x) => this.processDirConstrContent(x, dargs));
     for (const [, val] of node.attributes) {
-      const args = val.content.flat().map(this.processDirConstrContent);
+      const args = val.content
+        .flat()
+        .map((x) => this.processDirConstrContent(x, dargs));
       content.push({
         op: new plan.FnCall('xquery', args, (...vals) => {
           vals.join('');
@@ -545,39 +701,49 @@ export class XQueryLogicalPlanBuilder
       return el;
     });
   }
-  visitDirConstrContent(node: AST.DirConstrContent): LogicalPlanOperator {
+  visitDirConstrContent(
+    node: AST.DirConstrContent,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitModule(node: AST.Module): LogicalPlanOperator {
-    node.prolog.accept(this);
-    let res = this.maybeToCalc(node.body[0]);
+  visitModule(node: AST.Module, args: DescentArgs): LogicalPlanOperator {
+    node.prolog.accept(this, args);
+    let res = this.maybeToCalc(node.body[0], args);
     for (let i = 1; i < node.body.length; i++) {
-      res = new plan.Union('xquery', res, this.maybeToCalc(node.body[i]));
+      res = new plan.Union('xquery', res, this.maybeToCalc(node.body[i], args));
     }
     return res;
   }
-  visitDirectPIConstructor(node: AST.DirectPIConstructor): LogicalPlanOperator {
+  visitDirectPIConstructor(
+    node: AST.DirectPIConstructor,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     return new plan.FnCall('xquery', [], () =>
       document.createProcessingInstruction(node.name, node.content),
     );
   }
   visitDirectCommentConstructor(
     node: AST.DirectCommentConstructor,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     return new plan.FnCall('xquery', [], () =>
       document.createComment(node.content),
     );
   }
-  visitComputedConstructor(node: AST.ComputedConstructor): LogicalPlanOperator {
+  visitComputedConstructor(
+    node: AST.ComputedConstructor,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     let ns: string, qname: string;
-    const content = node.content.map(this.processFnArg);
+    const content = node.content.map((x) => this.processFnArg(x, args));
     if (
       node.name instanceof ASTIdentifier &&
       !(node.name instanceof AST.ASTVariable)
     ) {
       [ns, qname] = this.idToQName(node.name);
     } else if (node.name) {
-      content.push(this.processFnArg(node.name));
+      content.push(this.processFnArg(node.name, args));
     }
     switch (node.type) {
       case AST.ConstructorType.ATTRIBUTE:
@@ -629,17 +795,25 @@ export class XQueryLogicalPlanBuilder
         });
     }
   }
-  visitInlineFn(node: AST.InlineFunction): LogicalPlanOperator {
+  visitInlineFn(
+    node: AST.InlineFunction,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     throw new UnsupportedError('Inline functions not supported');
   }
-  visitBoundFunction(node: AST.BoundFunction): LogicalPlanOperator {
-    const args = node.boundArgs.map(retI1).map(this.processFnArg);
+  visitBoundFunction(
+    node: AST.BoundFunction,
+    dargs: DescentArgs,
+  ): LogicalPlanOperator {
+    const args = node.boundArgs
+      .map(retI1)
+      .map((x) => this.processFnArg(x, dargs));
     const impl =
       node.nameOrExpr instanceof ASTIdentifier &&
       !(node.nameOrExpr instanceof AST.ASTVariable)
         ? this.langMgr.getFn('xquery', ...idToPair(node.nameOrExpr)).impl
         : null;
-    if (!impl) args.push({ op: node.nameOrExpr.accept(this) });
+    if (!impl) args.push({ op: node.nameOrExpr.accept(this, dargs) });
     const boundIndices = new Set(node.boundArgs.map(retI0));
 
     return new plan.FnCall('xquery', args, (...bound) => {
@@ -656,21 +830,21 @@ export class XQueryLogicalPlanBuilder
       };
     });
   }
-  visitLiteral<U>(node: ASTLiteral<U>): LogicalPlanOperator {
+  visitLiteral<U>(node: ASTLiteral<U>, args: DescentArgs): LogicalPlanOperator {
     return new plan.Literal('xquery', node.value);
   }
-  private processOpArg(item: ASTNode): plan.PlanOpAsArg {
+  private processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
     return {
       op:
         item instanceof AST.ASTVariable
           ? new plan.FnCall('xquery', [item], ret1)
-          : item.accept(this),
+          : item.accept(this, args),
     };
   }
-  visitOperator(node: ASTOperator): LogicalPlanOperator {
+  visitOperator(node: ASTOperator, args: DescentArgs): LogicalPlanOperator {
     return new plan.FnCall(
       'xquery',
-      node.operands.map(this.processOpArg),
+      node.operands.map((x) => this.processOpArg(x, args)),
       this.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
       true,
     );
@@ -751,12 +925,17 @@ export class XQueryLogicalPlanBuilder
     }
     return toTuples(arg);
   }
-  visitFunction(node: ASTFunction): LogicalPlanOperator {
+  visitFunction(node: ASTFunction, dargs: DescentArgs): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
     const impl = this.langMgr.getFnOrAggr(node.lang, id, schema);
 
     if ('impl' in impl) {
-      const args = [DOT, LEN, POS, ...node.args.map(this.processFnArg)];
+      const args = [
+        DOT,
+        LEN,
+        POS,
+        ...node.args.map((a) => this.processFnArg(a, dargs)),
+      ];
       return new plan.FnCall(
         node.lang,
         args,
@@ -770,7 +949,9 @@ export class XQueryLogicalPlanBuilder
       );
     }
 
-    const args = node.args.map((x) => this.prepareAggArg(x.accept(this)));
+    const args = node.args.map((x) =>
+      this.prepareAggArg(x.accept(this, dargs)),
+    );
     let gb: plan.GroupBy;
     if (args.length === 1) {
       gb = new plan.GroupBy(
@@ -799,16 +980,19 @@ export class XQueryLogicalPlanBuilder
 
     return new plan.MapToItem('xquery', DOT, gb);
   }
-  visitLangSwitch(node: LangSwitch): LogicalPlanOperator {
+  visitLangSwitch(node: LangSwitch, args: DescentArgs): LogicalPlanOperator {
     const nested = new (this.langMgr.getLang(
       node.lang,
-    ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(node.node);
-    if (nested instanceof LogicalPlanTupleOperator) {
-      return new plan.MapToItem('xquery', null, nested);
+    ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(node.node, args.ctx);
+    for (const item of iterTrie(nested.inferred)) {
+      args.inferred.add(item);
     }
-    return nested;
+    if (nested.plan instanceof LogicalPlanTupleOperator) {
+      return new plan.MapToItem('xquery', null, nested.plan);
+    }
+    return nested.plan;
   }
-  visitIdentifier(node: ASTIdentifier): LogicalPlanOperator {
+  visitIdentifier(node: ASTIdentifier, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
 }

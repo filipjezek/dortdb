@@ -4,6 +4,7 @@ import {
   ASTIdentifier,
   ASTFunction,
   allAttrs,
+  boundParam,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { SQLVisitor } from './visitor.js';
@@ -79,10 +80,13 @@ export class ASTRow implements ASTNode {
   }
 }
 
-export class ASTParam implements ASTNode {
-  constructor(public name: string) {}
+export class ASTParam extends ASTIdentifier {
+  constructor(public name: string) {
+    super();
+    this.parts = [boundParam, name];
+  }
 
-  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+  override accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitParam(this, arg);
   }
 }

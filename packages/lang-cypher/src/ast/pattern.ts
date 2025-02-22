@@ -40,7 +40,7 @@ export class RelPattern implements ASTNode {
     public types: CypherIdentifier[] = [],
     public range?:
       | [ASTNumberLiteral | undefined]
-      | [ASTNumberLiteral, ASTNumberLiteral],
+      | [ASTNumberLiteral | undefined, ASTNumberLiteral | undefined],
     public props?: ASTMapLiteral | ASTParameter,
   ) {}
 

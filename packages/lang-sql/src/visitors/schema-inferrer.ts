@@ -1,17 +1,26 @@
 import {
   ASTIdentifier,
+  boundParam,
   IdSet,
   LanguageManager,
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  toInfer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { Trie } from 'mnemonist';
 import { isTableAttr } from '../utils/is-table-attr.js';
 import { Using } from '../plan/using.js';
-import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
+import {
+  difference,
+  overrideSource,
+  schemaToTrie,
+  union,
+} from '@dortdb/core/utils';
 import { retI1, toPair } from '@dortdb/core/internal-fns';
+import { LangSwitch } from '../plan/langswitch.js';
+import { SQLLogicalPlanVisitor } from 'src/plan/index.js';
+import { DEFAULT_COLUMN } from './builder.js';
 
 const EMPTY = new Trie<(string | symbol)[]>(Array);
 function zip<T, U>(a: T[], b: U[]): [T, U][] {
@@ -26,31 +35,30 @@ function zip<T, U>(a: T[], b: U[]): [T, U][] {
  * Infers the schema of a logical plan.
  * Each method returns external references.
  */
-export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
+export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   constructor(
-    private vmap: Record<string, LogicalPlanVisitor<IdSet>>,
+    private vmap: Record<string, SQLLogicalPlanVisitor<IdSet, IdSet>>,
     private langMgr: LanguageManager,
   ) {}
 
-  /**
-   * conditional down traversal. Only use if the source can be a langswitch
-   */
-  private downCond(v: LogicalPlanOperator & { source: LogicalPlanOperator }) {
-    if (v.source.lang === 'sql') {
-      return v.source.accept(this.vmap);
+  public inferSchema(operator: LogicalPlanOperator, ctx: IdSet): IdSet {
+    const external = operator.accept(this.vmap, ctx);
+    for (const item of external.find([boundParam])) {
+      external.delete(item);
     }
-    return EMPTY;
+    return external;
   }
 
-  visitProjection(operator: plan.Projection): IdSet {
+  visitProjection(operator: plan.Projection, ctx: IdSet): IdSet {
     // additional appended attrs through upper operators
     const external = schemaToTrie(operator.schema.slice(operator.attrs.length));
     operator.removeFromSchema(external);
 
+    ctx = union(ctx, operator.source.schemaSet);
     for (const attr of operator.attrs) {
-      this.processArg(operator.source, attr[0]);
+      this.processArg(operator.source, attr[0], ctx);
     }
-    for (const item of this.downCond(operator)) {
+    for (const item of operator.source.accept(this.vmap, ctx)) {
       external.add(item);
     }
     return external;
@@ -59,18 +67,19 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
   private processArg(
     operator: LogicalPlanTupleOperator,
     arg: ASTIdentifier | LogicalPlanOperator,
+    ctx: IdSet,
   ) {
     if (arg instanceof ASTIdentifier) {
       operator.addToSchema(arg);
     } else {
-      operator.addToSchema(arg.accept(this.vmap));
+      operator.addToSchema(arg.accept(this.vmap, ctx));
     }
   }
-  visitSelection(operator: plan.Selection): IdSet {
-    this.processArg(operator, operator.condition);
-    return operator.source.accept(this.vmap);
+  visitSelection(operator: plan.Selection, ctx: IdSet): IdSet {
+    this.processArg(operator, operator.condition, ctx);
+    return operator.source.accept(this.vmap, ctx);
   }
-  visitTupleSource(operator: plan.TupleSource): IdSet {
+  visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
     const external = new Trie<(string | symbol)[]>(Array);
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
@@ -93,13 +102,14 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
   }
   visitCalculation(
     operator: plan.Calculation | plan.ItemFnSource | plan.TupleFnSource,
+    ctx: IdSet,
   ): IdSet {
     const external = new Trie<(string | symbol)[]>(Array);
     for (const arg of operator.args) {
       if (arg instanceof ASTIdentifier) {
         external.add(arg.parts);
-      } else if (arg.lang === 'sql') {
-        for (const item of arg.accept(this.vmap)) {
+      } else {
+        for (const item of arg.accept(this.vmap, ctx)) {
           external.add(item);
         }
       }
@@ -135,7 +145,7 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
     res.add(operator.schema[0].parts.slice(0, -1));
     return res;
   }
-  visitCartesianProduct(operator: plan.CartesianProduct): IdSet {
+  visitCartesianProduct(operator: plan.CartesianProduct, ctx: IdSet): IdSet {
     const external = new Trie<(string | symbol)[]>(Array);
     const leftNames = this.getRelNames(operator.left);
     const rightNames = this.getRelNames(operator.right);
@@ -158,51 +168,52 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
     }
     operator.removeFromSchema(external);
 
-    if (operator.left.lang === 'sql') {
-      for (const item of operator.left.accept(this.vmap)) {
-        external.add(item);
-      }
+    for (const item of operator.left.accept(this.vmap, ctx)) {
+      external.add(item);
     }
-    if (operator.right.lang === 'sql') {
-      for (const item of operator.right.accept(this.vmap)) {
-        external.add(item);
-      }
+    for (const item of operator.right.accept(this.vmap, ctx)) {
+      external.add(item);
     }
 
     return external;
   }
-  visitJoin(operator: plan.Join): IdSet {
+  visitJoin(operator: plan.Join, ctx: IdSet): IdSet {
     if (operator.on) {
-      this.processArg(operator, operator.on);
+      this.processArg(operator, operator.on, ctx);
     }
-    return this.visitCartesianProduct(operator);
+    return this.visitCartesianProduct(operator, ctx);
   }
-  visitProjectionConcat(operator: plan.ProjectionConcat): IdSet {
+  visitProjectionConcat(operator: plan.ProjectionConcat, ctx: IdSet): IdSet {
     const horizontal =
       operator.mapping.lang === 'sql'
-        ? operator.mapping.accept(this.vmap)
+        ? operator.mapping.accept(this.vmap, ctx)
         : EMPTY;
     operator.source.addToSchema(horizontal);
-    const vertical = this.downCond(operator);
+    const vertical = operator.source.accept(this.vmap, ctx);
     operator.clearSchema();
     operator.addToSchema(
       operator.source.schema.concat(operator.mapping.schema),
     );
     return vertical;
   }
-  visitMapToItem(operator: plan.MapToItem): IdSet {
-    return this.downCond(operator);
+  visitMapToItem(operator: plan.MapToItem, ctx: IdSet): IdSet {
+    const fromLS = operator.source instanceof LangSwitch;
+    const res = operator.source.accept(this.vmap, ctx);
+    if (fromLS && operator.source.schema.length === 1) {
+      operator.key = operator.source.schema[0];
+    }
+    return res;
   }
-  visitMapFromItem(operator: plan.MapFromItem): IdSet {
-    const external = this.downCond(operator);
+  visitMapFromItem(operator: plan.MapFromItem, ctx: IdSet): IdSet {
+    const external = operator.source.accept(this.vmap, ctx);
     while (operator.schema.length > 1) {
       external.add(operator.schema[1].parts);
       operator.removeFromSchema(operator.schema[1]);
     }
     return external;
   }
-  visitProjectionIndex(operator: plan.ProjectionIndex): IdSet {
-    const external = this.downCond(operator);
+  visitProjectionIndex(operator: plan.ProjectionIndex, ctx: IdSet): IdSet {
+    const external = operator.source.accept(this.vmap, ctx);
     operator.removeFromSchema(external);
 
     const index = operator.schema.indexOf(operator.indexCol);
@@ -212,13 +223,45 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
 
     return external;
   }
-  visitOrderBy(operator: plan.OrderBy): IdSet {
+  visitOrderBy(operator: plan.OrderBy, ctx: IdSet): IdSet {
+    const tempSchema = new plan.NullSource('sql');
     for (const item of operator.orders) {
-      this.processArg(operator.source, item.key);
+      this.processArg(tempSchema, item.key, ctx);
     }
-    return operator.source.accept(this.vmap);
+    operator.source.addToSchema(tempSchema.schema);
+    const external = operator.source.accept(this.vmap, ctx);
+    const proj = operator instanceof plan.Distinct ? operator.source : operator;
+
+    if (proj instanceof plan.Projection) {
+      // otherwise it's a set op
+      const parentProj = new plan.Projection(
+        'sql',
+        proj.attrs.slice(),
+        operator,
+      );
+      for (const oitem of operator.orders) {
+        if (
+          oitem.key instanceof ASTIdentifier &&
+          !proj.schemaSet.has(oitem.key.parts)
+        ) {
+          proj.addToSchema(oitem.key);
+          proj.attrs.push([oitem.key, oitem.key]);
+        } else if (oitem.key instanceof plan.Calculation) {
+          for (const attr of difference(tempSchema.schemaSet, external)) {
+            if (!proj.schemaSet.has(attr)) {
+              const id = ASTIdentifier.fromParts(attr);
+              proj.addToSchema(id);
+              proj.attrs.push([id, id]);
+            }
+          }
+        }
+      }
+      operator.parent.replaceChild(operator, parentProj);
+    }
+
+    return external;
   }
-  visitGroupBy(operator: plan.GroupBy): IdSet {
+  visitGroupBy(operator: plan.GroupBy, ctx: IdSet): IdSet {
     // additional appended attrs through upper operators
     const external = schemaToTrie(
       operator.schema.slice(operator.keys.length + operator.aggs.length),
@@ -226,61 +269,59 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
     operator.removeFromSchema(external);
 
     for (const attr of operator.keys) {
-      this.processArg(operator.source, attr[0]);
+      this.processArg(operator.source, attr[0], ctx);
     }
     for (const agg of operator.aggs) {
       for (const arg of agg.args) {
-        this.processArg(operator.source, arg);
+        this.processArg(operator.source, arg, ctx);
       }
-      for (const item of agg.postGroupOp.accept(this.vmap)) {
+      for (const item of agg.postGroupOp.accept(this.vmap, ctx)) {
         external.add(item);
       }
     }
-    for (const item of this.downCond(operator)) {
+    for (const item of operator.source.accept(this.vmap, ctx)) {
       external.add(item);
     }
 
     return external;
   }
 
-  visitLimit(operator: plan.Limit): IdSet {
-    return operator.source.accept(this.vmap);
+  visitLimit(operator: plan.Limit, ctx: IdSet): IdSet {
+    return operator.source.accept(this.vmap, ctx);
   }
 
-  private processSetOp(operator: plan.SetOperator) {
-    const left =
-      operator.left.lang === 'sql' ? operator.left.accept(this.vmap) : EMPTY;
-    const right =
-      operator.right.lang === 'sql' ? operator.right.accept(this.vmap) : EMPTY;
+  private processSetOp(operator: plan.SetOperator, ctx: IdSet) {
+    const left = operator.left.accept(this.vmap, ctx);
+    const right = operator.right.accept(this.vmap, ctx);
     for (const item of right) {
       left.add(item);
     }
     return left;
   }
 
-  visitUnion(operator: plan.Union): IdSet {
-    return this.processSetOp(operator);
+  visitUnion(operator: plan.Union, ctx: IdSet): IdSet {
+    return this.processSetOp(operator, ctx);
   }
-  visitIntersection(operator: plan.Intersection): IdSet {
-    return this.processSetOp(operator);
+  visitIntersection(operator: plan.Intersection, ctx: IdSet): IdSet {
+    return this.processSetOp(operator, ctx);
   }
-  visitDifference(operator: plan.Difference): IdSet {
-    return this.processSetOp(operator);
+  visitDifference(operator: plan.Difference, ctx: IdSet): IdSet {
+    return this.processSetOp(operator, ctx);
   }
-  visitDistinct(operator: plan.Distinct): IdSet {
-    return operator.source.accept(this.vmap);
+  visitDistinct(operator: plan.Distinct, ctx: IdSet): IdSet {
+    return operator.source.accept(this.vmap, ctx);
   }
-  visitNullSource(operator: plan.NullSource): IdSet {
+  visitNullSource(operator: plan.NullSource, ctx: IdSet): IdSet {
     return EMPTY;
   }
-  visitAggregate(operator: plan.AggregateCall): IdSet {
+  visitAggregate(operator: plan.AggregateCall, ctx: IdSet): IdSet {
     throw new Error('Method not implemented.');
   }
-  visitItemFnSource(operator: plan.ItemFnSource): IdSet {
-    return this.visitCalculation(operator);
+  visitItemFnSource(operator: plan.ItemFnSource, ctx: IdSet): IdSet {
+    return this.visitCalculation(operator, ctx);
   }
-  visitTupleFnSource(operator: plan.TupleFnSource): IdSet {
-    const external = this.visitCalculation(operator);
+  visitTupleFnSource(operator: plan.TupleFnSource, ctx: IdSet): IdSet {
+    const external = this.visitCalculation(operator, ctx);
     if (operator.name) {
       const n =
         operator.name instanceof ASTIdentifier
@@ -299,7 +340,7 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
     throw new Error('Method not implemented.');
   }
 
-  visitUsing(operator: Using): IdSet {
+  visitUsing(operator: Using, ctx: IdSet): IdSet {
     const condition = new plan.Calculation(
       'sql',
       (...args) => {
@@ -341,6 +382,36 @@ export class SchemaInferrer implements LogicalPlanVisitor<IdSet> {
       replacement.schema = operator.schema;
     }
     operator.parent.replaceChild(operator, replacement);
-    return replacement.accept(this.vmap);
+    return replacement.accept(this.vmap, ctx);
+  }
+
+  visitLangSwitch(operator: LangSwitch, ctx: IdSet): IdSet {
+    console.log('lang switch ctx', ctx);
+    const nested = new (this.langMgr.getLang(
+      operator.node.lang,
+    ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(
+      operator.node.node,
+      ctx,
+    );
+    let res = !(nested.plan instanceof LogicalPlanTupleOperator)
+      ? new plan.MapFromItem('sql', DEFAULT_COLUMN, nested.plan)
+      : nested.plan;
+    if (operator.alias) {
+      res = new plan.Projection(
+        'sql',
+        res.schema.map((x) => [x, overrideSource(operator.alias, x)]),
+        res,
+      );
+    }
+
+    const external = nested.inferred;
+    for (const item of operator.schemaSet) {
+      if (!res.schemaSet.has(item)) {
+        external.add(item);
+      }
+    }
+
+    operator.parent.replaceChild(operator, res);
+    return external;
   }
 }

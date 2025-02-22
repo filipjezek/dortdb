@@ -1,10 +1,13 @@
 import {
+  Aliased,
+  allAttrs,
   ASTFunction,
   ASTIdentifier,
   ASTLiteral,
   ASTNode,
   ASTOperator,
   CalculationParams,
+  IdSet,
   LangSwitch,
   LanguageManager,
   LogicalPlanBuilder,
@@ -13,9 +16,10 @@ import {
   LogicalPlanVisitor,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
-import * as AST from 'src/ast/index.js';
-import { CypherVisitor } from 'src/ast/visitor.js';
+import * as AST from '../ast/index.js';
+import { CypherVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
+import { unwind } from '@dortdb/core/fns';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -23,24 +27,30 @@ function idToPair(id: ASTIdentifier): [string, string] {
     id.parts[id.parts.length - 2] as string,
   ];
 }
+function toId(name: string | symbol): ASTIdentifier {
+  return ASTIdentifier.fromParts([name]);
+}
+interface DescentArgs {
+  src?: LogicalPlanTupleOperator;
+  ctx: IdSet;
+}
 
 export class CypherLogicalPlanBuilder
-  implements
-    LogicalPlanBuilder,
-    CypherVisitor<LogicalPlanOperator, LogicalPlanTupleOperator>
+  implements LogicalPlanBuilder, CypherVisitor<LogicalPlanOperator, DescentArgs>
 {
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
   private stringifier = new ASTDeterministicStringifier();
 
   constructor(private langMgr: LanguageManager) {
     this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
-    this.processFnArg = this.processFnArg.bind(this);
-    this.toCalc = this.toCalc.bind(this);
   }
 
-  private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
+  private toCalc(
+    node: ASTNode,
+    args: DescentArgs,
+  ): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
-    const calcParams = node.accept(this).accept(this.calcBuilders);
+    const calcParams = node.accept(this, args).accept(this.calcBuilders);
     return new plan.Calculation(
       'cypher',
       calcParams.impl,
@@ -49,15 +59,36 @@ export class CypherLogicalPlanBuilder
       calcParams.literal,
     );
   }
-  private processFnArg(item: ASTNode): plan.PlanOpAsArg | ASTIdentifier {
-    return item instanceof ASTIdentifier ? item : { op: item.accept(this) };
+  private processFnArg(
+    item: ASTNode,
+    args: DescentArgs,
+  ): plan.PlanOpAsArg | ASTIdentifier {
+    return item instanceof ASTIdentifier
+      ? item
+      : { op: item.accept(this, args) };
+  }
+  private processAttr(
+    attr: ASTNode | Aliased<ASTNode>,
+    args: DescentArgs,
+  ): Aliased<ASTIdentifier | plan.Calculation> {
+    if (attr instanceof ASTIdentifier) {
+      return [attr, attr];
+    }
+    if (Array.isArray(attr)) {
+      return [this.toCalc(attr[0], args), attr[1]];
+    }
+    const alias = toId(attr.accept(this.stringifier));
+    return [this.toCalc(attr, args), alias];
   }
 
-  buildPlan(node: ASTNode): LogicalPlanOperator {
-    return node.accept(this);
+  buildPlan(node: ASTNode, ctx: IdSet) {
+    return { plan: node.accept(this, { ctx }), inferred: ctx };
   }
-  visitCypherIdentifier(node: AST.CypherIdentifier): LogicalPlanOperator {
-    return this.visitIdentifier(node);
+  visitCypherIdentifier(
+    node: AST.CypherIdentifier,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
+    return this.visitIdentifier(node, args);
   }
   visitStringLiteral(node: AST.ASTStringLiteral): LogicalPlanOperator {
     return new plan.Literal('xquery', node.value);
@@ -65,16 +96,22 @@ export class CypherLogicalPlanBuilder
   visitNumberLiteral(node: AST.ASTNumberLiteral): LogicalPlanOperator {
     return new plan.Literal('xquery', node.value);
   }
-  visitListLiteral(node: AST.ASTListLiteral): LogicalPlanOperator {
+  visitListLiteral(
+    node: AST.ASTListLiteral,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     return new plan.FnCall(
       'cypher',
-      node.items.map(this.processFnArg),
+      node.items.map((item) => this.processFnArg(item, args)),
       Array.of,
     );
   }
-  visitMapLiteral(node: AST.ASTMapLiteral): LogicalPlanOperator {
+  visitMapLiteral(
+    node: AST.ASTMapLiteral,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
     const names = node.items.map((i) => i[1].parts[0]);
-    const values = node.items.map((i) => this.processFnArg(i[1]));
+    const values = node.items.map((i) => this.processFnArg(i[1], args));
     return new plan.FnCall('cypher', values, (...vals) => {
       const res: Record<string | symbol, unknown> = {};
       for (let i = 0; i < vals.length; i++) {
@@ -86,15 +123,18 @@ export class CypherLogicalPlanBuilder
   visitBooleanLiteral(node: AST.ASTBooleanLiteral): LogicalPlanOperator {
     return new plan.Literal('xquery', node.value);
   }
-  visitFnCallWrapper(node: AST.FnCallWrapper): LogicalPlanOperator {
-    if (node.procedure) return this.visitProcedure(node);
+  visitFnCallWrapper(
+    node: AST.FnCallWrapper,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
+    if (node.procedure) return this.visitProcedure(node, args);
     const [id, schema] = idToPair(node.fn.id);
     const impl = this.langMgr.getFnOrAggr('sql', id, schema);
 
     if ('init' in impl) {
       const res = new plan.AggregateCall(
         'cypher',
-        node.fn.args.map(this.toCalc),
+        node.fn.args.map((arg) => this.toCalc(arg, args)),
         impl,
         ASTIdentifier.fromParts([this.stringifier.visitFnCallWrapper(node)]),
       );
@@ -109,212 +149,268 @@ export class CypherLogicalPlanBuilder
     }
     return new plan.FnCall(
       'cypher',
-      node.fn.args.map(this.processFnArg),
+      node.fn.args.map((arg) => this.processFnArg(arg, args)),
       impl.impl,
       impl.pure,
     );
   }
 
-  private visitProcedure(node: AST.FnCallWrapper): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+  private visitProcedure(
+    node: AST.FnCallWrapper,
+    args: DescentArgs,
+  ): LogicalPlanOperator {
+    const [id, schema] = idToPair(node.fn.id);
+    const impl = this.langMgr.getFn('sql', id, schema);
+    let res: LogicalPlanTupleOperator = new plan.TupleFnSource(
+      'cypher',
+      node.fn.args.map((arg) => this.toCalc(arg, args)),
+      impl.impl,
+      node.fn.id,
+    );
+    if (impl.outputSchema) res.addToSchema(impl.outputSchema);
+    if (node.yieldItems && node.yieldItems !== '*') {
+      res = new plan.Projection(
+        'cypher',
+        node.yieldItems.map((item) => this.processAttr(item, args)),
+        res,
+      );
+    }
+    if (node.where) {
+      res = new plan.Selection('cypher', this.toCalc(node.where, args), res);
+    }
+    return res;
   }
 
   visitExistsSubquery(
     node: AST.ExistsSubquery,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    let res = node.query.accept(this, args) as LogicalPlanOperator;
+    res = new plan.Limit('cypher', 0, 1, res);
+    const col = toId('count');
+    res = new plan.GroupBy(
+      'cypher',
+      [],
+      [
+        new plan.AggregateCall(
+          'cypher',
+          [toId(allAttrs)],
+          this.langMgr.getAggr('cypher', 'count'),
+          col,
+        ),
+      ],
+      res as plan.Limit,
+    );
+    res = new plan.MapToItem('cypher', col, res as plan.GroupBy);
+    return new plan.FnCall('cypher', [{ op: res }], (x) => x > 0);
   }
   visitQuantifiedExpr(
     node: AST.QuantifiedExpr,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    let res: LogicalPlanTupleOperator = new plan.MapFromItem(
+      'cypher',
+      node.variable,
+      new plan.ItemFnSource(
+        'cypher',
+        [this.toCalc(node.expr, args)],
+        unwind.impl,
+        toId('unwind'),
+      ),
+    );
+
+    if (node.quantifier === AST.Quantifier.SINGLE) {
+      res = new plan.GroupBy(
+        'cypher',
+        [],
+        [
+          new plan.AggregateCall(
+            'cypher',
+            [node.variable],
+            this.langMgr.getAggr('cypher', 'count'),
+            node.variable,
+          ),
+        ],
+        res,
+      );
+      return new plan.FnCall(
+        'cypher',
+        [{ op: new plan.MapToItem('cypher', node.variable, res) }],
+        (x) => x === 1,
+      );
+    }
+
+    const invertCond = node.quantifier === AST.Quantifier.ALL;
+    const invertRes =
+      node.quantifier === AST.Quantifier.ANY ||
+      node.quantifier === AST.Quantifier.NONE;
+
+    let cond = this.toCalc(node.where ?? node.variable, args);
+    if (invertCond) {
+      if (cond instanceof ASTIdentifier) {
+        cond = new plan.Calculation('cypher', (x) => !x, [cond]);
+      } else {
+        cond.impl = (...args) => !(cond as plan.Calculation).impl(...args);
+      }
+    }
+    res = new plan.Selection('cypher', cond, res);
+    res = new plan.Limit('cypher', 0, 1, res);
+    res = new plan.Projection(
+      'cypher',
+      [[new plan.Calculation('cypher', () => invertRes, []), node.variable]],
+      res,
+    );
+    return res;
   }
+
   visitPatternElChain(
     node: AST.PatternElChain,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitParameter(
     node: AST.ASTParameter,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    return this.visitIdentifier(node, args);
   }
   visitNodePattern(
     node: AST.NodePattern,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitRelPattern(
     node: AST.RelPattern,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitPatternComprehension(
     node: AST.PatternComprehension,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitListComprehension(
     node: AST.ListComprehension,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitCaseExpr(
-    node: AST.CaseExpr,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitCaseExpr(node: AST.CaseExpr, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitCountAll(
-    node: AST.CountAll,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitCountAll(node: AST.CountAll, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitLabelFilterExpr(
     node: AST.LabelFilterExpr,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitSubscriptExpr(
     node: AST.SubscriptExpr,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitPropLookup(
     node: AST.PropLookup,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitSetOp(
-    node: AST.SetOp,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitSetOp(node: AST.SetOp, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitQuery(
-    node: AST.Query,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitQuery(node: AST.Query, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitMatchClause(
     node: AST.MatchClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitUnwindClause(
     node: AST.UnwindClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitCreateClause(
     node: AST.CreateClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitMergeClause(
     node: AST.MergeClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitSetClause(
-    node: AST.SetClause,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitSetClause(node: AST.SetClause, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitSetItem(
-    node: AST.SetItem,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitSetItem(node: AST.SetItem, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitRemoveClause(
     node: AST.RemoveClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitRemoveItem(
     node: AST.RemoveItem,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitDeleteClause(
     node: AST.DeleteClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitProjectionBody(
     node: AST.ProjectionBody,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitOrderItem(
-    node: AST.OrderItem,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitOrderItem(node: AST.OrderItem, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitWithClause(
     node: AST.WithClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
   visitReturnClause(
     node: AST.ReturnClause,
-    src?: LogicalPlanTupleOperator,
+    args: DescentArgs,
   ): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitLiteral<T>(
-    node: ASTLiteral<T>,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitLiteral<T>(node: ASTLiteral<T>, args: DescentArgs): LogicalPlanOperator {
     return new plan.Literal('cypher', node.value);
   }
-  visitOperator(
-    node: ASTOperator,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitOperator(node: ASTOperator, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitFunction(
-    node: ASTFunction,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitFunction(node: ASTFunction, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitLangSwitch(
-    node: LangSwitch,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitLangSwitch(node: LangSwitch, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitIdentifier(
-    node: ASTIdentifier,
-    src?: LogicalPlanTupleOperator,
-  ): LogicalPlanOperator {
+  visitIdentifier(node: ASTIdentifier, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
 }
