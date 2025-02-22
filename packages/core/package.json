@@ -13,7 +13,8 @@
     "./utils": "./dist/utils/index.js",
     "./plan": "./dist/plan/operators/index.js",
     "./ast": "./dist/ast.js",
-    "./internal-fns": "./dist/internal-fns/index.js"
+    "./internal-fns": "./dist/internal-fns/index.js",
+    "./data-structures": "./dist/data-structures/index.js"
   },
   "files": [
     "dist",

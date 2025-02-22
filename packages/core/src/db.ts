@@ -1,4 +1,4 @@
-import { Trie } from 'mnemonist';
+import { Trie } from './data-structures/trie.js';
 import { ASTNode } from './ast.js';
 import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
@@ -28,7 +28,7 @@ export class DortDB<LangNames extends string> {
       .logicalPlanBuilder;
     return new Visitor(this.langMgr).buildPlan(
       query,
-      new Trie<(symbol | string)[]>(Array),
+      new Trie<symbol | string>(),
     );
   }
 }

@@ -1,12 +1,13 @@
 import { ASTIdentifier, IdSet, LogicalPlanTupleOperator } from '@dortdb/core';
+import { Projection, Selection } from '@dortdb/core/plan';
 import { SchemaInferrer } from '../visitors/schema-inferrer.js';
-import { Trie } from 'mnemonist';
+import { Trie } from '@dortdb/core/data-structures';
 import { CartesianProduct } from '@dortdb/core/plan';
 import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
 import { SQLLogicalPlanVisitor } from './index.js';
 
 /**
- * This operator is a temporary operator which is replaced by {@link operators.Projection} and {@link operators.Selection}
+ * This operator is a temporary operator which is replaced by {@link Projection} and {@link Selection}
  * in {@link SchemaInferrer}.
  */
 export class Using extends LogicalPlanTupleOperator {
@@ -23,7 +24,7 @@ export class Using extends LogicalPlanTupleOperator {
     super();
     this.lang = lang;
     this.schema = [];
-    this.schemaSet = new Trie<(string | symbol)[]>(Array);
+    this.schemaSet = new Trie<string | symbol>();
     this.calculateSchema();
     source.parent = this;
   }

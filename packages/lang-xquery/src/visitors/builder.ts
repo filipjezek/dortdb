@@ -27,11 +27,11 @@ import { treeStep } from '../utils/tree-step.js';
 import { toBool } from '../castables/basic-types.js';
 import { ProjectionSize } from '../plan/projection-size.js';
 import { collect } from '@dortdb/core/aggregates';
-import { iterTrie, resolveArgs, schemaToTrie, union } from '@dortdb/core/utils';
+import { resolveArgs, schemaToTrie, union } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { FnContext } from 'src/functions/fn-context.js';
-import { Trie } from 'mnemonist';
+import { Trie } from '@dortdb/core/data-structures';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -99,7 +99,7 @@ export class XQueryLogicalPlanBuilder
   }
 
   buildPlan(node: ASTNode, ctx: IdSet) {
-    const inferred = new Trie<(string | symbol)[]>(Array);
+    const inferred = new Trie<string | symbol>();
     const res = node.accept(this, { ctx, inferred });
     return { plan: res, inferred };
   }
@@ -406,6 +406,7 @@ export class XQueryLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanOperator {
     if (node.expr instanceof AST.ASTVariable) {
+      infer(node.expr, args);
       return new plan.MapToItem('xquery', node.expr, args.src);
     }
     return new plan.MapToItem(
@@ -834,12 +835,11 @@ export class XQueryLogicalPlanBuilder
     return new plan.Literal('xquery', node.value);
   }
   private processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
-    return {
-      op:
-        item instanceof AST.ASTVariable
-          ? new plan.FnCall('xquery', [item], ret1)
-          : item.accept(this, args),
-    };
+    if (item instanceof AST.ASTVariable) {
+      infer(item, args);
+      return { op: new plan.FnCall('xquery', [item], ret1) };
+    }
+    return { op: item.accept(this, args) };
   }
   visitOperator(node: ASTOperator, args: DescentArgs): LogicalPlanOperator {
     return new plan.FnCall(
@@ -984,7 +984,7 @@ export class XQueryLogicalPlanBuilder
     const nested = new (this.langMgr.getLang(
       node.lang,
     ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(node.node, args.ctx);
-    for (const item of iterTrie(nested.inferred)) {
+    for (const item of nested.inferred) {
       args.inferred.add(item);
     }
     if (nested.plan instanceof LogicalPlanTupleOperator) {

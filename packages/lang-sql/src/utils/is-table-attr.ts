@@ -1,5 +1,5 @@
 import { ASTIdentifier, IdSet } from '@dortdb/core';
-import { Trie } from 'mnemonist';
+import { Trie } from '@dortdb/core/data-structures';
 
 export function isTableAttr(
   attr: ASTIdentifier,

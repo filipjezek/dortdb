@@ -1,7 +1,6 @@
-import { iterTrie } from '../utils/trie.js';
 import { ASTIdentifier } from '../ast.js';
 import * as operators from './operators/index.js';
-import { Trie } from 'mnemonist';
+import { Trie } from '../data-structures/trie.js';
 
 export interface LogicalPlanOperator {
   lang: Lowercase<string>;
@@ -41,7 +40,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
         }
       }
     } else if (item instanceof Trie) {
-      for (const i of iterTrie(item)) {
+      for (const i of item) {
         if (!this.schemaSet.has(i)) {
           this.schema.push(ASTIdentifier.fromParts(i));
           this.schemaSet.add(i);
@@ -62,7 +61,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
         removed = this.schemaSet.delete(i.parts) || removed;
       }
     } else if (item instanceof Trie) {
-      for (const i of iterTrie(item)) {
+      for (const i of item) {
         removed = this.schemaSet.delete(i) || removed;
       }
     } else {
@@ -89,7 +88,7 @@ export type LogicalOpOrId = LogicalPlanOperator | ASTIdentifier;
 
 export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
-export type IdSet = Trie<(string | symbol)[]>;
+export type IdSet = Trie<string | symbol>;
 
 export interface LogicalPlanVisitor<Ret, Arg = never> {
   visitProjection(operator: operators.Projection, arg?: Arg): Ret;

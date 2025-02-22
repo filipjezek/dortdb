@@ -1,4 +1,4 @@
-import { Trie } from 'mnemonist';
+import { Trie } from '../../data-structures/trie.js';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
@@ -10,7 +10,7 @@ export class NullSource extends LogicalPlanTupleOperator {
     super();
     this.lang = lang;
     this.schema = [];
-    this.schemaSet = new Trie<(string | symbol)[]>(Array);
+    this.schemaSet = new Trie<string | symbol>();
   }
 
   accept<Ret, Arg>(

@@ -8,7 +8,7 @@ import {
   toInfer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
-import { Trie } from 'mnemonist';
+import { Trie } from '@dortdb/core/data-structures';
 import { isTableAttr } from '../utils/is-table-attr.js';
 import { Using } from '../plan/using.js';
 import {
@@ -22,7 +22,7 @@ import { LangSwitch } from '../plan/langswitch.js';
 import { SQLLogicalPlanVisitor } from 'src/plan/index.js';
 import { DEFAULT_COLUMN } from './builder.js';
 
-const EMPTY = new Trie<(string | symbol)[]>(Array);
+const EMPTY = new Trie<string | symbol>();
 function zip<T, U>(a: T[], b: U[]): [T, U][] {
   const res: [T, U][] = [];
   for (let i = 0; i < a.length; i++) {
@@ -43,7 +43,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
 
   public inferSchema(operator: LogicalPlanOperator, ctx: IdSet): IdSet {
     const external = operator.accept(this.vmap, ctx);
-    for (const item of external.find([boundParam])) {
+    for (const item of external.keys([boundParam])) {
       external.delete(item);
     }
     return external;
@@ -54,7 +54,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     const external = schemaToTrie(operator.schema.slice(operator.attrs.length));
     operator.removeFromSchema(external);
 
-    ctx = union(ctx, operator.source.schemaSet);
+    ctx = union(ctx, operator.source.schema);
     for (const attr of operator.attrs) {
       this.processArg(operator.source, attr[0], ctx);
     }
@@ -76,17 +76,19 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
   }
   visitSelection(operator: plan.Selection, ctx: IdSet): IdSet {
-    this.processArg(operator, operator.condition, ctx);
+    this.processArg(operator, operator.condition, union(ctx, operator.schema));
     return operator.source.accept(this.vmap, ctx);
   }
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
-    const external = new Trie<(string | symbol)[]>(Array);
+    const external = new Trie<string | symbol>();
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
-    for (const attr of operator.schema) {
+    for (const attr of operator.schema.slice()) {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
         operator.removeFromSchema(attr);
         external.add(attr.parts);
+      } else if (attr.parts[attr.parts.length - 1] === toInfer) {
+        operator.removeFromSchema(attr);
       }
     }
     return external;
@@ -104,7 +106,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     operator: plan.Calculation | plan.ItemFnSource | plan.TupleFnSource,
     ctx: IdSet,
   ): IdSet {
-    const external = new Trie<(string | symbol)[]>(Array);
+    const external = new Trie<string | symbol>();
     for (const arg of operator.args) {
       if (arg instanceof ASTIdentifier) {
         external.add(arg.parts);
@@ -141,12 +143,12 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
       return res;
     }
 
-    const res = new Trie<(string | symbol)[]>(Array);
+    const res = new Trie<string | symbol>();
     res.add(operator.schema[0].parts.slice(0, -1));
     return res;
   }
   visitCartesianProduct(operator: plan.CartesianProduct, ctx: IdSet): IdSet {
-    const external = new Trie<(string | symbol)[]>(Array);
+    const external = new Trie<string | symbol>();
     const leftNames = this.getRelNames(operator.left);
     const rightNames = this.getRelNames(operator.right);
     for (const item of leftNames) {
@@ -154,14 +156,22 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
         throw new Error('Duplicate table alias: ' + item.join('.'));
     }
 
-    for (const item of operator.schema) {
+    for (const item of operator.schema.slice()) {
       if (item.parts.length === 1) {
         throw new Error(`Ambiguous column name: ${item.parts[0]?.toString()}`);
       }
       if (isTableAttr(item, leftNames)) {
-        operator.left.addToSchema(item);
+        if (item.parts[item.parts.length - 1] === toInfer) {
+          operator.removeFromSchema(item);
+        } else {
+          operator.left.addToSchema(item);
+        }
       } else if (isTableAttr(item, rightNames)) {
-        operator.right.addToSchema(item);
+        if (item.parts[item.parts.length - 1] === toInfer) {
+          operator.removeFromSchema(item);
+        } else {
+          operator.right.addToSchema(item);
+        }
       } else {
         external.add(item.parts);
       }
@@ -179,15 +189,15 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
   visitJoin(operator: plan.Join, ctx: IdSet): IdSet {
     if (operator.on) {
-      this.processArg(operator, operator.on, ctx);
+      this.processArg(operator, operator.on, union(ctx, operator.schema));
     }
     return this.visitCartesianProduct(operator, ctx);
   }
   visitProjectionConcat(operator: plan.ProjectionConcat, ctx: IdSet): IdSet {
-    const horizontal =
-      operator.mapping.lang === 'sql'
-        ? operator.mapping.accept(this.vmap, ctx)
-        : EMPTY;
+    const horizontal = operator.mapping.accept(
+      this.vmap,
+      union(ctx, operator.source.schema),
+    );
     operator.source.addToSchema(horizontal);
     const vertical = operator.source.accept(this.vmap, ctx);
     operator.clearSchema();
@@ -225,8 +235,9 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
   visitOrderBy(operator: plan.OrderBy, ctx: IdSet): IdSet {
     const tempSchema = new plan.NullSource('sql');
+    const attrCtx = union(ctx, operator.source.schema);
     for (const item of operator.orders) {
-      this.processArg(tempSchema, item.key, ctx);
+      this.processArg(tempSchema, item.key, attrCtx);
     }
     operator.source.addToSchema(tempSchema.schema);
     const external = operator.source.accept(this.vmap, ctx);
@@ -268,8 +279,9 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     );
     operator.removeFromSchema(external);
 
+    const keyCtx = union(ctx, operator.source.schema);
     for (const attr of operator.keys) {
-      this.processArg(operator.source, attr[0], ctx);
+      this.processArg(operator.source, attr[0], keyCtx);
     }
     for (const agg of operator.aggs) {
       for (const arg of agg.args) {
@@ -309,10 +321,16 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     return this.processSetOp(operator, ctx);
   }
   visitDistinct(operator: plan.Distinct, ctx: IdSet): IdSet {
+    if (Array.isArray(operator.attrs)) {
+      const attrCtx = union(ctx, operator.schema);
+      for (const item of operator.attrs) {
+        this.processArg(operator, item, attrCtx);
+      }
+    }
     return operator.source.accept(this.vmap, ctx);
   }
   visitNullSource(operator: plan.NullSource, ctx: IdSet): IdSet {
-    return EMPTY;
+    return operator.schemaSet;
   }
   visitAggregate(operator: plan.AggregateCall, ctx: IdSet): IdSet {
     throw new Error('Method not implemented.');
@@ -327,10 +345,12 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
         operator.name instanceof ASTIdentifier
           ? operator.name
           : operator.name[1];
-      for (const attr of operator.schema) {
+      for (const attr of operator.schema.slice()) {
         if (attr.parts.length > 1 && !isTableAttr(attr, n)) {
           operator.removeFromSchema(attr);
           external.add(attr.parts);
+        } else if (attr.parts[attr.parts.length - 1] === toInfer) {
+          operator.removeFromSchema(attr);
         }
       }
     }
@@ -363,13 +383,23 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     const projectedCols = zip(operator.overriddenCols, operator.columns);
     projectedCols.push(
       ...replacement.schema
-        .filter((x) => !operator.toRemove.has(x.parts))
+        .filter(
+          (x) =>
+            !operator.toRemove.has(x.parts) &&
+            x.parts[x.parts.length - 1] !== toInfer,
+        )
         .map(toPair),
+    );
+    console.log(
+      'projectedCols',
+      projectedCols.map((x) => x[0].parts),
     );
     // some columns might have been inferred from above, so we will get them this way
     operator.removeFromSchema(projectedCols.map(retI1));
     for (const item of operator.schema) {
-      projectedCols.push([item, item]);
+      if (item.parts[item.parts.length - 1] !== toInfer) {
+        projectedCols.push([item, item]);
+      }
     }
     replacement = new plan.Projection('sql', projectedCols, replacement);
 
@@ -386,7 +416,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
 
   visitLangSwitch(operator: LangSwitch, ctx: IdSet): IdSet {
-    console.log('lang switch ctx', ctx);
+    console.log('lang switch ctx', Array.from(ctx));
     const nested = new (this.langMgr.getLang(
       operator.node.lang,
     ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(
@@ -405,6 +435,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
 
     const external = nested.inferred;
+    console.log('inferred', Array.from(external));
     for (const item of operator.schemaSet) {
       if (!res.schemaSet.has(item)) {
         external.add(item);

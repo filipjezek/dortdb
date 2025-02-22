@@ -31,7 +31,7 @@ import {
   TreeJoin,
   XQueryLogicalPlanVisitor,
 } from 'src/plan/index.js';
-import { Trie } from 'mnemonist';
+import { Trie } from '@dortdb/core/data-structures';
 import {
   ASTIdentifier,
   IdSet,
@@ -48,7 +48,7 @@ export class ItemSourceResolver
   constructor(private vmap: Record<string, LogicalPlanVisitor<void, IdSet>>) {}
 
   public resolveItemSources(operator: LogicalPlanOperator) {
-    operator.accept(this.vmap, new Trie<(string | symbol)[]>(Array));
+    operator.accept(this.vmap, new Trie<string | symbol>());
   }
 
   private processAttr(attr: LogicalOpOrId, known: IdSet) {

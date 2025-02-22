@@ -1,4 +1,4 @@
-import { Trie } from 'mnemonist';
+import { Trie } from '../../../data-structures/trie.js';
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
@@ -19,7 +19,7 @@ export class TupleSource extends LogicalPlanTupleOperator {
     super();
     this.lang = lang;
     this.schema = [];
-    this.schemaSet = new Trie<(string | symbol)[]>(Array);
+    this.schemaSet = new Trie<string | symbol>();
   }
 
   accept<Ret, Arg>(
@@ -48,7 +48,7 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
     super();
     this.lang = lang;
     this.schema = [];
-    this.schemaSet = new Trie<(string | symbol)[]>(Array);
+    this.schemaSet = new Trie<string | symbol>();
     arrSetParent(this.args, this);
   }
 

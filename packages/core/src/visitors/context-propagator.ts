@@ -59,14 +59,14 @@ export abstract class ContextPropagator
 
   visitProjection(operator: Projection, ctx: IdSet): void {
     this.descend(operator.source, ctx);
-    ctx = union(ctx, operator.source.schemaSet);
+    ctx = union(ctx, operator.source.schema);
     for (const attr of operator.attrs) {
       this.processAttr(attr[0], ctx);
     }
   }
   visitSelection(operator: Selection, ctx: IdSet): void {
     this.descend(operator.source, ctx);
-    ctx = union(ctx, operator.schemaSet);
+    ctx = union(ctx, operator.schema);
     this.processAttr(operator.condition, ctx);
   }
   visitTupleSource(operator: TupleSource, ctx: IdSet): void {
@@ -96,12 +96,12 @@ export abstract class ContextPropagator
   visitJoin(operator: Join, ctx: IdSet): void {
     this.visitCartesianProduct(operator, ctx);
     if (operator.on) {
-      this.descend(operator.on, union(ctx, operator.schemaSet));
+      this.descend(operator.on, union(ctx, operator.schema));
     }
   }
   visitProjectionConcat(operator: ProjectionConcat, ctx: IdSet): void {
     this.descend(operator.source, ctx);
-    this.descend(operator.mapping, union(ctx, operator.source.schemaSet));
+    this.descend(operator.mapping, union(ctx, operator.source.schema));
   }
   visitMapToItem(operator: MapToItem, ctx: IdSet): void {
     this.descend(operator.source, ctx);
@@ -114,7 +114,7 @@ export abstract class ContextPropagator
   }
   visitOrderBy(operator: OrderBy, ctx: IdSet): void {
     this.descend(operator.source, ctx);
-    ctx = union(ctx, operator.schemaSet);
+    ctx = union(ctx, operator.schema);
     for (const arg of operator.orders) {
       this.processAttr(arg.key, ctx);
     }
@@ -147,7 +147,7 @@ export abstract class ContextPropagator
   visitDistinct(operator: Distinct, ctx: IdSet): void {
     this.descend(operator.source, ctx);
     if (Array.isArray(operator.attrs)) {
-      ctx = union(ctx, operator.schemaSet);
+      ctx = union(ctx, operator.schema);
       for (const attr of operator.attrs) {
         this.processAttr(attr, ctx);
       }

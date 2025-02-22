@@ -1,7 +1,7 @@
 import { LogicalPlanTupleOperator } from '@dortdb/core';
 import { LangSwitchResolver } from '../visitors/langswitch-resolver.js';
 import { LangSwitch as ASTLangSwitch } from '@dortdb/core';
-import { Trie } from 'mnemonist';
+import { Trie } from '@dortdb/core/data-structures';
 import { SQLLogicalPlanVisitor } from './index.js';
 
 /**
@@ -17,7 +17,7 @@ export class LangSwitch extends LogicalPlanTupleOperator {
     super();
     this.lang = lang;
     this.schema = [];
-    this.schemaSet = new Trie<(string | symbol)[]>(Array);
+    this.schemaSet = new Trie<string | symbol>();
   }
   accept<Ret, Arg>(
     visitors: Record<string, SQLLogicalPlanVisitor<Ret, Arg>>,
