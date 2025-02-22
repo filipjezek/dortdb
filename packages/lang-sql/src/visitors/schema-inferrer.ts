@@ -390,10 +390,6 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
         )
         .map(toPair),
     );
-    console.log(
-      'projectedCols',
-      projectedCols.map((x) => x[0].parts),
-    );
     // some columns might have been inferred from above, so we will get them this way
     operator.removeFromSchema(projectedCols.map(retI1));
     for (const item of operator.schema) {
@@ -416,7 +412,6 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
 
   visitLangSwitch(operator: LangSwitch, ctx: IdSet): IdSet {
-    console.log('lang switch ctx', Array.from(ctx));
     const nested = new (this.langMgr.getLang(
       operator.node.lang,
     ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(
@@ -435,7 +430,6 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
 
     const external = nested.inferred;
-    console.log('inferred', Array.from(external));
     for (const item of operator.schemaSet) {
       if (!res.schemaSet.has(item)) {
         external.add(item);

@@ -37,7 +37,12 @@ function createParser(mgr: LanguageManager) {
     langMgr: mgr,
 
     messageQueue: [],
-    saveRemainingInput: (input) => (remainingInput = input),
+    saveRemainingInput: (input) => {
+      if (remainingInput.slice(0, -input.length).match(/^\s*[)}\]]\s*$/)) {
+        return;
+      }
+      remainingInput = input;
+    },
     makeOp: (op, args) =>
       typeof op === 'string'
         ? new ASTOperator(

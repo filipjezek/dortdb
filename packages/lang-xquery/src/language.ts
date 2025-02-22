@@ -48,7 +48,12 @@ function createParser(mgr: LanguageManager) {
     elStack: [],
 
     messageQueue: [],
-    saveRemainingInput: (input) => (remainingInput = input),
+    saveRemainingInput: (input) => {
+      if (remainingInput.slice(0, -input.length).match(/^\s*[)}\]]\s*$/)) {
+        return;
+      }
+      remainingInput = input;
+    },
     makeOp: (op, args) =>
       new ASTOperator('xquery', new ast.XQueryIdentifier(op), args),
     resetText: (yy) => {

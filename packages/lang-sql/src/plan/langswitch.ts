@@ -1,5 +1,4 @@
 import { LogicalPlanTupleOperator } from '@dortdb/core';
-import { LangSwitchResolver } from '../visitors/langswitch-resolver.js';
 import { LangSwitch as ASTLangSwitch } from '@dortdb/core';
 import { Trie } from '@dortdb/core/data-structures';
 import { SQLLogicalPlanVisitor } from './index.js';

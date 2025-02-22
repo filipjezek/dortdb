@@ -42,7 +42,12 @@ function createParser(mgr: LanguageManager) {
     langMgr: mgr,
 
     messageQueue: [],
-    saveRemainingInput: (input) => (remainingInput = input),
+    saveRemainingInput: (input) => {
+      if (remainingInput.slice(0, -input.length).match(/^\s*[)}\]]\s*$/)) {
+        return;
+      }
+      remainingInput = input;
+    },
     wrapNot: (expr, not) =>
       not ? new ASTOperator('sql', new ast.SQLIdentifier('NOT'), [expr]) : expr,
     makeOp: (op, args) =>

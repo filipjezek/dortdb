@@ -546,9 +546,9 @@ dir-attr-content-part:
 
 /* this rule only serves to switch lexer state and retry */
 dir-elem-constr-meta:
-	LT NCNAME { console.log('matched ncname', $2); yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
-	| LT keyword { console.log('matched keyword', $2); yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
-	| LT QNAME { console.log('matched qname', $2); yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); } ;
+	LT NCNAME { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
+	| LT keyword { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); }
+	| LT QNAME { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<' + $2); } ;
 dir-comment-constr-meta:
 	LT EMPH { yy.lexer.pushState('dirconstr'); yy.lexer.unput('<!'); } ;
 dir-pi-constr-meta:
