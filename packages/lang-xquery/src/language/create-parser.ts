@@ -1,40 +1,20 @@
 import {
   ASTFunction,
+  ASTLiteral,
   ASTOperator,
   LangSwitch,
-  Language,
   LanguageManager,
 } from '@dortdb/core';
-import { count } from '@dortdb/core/aggregates';
+import { AdditionalTokens, Keywords } from 'src/parser/tokens.js';
+import { YyContext } from 'src/parser/yycontext.js';
+import { DOT } from 'src/utils/dot.js';
+import * as ast from 'src/ast/index.js';
 import {
   xqueryLexer as Lexer,
   xqueryParser as Parser,
-} from './parser/xquery.cjs';
-import { Keywords, AdditionalTokens } from './parser/tokens.js';
-import { YyContext } from './parser/yycontext.js';
-import * as ast from './ast/index.js';
-import { ASTLiteral } from '@dortdb/core';
-import { XQueryLogicalPlanBuilder } from './visitors/builder.js';
-import { DOT } from './utils/dot.js';
-import { castables } from './castables/index.js';
-import { XQueryCalculationBuilder } from './visitors/calculation-builder.js';
-import * as fns from './functions/index.js';
-import * as operators from './operators/index.js';
+} from '../parser/xquery.cjs';
 
-export const XQuery: Language<'xquery'> = {
-  name: 'xquery',
-  operators: [...Object.values(operators)],
-  aggregates: [{ ...count, schema: 'fn' }],
-  functions: [...Object.values(fns)],
-  castables,
-  createParser,
-  visitors: {
-    logicalPlanBuilder: XQueryLogicalPlanBuilder,
-    calculationBuilder: XQueryCalculationBuilder,
-  },
-};
-
-function createParser(mgr: LanguageManager) {
+export function createParser(mgr: LanguageManager) {
   let remainingInput = '';
   const yy: YyContext = {
     Keywords,

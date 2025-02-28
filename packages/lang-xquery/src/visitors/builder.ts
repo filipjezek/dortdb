@@ -23,7 +23,7 @@ import { XQueryVisitor } from '../ast/visitor.js';
 import * as AST from '../ast/index.js';
 import { DOT, LEN, POS } from '../utils/dot.js';
 import { TreeJoin } from '../plan/tree-join.js';
-import { treeStep } from '../utils/tree-step.js';
+import { treeStep } from '../language/tree-step.js';
 import { toBool } from '../castables/basic-types.js';
 import { ProjectionSize } from '../plan/projection-size.js';
 import { collect } from '@dortdb/core/aggregates';
@@ -32,6 +32,8 @@ import { unwind } from '@dortdb/core/fns';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { FnContext } from 'src/functions/fn-context.js';
 import { Trie } from '@dortdb/core/data-structures';
+import { XQueryDataAdapter } from 'src/language/data-adapter.js';
+import { XQueryLanguage } from 'src/language/language.js';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -93,9 +95,13 @@ export class XQueryLogicalPlanBuilder
     ]),
   };
   private prefixCounter = 0;
+  private dataAdapter: XQueryDataAdapter<unknown>;
 
   constructor(private langMgr: LanguageManager) {
     this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
+    this.dataAdapter = langMgr.getLang<'xquery', XQueryLanguage>(
+      'xquery',
+    ).dataAdapter;
   }
 
   buildPlan(node: ASTNode, ctx: IdSet) {
@@ -645,19 +651,17 @@ export class XQueryLogicalPlanBuilder
   }
 
   /** returns [ns uri, prefixed:name] */
-  private idToQName(
-    id: ASTIdentifier,
-    source?: Element | Document,
-  ): [string, string] {
+  private idToQName(id: ASTIdentifier, source?: unknown): [string, string] {
     const local = id.parts[id.parts.length - 1] as string;
     const schema = id.parts[id.parts.length - 2] as string;
     if (schema && URL.canParse(schema)) {
       const prefix =
-        source?.lookupPrefix(schema) ?? `pref${this.prefixCounter++}`;
+        (source && this.dataAdapter.lookupPrefix(source, schema)) ??
+        `pref${this.prefixCounter++}`;
       return [schema, `${prefix}:${local}`];
     }
     const uri =
-      source?.lookupNamespaceURI(schema) ??
+      (source && this.dataAdapter.lookupNSUri(source, schema)) ??
       this.prologOptions.namespaces.get(schema);
     return [uri, schema ? `${schema}:${local}` : local];
   }
@@ -678,7 +682,7 @@ export class XQueryLogicalPlanBuilder
     const content = node.content.content
       .flat()
       .map((x) => this.processDirConstrContent(x, dargs));
-    for (const [, val] of node.attributes) {
+    for (const [id, val] of node.attributes) {
       const args = val.content
         .flat()
         .map((x) => this.processDirConstrContent(x, dargs));
@@ -689,14 +693,21 @@ export class XQueryLogicalPlanBuilder
       });
     }
     return new plan.FnCall('xquery', content, (...args) => {
-      const el = document.createElementNS(ns, qname);
-      for (let i = 0; i < content.length; i++) {
-        appendItem(el, args[i]);
-      }
-      for (let i = content.length; i < args.length; i++) {
-        el.setAttributeNS(
-          ...this.idToQName(node.attributes[i - content.length][0], el),
-          args[i],
+      const el = this.dataAdapter.createElement(
+        ns,
+        qname,
+        args.slice(0, -node.attributes.length),
+      );
+      for (let i = 0; i < node.attributes.length; i++) {
+        const [id] = node.attributes[i];
+        const [ans, aqname] = this.idToQName(id, el);
+        this.dataAdapter.addAttribute(
+          el,
+          this.dataAdapter.createAttribute(
+            ans,
+            aqname,
+            args[args.length - node.attributes.length + i],
+          ),
         );
       }
       return el;
@@ -721,7 +732,7 @@ export class XQueryLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanOperator {
     return new plan.FnCall('xquery', [], () =>
-      document.createProcessingInstruction(node.name, node.content),
+      this.dataAdapter.createProcInstr(node.name, node.content),
     );
   }
   visitDirectCommentConstructor(
@@ -729,7 +740,7 @@ export class XQueryLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanOperator {
     return new plan.FnCall('xquery', [], () =>
-      document.createComment(node.content),
+      this.dataAdapter.createComment(node.content),
     );
   }
   visitComputedConstructor(
@@ -752,13 +763,11 @@ export class XQueryLogicalPlanBuilder
           if (!qname) {
             [ns, qname] = this.idToQName(args.pop());
           }
-          const attr = document.createAttributeNS(ns, qname);
-          attr.value = args.join('');
-          return attr;
+          return this.dataAdapter.createAttribute(ns, qname, args.join(''));
         });
       case AST.ConstructorType.COMMENT:
         return new plan.FnCall('xquery', content, (...args) => {
-          return document.createComment(args.join(''));
+          return this.dataAdapter.createComment(args.join(''));
         });
       case AST.ConstructorType.DOCUMENT:
       case AST.ConstructorType.ELEMENT:
@@ -766,33 +775,25 @@ export class XQueryLogicalPlanBuilder
           if (!qname && node.name) {
             [ns, qname] = this.idToQName(args.pop());
           }
-          const doc =
+          return this.dataAdapter[
             node.type === AST.ConstructorType.DOCUMENT
-              ? document.implementation.createDocument(ns, qname)
-              : document.createElementNS(ns, qname);
-          for (const arg of args) {
-            appendItem(doc, arg);
-          }
-          return doc;
+              ? 'createDocument'
+              : 'createElement'
+          ](ns, qname, args);
         });
       case AST.ConstructorType.NAMESPACE:
         return new plan.FnCall('xquery', content, (...args) => {
           if (!qname) qname = args.pop();
-          const attr = document.createAttributeNS(
-            'http://www.w3.org/2000/xmlns/',
-            'xmlns:' + qname,
-          );
-          attr.value = args.join('');
-          return attr;
+          return this.dataAdapter.createNS(qname, args.join(''));
         });
       case AST.ConstructorType.PROCESSING_INSTRUCTION:
         return new plan.FnCall('xquery', content, (...args) => {
           if (!qname) qname = args.pop();
-          return document.createProcessingInstruction(qname, args.join(''));
+          return this.dataAdapter.createProcInstr(qname, args.join(''));
         });
       case AST.ConstructorType.TEXT:
         return new plan.FnCall('xquery', content, (...args) => {
-          return document.createTextNode(args.join(''));
+          return this.dataAdapter.createText(args.join(''));
         });
     }
   }

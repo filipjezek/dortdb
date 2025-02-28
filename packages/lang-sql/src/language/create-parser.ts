@@ -2,34 +2,17 @@ import {
   ASTFunction,
   ASTOperator,
   LangSwitch,
-  Language,
   LanguageManager,
   allAttrs,
   boundParam,
 } from '@dortdb/core';
-import { sqlLexer as Lexer, sqlParser as Parser } from './parser/sql.cjs';
-import { Keywords, AdditionalTokens } from './parser/tokens.js';
-import { YyContext } from './parser/yycontext.js';
-import * as ast from './ast/index.js';
+import { sqlLexer as Lexer, sqlParser as Parser } from '../parser/sql.cjs';
+import { Keywords, AdditionalTokens } from '../parser/tokens.js';
+import { YyContext } from '../parser/yycontext.js';
+import * as ast from '../ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
-import { coalesce } from './functions/coalesce.js';
-import { SQLLogicalPlanBuilder } from './visitors/builder.js';
-import { SQLCalculationBuilder } from './visitors/calculation-builder.js';
 
-export const SQL: Language<'sql'> = {
-  name: 'sql',
-  operators: [],
-  aggregates: [],
-  functions: [coalesce],
-  castables: [],
-  createParser,
-  visitors: {
-    logicalPlanBuilder: SQLLogicalPlanBuilder,
-    calculationBuilder: SQLCalculationBuilder,
-  },
-};
-
-function createParser(mgr: LanguageManager) {
+export function createParser(mgr: LanguageManager) {
   let remainingInput = '';
   const yy: YyContext = {
     Keywords,

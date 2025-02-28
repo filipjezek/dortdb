@@ -1,32 +1,18 @@
 import {
   ASTFunction,
+  ASTLiteral,
   ASTOperator,
-  Language,
   LanguageManager,
 } from '@dortdb/core';
+import { AdditionalTokens, Keywords } from 'src/parser/tokens.js';
+import { YyContext } from 'src/parser/yycontext.js';
+import * as ast from 'src/ast/index.js';
 import {
-  cypherLexer as Lexer,
   cypherParser as Parser,
-} from './parser/cypher.cjs';
-import { Keywords, AdditionalTokens } from './parser/tokens.js';
-import { YyContext } from './parser/yycontext.js';
-import * as ast from './ast/index.js';
-import { ASTLiteral } from '@dortdb/core';
-import { CypherLogicalPlanBuilder } from './visitors/builder.js';
+  cypherLexer as Lexer,
+} from '../parser/cypher.cjs';
 
-export const Cypher: Language<'cypher'> = {
-  name: 'cypher',
-  operators: [],
-  aggregates: [],
-  functions: [],
-  castables: [],
-  visitors: {
-    logicalPlanBuilder: CypherLogicalPlanBuilder,
-  },
-  createParser,
-};
-
-function createParser(mgr: LanguageManager) {
+export function createParser(mgr: LanguageManager) {
   let remainingInput = '';
   const yy: YyContext = {
     Keywords,

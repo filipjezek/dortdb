@@ -65,4 +65,3 @@ export const coreVisitors = {
 };
 
 export * from './calculation-builder.js';
-export * from './context-propagator.js';

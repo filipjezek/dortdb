@@ -20,6 +20,8 @@ import * as AST from '../ast/index.js';
 import { CypherVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { unwind } from '@dortdb/core/fns';
+import { CypherDataAdaper } from 'src/language/data-adapter.js';
+import { CypherLanguage } from 'src/language/language.js';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -40,9 +42,13 @@ export class CypherLogicalPlanBuilder
 {
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
   private stringifier = new ASTDeterministicStringifier();
+  private dataAdapter: CypherDataAdaper;
 
   constructor(private langMgr: LanguageManager) {
     this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
+    this.dataAdapter = langMgr.getLang<'cypher', CypherLanguage>(
+      'cypher',
+    ).dataAdapter;
   }
 
   private toCalc(

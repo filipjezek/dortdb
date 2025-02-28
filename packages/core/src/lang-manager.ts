@@ -55,7 +55,7 @@ export class LanguageManager {
               (op as AggregateFn | Fn | Castable).schema ?? ext.schema,
               op.name,
             ],
-            op as any
+            op as any,
           );
         }
       }
@@ -67,12 +67,14 @@ export class LanguageManager {
     this.registerExtension({ ...lang, scope: [lang.name] });
   }
 
-  public getLang<Name extends string>(name: Name): Language<Name> {
-    return this.langs[name.toLowerCase()] as Language<Name>;
+  public getLang<Name extends string, Lang extends Language<Name>>(
+    name: Name,
+  ): Lang {
+    return this.langs[name.toLowerCase()] as Lang;
   }
 
   public getVisitorMap<T extends keyof LogicalPlanVisitors>(
-    visitor: T
+    visitor: T,
   ): Record<string, InstanceType<LogicalPlanVisitors[T]>> {
     const vmap = {} as Record<string, InstanceType<LogicalPlanVisitors[T]>>;
     for (const lang in this.langs) {
@@ -94,21 +96,21 @@ export class LanguageManager {
   public getAggr(
     lang: string,
     name: string,
-    schema?: string | symbol
+    schema?: string | symbol,
   ): AggregateFn {
     return this.getImplementation('aggregates', lang, name, schema);
   }
   public getCast(
     lang: string,
     name: string,
-    schema?: string | symbol
+    schema?: string | symbol,
   ): Castable {
     return this.getImplementation('castables', lang, name, schema);
   }
   public getFnOrAggr(
     lang: string,
     name: string,
-    schema?: string | symbol
+    schema?: string | symbol,
   ): Fn | AggregateFn {
     const res =
       this.getImplementation('functions', lang, name, schema, false) ??
@@ -117,19 +119,19 @@ export class LanguageManager {
       throw new Error(
         `Function or aggregate not found: [${lang}] ${
           schema ? schema.toString() : '<default>'
-        }.${name}`
+        }.${name}`,
       );
     return res;
   }
 
   private getImplementation<
-    T extends 'operators' | 'functions' | 'aggregates' | 'castables'
+    T extends 'operators' | 'functions' | 'aggregates' | 'castables',
   >(
     type: T,
     lang: string,
     name: string,
     schema: string | symbol,
-    throwOnMissing = true
+    throwOnMissing = true,
   ): Extension[T][number] {
     let impl = this[type].get([lang, schema, name]);
     impl = impl ?? this[type].get([LanguageManager.allLangs, schema, name]);
@@ -137,7 +139,7 @@ export class LanguageManager {
       throw new Error(
         `${type.slice(0, -1)} not found: [${lang}] ${
           schema ? schema.toString() : '<default>'
-        }.${name}`
+        }.${name}`,
       );
     return impl as Extension[T][number];
   }

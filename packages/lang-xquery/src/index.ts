@@ -1,4 +1,4 @@
-export { XQuery } from './language.js';
+export { XQuery } from './language/language.js';
 
 export * from './ast/visitor.js';
 export * from './utils/dot.js';

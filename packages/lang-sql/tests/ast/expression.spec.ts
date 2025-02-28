@@ -5,7 +5,7 @@ import { ASTOperator } from '@dortdb/core';
 
 describe('AST Expressions', () => {
   const db = new DortDB({
-    mainLang: SQL,
+    mainLang: SQL(),
   });
 
   describe('operators', () => {
