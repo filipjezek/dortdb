@@ -5,7 +5,6 @@ import {
   ASTIdentifier,
   LogicalPlanOperator,
   LangSwitch,
-  LanguageManager,
   Aliased,
   ASTNode,
   UnsupportedError,
@@ -17,6 +16,7 @@ import {
   LogicalPlanBuilder,
   IdSet,
   toInfer,
+  DortDBAsFriend,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -62,9 +62,9 @@ export class SQLLogicalPlanBuilder
   private inferrerMap: Record<string, SchemaInferrer> = {};
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
 
-  constructor(private langMgr: LanguageManager) {
-    this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
-    this.inferrerMap['sql'] = new SchemaInferrer(this.inferrerMap, langMgr);
+  constructor(private db: DortDBAsFriend) {
+    this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    this.inferrerMap['sql'] = new SchemaInferrer(this.inferrerMap, db);
 
     this.processNode = this.processNode.bind(this);
     this.processAttr = this.processAttr.bind(this);
@@ -131,7 +131,7 @@ export class SQLLogicalPlanBuilder
     return this.visitIdentifier(node);
   }
   visitCast(node: AST.ASTCast): LogicalPlanOperator {
-    const impl = this.langMgr.getCast('sql', ...idToPair(node.type));
+    const impl = this.db.langMgr.getCast('sql', ...idToPair(node.type));
     return new plan.FnCall(
       'sql',
       [{ op: node.expr.accept(this) }],
@@ -166,7 +166,7 @@ export class SQLLogicalPlanBuilder
         new plan.AggregateCall(
           'sql',
           [toId(allAttrs)],
-          this.langMgr.getAggr('sql', 'count'),
+          this.db.langMgr.getAggr('sql', 'count'),
           col,
         ),
       ],
@@ -200,7 +200,7 @@ export class SQLLogicalPlanBuilder
           new plan.AggregateCall(
             'sql',
             [col],
-            this.langMgr.getAggr('sql', agg),
+            this.db.langMgr.getAggr('sql', agg),
             col,
           ),
         ],
@@ -504,7 +504,7 @@ export class SQLLogicalPlanBuilder
     return res;
   }
   visitAggregate(node: AST.ASTAggregate): LogicalPlanOperator {
-    const impl = this.langMgr.getAggr(node.lang, ...idToPair(node.id));
+    const impl = this.db.langMgr.getAggr(node.lang, ...idToPair(node.id));
     if (node.withinGroupArgs)
       throw new UnsupportedError('Within group not supported');
     const res = new plan.AggregateCall(
@@ -540,7 +540,7 @@ export class SQLLogicalPlanBuilder
     throw new UnsupportedError('Window functions not supported');
   }
   visitTableFn(node: AST.TableFn): LogicalPlanOperator {
-    const impl = this.langMgr.getFn(node.lang, ...idToPair(node.id));
+    const impl = this.db.langMgr.getFn(node.lang, ...idToPair(node.id));
     let res: LogicalPlanTupleOperator = new plan.TupleFnSource(
       'sql',
       node.args.map(this.toCalc),
@@ -568,13 +568,13 @@ export class SQLLogicalPlanBuilder
     return new plan.FnCall(
       node.lang,
       node.operands.map((x) => ({ op: x.accept(this) })), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
-      this.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
+      this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
       true,
     );
   }
   visitFunction(node: ASTFunction): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
-    const impl = this.langMgr.getFnOrAggr('sql', id, schema);
+    const impl = this.db.langMgr.getFnOrAggr('sql', id, schema);
 
     if ('init' in impl) {
       return new plan.AggregateCall(

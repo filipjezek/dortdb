@@ -331,8 +331,8 @@ node-pattern:
   | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
 
 rel-pattern:
-  LARROWDBLDASH arrow-right_opt { $$ = new yy.ast.RelPattern(true, !!$2); }
-  | LARROWDASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsLeft = true; $$.pointsRight = !!$4;}
+  LARROWDBLDASH { $$ = new yy.ast.RelPattern(true, false); }
+  | LARROWDASHLBRA rel-detail arrow-body { $$ = $2; $$.pointsLeft = true; }
   | DBLDASH arrow-right_opt { $$ = new yy.ast.RelPattern(false, !!$2); }
   | DASHLBRA rel-detail arrow-body arrow-right_opt { $$ = $2; $$.pointsRight = !!$4; } ;
 

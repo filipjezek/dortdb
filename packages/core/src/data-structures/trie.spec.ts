@@ -73,4 +73,75 @@ describe('Trie', () => {
     sTrie.delete([symbolA, symbolB, symbolC]);
     expect(sTrie.has([symbolA, symbolB, symbolC])).toBe(false);
   });
+
+  test('should prefix all elements', () => {
+    trie.add(['a', 'b', 'c']);
+    trie.add(['d', 'e', 'f']);
+    trie.prefixAll(['x', 'y']);
+    expect(trie.has(['x', 'y', 'a', 'b', 'c'])).toBe(true);
+    expect(trie.has(['x', 'y', 'd', 'e', 'f'])).toBe(true);
+    expect(trie.has(['a', 'b', 'c'])).toBe(false);
+    expect(trie.has(['d', 'e', 'f'])).toBe(false);
+    expect(trie.size).toBe(2);
+  });
+
+  test('should handle prefixing an empty trie', () => {
+    trie.prefixAll(['x', 'y']);
+    expect(trie.size).toBe(0);
+    expect(trie.has(['x', 'y'])).toBe(false);
+  });
+
+  test('should handle prefixing with an empty prefix', () => {
+    trie.add(['a', 'b', 'c']);
+    trie.prefixAll([]);
+    expect(trie.has(['a', 'b', 'c'])).toBe(true);
+    expect(trie.size).toBe(1);
+  });
+
+  test('should handle prefixing with a single element prefix', () => {
+    trie.add(['a', 'b', 'c']);
+    trie.prefixAll(['x']);
+    expect(trie.has(['x', 'a', 'b', 'c'])).toBe(true);
+    expect(trie.has(['a', 'b', 'c'])).toBe(false);
+    expect(trie.size).toBe(1);
+  });
+
+  test('should initialize with an iterable of arrays', () => {
+    const source = [
+      ['a', 'b', 'c'],
+      ['d', 'e', 'f'],
+    ];
+    trie = new Trie<string>(source);
+    expect(trie.size).toBe(2);
+    expect(trie.has(['a', 'b', 'c'])).toBe(true);
+    expect(trie.has(['d', 'e', 'f'])).toBe(true);
+  });
+
+  test('should initialize with a record of string keys', () => {
+    const source = { a: 1, b: 2, c: 3 };
+    const trie = new Trie<string, number>(source);
+    expect(trie.size).toBe(3);
+    expect(trie.get(['a'])).toBe(1);
+    expect(trie.get(['b'])).toBe(2);
+    expect(trie.get(['c'])).toBe(3);
+  });
+
+  test('should initialize with a record of symbol keys', () => {
+    const symbolA = Symbol('a');
+    const symbolB = Symbol('b');
+    const source = { [symbolA]: 1, [symbolB]: 2 };
+    const trie = new Trie<symbol, number>(source);
+    expect(trie.size).toBe(2);
+    expect(trie.get([symbolA])).toBe(1);
+    expect(trie.get([symbolB])).toBe(2);
+  });
+
+  test('should initialize with a mixed record of string and symbol keys', () => {
+    const symbolA = Symbol('a');
+    const source = { a: 1, [symbolA]: 2 };
+    const trie = new Trie<string | symbol, number>(source);
+    expect(trie.size).toBe(2);
+    expect(trie.get(['a'])).toBe(1);
+    expect(trie.get([symbolA])).toBe(2);
+  });
 });

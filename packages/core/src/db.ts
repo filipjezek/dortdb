@@ -4,10 +4,14 @@ import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
 
 export class DortDB<LangNames extends string> {
-  private langMgr: LanguageManager;
+  private langMgr = new LanguageManager();
+  private registeredSources = new Trie<symbol | string, unknown>();
+  private friendInterface: DortDBAsFriend = {
+    langMgr: this.langMgr,
+    getSource: (source) => this.registeredSources.get(source),
+  };
 
   constructor(private config: DortDBConfig<LangNames>) {
-    this.langMgr = new LanguageManager();
     this.langMgr.registerExtension(core);
     this.langMgr.registerLang(config.mainLang);
     this.config.additionalLangs?.forEach((lang) =>
@@ -26,7 +30,7 @@ export class DortDB<LangNames extends string> {
   public buildPlan(query: ASTNode) {
     const Visitor = this.langMgr.getLang(this.config.mainLang.name).visitors
       .logicalPlanBuilder;
-    return new Visitor(this.langMgr).buildPlan(
+    return new Visitor(this.friendInterface).buildPlan(
       query,
       new Trie<symbol | string>(),
     );
@@ -37,4 +41,9 @@ export interface DortDBConfig<LangNames extends string> {
   mainLang: Language<LangNames>;
   additionalLangs?: Language<LangNames>[];
   extensions?: Extension<LangNames>[];
+}
+
+export interface DortDBAsFriend {
+  langMgr: LanguageManager;
+  getSource(source: (symbol | string)[]): unknown;
 }

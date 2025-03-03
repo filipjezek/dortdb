@@ -2,7 +2,7 @@ import { UnsupportedError } from '@dortdb/core';
 import { MultiDirectedGraph } from 'graphology';
 import { Attributes } from 'graphology-types';
 
-export type edgeDirection = 'in' | 'out' | 'both';
+export type EdgeDirection = 'in' | 'out' | 'any';
 
 export interface CypherDataAdaper<
   GraphType = any,
@@ -23,16 +23,27 @@ export interface CypherDataAdaper<
     graph: GraphType,
     node: NodeType,
     type: string,
-    direction: edgeDirection,
+    direction: EdgeDirection,
   ): Iterable<EdgeType>;
   filterNodeEdges(
     graph: GraphType,
     node: NodeType,
-    direction: edgeDirection,
+    direction: EdgeDirection,
     predicate?: (node: NodeType, edge: EdgeType) => boolean,
   ): Iterable<EdgeType>;
   getNodeProperty(graph: GraphType, node: NodeType, property: string): unknown;
+  getNodeProperties(graph: GraphType, node: NodeType): Record<string, unknown>;
   getEdgeProperty(graph: GraphType, edge: EdgeType, property: string): unknown;
+  getEdgeProperties(graph: GraphType, edge: EdgeType): Record<string, unknown>;
+
+  isConnected(
+    graph: GraphType,
+    edge: EdgeType,
+    node: NodeType,
+    direction: EdgeDirection,
+  ): boolean;
+  hasLabel(graph: GraphType, node: NodeType, label: string): boolean;
+  hasType(graph: GraphType, edge: EdgeType, type: string): boolean;
 }
 
 export class GraphologyDataAdapter
@@ -99,7 +110,7 @@ export class GraphologyDataAdapter
     >,
     node: unknown,
     type: string,
-    direction: edgeDirection,
+    direction: EdgeDirection,
   ): Iterable<unknown> {
     for (const edge of graph[
       direction === 'in'
@@ -116,7 +127,7 @@ export class GraphologyDataAdapter
   *filterNodeEdges(
     graph: MultiDirectedGraph,
     node: unknown,
-    direction: edgeDirection,
+    direction: EdgeDirection,
     predicate?: (node: unknown, edge: unknown) => boolean,
   ): Iterable<unknown> {
     for (const edge of graph[
@@ -144,5 +155,65 @@ export class GraphologyDataAdapter
     property: string,
   ): unknown {
     return graph.getEdgeAttribute(edge, property);
+  }
+
+  getNodeProperties(
+    graph: MultiDirectedGraph<
+      Attributes,
+      Attributes,
+      Attributes & { type: string }
+    >,
+    node: any,
+  ): Record<string, unknown> {
+    return graph.getNodeAttributes(node);
+  }
+  getEdgeProperties(
+    graph: MultiDirectedGraph<
+      Attributes,
+      Attributes,
+      Attributes & { type: string }
+    >,
+    edge: any,
+  ): Record<string, unknown> {
+    return graph.getEdgeAttributes(edge);
+  }
+
+  isConnected(
+    graph: MultiDirectedGraph,
+    edge: unknown,
+    node: unknown,
+    direction: EdgeDirection,
+  ): boolean {
+    return graph[
+      direction === 'in'
+        ? 'inNeighbors'
+        : direction === 'out'
+          ? 'outNeighbors'
+          : 'neighbors'
+    ](node).includes(edge as any);
+  }
+  hasLabel(
+    graph: MultiDirectedGraph<
+      Attributes,
+      Attributes,
+      Attributes & { type: string }
+    >,
+    node: unknown,
+    label: string,
+  ): boolean {
+    throw new UnsupportedError(
+      'GraphologyDataAdapter does not support node labels',
+    );
+  }
+  hasType(
+    graph: MultiDirectedGraph<
+      Attributes,
+      Attributes,
+      Attributes & { type: string }
+    >,
+    edge: unknown,
+    type: string,
+  ): boolean {
+    return graph.getEdgeAttribute(edge, 'type') === type;
   }
 }

@@ -7,7 +7,6 @@ import {
   ASTNode,
   LogicalPlanBuilder,
   LogicalPlanOperator,
-  LanguageManager,
   CalculationParams,
   LogicalPlanVisitor,
   UnsupportedError,
@@ -17,6 +16,7 @@ import {
   IdSet,
   boundParam,
   toInfer,
+  DortDBAsFriend,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -62,15 +62,6 @@ function coalesceSeq(seq: unknown) {
   }
   return seq;
 }
-function appendItem(node: Node, item: unknown) {
-  if (item instanceof Attr) {
-    (node as Element).setAttributeNodeNS(item);
-  } else if (item instanceof Node) {
-    node.appendChild(item);
-  } else {
-    node.appendChild(document.createTextNode(item.toString()));
-  }
-}
 function infer(item: AST.ASTVariable, args: DescentArgs) {
   if (item.parts[0] !== boundParam && !args.ctx.has(item.parts)) {
     if (item.parts.length > 1 && args.ctx.has([item.parts[0], toInfer])) {
@@ -97,9 +88,9 @@ export class XQueryLogicalPlanBuilder
   private prefixCounter = 0;
   private dataAdapter: XQueryDataAdapter<unknown>;
 
-  constructor(private langMgr: LanguageManager) {
-    this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
-    this.dataAdapter = langMgr.getLang<'xquery', XQueryLanguage>(
+  constructor(private db: DortDBAsFriend) {
+    this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    this.dataAdapter = db.langMgr.getLang<'xquery', XQueryLanguage>(
       'xquery',
     ).dataAdapter;
   }
@@ -510,7 +501,7 @@ export class XQueryLogicalPlanBuilder
     throw new UnsupportedError('Instanceof not supported.');
   }
   visitCastExpr(node: AST.CastExpr, args: DescentArgs): LogicalPlanOperator {
-    const impl = this.langMgr.getCast('xquery', ...idToPair(node.type));
+    const impl = this.db.langMgr.getCast('xquery', ...idToPair(node.type));
     return new plan.FnCall(
       'sql',
       [{ op: node.expr.accept(this, args) }],
@@ -813,7 +804,7 @@ export class XQueryLogicalPlanBuilder
     const impl =
       node.nameOrExpr instanceof ASTIdentifier &&
       !(node.nameOrExpr instanceof AST.ASTVariable)
-        ? this.langMgr.getFn('xquery', ...idToPair(node.nameOrExpr)).impl
+        ? this.db.langMgr.getFn('xquery', ...idToPair(node.nameOrExpr)).impl
         : null;
     if (!impl) args.push({ op: node.nameOrExpr.accept(this, dargs) });
     const boundIndices = new Set(node.boundArgs.map(retI0));
@@ -846,7 +837,7 @@ export class XQueryLogicalPlanBuilder
     return new plan.FnCall(
       'xquery',
       node.operands.map((x) => this.processOpArg(x, args)),
-      this.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
+      this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
       true,
     );
   }
@@ -928,7 +919,7 @@ export class XQueryLogicalPlanBuilder
   }
   visitFunction(node: ASTFunction, dargs: DescentArgs): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
-    const impl = this.langMgr.getFnOrAggr(node.lang, id, schema);
+    const impl = this.db.langMgr.getFnOrAggr(node.lang, id, schema);
 
     if ('impl' in impl) {
       const args = [
@@ -982,9 +973,9 @@ export class XQueryLogicalPlanBuilder
     return new plan.MapToItem('xquery', DOT, gb);
   }
   visitLangSwitch(node: LangSwitch, args: DescentArgs): LogicalPlanOperator {
-    const nested = new (this.langMgr.getLang(
+    const nested = new (this.db.langMgr.getLang(
       node.lang,
-    ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(node.node, args.ctx);
+    ).visitors.logicalPlanBuilder)(this.db).buildPlan(node.node, args.ctx);
     for (const item of nested.inferred) {
       args.inferred.add(item);
     }

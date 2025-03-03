@@ -6,14 +6,16 @@ import {
   ASTLiteral,
   ASTNode,
   ASTOperator,
+  boundParam,
   CalculationParams,
+  DortDBAsFriend,
   IdSet,
   LangSwitch,
-  LanguageManager,
   LogicalPlanBuilder,
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
+  toInfer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -22,6 +24,8 @@ import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { unwind } from '@dortdb/core/fns';
 import { CypherDataAdaper } from 'src/language/data-adapter.js';
 import { CypherLanguage } from 'src/language/language.js';
+import { Trie } from '@dortdb/core/data-structures';
+import { isEqual, isMatch } from 'lodash-es';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -32,9 +36,18 @@ function idToPair(id: ASTIdentifier): [string, string] {
 function toId(name: string | symbol): ASTIdentifier {
   return ASTIdentifier.fromParts([name]);
 }
+function infer(item: ASTIdentifier, args: DescentArgs) {
+  if (item.parts[0] !== boundParam && !args.ctx.has(item.parts)) {
+    if (item.parts.length > 1 && args.ctx.has([item.parts[0], toInfer])) {
+      args.inferred.add(item.parts);
+    }
+  }
+  return item;
+}
 interface DescentArgs {
   src?: LogicalPlanTupleOperator;
   ctx: IdSet;
+  inferred: IdSet;
 }
 
 export class CypherLogicalPlanBuilder
@@ -43,19 +56,20 @@ export class CypherLogicalPlanBuilder
   private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
   private stringifier = new ASTDeterministicStringifier();
   private dataAdapter: CypherDataAdaper;
+  private graphName: ASTIdentifier;
 
-  constructor(private langMgr: LanguageManager) {
-    this.calcBuilders = langMgr.getVisitorMap('calculationBuilder');
-    this.dataAdapter = langMgr.getLang<'cypher', CypherLanguage>(
-      'cypher',
-    ).dataAdapter;
+  constructor(private db: DortDBAsFriend) {
+    this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    const lang = db.langMgr.getLang<'cypher', CypherLanguage>('cypher');
+    this.dataAdapter = lang.dataAdapter;
+    this.graphName = lang.defaultGraph;
   }
 
   private toCalc(
     node: ASTNode,
     args: DescentArgs,
   ): plan.Calculation | ASTIdentifier {
-    if (node instanceof ASTIdentifier) return node;
+    if (node instanceof ASTIdentifier) return infer(node, args);
     const calcParams = node.accept(this, args).accept(this.calcBuilders);
     return new plan.Calculation(
       'cypher',
@@ -70,7 +84,7 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): plan.PlanOpAsArg | ASTIdentifier {
     return item instanceof ASTIdentifier
-      ? item
+      ? infer(item, args)
       : { op: item.accept(this, args) };
   }
   private processAttr(
@@ -78,7 +92,7 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): Aliased<ASTIdentifier | plan.Calculation> {
     if (attr instanceof ASTIdentifier) {
-      return [attr, attr];
+      return [infer(attr, args), attr];
     }
     if (Array.isArray(attr)) {
       return [this.toCalc(attr[0], args), attr[1]];
@@ -88,7 +102,8 @@ export class CypherLogicalPlanBuilder
   }
 
   buildPlan(node: ASTNode, ctx: IdSet) {
-    return { plan: node.accept(this, { ctx }), inferred: ctx };
+    const inferred = new Trie<string | symbol>();
+    return { plan: node.accept(this, { ctx, inferred }), inferred };
   }
   visitCypherIdentifier(
     node: AST.CypherIdentifier,
@@ -135,7 +150,7 @@ export class CypherLogicalPlanBuilder
   ): LogicalPlanOperator {
     if (node.procedure) return this.visitProcedure(node, args);
     const [id, schema] = idToPair(node.fn.id);
-    const impl = this.langMgr.getFnOrAggr('sql', id, schema);
+    const impl = this.db.langMgr.getFnOrAggr('sql', id, schema);
 
     if ('init' in impl) {
       const res = new plan.AggregateCall(
@@ -166,7 +181,7 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanOperator {
     const [id, schema] = idToPair(node.fn.id);
-    const impl = this.langMgr.getFn('sql', id, schema);
+    const impl = this.db.langMgr.getFn('sql', id, schema);
     let res: LogicalPlanTupleOperator = new plan.TupleFnSource(
       'cypher',
       node.fn.args.map((arg) => this.toCalc(arg, args)),
@@ -201,7 +216,7 @@ export class CypherLogicalPlanBuilder
         new plan.AggregateCall(
           'cypher',
           [toId(allAttrs)],
-          this.langMgr.getAggr('cypher', 'count'),
+          this.db.langMgr.getAggr('cypher', 'count'),
           col,
         ),
       ],
@@ -233,7 +248,7 @@ export class CypherLogicalPlanBuilder
           new plan.AggregateCall(
             'cypher',
             [node.variable],
-            this.langMgr.getAggr('cypher', 'count'),
+            this.db.langMgr.getAggr('cypher', 'count'),
             node.variable,
           ),
         ],
@@ -269,11 +284,202 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
+  private preparePatternRefs(
+    refVars: ASTIdentifier[],
+    chain: (AST.NodePattern | AST.RelPattern)[],
+    isRef: boolean[],
+    args: DescentArgs,
+  ): LogicalPlanTupleOperator {
+    if (refVars.length) {
+      let res =
+        args.src ??
+        new plan.TupleFnSource('cypher', refVars, (...args) => {
+          const res = new Trie<string | symbol, unknown>();
+          for (let i = 0; i < refVars.length; i++) {
+            res.set(refVars[i].parts, args[i]);
+          }
+          return [res];
+        });
+      for (let i = 0; i < chain.length; i++) {
+        if (isRef[i] && chain[i].props) {
+          res = this.patternToSelection(res, refVars[i], chain[i], args);
+        }
+      }
+    }
+    return null;
+  }
+  private patternToSelection(
+    src: LogicalPlanTupleOperator,
+    variable: ASTIdentifier,
+    el: AST.NodePattern | AST.RelPattern,
+    args: DescentArgs,
+  ) {
+    const graphName = this.graphName;
+    if (el.props instanceof AST.ASTParameter) {
+      return new plan.Selection(
+        'cypher',
+        new plan.Calculation(
+          'cypher',
+          (v, p) => {
+            const nodeProps = this.dataAdapter[
+              el instanceof AST.NodePattern
+                ? 'getNodeProperties'
+                : 'getEdgeProperties'
+            ](this.db.getSource(graphName.parts), v);
+            return isEqual(nodeProps, p);
+          },
+          [variable, el.props],
+        ),
+        src,
+      );
+    }
+
+    const fn = new plan.FnCall(
+      'cypher',
+      [variable, { op: this.visitMapLiteral(el.props, args) }],
+      (v, p) => {
+        const nodeProps = this.dataAdapter[
+          el instanceof AST.NodePattern
+            ? 'getNodeProperties'
+            : 'getEdgeProperties'
+        ](this.db.getSource(graphName.parts), v);
+        return isMatch(nodeProps, p);
+      },
+    );
+    const calcParams = this.calcBuilders['cypher'].visitFnCall(fn);
+    return new plan.Selection(
+      'cypher',
+      new plan.Calculation('cypher', calcParams.impl, calcParams.args),
+      src,
+    );
+  }
+
+  private setupChainSelections(
+    chain: (AST.NodePattern | AST.RelPattern)[],
+    variables: ASTIdentifier[],
+    res: LogicalPlanTupleOperator,
+  ) {
+    const graphName = this.graphName;
+    for (let i = 1; i < chain.length; i += 2) {
+      const edge = chain[i] as AST.RelPattern;
+      const edgeDir1 = edge.pointsLeft
+        ? 'in'
+        : edge.pointsRight
+          ? 'out'
+          : 'any';
+      const edgeDir2 = edge.pointsLeft
+        ? 'out'
+        : edge.pointsRight
+          ? 'in'
+          : 'any';
+      res = new plan.Selection(
+        'cypher',
+        new plan.Calculation(
+          'cypher',
+          (n, e) =>
+            this.dataAdapter.isConnected(
+              this.db.getSource(graphName.parts),
+              e,
+              n,
+              edgeDir1,
+            ),
+          [variables[i - 1], variables[i]],
+        ),
+        res,
+      );
+      res = new plan.Selection(
+        'cypher',
+        new plan.Calculation(
+          'cypher',
+          (n, e) =>
+            this.dataAdapter.isConnected(
+              this.db.getSource(graphName.parts),
+              e,
+              n,
+              edgeDir2,
+            ),
+          [variables[i + 1], variables[i]],
+        ),
+        res,
+      );
+    }
+
+    const nodeVars = variables.filter((_, i) => i % 2 === 0);
+    const edgeVars = variables.filter((_, i) => i % 2 === 1);
+
+    for (let i = 2; i < chain.length; i++) {
+      res = new plan.Selection(
+        'cypher',
+        new plan.Calculation(
+          'cypher',
+          (...args) => {
+            const last = args.pop();
+            return args.every((arg) => arg !== last);
+          },
+          (i % 2 ? edgeVars : nodeVars).slice(0, i / 2),
+        ),
+        res,
+      );
+    }
+    return res;
+  }
+
   visitPatternElChain(
     node: AST.PatternElChain,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    const varPrefix = Symbol('unnamed');
+    const variables = node.chain.map(
+      (item, i) =>
+        item.variable ?? ASTIdentifier.fromParts([varPrefix, i + '']),
+    );
+    const isRef = node.chain.map((item) => {
+      if (!item.variable) return false;
+      infer(item.variable, args);
+      return (
+        item.variable.parts[0] === boundParam ||
+        args.ctx.has(item.variable.parts) ||
+        item.variable.parts[item.variable.parts.length - 1] === toInfer
+      );
+    });
+    let res = this.preparePatternRefs(variables, node.chain, isRef, args);
+    let firstUnknown = isRef.findIndex((x) => !x);
+    if (firstUnknown > -1) {
+      if (!res) {
+        res = node.chain[firstUnknown].accept(this, {
+          ...args,
+          variable: variables[firstUnknown],
+        } as DescentArgs & {
+          variable: ASTIdentifier;
+        }) as LogicalPlanTupleOperator;
+        firstUnknown++;
+      }
+      for (let i = firstUnknown; i < node.chain.length; i++) {
+        if (isRef[i]) continue;
+        const nextPart = node.chain[i].accept(this, {
+          ...args,
+          variable: variables[i],
+        } as DescentArgs & {
+          variable: ASTIdentifier;
+        }) as LogicalPlanTupleOperator;
+        res = new plan.CartesianProduct('cypher', res, nextPart);
+      }
+    }
+
+    res = this.setupChainSelections(node.chain, variables, res);
+    const cols = res.schema
+      .filter((x) => x.parts[0] !== varPrefix)
+      .map((col) => [col, col]) as Aliased<ASTIdentifier | plan.Calculation>[];
+    if (!node.variable && cols.length === res.schema.length) return res;
+    if (node.variable) {
+      cols.push([
+        new plan.Calculation('cypher', (...args) => args, variables),
+        node.variable,
+      ]);
+    }
+    res = new plan.Projection('cypher', cols, res);
+
+    return res;
   }
   visitParameter(
     node: AST.ASTParameter,
@@ -283,15 +489,79 @@ export class CypherLogicalPlanBuilder
   }
   visitNodePattern(
     node: AST.NodePattern,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    args: DescentArgs & { variable: ASTIdentifier },
+  ): LogicalPlanTupleOperator {
+    const graphName = this.graphName;
+    const src = new plan.ItemSource(
+      'cypher',
+      ASTIdentifier.fromParts(this.graphName.parts.concat('nodes')),
+    );
+    let res: LogicalPlanTupleOperator = new plan.MapFromItem(
+      'cypher',
+      args.variable,
+      src,
+    );
+    if (node.labels) {
+      res = new plan.Selection(
+        'cypher',
+        new plan.Calculation(
+          'cypher',
+          (n) => {
+            node.labels.every((l) =>
+              this.dataAdapter.hasLabel(
+                this.db.getSource(graphName.parts),
+                n,
+                l.parts[0] as string,
+              ),
+            );
+          },
+          [args.variable],
+        ),
+        res,
+      );
+    }
+    if (node.props) {
+      res = this.patternToSelection(res, args.variable, node, args);
+    }
+    return res;
   }
   visitRelPattern(
     node: AST.RelPattern,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    args: DescentArgs & { variable: ASTIdentifier },
+  ): LogicalPlanTupleOperator {
+    const graphName = this.graphName;
+    const src = new plan.ItemSource(
+      'cypher',
+      ASTIdentifier.fromParts(this.graphName.parts.concat('edges')),
+    );
+    let res: LogicalPlanTupleOperator = new plan.MapFromItem(
+      'cypher',
+      args.variable,
+      src,
+    );
+    if (node.types.length) {
+      res = new plan.Selection(
+        'cypher',
+        new plan.Calculation(
+          'cypher',
+          (e) => {
+            node.types.some((t) =>
+              this.dataAdapter.hasType(
+                this.db.getSource(graphName.parts),
+                e,
+                t.parts[0] as string,
+              ),
+            );
+          },
+          [args.variable],
+        ),
+        res,
+      );
+    }
+    if (node.props) {
+      res = this.patternToSelection(res, args.variable, node, args);
+    }
+    return res;
   }
   visitPatternComprehension(
     node: AST.PatternComprehension,
@@ -333,6 +603,11 @@ export class CypherLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
   visitQuery(node: AST.Query, args: DescentArgs): LogicalPlanOperator {
+    if (node.from) {
+      this.graphName = node.from;
+    } else if (!this.graphName) {
+      throw new Error('No graph specified');
+    }
     throw new Error('Method not implemented.');
   }
   visitMatchClause(

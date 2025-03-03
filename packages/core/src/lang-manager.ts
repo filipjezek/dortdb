@@ -6,6 +6,7 @@ import {
   LogicalPlanVisitors,
 } from './visitors/index.js';
 import { ASTNode } from './ast.js';
+import { DortDB, DortDBAsFriend } from './db.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -23,7 +24,7 @@ export interface Language<Name extends string = string> {
   createParser: (mgr: LanguageManager) => Parser;
   visitors: Partial<LogicalPlanVisitors> & {
     logicalPlanBuilder: {
-      new (langMgr: LanguageManager): LogicalPlanBuilder;
+      new (db: DortDBAsFriend): LogicalPlanBuilder;
     };
   };
 }

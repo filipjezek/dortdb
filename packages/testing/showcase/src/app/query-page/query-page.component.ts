@@ -45,8 +45,8 @@ import { MatCardModule } from '@angular/material/card';
 export class QueryPageComponent {
   private readonly allLangs = {
     sql: SQL,
-    xquery: XQuery,
-    cypher: Cypher,
+    xquery: XQuery(),
+    cypher: Cypher(),
   };
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);

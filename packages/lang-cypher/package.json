@@ -42,7 +42,11 @@
     "@swc/helpers": "^0.5.15",
     "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "graphology": "^0.26.0",
+    "lodash-es": "^4.17.21",
     "mnemonist": "^0.40.3",
     "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@types/lodash-es": "^4.17.12"
   }
 }

@@ -1,8 +1,8 @@
 import {
   ASTIdentifier,
   boundParam,
+  DortDBAsFriend,
   IdSet,
-  LanguageManager,
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   toInfer,
@@ -38,7 +38,7 @@ function zip<T, U>(a: T[], b: U[]): [T, U][] {
 export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   constructor(
     private vmap: Record<string, SQLLogicalPlanVisitor<IdSet, IdSet>>,
-    private langMgr: LanguageManager,
+    private db: DortDBAsFriend,
   ) {}
 
   public inferSchema(operator: LogicalPlanOperator, ctx: IdSet): IdSet {
@@ -412,12 +412,9 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
 
   visitLangSwitch(operator: LangSwitch, ctx: IdSet): IdSet {
-    const nested = new (this.langMgr.getLang(
+    const nested = new (this.db.langMgr.getLang(
       operator.node.lang,
-    ).visitors.logicalPlanBuilder)(this.langMgr).buildPlan(
-      operator.node.node,
-      ctx,
-    );
+    ).visitors.logicalPlanBuilder)(this.db).buildPlan(operator.node.node, ctx);
     let res = !(nested.plan instanceof LogicalPlanTupleOperator)
       ? new plan.MapFromItem('sql', DEFAULT_COLUMN, nested.plan)
       : nested.plan;
