@@ -1,4 +1,4 @@
-import { ASTNode } from '@dortdb/core';
+import { Aliased, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { PatternElChain } from './pattern.js';
 import { CypherIdentifier } from './literal.js';
@@ -155,7 +155,7 @@ export class DeleteClause implements ASTNode {
 
 export class ProjectionBody implements ASTNode {
   constructor(
-    public items: ('*' | ASTNode | [ASTNode, CypherIdentifier])[],
+    public items: (ASTNode | Aliased<ASTNode>)[] | '*',
     public order?: OrderItem[],
     public skip?: ASTNode,
     public limit?: ASTNode,

@@ -44,7 +44,7 @@ import { MatCardModule } from '@angular/material/card';
 })
 export class QueryPageComponent {
   private readonly allLangs = {
-    sql: SQL,
+    sql: SQL(),
     xquery: XQuery(),
     cypher: Cypher(),
   };

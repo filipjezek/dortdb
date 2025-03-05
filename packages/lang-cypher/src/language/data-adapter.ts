@@ -6,8 +6,8 @@ export type EdgeDirection = 'in' | 'out' | 'any';
 
 export interface CypherDataAdaper<
   GraphType = any,
-  NodeType = any,
-  EdgeType = any,
+  NodeType extends Record<string, unknown> = any,
+  EdgeType extends Record<string, unknown> = any,
 > {
   getNodesByLabels(graph: GraphType, ...labels: string[]): Iterable<NodeType>;
   filterNodes(

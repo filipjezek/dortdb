@@ -275,7 +275,7 @@ projection-body:
 
 projection-item-list:
   projection-item { $$ = [$1]; }
-  | STAR { $$ = [$1]; }
+  | STAR { $$ = $1; }
   | projection-item-list COMMA projection-item { $$ = $1; $$.push($3); } ;
 
 projection-item:

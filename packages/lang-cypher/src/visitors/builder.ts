@@ -16,6 +16,7 @@ import {
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
   toInfer,
+  UnsupportedError,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -26,6 +27,8 @@ import { CypherDataAdaper } from 'src/language/data-adapter.js';
 import { CypherLanguage } from 'src/language/language.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { isEqual, isMatch } from 'lodash-es';
+import { ret1, toPair } from '@dortdb/core/internal-fns';
+import { assertCalcLiteral, schemaToTrie, union } from '@dortdb/core/utils';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -43,6 +46,11 @@ function infer(item: ASTIdentifier, args: DescentArgs) {
     }
   }
   return item;
+}
+function getAggrs([item]: Aliased<
+  plan.Calculation | ASTIdentifier
+>): plan.AggregateCall[] {
+  return item instanceof plan.Calculation ? (item.aggregates ?? []) : [];
 }
 interface DescentArgs {
   src?: LogicalPlanTupleOperator;
@@ -100,6 +108,11 @@ export class CypherLogicalPlanBuilder
     const alias = toId(attr.accept(this.stringifier));
     return [this.toCalc(attr, args), alias];
   }
+  private processNode(node: ASTNode, args: DescentArgs) {
+    return node instanceof ASTIdentifier
+      ? infer(node, args)
+      : node.accept(this, args);
+  }
 
   buildPlan(node: ASTNode, ctx: IdSet) {
     const inferred = new Trie<string | symbol>();
@@ -150,7 +163,7 @@ export class CypherLogicalPlanBuilder
   ): LogicalPlanOperator {
     if (node.procedure) return this.visitProcedure(node, args);
     const [id, schema] = idToPair(node.fn.id);
-    const impl = this.db.langMgr.getFnOrAggr('sql', id, schema);
+    const impl = this.db.langMgr.getFnOrAggr('cypher', id, schema);
 
     if ('init' in impl) {
       const res = new plan.AggregateCall(
@@ -181,7 +194,7 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanOperator {
     const [id, schema] = idToPair(node.fn.id);
-    const impl = this.db.langMgr.getFn('sql', id, schema);
+    const impl = this.db.langMgr.getFn('cypher', id, schema);
     let res: LogicalPlanTupleOperator = new plan.TupleFnSource(
       'cypher',
       node.fn.args.map((arg) => this.toCalc(arg, args)),
@@ -427,7 +440,7 @@ export class CypherLogicalPlanBuilder
   visitPatternElChain(
     node: AST.PatternElChain,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): LogicalPlanTupleOperator {
     const varPrefix = Symbol('unnamed');
     const variables = node.chain.map(
       (item, i) =>
@@ -442,13 +455,18 @@ export class CypherLogicalPlanBuilder
         item.variable.parts[item.variable.parts.length - 1] === toInfer
       );
     });
-    let res = this.preparePatternRefs(variables, node.chain, isRef, args);
+    const ctx = args.src ? union(args.ctx, args.src.schema) : args.ctx;
+    let res = this.preparePatternRefs(variables, node.chain, isRef, {
+      ...args,
+      ctx,
+    });
     let firstUnknown = isRef.findIndex((x) => !x);
     if (firstUnknown > -1) {
       if (!res) {
         res = node.chain[firstUnknown].accept(this, {
           ...args,
           variable: variables[firstUnknown],
+          ctx,
         } as DescentArgs & {
           variable: ASTIdentifier;
         }) as LogicalPlanTupleOperator;
@@ -459,6 +477,7 @@ export class CypherLogicalPlanBuilder
         const nextPart = node.chain[i].accept(this, {
           ...args,
           variable: variables[i],
+          ctx,
         } as DescentArgs & {
           variable: ASTIdentifier;
         }) as LogicalPlanTupleOperator;
@@ -576,7 +595,15 @@ export class CypherLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
   visitCaseExpr(node: AST.CaseExpr, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    return new plan.Conditional(
+      'cypher',
+      node.expr && this.processNode(node.expr, args),
+      node.whenThens.map(([w, t]) => [
+        this.processNode(w, args),
+        this.processNode(t, args),
+      ]),
+      node.elseExpr && this.processNode(node.elseExpr, args),
+    );
   }
   visitCountAll(node: AST.CountAll, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
@@ -585,57 +612,143 @@ export class CypherLogicalPlanBuilder
     node: AST.LabelFilterExpr,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    const graphName = this.graphName;
+    return new plan.FnCall(
+      'cypher',
+      [this.processFnArg(node.expr, args)],
+      (n) =>
+        node.labels.every((l) =>
+          this.dataAdapter.hasLabel(
+            this.db.getSource(graphName.parts),
+            n,
+            l.parts[0] as string,
+          ),
+        ),
+    );
   }
   visitSubscriptExpr(
     node: AST.SubscriptExpr,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    const indices = node.subscript
+      .filter(ret1)
+      .map((x) => this.processFnArg(x, args));
+    indices.unshift(this.processFnArg(node.expr, args));
+    return new plan.FnCall(
+      'cypher',
+      indices,
+      node.subscript.length === 2
+        ? (e, f, t) => e.slice(f ?? 0, t ?? e.length)
+        : (e, i) => e[i],
+    );
   }
   visitPropLookup(
     node: AST.PropLookup,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    return new plan.FnCall(
+      'cypher',
+      [this.processFnArg(node.expr, args)],
+      (n) => {
+        for (const part of node.prop.parts) {
+          n = n[part];
+        }
+        return n;
+      },
+    );
   }
-  visitSetOp(node: AST.SetOp, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+  visitSetOp(node: AST.SetOp, args: DescentArgs): LogicalPlanTupleOperator {
+    let next = node.next.accept(this, args) as LogicalPlanTupleOperator;
+    next = new plan.Union('cypher', args.src, next);
+    if (node.type === AST.SetOpType.UNIONALL) {
+      next = new plan.Distinct('cypher', allAttrs, next);
+    }
+    return next;
   }
-  visitQuery(node: AST.Query, args: DescentArgs): LogicalPlanOperator {
+  visitQuery(node: AST.Query, args: DescentArgs): LogicalPlanTupleOperator {
     if (node.from) {
       this.graphName = node.from;
     } else if (!this.graphName) {
       throw new Error('No graph specified');
     }
-    throw new Error('Method not implemented.');
+    let res = node.statements[0].accept(this, args) as LogicalPlanTupleOperator;
+    for (let i = 1; i < node.statements.length; i++) {
+      res = node.statements[i].accept(this, {
+        ...args,
+        src: res,
+      }) as LogicalPlanTupleOperator;
+    }
+    if (node.setOp) {
+      res = this.visitSetOp(node.setOp, { ...args, src: res });
+    }
+    return res;
   }
   visitMatchClause(
     node: AST.MatchClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    let res = this.visitPatternElChain(node.pattern[0], args);
+    for (let i = 1; i < node.pattern.length; i++) {
+      res = new plan.CartesianProduct(
+        'cypher',
+        res,
+        this.visitPatternElChain(node.pattern[i], args),
+      );
+    }
+    if (node.where) {
+      res = new plan.Selection(
+        'cypher',
+        this.toCalc(node.where, { ...args, ctx: union(args.ctx, res.schema) }),
+        res,
+      );
+    }
+    if (node.optional) {
+      res = new plan.Join(
+        'cypher',
+        new plan.NullSource('cypher'),
+        res,
+        new plan.Calculation('cypher', () => true, [], [], true),
+      );
+      (res as plan.Join).leftOuter = (res as plan.Join).rightOuter = true;
+    }
+    return res;
   }
   visitUnwindClause(
     node: AST.UnwindClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    const unwound = new plan.ItemFnSource(
+      'cypher',
+      [
+        this.toCalc(node.expr, {
+          ...args,
+          ctx: union(args.ctx, args.src.schema),
+        }),
+      ],
+      unwind.impl,
+      toId('unwind'),
+    );
+    return new plan.ProjectionConcat(
+      'cypher',
+      new plan.MapFromItem('cypher', node.variable, unwound),
+      false,
+      args.src,
+    );
   }
   visitCreateClause(
     node: AST.CreateClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    throw new UnsupportedError('Only read operations are supported');
   }
   visitMergeClause(
     node: AST.MergeClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    throw new UnsupportedError('Only read operations are supported');
   }
   visitSetClause(node: AST.SetClause, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    throw new UnsupportedError('Only read operations are supported');
   }
   visitSetItem(node: AST.SetItem, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
@@ -644,7 +757,7 @@ export class CypherLogicalPlanBuilder
     node: AST.RemoveClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    throw new UnsupportedError('Only read operations are supported');
   }
   visitRemoveItem(
     node: AST.RemoveItem,
@@ -656,14 +769,109 @@ export class CypherLogicalPlanBuilder
     node: AST.DeleteClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    throw new UnsupportedError('Only read operations are supported');
   }
   visitProjectionBody(
     node: AST.ProjectionBody,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    args: DescentArgs & { append: boolean },
+  ): LogicalPlanTupleOperator {
+    let res = args.src;
+    const originalSchema = res.schema;
+    const attrCtx = union(args.ctx, res.schema);
+    if (node.order?.length) {
+      res = this.processOrderBy(node, res, { ...args, ctx: attrCtx });
+    }
+    if (node.items === '*') {
+      res = new plan.Projection('cypher', originalSchema.map(toPair), res);
+    } else {
+      const cols: Aliased<plan.Calculation | ASTIdentifier>[] = node.items.map(
+        (item) => this.processAttr(item, { ...args, ctx: attrCtx }),
+      );
+      res = new plan.Projection(
+        'cypher',
+        args.append
+          ? originalSchema
+              .map<Aliased<plan.Calculation | ASTIdentifier>>(toPair)
+              .concat(cols)
+          : cols,
+        res,
+      );
+    }
+    if (node.distinct) {
+      res = new plan.Distinct('cypher', allAttrs, res);
+    }
+    if (node.limit || node.skip) {
+      res = this.buildLimit(node, res, args);
+    }
+    return res;
   }
+  private processOrderBy(
+    node: AST.ProjectionBody,
+    res: LogicalPlanTupleOperator,
+    args: DescentArgs,
+  ) {
+    const preSortCols: Aliased<plan.Calculation | ASTIdentifier>[] =
+      node.items === '*'
+        ? res.schema.map(toPair)
+        : node.items.map((x) => this.processAttr(x, args));
+    const orders: plan.Order[] = [];
+    for (const item of node.order) {
+      const col = this.toCalc(item.expr, args);
+      if (col instanceof plan.Calculation) {
+        const name = toId(item.expr.accept(this.stringifier));
+        preSortCols.push([col, name]);
+        orders.push({
+          ascending: item.ascending,
+          key: name,
+          nullsFirst: false,
+        });
+      } else {
+        orders.push({ ascending: item.ascending, key: col, nullsFirst: false });
+      }
+    }
+    const aggrs = preSortCols.flatMap(getAggrs);
+    if (aggrs.length) {
+      res = this.processGroupBy(res, aggrs, preSortCols);
+    } else {
+      res = new plan.Projection('cypher', preSortCols, res);
+    }
+    return new plan.OrderBy('cypher', orders, res);
+  }
+  private processGroupBy(
+    res: LogicalPlanTupleOperator,
+    aggrs: plan.AggregateCall[],
+    allCols: Aliased<plan.Calculation | ASTIdentifier>[],
+  ): LogicalPlanTupleOperator {
+    const aggrSet = schemaToTrie(aggrs.map((x) => x.fieldName));
+    const groupByCols: Aliased<plan.Calculation | ASTIdentifier>[] =
+      res.schema.map(toPair);
+    for (const col of allCols) {
+      if (!aggrSet.has(col[1].parts)) {
+        groupByCols.push(col);
+      }
+    }
+
+    return new plan.GroupBy('cypher', groupByCols, aggrs, res);
+  }
+  private buildLimit(
+    node: AST.ProjectionBody,
+    res: LogicalPlanTupleOperator,
+    args: DescentArgs,
+  ) {
+    const limit = node.limit && this.toCalc(node.limit, args);
+    const offset = node.skip && this.toCalc(node.skip, args);
+    if (limit && !assertCalcLiteral(limit, 'number'))
+      throw new Error('Limit must be a number constant');
+    if (offset && !assertCalcLiteral(offset, 'number'))
+      throw new Error('Offset must be a number constant');
+    return new plan.Limit(
+      'sql',
+      offset ? (offset as plan.Calculation).impl() : 0,
+      limit ? (limit as plan.Calculation).impl() : Infinity,
+      res,
+    );
+  }
+
   visitOrderItem(node: AST.OrderItem, args: DescentArgs): LogicalPlanOperator {
     throw new Error('Method not implemented.');
   }
@@ -671,27 +879,69 @@ export class CypherLogicalPlanBuilder
     node: AST.WithClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    let res = this.visitProjectionBody(node.body, { ...args, append: true });
+    if (node.where) {
+      res = new plan.Selection(
+        'cypher',
+        this.toCalc(node.where, {
+          ...args,
+          ctx: union(args.ctx, res.schemaSet),
+        }),
+        res,
+      );
+    }
+    return res;
   }
   visitReturnClause(
     node: AST.ReturnClause,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    return this.visitProjectionBody(node.body, { ...args, append: false });
   }
   visitLiteral<T>(node: ASTLiteral<T>, args: DescentArgs): LogicalPlanOperator {
     return new plan.Literal('cypher', node.value);
   }
   visitOperator(node: ASTOperator, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    return new plan.FnCall(
+      node.lang,
+      node.operands.map((x) => ({ op: x.accept(this, args) })), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
+      this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
+      true,
+    );
   }
   visitFunction(node: ASTFunction, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    const [id, schema] = idToPair(node.id);
+    const impl = this.db.langMgr.getFnOrAggr('cypher', id, schema);
+
+    if ('init' in impl) {
+      return new plan.AggregateCall(
+        node.lang,
+        node.args.map((a) => this.toCalc(a, args)),
+        impl,
+        toId(this.stringifier.visitFunction(node)),
+      );
+    }
+    return new plan.FnCall(
+      node.lang,
+      node.args.map((a) => this.processFnArg(a, args)),
+      impl.impl,
+      impl.pure,
+    );
   }
   visitLangSwitch(node: LangSwitch, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    const nested = new (this.db.langMgr.getLang(
+      node.lang,
+    ).visitors.logicalPlanBuilder)(this.db).buildPlan(node.node, args.ctx);
+    for (const item of nested.inferred) {
+      args.inferred.add(item);
+    }
+    if (nested.plan instanceof LogicalPlanTupleOperator) {
+      return new plan.MapToItem('cypher', null, nested.plan);
+    }
+    return nested.plan;
   }
   visitIdentifier(node: ASTIdentifier, args: DescentArgs): LogicalPlanOperator {
-    throw new Error('Method not implemented.');
+    infer(node, args);
+    return new plan.FnCall('cypher', [node], ret1);
   }
 }

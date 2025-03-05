@@ -145,12 +145,12 @@ export class SQLLogicalPlanBuilder
     );
   }
   visitSubscript(node: AST.ASTSubscript): LogicalPlanOperator {
-    const expr = { op: node.expr.accept(this) };
-    const index = { op: node.from.accept(this) };
+    const expr = this.processFnArg(node.expr);
+    const index = this.processFnArg(node.from);
     return node.to
       ? new plan.FnCall(
           'sql',
-          [expr, index, { op: node.to.accept(this) }],
+          [expr, index, this.processFnArg(node.to)],
           (e, f, t) => e.slice(f, t),
         )
       : new plan.FnCall('sql', [expr, index], (e, i) => e[i], true);
@@ -325,7 +325,7 @@ export class SQLLogicalPlanBuilder
 
   /**
    * should be called only by {@link SQLLogicalPlanBuilder#visitSelectSet},
-   * which provides the `src` arg
+   * which provides the `left` arg
    */
   visitSelectSetOp(
     node: AST.SelectSetOp,
