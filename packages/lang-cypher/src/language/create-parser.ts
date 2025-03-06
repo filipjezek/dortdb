@@ -1,5 +1,7 @@
 import {
+  allAttrs,
   ASTFunction,
+  ASTIdentifier,
   ASTLiteral,
   ASTOperator,
   LanguageManager,
@@ -44,6 +46,8 @@ export function createParser(mgr: LanguageManager) {
       ASTLiteral,
       ASTOperator,
       ASTFunction,
+      ASTIdentifier,
+      allAttrs,
     },
   };
 

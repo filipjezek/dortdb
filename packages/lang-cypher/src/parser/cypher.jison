@@ -309,7 +309,7 @@ where-clause:
 
 pattern:
   pattern-part { $$ = [$1]; }
-  | pattern COMMA pattern-part { $$ = $1; $$.push($2); } ;
+  | pattern COMMA pattern-part { $$ = $1; $$.push($3); } ;
 
 pattern-part:
   variable EQ pattern-element { $$ = $3; $$.variable = $1; }
@@ -456,7 +456,9 @@ atom:
 atom-no-pattern:
   literal
   | case-expression
-  | COUNT LPAR STAR RPAR { $$ = new yy.ast.CountAll(); }
+  | COUNT LPAR STAR RPAR { $$ = yy.wrapFn(yy.ast.ASTIdentifier.fromParts([$1]), [yy.ast.ASTIdentifier.fromParts([yy.ast.allAttrs])]); }
+  | COUNT LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(yy.ast.ASTIdentifier.fromParts([$1]), $4, $3); }
+  | COUNT PARENVAR { $$ = yy.wrapFn(yy.ast.ASTIdentifier.fromParts([$1]), [new yy.ast.CypherIdentifier($2.slice(1, -1).trim())]); }
   | list-comprehension
   | pattern-comprehension
   | quantified-expression
@@ -499,6 +501,7 @@ quantifier:
 
 function-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
+  | symbolic-name PARENVAR { $$ = yy.wrapFn($1, [new yy.ast.CypherIdentifier($2.slice(1, -1).trim())]); }
   | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); } ;
 
 existential-subquery:

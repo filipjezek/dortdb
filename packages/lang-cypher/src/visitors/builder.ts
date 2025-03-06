@@ -304,7 +304,7 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanTupleOperator {
     if (refVars.length) {
-      let res =
+      let res: LogicalPlanTupleOperator =
         args.src ??
         new plan.TupleFnSource('cypher', refVars, (...args) => {
           const res = new Trie<string | symbol, unknown>();
@@ -313,13 +313,14 @@ export class CypherLogicalPlanBuilder
           }
           return [res];
         });
-      for (let i = 0; i < chain.length; i++) {
-        if (isRef[i] && chain[i].props) {
-          res = this.patternToSelection(res, refVars[i], chain[i], args);
+      for (let i = 0, j = 0; i < chain.length; i++) {
+        if (isRef[i]) {
+          res = this.patternToSelection(res, refVars[j++], chain[i], args);
         }
       }
+      return res;
     }
-    return null;
+    return args.src;
   }
   private patternToSelection(
     src: LogicalPlanTupleOperator,
@@ -327,6 +328,7 @@ export class CypherLogicalPlanBuilder
     el: AST.NodePattern | AST.RelPattern,
     args: DescentArgs,
   ) {
+    if (!el.props) return src;
     const graphName = this.graphName;
     if (el.props instanceof AST.ASTParameter) {
       return new plan.Selection(
@@ -429,7 +431,7 @@ export class CypherLogicalPlanBuilder
             const last = args.pop();
             return args.every((arg) => arg !== last);
           },
-          (i % 2 ? edgeVars : nodeVars).slice(0, i / 2),
+          (i % 2 ? edgeVars : nodeVars).slice(0, i / 2 + 1),
         ),
         res,
       );
@@ -452,14 +454,20 @@ export class CypherLogicalPlanBuilder
       return (
         item.variable.parts[0] === boundParam ||
         args.ctx.has(item.variable.parts) ||
+        args.src?.schemaSet.has(item.variable.parts) ||
         item.variable.parts[item.variable.parts.length - 1] === toInfer
       );
     });
     const ctx = args.src ? union(args.ctx, args.src.schema) : args.ctx;
-    let res = this.preparePatternRefs(variables, node.chain, isRef, {
-      ...args,
-      ctx,
-    });
+    let res = this.preparePatternRefs(
+      variables.filter((_, i) => isRef[i]),
+      node.chain,
+      isRef,
+      {
+        ...args,
+        ctx,
+      },
+    );
     let firstUnknown = isRef.findIndex((x) => !x);
     if (firstUnknown > -1) {
       if (!res) {
@@ -689,11 +697,7 @@ export class CypherLogicalPlanBuilder
   ): LogicalPlanOperator {
     let res = this.visitPatternElChain(node.pattern[0], args);
     for (let i = 1; i < node.pattern.length; i++) {
-      res = new plan.CartesianProduct(
-        'cypher',
-        res,
-        this.visitPatternElChain(node.pattern[i], args),
-      );
+      res = this.visitPatternElChain(node.pattern[i], { ...args, src: res });
     }
     if (node.where) {
       res = new plan.Selection(
@@ -787,6 +791,10 @@ export class CypherLogicalPlanBuilder
       const cols: Aliased<plan.Calculation | ASTIdentifier>[] = node.items.map(
         (item) => this.processAttr(item, { ...args, ctx: attrCtx }),
       );
+      const aggrs = cols.flatMap(getAggrs);
+      if (!node.order?.length && aggrs.length) {
+        res = this.processGroupBy(res, aggrs, cols);
+      }
       res = new plan.Projection(
         'cypher',
         args.append
@@ -808,12 +816,17 @@ export class CypherLogicalPlanBuilder
   private processOrderBy(
     node: AST.ProjectionBody,
     res: LogicalPlanTupleOperator,
-    args: DescentArgs,
+    args: DescentArgs & { append: boolean },
   ) {
-    const preSortCols: Aliased<plan.Calculation | ASTIdentifier>[] =
-      node.items === '*'
-        ? res.schema.map(toPair)
-        : node.items.map((x) => this.processAttr(x, args));
+    let preSortCols: Aliased<plan.Calculation | ASTIdentifier>[];
+    if (node.items === '*') {
+      preSortCols = res.schema.map(toPair);
+    } else {
+      preSortCols = args.append ? res.schema.map(toPair) : [];
+      for (const item of node.items) {
+        preSortCols.push(this.processAttr(item, args));
+      }
+    }
     const orders: plan.Order[] = [];
     for (const item of node.order) {
       const col = this.toCalc(item.expr, args);
@@ -843,12 +856,14 @@ export class CypherLogicalPlanBuilder
     allCols: Aliased<plan.Calculation | ASTIdentifier>[],
   ): LogicalPlanTupleOperator {
     const aggrSet = schemaToTrie(aggrs.map((x) => x.fieldName));
-    const groupByCols: Aliased<plan.Calculation | ASTIdentifier>[] =
-      res.schema.map(toPair);
+    const groupByCols: Aliased<plan.Calculation | ASTIdentifier>[] = [];
     for (const col of allCols) {
       if (!aggrSet.has(col[1].parts)) {
         groupByCols.push(col);
       }
+    }
+    for (const aggr of aggrs) {
+      aggr.postGroupSource.addToSchema(res.schema);
     }
 
     return new plan.GroupBy('cypher', groupByCols, aggrs, res);
@@ -910,23 +925,7 @@ export class CypherLogicalPlanBuilder
     );
   }
   visitFunction(node: ASTFunction, args: DescentArgs): LogicalPlanOperator {
-    const [id, schema] = idToPair(node.id);
-    const impl = this.db.langMgr.getFnOrAggr('cypher', id, schema);
-
-    if ('init' in impl) {
-      return new plan.AggregateCall(
-        node.lang,
-        node.args.map((a) => this.toCalc(a, args)),
-        impl,
-        toId(this.stringifier.visitFunction(node)),
-      );
-    }
-    return new plan.FnCall(
-      node.lang,
-      node.args.map((a) => this.processFnArg(a, args)),
-      impl.impl,
-      impl.pure,
-    );
+    throw new Error('Method not implemented.');
   }
   visitLangSwitch(node: LangSwitch, args: DescentArgs): LogicalPlanOperator {
     const nested = new (this.db.langMgr.getLang(
