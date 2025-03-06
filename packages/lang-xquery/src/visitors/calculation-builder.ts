@@ -3,7 +3,7 @@ import {
   ProjectionSize,
   TreeJoin,
   XQueryLogicalPlanVisitor,
-} from 'src/plan/index.js';
+} from '../plan/index.js';
 
 export class XQueryCalculationBuilder
   extends CalculationBuilder

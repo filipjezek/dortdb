@@ -5,7 +5,7 @@ import { ASTOperator } from '@dortdb/core';
 
 describe('AST Expressions', () => {
   const db = new DortDB({
-    mainLang: XQuery,
+    mainLang: XQuery(),
   });
   const getExpr = (query: string) =>
     (db.parse(query).value[0] as astXQuery.Module).body[0];

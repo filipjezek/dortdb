@@ -11,5 +11,6 @@
   },
   "jest.nodeEnv": {
     "TS_NODE_COMPILER_OPTIONS": "{\"moduleResolution\":\"node10\"}"
-  }
+  },
+  "typescript.preferences.importModuleSpecifier": "project-relative"
 }

@@ -4,7 +4,7 @@ import { ASTNode, ASTOperator, DortDB } from '@dortdb/core';
 
 describe('AST paths', () => {
   const db = new DortDB({
-    mainLang: XQuery,
+    mainLang: XQuery(),
   });
   const wrapChild = (
     name: astXQuery.XQueryIdentifier | '*',

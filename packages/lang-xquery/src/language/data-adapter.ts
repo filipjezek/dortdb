@@ -1,5 +1,5 @@
-import { ASTItemType } from 'src/ast/item-type.js';
-import { AxisType } from 'src/ast/path.js';
+import { ASTItemType } from '../ast/item-type.js';
+import { AxisType } from '../ast/path.js';
 import { treeStep } from './tree-step.js';
 
 export interface XQueryDataAdapter<NodeType = any> {

@@ -30,10 +30,10 @@ import { collect } from '@dortdb/core/aggregates';
 import { resolveArgs, schemaToTrie, union } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
-import { FnContext } from 'src/functions/fn-context.js';
+import { FnContext } from '../functions/fn-context.js';
 import { Trie } from '@dortdb/core/data-structures';
-import { XQueryDataAdapter } from 'src/language/data-adapter.js';
-import { XQueryLanguage } from 'src/language/language.js';
+import { XQueryDataAdapter } from '../language/data-adapter.js';
+import { XQueryLanguage } from '../language/language.js';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [

@@ -19,7 +19,7 @@ import {
 } from '@dortdb/core/utils';
 import { retI1, toPair } from '@dortdb/core/internal-fns';
 import { LangSwitch } from '../plan/langswitch.js';
-import { SQLLogicalPlanVisitor } from 'src/plan/index.js';
+import { SQLLogicalPlanVisitor } from '../plan/index.js';
 import { DEFAULT_COLUMN } from './builder.js';
 
 const EMPTY = new Trie<string | symbol>();

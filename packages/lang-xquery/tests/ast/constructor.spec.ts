@@ -4,7 +4,7 @@ import { DortDB } from '@dortdb/core';
 
 describe('AST constructors', () => {
   const db = new DortDB({
-    mainLang: XQuery,
+    mainLang: XQuery(),
   });
   const getExpr = (str: string) =>
     (db.parse(str).value[0] as astXQuery.Module).body[0];

@@ -1,12 +1,11 @@
 import { ASTNode, ASTOperator, DortDB } from '@dortdb/core';
-import { XQuery } from '../../src';
-import * as astXQuery from '../../src/ast';
+import { XQuery } from '../../src/index.js';
+import * as astXQuery from '../../src/ast/index.js';
 
 describe('Grammar hacks', () => {
   const db = new DortDB({
-    mainLang: XQuery,
+    mainLang: XQuery(),
   });
-  const wrapPath = (lit: ASTNode) => new astXQuery.PathExpr([lit]);
   const getExpr = (query: string) =>
     (db.parse(query).value[0] as astXQuery.Module).body[0];
   // see https://www.w3.org/TR/2014/REC-xquery-30-20140408/#extra-grammatical-constraints - the grammar from the spec itself is hacky

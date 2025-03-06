@@ -5,7 +5,7 @@ import { ASTOperator } from '@dortdb/core';
 
 describe('AST Expressions', () => {
   const db = new DortDB({
-    mainLang: Cypher,
+    mainLang: Cypher(),
   });
   const getRet = (input: string): ASTNode =>
     (
@@ -344,19 +344,19 @@ describe('AST Expressions', () => {
       const result = getRet('RETURN {a: 1, b: 2 + 1, c: 3}');
       const expected = new astCypher.ASTMapLiteral([
         [
-          new astCypher.CypherIdentifier('a'),
           new astCypher.ASTNumberLiteral('1'),
+          new astCypher.CypherIdentifier('a'),
         ],
         [
-          new astCypher.CypherIdentifier('b'),
           new ASTOperator('cypher', new astCypher.CypherIdentifier('+'), [
             new astCypher.ASTNumberLiteral('2'),
             new astCypher.ASTNumberLiteral('1'),
           ]),
+          new astCypher.CypherIdentifier('b'),
         ],
         [
-          new astCypher.CypherIdentifier('c'),
           new astCypher.ASTNumberLiteral('3'),
+          new astCypher.CypherIdentifier('c'),
         ],
       ]);
       expect(result).toEqual(expected);

@@ -5,10 +5,10 @@ import {
   LangSwitch,
   LanguageManager,
 } from '@dortdb/core';
-import { AdditionalTokens, Keywords } from 'src/parser/tokens.js';
-import { YyContext } from 'src/parser/yycontext.js';
-import { DOT } from 'src/utils/dot.js';
-import * as ast from 'src/ast/index.js';
+import { AdditionalTokens, Keywords } from '../parser/tokens.js';
+import { YyContext } from '../parser/yycontext.js';
+import { DOT } from '../utils/dot.js';
+import * as ast from '../ast/index.js';
 import {
   xqueryLexer as Lexer,
   xqueryParser as Parser,

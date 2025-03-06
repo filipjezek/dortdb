@@ -20,7 +20,7 @@ import {
   LabelFilterExpr,
   SubscriptExpr,
   PropLookup,
-} from 'src/ast/index.js';
+} from '../ast/index.js';
 import {
   CypherIdentifier,
   ASTStringLiteral,
@@ -28,8 +28,8 @@ import {
   ASTListLiteral,
   ASTMapLiteral,
   ASTBooleanLiteral,
-} from 'src/ast/literal.js';
-import { PatternElChain, NodePattern, RelPattern } from 'src/ast/pattern.js';
+} from '../ast/literal.js';
+import { PatternElChain, NodePattern, RelPattern } from '../ast/pattern.js';
 import {
   SetOp,
   Query,
@@ -46,8 +46,8 @@ import {
   OrderItem,
   WithClause,
   ReturnClause,
-} from 'src/ast/query.js';
-import { CypherVisitor } from 'src/ast/visitor.js';
+} from '../ast/query.js';
+import { CypherVisitor } from '../ast/visitor.js';
 
 export class ASTDeterministicStringifier implements CypherVisitor<string> {
   private uniqueId = 0;

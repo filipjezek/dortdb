@@ -1,6 +1,6 @@
 import { Trie } from '../data-structures/trie.js';
 import { ASTIdentifier } from '../ast.js';
-import { IdSet } from 'src/plan/visitor.js';
+import { IdSet } from '../plan/visitor.js';
 
 export function schemaToTrie(schema: ASTIdentifier[]) {
   const res = new Trie<string | symbol>();

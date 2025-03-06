@@ -1,4 +1,4 @@
-import { Fn } from 'src/extension.js';
+import { Fn } from '../extension.js';
 
 export const unwind: Fn = {
   name: 'unwind',

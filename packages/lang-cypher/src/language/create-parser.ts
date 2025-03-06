@@ -4,9 +4,9 @@ import {
   ASTOperator,
   LanguageManager,
 } from '@dortdb/core';
-import { AdditionalTokens, Keywords } from 'src/parser/tokens.js';
-import { YyContext } from 'src/parser/yycontext.js';
-import * as ast from 'src/ast/index.js';
+import { AdditionalTokens, Keywords } from '../parser/tokens.js';
+import { YyContext } from '../parser/yycontext.js';
+import * as ast from '../ast/index.js';
 import {
   cypherParser as Parser,
   cypherLexer as Lexer,
