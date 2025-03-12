@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",
+    "graphology": "^0.26.0",
     "unzipper": "^0.12.3"
   }
 }

@@ -80,17 +80,6 @@ export class ASTRow implements ASTNode {
   }
 }
 
-export class ASTParam extends ASTIdentifier {
-  constructor(public name: string) {
-    super();
-    this.parts = [boundParam, name];
-  }
-
-  override accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
-    return visitor.visitParam(this, arg);
-  }
-}
-
 export class ASTCast implements ASTNode {
   constructor(
     public expr: ASTNode,

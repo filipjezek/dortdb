@@ -35,6 +35,14 @@ export class DortDB<LangNames extends string> {
       new Trie<symbol | string>(),
     );
   }
+
+  public query<T = unknown>(query: string): T[] {
+    return [];
+  }
+
+  public registerSource(source: (symbol | string)[], data: unknown) {
+    this.registeredSources.set(source, data);
+  }
 }
 
 export interface DortDBConfig<LangNames extends string> {

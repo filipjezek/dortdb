@@ -14,6 +14,12 @@ import {
 } from '@dortdb/lang-xquery';
 import { strToColor } from '../../utils/str-to-color';
 
+const langColors: Record<string, string> = {
+  xquery: strToColor('xquery'),
+  sql: strToColor('sql'),
+  cypher: strToColor('cypherx'),
+};
+
 function sum(args: number[]) {
   return args.reduce((a, b) => a + b, 0);
 }
@@ -150,7 +156,7 @@ export class GraphBuilder
     );
 
     const result = this.markup<SVGGElement>(`
-    <g style="--lang-color: ${strToColor(operator.lang)}">
+    <g style="--lang-color: ${langColors[operator.lang]}">
       <rect width="${textBBox.width + PADDING * 2}" height="${
         textBBox.height + PADDING * 2
       }" />
@@ -487,7 +493,7 @@ export class GraphBuilder
     this.drawingContainer.appendChild(parent);
     const bbox = parent.getBBox();
     const groupbyWrapper = this
-      .markup<SVGGElement>(`<g style="--lang-color: ${strToColor(operator.lang)}"><rect
+      .markup<SVGGElement>(`<g style="--lang-color: ${langColors[operator.lang]}"><rect
       x="0"
       y="0"
       width="${bbox.width + PADDING * 2}"

@@ -1,0 +1,16 @@
+SELECT products.value, count(*) AS productCount
+FROM addresses
+JOIN (
+    LANG cypher
+    MATCH ({id: $myId})-[:hasFriend]->(friend)
+    RETURN friend.id AS id
+) friends ON friends.id = addresses.customerId
+JOIN LATERAL (
+    lang xquery
+    $invoices/Invoice[PersonId=$friends:id]/Orderline[0]/productId
+) products
+WHERE addresses.city = 'Prague' OR addresses.city = ANY(
+    SELECT city FROM addresses WHERE customerId = :myId
+)
+GROUP BY products.value
+HAVING productCount > 2

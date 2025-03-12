@@ -127,9 +127,6 @@ export class SQLLogicalPlanBuilder
       return res;
     });
   }
-  visitParam(node: AST.ASTParam): LogicalPlanOperator {
-    return this.visitIdentifier(node);
-  }
   visitCast(node: AST.ASTCast): LogicalPlanOperator {
     const impl = this.db.langMgr.getCast('sql', ...idToPair(node.type));
     return new plan.FnCall(
@@ -445,16 +442,13 @@ export class SQLLogicalPlanBuilder
   }
   visitJoinClause(node: AST.JoinClause): LogicalPlanTupleOperator {
     if (node.natural) throw new UnsupportedError('Natural joins not supported');
-    if (node.lateral) throw new UnsupportedError('Lateral joins not supported');
     const [left, leftName] = this.getTableName(node.tableLeft);
     const [right, rightName] = this.getTableName(node.tableRight);
 
     // TODO: implement outer join types
-    let op: LogicalPlanTupleOperator = new plan.CartesianProduct(
-      'sql',
-      left,
-      right,
-    );
+    let op = node.lateral
+      ? right
+      : new plan.CartesianProduct('sql', left, right);
 
     if (node.condition) {
       op = new plan.Selection('sql', this.toCalc(node.condition), op);
@@ -469,6 +463,10 @@ export class SQLLogicalPlanBuilder
         rightName,
         op as plan.CartesianProduct,
       );
+    }
+
+    if (node.lateral) {
+      op = new plan.ProjectionConcat('sql', op, false, left);
     }
     return op;
   }

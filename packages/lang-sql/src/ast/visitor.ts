@@ -11,7 +11,6 @@ import {
 } from './select.js';
 import {
   ASTArray,
-  ASTParam,
   ASTNumberLiteral,
   ASTStringLiteral,
   ASTCast,
@@ -33,7 +32,6 @@ export interface SQLVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitNumberLiteral(node: ASTNumberLiteral, arg?: Arg): Ret;
   visitArray(node: ASTArray, arg?: Arg): Ret;
   visitRow(node: ASTRow, arg?: Arg): Ret;
-  visitParam(node: ASTParam, arg?: Arg): Ret;
   visitCast(node: ASTCast, arg?: Arg): Ret;
   visitSubscript(node: ASTSubscript, arg?: Arg): Ret;
   visitExists(node: ASTExists, arg?: Arg): Ret;

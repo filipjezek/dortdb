@@ -345,6 +345,6 @@ export class CalculationBuilder
     return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
-    throw new Error('Method not implemented.');
+    return operator.query.accept(this.vmap);
   }
 }

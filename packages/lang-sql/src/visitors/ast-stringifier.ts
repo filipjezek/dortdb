@@ -15,7 +15,6 @@ import {
   ASTCast,
   ASTExists,
   ASTNumberLiteral,
-  ASTParam,
   ASTQuantifier,
   ASTRow,
   ASTStringLiteral,
@@ -66,9 +65,6 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
   visitRow(node: ASTRow): string {
     return `ROW(${node.items.map(this.processNode).join(',')})`;
-  }
-  visitParam(node: ASTParam): string {
-    return ':' + node.name;
   }
   visitCast(node: ASTCast): string {
     return `CAST(${node.expr.accept(this)} AS ${node.type.accept(this)})`;

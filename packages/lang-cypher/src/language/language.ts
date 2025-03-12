@@ -4,7 +4,7 @@ import { createParser } from './create-parser.js';
 import { CypherDataAdaper, GraphologyDataAdapter } from './data-adapter.js';
 
 export interface CypherConfig {
-  adapter: CypherDataAdaper;
+  adapter?: CypherDataAdaper;
   defaultGraph: string;
 }
 

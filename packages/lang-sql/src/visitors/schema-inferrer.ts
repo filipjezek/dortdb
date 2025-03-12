@@ -42,6 +42,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   ) {}
 
   public inferSchema(operator: LogicalPlanOperator, ctx: IdSet): IdSet {
+    console.log(operator);
     const external = operator.accept(this.vmap, ctx);
     for (const item of external.keys([boundParam])) {
       external.delete(item);
@@ -123,7 +124,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
 
   private getRelNames(operator: LogicalPlanTupleOperator): IdSet {
-    // joins are made of either TupleSources or Projections based on table aliases or other joins
+    // joins are made of either TupleSources or Projections based on table aliases or other joins or langswitches
     if (
       operator instanceof plan.TupleSource ||
       operator instanceof plan.TupleFnSource
@@ -133,9 +134,21 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
         : schemaToTrie([operator.name[1]]);
     }
 
-    if (operator instanceof plan.CartesianProduct) {
-      const res = this.getRelNames(operator.left);
-      for (const item of this.getRelNames(operator.right)) {
+    if (
+      operator instanceof plan.CartesianProduct ||
+      operator instanceof plan.Join ||
+      operator instanceof plan.ProjectionConcat
+    ) {
+      const left =
+        operator instanceof plan.ProjectionConcat
+          ? operator.source
+          : operator.left;
+      const right =
+        operator instanceof plan.ProjectionConcat
+          ? operator.mapping
+          : operator.right;
+      const res = this.getRelNames(left);
+      for (const item of this.getRelNames(right)) {
         if (res.has(item))
           throw new Error('Duplicate table alias: ' + item.join('.'));
         res.add(item);
@@ -144,6 +157,10 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
 
     const res = new Trie<string | symbol>();
+    if (operator instanceof LangSwitch) {
+      res.add([operator.alias]);
+      return res;
+    }
     res.add(operator.schema[0].parts.slice(0, -1));
     return res;
   }

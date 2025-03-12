@@ -351,7 +351,7 @@ row-constructor:
 
 primary-expression:
 	field-selector
-	| PARAM { $$ = new yy.ast.ASTParam($1); }
+	| PARAM { $$ = new yy.ast.SQLIdentifier($1.slice(1)); $$.parts.unshift(yy.ast.boundParam) }
 	| NUMBER { $$ = new yy.ast.ASTNumberLiteral($1); }
 	| STRING { $$ = new yy.ast.ASTStringLiteral($1); }
 	| ID STRING { $$ = new yy.ast.ASTCast(new yy.ast.ASTStringLiteral($2), $1); }
