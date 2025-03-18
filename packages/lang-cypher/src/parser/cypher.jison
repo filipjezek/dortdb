@@ -129,11 +129,11 @@ scope-exit:
 	| LANGEXIT ;
 
 root:
-	scope-exit { return null; }
-	| scope-exit error { return null; }
-  | full-query scope-exit { return [$1]; }
-	| full-query scope-exit error { return [$1]; }
-  | full-query { return [$1]; } ;
+	scope-exit { return {value: [], scopeExit: $1}; }
+	| scope-exit error { return {value: [], scopeExit: $1, error: $2}; }
+  | full-query scope-exit { return {value: [$1], scopeExit: $2}; }
+	| full-query scope-exit error { return {value: [$1], scopeExit: $2, error: $3}; }
+  | full-query { return {value: [$1]}; } ;
 
 full-query:
   regular-query semicolon_opt
@@ -324,11 +324,12 @@ pattern-el-chain:
   | pattern-el-chain rel-pattern node-pattern { $$ = $1; $$.chain.push($2, $3); } ;
 
 node-pattern:
-  PARENVAR { $$ = new yy.ast.NodePattern(new yy.ast.CypherIdentifier($1.slice(1, -1).trim())); }
+  PARENVAR { console.log('case 1'); $$ = new yy.ast.NodePattern(new yy.ast.CypherIdentifier($1.slice(1, -1).trim())); }
   | LPAR variable node-label-list_opt properties_opt RPAR {
+    console.log('case 2');
     $$ = new yy.ast.NodePattern($2, $3, $4);
   }
-  | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
+  | LPAR node-label-list_opt properties_opt RPAR { console.log('case 3'); $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
 
 rel-pattern:
   LARROWDBLDASH { $$ = new yy.ast.RelPattern(true, false); }
@@ -455,6 +456,7 @@ atom:
 
 atom-no-pattern:
   literal
+  | LANGSWITCH { $$ = new yy.ast.LangSwitch($1, yy.messageQueue.shift()); }
   | case-expression
   | COUNT LPAR STAR RPAR { $$ = yy.wrapFn(yy.ast.ASTIdentifier.fromParts([$1]), [yy.ast.ASTIdentifier.fromParts([yy.ast.allAttrs])]); }
   | COUNT LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(yy.ast.ASTIdentifier.fromParts([$1]), $4, $3); }
@@ -465,7 +467,6 @@ atom-no-pattern:
   | function-invocation
   | existential-subquery
   | pattern-el-chain
-  | LANGSWITCH { $$ = yy.messageQueue.shift(); }
   | LPAR expression RPAR { $$ = $2; } ; 
 
 case-expression:

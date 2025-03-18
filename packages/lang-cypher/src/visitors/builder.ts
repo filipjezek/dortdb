@@ -726,15 +726,17 @@ export class CypherLogicalPlanBuilder
       [
         this.toCalc(node.expr, {
           ...args,
-          ctx: union(args.ctx, args.src.schema),
+          ctx: union(args.ctx, args.src?.schema ?? []),
         }),
       ],
       unwind.impl,
       toId('unwind'),
     );
+    const renamed = new plan.MapFromItem('cypher', node.variable, unwound);
+    if (!args.src) return renamed;
     return new plan.ProjectionConcat(
       'cypher',
-      new plan.MapFromItem('cypher', node.variable, unwound),
+      new plan.MapFromItem('cypher', node.variable, renamed),
       false,
       args.src,
     );
@@ -779,7 +781,7 @@ export class CypherLogicalPlanBuilder
     node: AST.ProjectionBody,
     args: DescentArgs & { append: boolean },
   ): LogicalPlanTupleOperator {
-    let res = args.src;
+    let res = args.src ?? new plan.NullSource('cypher');
     const originalSchema = res.schema;
     const attrCtx = union(args.ctx, res.schema);
     if (node.order?.length) {

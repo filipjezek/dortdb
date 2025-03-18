@@ -42,7 +42,6 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   ) {}
 
   public inferSchema(operator: LogicalPlanOperator, ctx: IdSet): IdSet {
-    console.log(operator);
     const external = operator.accept(this.vmap, ctx);
     for (const item of external.keys([boundParam])) {
       external.delete(item);

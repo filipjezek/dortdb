@@ -1,5 +1,6 @@
 import {
   ASTFunction,
+  ASTNode,
   ASTOperator,
   LangSwitch,
   LanguageManager,
@@ -11,6 +12,8 @@ import { Keywords, AdditionalTokens } from '../parser/tokens.js';
 import { YyContext } from '../parser/yycontext.js';
 import * as ast from '../ast/index.js';
 import { ASTLiteral } from '@dortdb/core';
+
+const scopeExits = new Set([')', '}', ']']);
 
 export function createParser(mgr: LanguageManager) {
   let remainingInput = '';
@@ -26,9 +29,6 @@ export function createParser(mgr: LanguageManager) {
 
     messageQueue: [],
     saveRemainingInput: (input) => {
-      if (remainingInput.slice(0, -input.length).match(/^\s*[)}\]]\s*$/)) {
-        return;
-      }
       remainingInput = input;
     },
     wrapNot: (expr, not) =>
@@ -57,10 +57,17 @@ export function createParser(mgr: LanguageManager) {
   const parser = new Parser(yy, new Lexer(yy));
   return {
     parse: (input: string) => {
-      const result = parser.parse(input);
+      const result: {
+        value: ASTNode[];
+        scopeExit?: string;
+        error?: string;
+      } = parser.parse(input);
+      let remaining = remainingInput;
+      if (scopeExits.has(result.error)) remaining = result.error + remaining;
+      if (result.scopeExit) remaining = result.scopeExit + remaining;
       return {
-        value: result,
-        remainingInput,
+        value: result.value,
+        remainingInput: remaining,
       };
     },
   };

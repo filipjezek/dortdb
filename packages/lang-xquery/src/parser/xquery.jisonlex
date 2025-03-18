@@ -252,17 +252,17 @@ DEC       [0-9]
 "."				return this.yy.AdditionalTokens.DOT;
 "$"       return this.yy.AdditionalTokens.DOLLAR;
 "("				return this.yy.AdditionalTokens.LPAR;
-")"				this.yy.saveRemainingInput(')' + this._input); return this.yy.AdditionalTokens.RPAR;
+")"				this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RPAR;
 "[]"      return this.yy.AdditionalTokens.CLOSEDBRAS;
 "["				return this.yy.AdditionalTokens.LBRA;
-"]"				this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
+"]"				this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RBRA;
 "{"				return this.yy.AdditionalTokens.LCUR;
 "}"				%{
   if (this.stateStackSize() > 1) {
     this.popState();
     return this.yy.AdditionalTokens.RCUR;
   }
-  this.yy.saveRemainingInput('}' + this._input);
+  this.yy.saveRemainingInput(this._input);
   return this.yy.AdditionalTokens.RCUR;
           %}
 "*"				return this.yy.AdditionalTokens.STAR;

@@ -14,6 +14,8 @@ import {
   xqueryParser as Parser,
 } from '../parser/xquery.cjs';
 
+const scopeExits = new Set([')', '}', ']']);
+
 export function createParser(mgr: LanguageManager) {
   let remainingInput = '';
   const yy: YyContext = {
@@ -29,9 +31,6 @@ export function createParser(mgr: LanguageManager) {
 
     messageQueue: [],
     saveRemainingInput: (input) => {
-      if (remainingInput.slice(0, -input.length).match(/^\s*[)}\]]\s*$/)) {
-        return;
-      }
       remainingInput = input;
     },
     makeOp: (op, args) =>
@@ -55,10 +54,17 @@ export function createParser(mgr: LanguageManager) {
   const parser = new Parser(yy, new Lexer(yy));
   return {
     parse: (input: string) => {
-      const result = [parser.parse(input)];
+      const result: {
+        value: ast.Module;
+        scopeExit?: string;
+        error?: string;
+      } = parser.parse(input);
+      let remaining = remainingInput;
+      if (scopeExits.has(result.error)) remaining = result.error + remaining;
+      if (result.scopeExit) remaining = result.scopeExit + remaining;
       return {
-        value: result,
-        remainingInput,
+        value: [result.value],
+        remainingInput: remaining,
       };
     },
   };

@@ -153,11 +153,11 @@ DEC       [0-9]
 ".*"      return this.yy.AdditionalTokens.DOTSTAR;
 "."				return this.yy.AdditionalTokens.DOT;
 "("				return this.yy.AdditionalTokens.LPAR;
-")"				this.yy.saveRemainingInput(')' + this._input); return this.yy.AdditionalTokens.RPAR;
+")"				this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RPAR;
 "[]"      return this.yy.AdditionalTokens.CLOSEDBRAS;
 "["				return this.yy.AdditionalTokens.LBRA;
-"]"				this.yy.saveRemainingInput(']' + this._input); return this.yy.AdditionalTokens.RBRA;
-"}"				this.yy.saveRemainingInput('}' + this._input); return this.yy.AdditionalTokens.RCUR;
+"]"				this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RBRA;
+"}"				this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RCUR;
 "*"				return this.yy.AdditionalTokens.STAR;
 ";" 			return this.yy.AdditionalTokens.SEMICOLON;
 "::" 			return this.yy.AdditionalTokens.DBLCOLON;

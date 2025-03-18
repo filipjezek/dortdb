@@ -127,11 +127,11 @@ scope-exit:
 	| LANGEXIT ;
 
 root:
-	scope-exit { return []; }
-	| scope-exit error { return []; }
-  | statement-list semicolon_opt scope-exit { return $1; }
-	| statement-list semicolon_opt scope-exit error { return $1; }
-  | statement-list semicolon_opt { return $1; } ;
+	scope-exit { return {value: [], scopeExit: $1}; }
+	| scope-exit error { return {value: [], scopeExit: $1, error: $2}; }
+  | statement-list semicolon_opt scope-exit { return {value: $1, scopeExit: $3}; }
+	| statement-list semicolon_opt scope-exit error { return {value: $1, scopeExit: $3, error: $4}; }
+  | statement-list semicolon_opt { return {value: $1}; } ;
 
 statement-list:
 	statement { $$ = [$1]; }

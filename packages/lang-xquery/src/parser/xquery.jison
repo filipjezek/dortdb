@@ -151,11 +151,11 @@ scope-exit:
 	| LANGEXIT ;
 
 root:
-	scope-exit { return []; }
-	| scope-exit error { return []; }
-  | module scope-exit { return $1; }
-	| module scope-exit error { return $1; }
-  | module { return $1; } ;
+	scope-exit { return {value: new yy.ast.Module(new yy.ast.Prolog([]), []), scopeExit: $1}; }
+	| scope-exit error { return {value: new yy.ast.Module(new yy.ast.Prolog([]), []), scopeExit: $1, error: $2}; }
+  | module scope-exit { return {value: $1, scopeExit: $2}; }
+	| module scope-exit error { return {value: $1, scopeExit: $2, error: $3}; }
+  | module { return {value: $1}; } ;
 
 module:
 	prolog querybody { $$ = new yy.ast.Module($1, $2); } ;
@@ -788,6 +788,7 @@ question_opt:
 	| QUESTION ;
 
 argument-list_opt:
+	{ $$ = []; }
 	| argument-list ;
 
 relative-path-expr_opt:

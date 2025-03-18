@@ -11,7 +11,7 @@ swcJestConfig.swcrc = false;
 export default {
   displayName: '@dortdb/lang-xquery',
   preset: '../../jest.preset.cjs',
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   transform: {
     '^.+\\.[tj]s$': ['@swc/jest', swcJestConfig],
   },

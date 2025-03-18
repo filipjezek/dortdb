@@ -3,7 +3,9 @@ import {
   ASTFunction,
   ASTIdentifier,
   ASTLiteral,
+  ASTNode,
   ASTOperator,
+  LangSwitch,
   LanguageManager,
 } from '@dortdb/core';
 import { AdditionalTokens, Keywords } from '../parser/tokens.js';
@@ -13,6 +15,8 @@ import {
   cypherParser as Parser,
   cypherLexer as Lexer,
 } from '../parser/cypher.cjs';
+
+const scopeExits = new Set([')', '}', ']']);
 
 export function createParser(mgr: LanguageManager) {
   let remainingInput = '';
@@ -26,9 +30,6 @@ export function createParser(mgr: LanguageManager) {
 
     messageQueue: [],
     saveRemainingInput: (input) => {
-      if (remainingInput.slice(0, -input.length).match(/^\s*[)}\]]\s*$/)) {
-        return;
-      }
       remainingInput = input;
     },
     makeOp: (op, args) =>
@@ -47,6 +48,7 @@ export function createParser(mgr: LanguageManager) {
       ASTOperator,
       ASTFunction,
       ASTIdentifier,
+      LangSwitch,
       allAttrs,
     },
   };
@@ -54,10 +56,17 @@ export function createParser(mgr: LanguageManager) {
   const parser = new Parser(yy, new Lexer(yy));
   return {
     parse: (input: string) => {
-      const result = parser.parse(input);
+      const result: {
+        value: ASTNode[];
+        scopeExit?: string;
+        error?: string;
+      } = parser.parse(input);
+      let remaining = remainingInput;
+      if (scopeExits.has(result.error)) remaining = result.error + remaining;
+      if (result.scopeExit) remaining = result.scopeExit + remaining;
       return {
-        value: result,
-        remainingInput,
+        value: result.value,
+        remainingInput: remaining,
       };
     },
   };
