@@ -295,7 +295,11 @@ export class CalculationBuilder
   }
   visitLimit(operator: operators.Limit): CalculationParams {
     return {
-      args: ['schema' in operator.source ? this.toItem(operator) : operator],
+      args: [
+        operator.source instanceof LogicalPlanTupleOperator
+          ? this.toItem(operator)
+          : operator,
+      ],
       impl: this.assertMaxOne,
     };
   }
@@ -346,5 +350,8 @@ export class CalculationBuilder
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
     return operator.query.accept(this.vmap);
+  }
+  visitRecursion(operator: operators.Recursion): CalculationParams {
+    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
   }
 }

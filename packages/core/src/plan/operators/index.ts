@@ -16,3 +16,4 @@ export * from './tuple/distinct.js';
 export * from './null-source.js';
 export * from './item/aggregate-call.js';
 export * from './item/quantifier.js';
+export * from './tuple/recursion.js';

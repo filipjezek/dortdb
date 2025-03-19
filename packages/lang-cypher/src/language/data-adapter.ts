@@ -35,6 +35,11 @@ export interface CypherDataAdaper<
   getNodeProperties(graph: GraphType, node: NodeType): Record<string, unknown>;
   getEdgeProperty(graph: GraphType, edge: EdgeType, property: string): unknown;
   getEdgeProperties(graph: GraphType, edge: EdgeType): Record<string, unknown>;
+  getEdgeNode(
+    graph: GraphType,
+    edge: EdgeType,
+    type: 'source' | 'target',
+  ): NodeType;
 
   isConnected(
     graph: GraphType,
@@ -215,5 +220,16 @@ export class GraphologyDataAdapter
     type: string,
   ): boolean {
     return graph.getEdgeAttribute(edge, 'type') === type;
+  }
+  getEdgeNode(
+    graph: MultiDirectedGraph<
+      Attributes,
+      Attributes,
+      Attributes & { type: string }
+    >,
+    edge: unknown,
+    type: 'source' | 'target',
+  ) {
+    return graph[type](edge);
   }
 }

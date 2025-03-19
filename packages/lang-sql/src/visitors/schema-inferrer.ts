@@ -79,6 +79,16 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     this.processArg(operator, operator.condition, union(ctx, operator.schema));
     return operator.source.accept(this.vmap, ctx);
   }
+  visitRecursion(operator: plan.Recursion, ctx: IdSet): IdSet {
+    if (operator.condition) {
+      this.processArg(
+        operator,
+        operator.condition,
+        union(ctx, operator.schema),
+      );
+    }
+    return operator.source.accept(this.vmap, ctx);
+  }
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
     const external = new Trie<string | symbol>();
     const name =

@@ -23,7 +23,7 @@ import * as AST from '../ast/index.js';
 import { CypherVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { unwind } from '@dortdb/core/fns';
-import { CypherDataAdaper } from '../language/data-adapter.js';
+import { CypherDataAdaper, EdgeDirection } from '../language/data-adapter.js';
 import { CypherLanguage } from '../language/language.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { isEqual, isMatch } from 'lodash-es';
@@ -374,7 +374,6 @@ export class CypherLogicalPlanBuilder
     variables: ASTIdentifier[],
     res: LogicalPlanTupleOperator,
   ) {
-    const graphName = this.graphName;
     for (let i = 1; i < chain.length; i += 2) {
       const edge = chain[i] as AST.RelPattern;
       const edgeDir1 = edge.pointsLeft
@@ -387,35 +386,19 @@ export class CypherLogicalPlanBuilder
         : edge.pointsRight
           ? 'in'
           : 'any';
-      res = new plan.Selection(
-        'cypher',
-        new plan.Calculation(
-          'cypher',
-          (n, e) =>
-            this.dataAdapter.isConnected(
-              this.db.getSource(graphName.parts),
-              e,
-              n,
-              edgeDir1,
-            ),
-          [variables[i - 1], variables[i]],
-        ),
+      res = this.isEdgeConnected(
         res,
+        edgeDir1,
+        variables[i - 1],
+        variables[i],
+        true,
       );
-      res = new plan.Selection(
-        'cypher',
-        new plan.Calculation(
-          'cypher',
-          (n, e) =>
-            this.dataAdapter.isConnected(
-              this.db.getSource(graphName.parts),
-              e,
-              n,
-              edgeDir2,
-            ),
-          [variables[i + 1], variables[i]],
-        ),
+      res = this.isEdgeConnected(
         res,
+        edgeDir2,
+        variables[i + 1],
+        variables[i],
+        false,
       );
     }
 
@@ -437,6 +420,31 @@ export class CypherLogicalPlanBuilder
       );
     }
     return res;
+  }
+  private isEdgeConnected(
+    res: LogicalPlanTupleOperator,
+    dir: EdgeDirection,
+    node: ASTIdentifier,
+    edge: ASTIdentifier,
+    /** if edge resolves to an array (e.g. for recursive edge), pick first or last item? */
+    pickFirstEdge: boolean,
+  ) {
+    const graphName = this.graphName;
+    return new plan.Selection(
+      'cypher',
+      new plan.Calculation(
+        'cypher',
+        (n, e) =>
+          this.dataAdapter.isConnected(
+            this.db.getSource(graphName.parts),
+            Array.isArray(e) ? (pickFirstEdge ? e[0] : e[e.length - 1]) : e,
+            n,
+            dir,
+          ),
+        [node, edge],
+      ),
+      res,
+    );
   }
 
   visitPatternElChain(
@@ -528,7 +536,7 @@ export class CypherLogicalPlanBuilder
       args.variable,
       src,
     );
-    if (node.labels) {
+    if (node.labels.length) {
       res = new plan.Selection(
         'cypher',
         new plan.Calculation(
@@ -588,8 +596,41 @@ export class CypherLogicalPlanBuilder
     if (node.props) {
       res = this.patternToSelection(res, args.variable, node, args);
     }
+    if (node.range) {
+      res = this.addRecursion(node, args.variable, res);
+    }
     return res;
   }
+  private addRecursion(
+    edge: AST.RelPattern,
+    variable: ASTIdentifier,
+    source: LogicalPlanTupleOperator,
+  ) {
+    const min = edge.range[0]?.value ?? 1;
+    const max = edge.range[1]?.value ?? Infinity;
+    const graphName = this.graphName;
+    const calc = new plan.Calculation(
+      'cypher',
+      ([e1, e2]) => {
+        const g = this.db.getSource(graphName.parts);
+        let res = true;
+        if (!edge.pointsLeft) {
+          res &&=
+            this.dataAdapter.getEdgeNode(g, e1, 'target') ===
+            this.dataAdapter.getEdgeNode(g, e2, 'source');
+        }
+        if (!edge.pointsRight) {
+          res &&=
+            this.dataAdapter.getEdgeNode(g, e1, 'source') ===
+            this.dataAdapter.getEdgeNode(g, e2, 'target');
+        }
+        return res;
+      },
+      [variable],
+    );
+    return new plan.Recursion('cypher', min, max, calc, source);
+  }
+
   visitPatternComprehension(
     node: AST.PatternComprehension,
     args: DescentArgs,

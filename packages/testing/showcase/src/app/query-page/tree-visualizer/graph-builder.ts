@@ -622,4 +622,22 @@ export class GraphBuilder
     );
     return this.drawBranches(parent, { el: operator.source.accept(this.vmap) });
   }
+
+  visitRecursion(operator: plan.Recursion): SVGGElement {
+    const src = operator.source.accept(this.vmap);
+    const arg = this.processArg(operator.condition, { i: 0 });
+    const parent = this.drawNode(
+      `&phi;(${operator.min}, ${operator.max}, ${arg})`,
+      operator,
+    );
+    return this.drawBranches(
+      parent,
+      { el: src },
+      {
+        el: operator.condition.accept(this.vmap),
+        edgeType: 'djoin',
+        src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
+      },
+    );
+  }
 }

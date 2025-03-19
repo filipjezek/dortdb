@@ -324,12 +324,11 @@ pattern-el-chain:
   | pattern-el-chain rel-pattern node-pattern { $$ = $1; $$.chain.push($2, $3); } ;
 
 node-pattern:
-  PARENVAR { console.log('case 1'); $$ = new yy.ast.NodePattern(new yy.ast.CypherIdentifier($1.slice(1, -1).trim())); }
+  PARENVAR { $$ = new yy.ast.NodePattern(new yy.ast.CypherIdentifier($1.slice(1, -1).trim())); }
   | LPAR variable node-label-list_opt properties_opt RPAR {
-    console.log('case 2');
     $$ = new yy.ast.NodePattern($2, $3, $4);
   }
-  | LPAR node-label-list_opt properties_opt RPAR { console.log('case 3'); $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
+  | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
 
 rel-pattern:
   LARROWDBLDASH { $$ = new yy.ast.RelPattern(true, false); }
