@@ -8,6 +8,6 @@ WHERE EXISTS (
 ) AND EXISTS (
   SELECT 1 FROM orders
   WHERE personId = customers.id AND EXISTS (
-    SELECT 1 FROM (SELECT orders.orderLine) WHERE productId = :product
+    SELECT 1 FROM unwind(orders.orderLine) orderline WHERE productId = :product
   )
 )

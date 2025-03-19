@@ -7,24 +7,24 @@ WITH totalPosts AS (
     LANG sql
     SELECT id FROM products WHERE category = :category
   ) AS productId
-  MATCH (post {creationDate > now() - interval('1 year')})
-    -[:hasTag]->({id: productId})
+  MATCH (post)-[:hasTag]->({id: productId})
+  WHERE post.creationDate > now() - interval('1 year')
   RETURN count(post) AS total
 )
 SELECT
   products.id,
   (
     LANG xquery
-    for $product in Invoices//[
+    for $product in $Invoices//*[
       date(OrderDate) gt now() - interval('1 year')
     ]
       /Orderline[productId = $products:id]
-    return count($product)
+    return fn:count($product)
   ) amountSold,
   (
     LANG cypher
-    MATCH (post {creationDate > now() - interval('1 year')})
-      -[:hasTag]->({id: products.id})
+    MATCH (post)-[:hasTag]->({id: products.id})
+    WHERE post.creationDate > now() - interval('1 year')
     RETURN count(post)
   ) / (SELECT total FROM totalPosts) relativePopulatity
 FROM products

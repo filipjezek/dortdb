@@ -3,9 +3,9 @@
   <mat-action-list>
     @for (_ of history.items; track _) {
       @let item = history.items[$count - $index - 1];
-      <button mat-list-item [mat-dialog-close]="item">
+      <button mat-list-item [mat-dialog-close]="item" [title]="item">
         <span class="history-line">
-          <pre [title]="item">{{ item }}</pre>
+          <pre>{{ item }}</pre>
           <button
             mat-icon-button
             matListItemIcon

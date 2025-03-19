@@ -1,0 +1,24 @@
+<h2 mat-dialog-title>Example Queries</h2>
+<mat-dialog-content>
+  <mat-form-field>
+    <input matInput placeholder="Search" [formControl]="searchControl" />
+  </mat-form-field>
+  <mat-action-list>
+    @for (item of filteredQueries(); track item) {
+      <button mat-list-item [mat-dialog-close]="item" [title]="item.query">
+        <span class="sample-line">
+          <span class="name">{{ item.name }}</span>
+          <span class="tags">
+            @for (tag of item.tags; track tag) {
+              <span class="tag">{{ tag }}</span>
+            }
+          </span>
+          <pre>{{ item.query }}</pre>
+        </span>
+      </button>
+    }
+  </mat-action-list>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

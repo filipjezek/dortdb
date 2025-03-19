@@ -25,6 +25,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { HistoryDialogComponent } from './history-dialog/history-dialog.component';
 import { lsSyncForm } from '../utils/ls-sync-form';
 import { MatCardModule } from '@angular/material/card';
+import {
+  Sample,
+  SamplesDialogComponent,
+} from './samples-dialog/samples-dialog.component';
 
 @Component({
   selector: 'dort-query-page',
@@ -46,7 +50,9 @@ export class QueryPageComponent {
   private readonly allLangs = {
     sql: SQL(),
     xquery: XQuery(),
-    cypher: Cypher(),
+    cypher: Cypher({
+      defaultGraph: 'defaultGraph',
+    }),
   };
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
@@ -93,11 +99,27 @@ export class QueryPageComponent {
       autoFocus: 'dialog',
       data: this.queryHistory,
       width: '80vw',
+      minWidth: '60vw',
     });
     ref.afterClosed().subscribe((query) => {
       if (!query) return;
       this.form.get('query').setValue(query);
       this.queryHistory.push(query);
+    });
+  }
+
+  openSamples() {
+    const ref = this.dialogS.open(SamplesDialogComponent, {
+      autoFocus: 'dialog',
+      width: '80vw',
+      minWidth: '60vw',
+      height: '80vh',
+    });
+    ref.afterClosed().subscribe((query: Sample) => {
+      if (!query) return;
+      this.form.get('lang').setValue(query.lang);
+      this.form.get('query').setValue(query.query);
+      this.queryHistory.push(query.query);
     });
   }
 }

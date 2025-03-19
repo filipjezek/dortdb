@@ -118,6 +118,9 @@ export class SQLLogicalPlanBuilder
     );
   }
   visitRow(node: AST.ASTRow): LogicalPlanOperator {
+    if (node.items instanceof ASTIdentifier) {
+      return new plan.FnCall('sql', [node.items], ret1);
+    }
     const attrs = node.items.map(this.processAttr);
     return new plan.FnCall('sql', attrs.map(attrToOpArg), (...args) => {
       const res: Record<string | symbol, unknown> = {};

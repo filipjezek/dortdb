@@ -17,6 +17,8 @@ import {
   boundParam,
   toInfer,
   DortDBAsFriend,
+  Fn,
+  AggregateFn,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -919,7 +921,21 @@ export class XQueryLogicalPlanBuilder
   }
   visitFunction(node: ASTFunction, dargs: DescentArgs): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);
-    const impl = this.db.langMgr.getFnOrAggr(node.lang, id, schema);
+    let impl: Fn | AggregateFn;
+    try {
+      impl = this.db.langMgr.getFnOrAggr(node.lang, id, schema);
+    } catch (e) {
+      const cast = this.db.langMgr.getCast(node.lang, id, schema);
+      if (cast) {
+        impl = {
+          name: cast.name,
+          impl: cast.convert,
+          pure: cast.pure,
+        };
+      } else {
+        throw e;
+      }
+    }
 
     if ('impl' in impl) {
       const args = [

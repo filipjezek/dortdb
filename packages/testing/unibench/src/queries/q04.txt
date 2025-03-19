@@ -1,6 +1,6 @@
 -- three-hop common friends of the two top spenders
 
-SELECT p FROM (
+SELECT cypher.p FROM (
   LANG cypher
   WITH (
     LANG sql
@@ -12,4 +12,4 @@ SELECT p FROM (
   ) AS toptwo
   MATCH ({id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
   RETURN foaf.id AS p
-)
+) cypher

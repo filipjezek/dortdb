@@ -2,14 +2,14 @@
 -- their interests and their latest feedback
 
 SELECT
-  personId,
-  interests,
-  MAX(orderDate) recency,
-  COUNT(*) frequency,
-  SUM(totalPrice) monetary,
+  orders.personId,
+  topPosters.interests,
+  MAX(orders.orderDate) recency,
+  COUNT(orders.personId) frequency,
+  SUM(orders.totalPrice) monetary,
   ARRAY(
     SELECT feedback FROM feedback
-    WHERE customerId = topPosters.personId
+    WHERE customerId = orders.personId
     LIMIT 10
   ) recentReviews
 FROM orders JOIN (
@@ -21,13 +21,4 @@ FROM orders JOIN (
   ORDER BY count(post) DESC LIMIT 10
 ) topPosters
 ON orders.personId = topPosters.custId
-GROUP BY personId, interests
-
-SELECT *
-FROM customers
-JOIN (
-  LANG xquery
-  Invoices//item/@price
-)
-
-SELECT *, (LANG xquery //item) FROM customers
+GROUP BY orders.personId, topPosters.interests

@@ -285,7 +285,7 @@ orderby-direction:
 	| DESCENDING { $$ = false; } ;
 
 orderby-item:
-	expr orderby-direction empty-order_opt { $$ = new yy.ast.FLWOROrderByItem($1, $2, $3); } ;
+	expr orderby-direction empty-order_opt { $$ = new yy.ast.OrderByItem($1, $2, $3); } ;
 
 orderby-list:
 	orderby-item { $$ = [$1]; }

@@ -190,8 +190,8 @@ with-clause:
 	} ;
 
 with-query-name:
-	ID AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.SQLIdentifier($1), [], $5, $3); }
-	| ID LPAR column-list RPAR AS materialized_opt LPAR statement RPAR { $$ = new yy.ast.WithQuery(new yy.ast.SQLIdentifier($1), $3, $8, $6); } ;
+	ID AS materialized_opt LPAR subquery RPAR { $$ = new yy.ast.WithQuery(new yy.ast.SQLIdentifier($1), [], $5, $3); }
+	| ID LPAR column-list RPAR AS materialized_opt LPAR subquery RPAR { $$ = new yy.ast.WithQuery(new yy.ast.SQLIdentifier($1), $3, $8, $6); } ;
 
 with-query-search:
 	with-query-name
@@ -344,10 +344,9 @@ array-constructor:
 	| ARRAY LPAR subquery RPAR { $$ = new yy.ast.ASTArray($3); } ;
 
 row-constructor:
-	ROW LPAR expression RPAR { $$ = new yy.ast.ASTRow($3); }
+	ROW LPAR select-list RPAR { $$ = new yy.ast.ASTRow($3); }
 	| ROW LPAR RPAR { $$ = new yy.ast.ASTRow([]); }
-	| LPAR expression COMMA expression-list RPAR { $$ = new yy.ast.ASTRow($5); $5.unshift($3); }
-	| ROW LPAR expression COMMA expression-list RPAR { $$ = new yy.ast.ASTRow($5); $5.unshift($3); } ;
+	| LPAR expression alias_opt COMMA select-list RPAR { $$ = new yy.ast.ASTRow($5); $5.unshift($3 ? new yy.ast.ASTExpressionAlias($2, $3) : $2); } ;
 
 primary-expression:
 	field-selector

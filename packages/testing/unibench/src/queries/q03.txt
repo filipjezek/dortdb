@@ -3,7 +3,7 @@
 SELECT customers.id, feedback.feedback
 FROM customers
 JOIN feedback ON customers.id = feedback.personId
-WHERE (feedback[0])::Number < 4
+WHERE (feedback.feedback[0])::number < 4
 AND EXISTS (
   LANG cypher
   MATCH ({id: customers.id})-[:hasCreated]->(post)-[:hasTag]->({id: $product})

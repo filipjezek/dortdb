@@ -5,8 +5,8 @@ WITH topVendors AS (
     vendors.id,
     (
       LANG xquery
-      for $sale in Invoices//[brand = $vendors:id]
-      return count($sale)
+      for $sale in $Invoices//*[brand = $vendors:id]
+      return fn:count($sale)
     ) sales
   FROM vendors
   ORDER BY sales DESC
@@ -20,9 +20,9 @@ SELECT
     FROM customers
     WHERE EXISTS (
       SELECT 1 FROM orders WHERE personId = customers.id
-      AND orderlines @> ARRAY(ROW(topVendors.id AS brand))
+      AND orderlines @> ARRAY[ROW(topVendors.id AS brand)]
     )
-  )
+  ),
   ARRAY(
     LANG cypher
     MATCH (post)-[:hasTag]->({id: topVendors.id})

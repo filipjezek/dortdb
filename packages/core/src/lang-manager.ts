@@ -134,8 +134,12 @@ export class LanguageManager {
     schema: string | symbol,
     throwOnMissing = true,
   ): Extension[T][number] {
-    let impl = this[type].get([lang, schema, name]);
-    impl = impl ?? this[type].get([LanguageManager.allLangs, schema, name]);
+    let impl =
+      this[type].get([lang, schema, name]) ??
+      this[type].get([lang, schema, name.toLowerCase()]);
+    impl ??=
+      this[type].get([LanguageManager.allLangs, schema, name]) ??
+      this[type].get([LanguageManager.allLangs, schema, name.toLowerCase()]);
     if (!impl && throwOnMissing)
       throw new Error(
         `${type.slice(0, -1)} not found: [${lang}] ${

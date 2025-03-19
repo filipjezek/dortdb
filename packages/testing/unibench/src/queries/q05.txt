@@ -1,12 +1,12 @@
 -- what did the friends of CUSTOMER which bought BRAND products post about?
 
-SELECT person, tag
+SELECT c.person, c.tag
 FROM (
   LANG cypher
   MATCH ({id: $customer})-[:knows]->(person)-[:hasCreated]->()-[:hasTag]->(tag)
-  WHERE EXISTS (
+  WHERE EXISTS {
     LANG xquery
-    Invoices/Invoice.xml[PersonId=$person]/Orderline[brand=$brand]
-  )
+    $Invoices/Invoice.xml[PersonId=$person]/Orderline[brand=$brand]
+  }
   RETURN person, tag
-)
+) c

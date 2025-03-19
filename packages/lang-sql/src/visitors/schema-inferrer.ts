@@ -1,4 +1,5 @@
 import {
+  allAttrs,
   ASTIdentifier,
   boundParam,
   DortDBAsFriend,
@@ -61,6 +62,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     for (const item of operator.source.accept(this.vmap, ctx)) {
       external.add(item);
     }
+    external.delete([allAttrs]);
     return external;
   }
 
@@ -441,9 +443,18 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     const nested = new (this.db.langMgr.getLang(
       operator.node.lang,
     ).visitors.logicalPlanBuilder)(this.db).buildPlan(operator.node.node, ctx);
-    let res = !(nested.plan instanceof LogicalPlanTupleOperator)
-      ? new plan.MapFromItem('sql', DEFAULT_COLUMN, nested.plan)
-      : nested.plan;
+    let res: LogicalPlanTupleOperator;
+    if (nested.plan instanceof LogicalPlanTupleOperator) {
+      res = operator.alias
+        ? nested.plan
+        : new plan.Projection(
+            'sql',
+            nested.plan.schema.map(toPair),
+            nested.plan,
+          );
+    } else {
+      res = new plan.MapFromItem('sql', DEFAULT_COLUMN, nested.plan);
+    }
     if (operator.alias) {
       res = new plan.Projection(
         'sql',
@@ -454,12 +465,19 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
 
     const external = nested.inferred;
     for (const item of operator.schemaSet) {
-      if (!res.schemaSet.has(item)) {
+      if (!res.schemaSet.has(item) && item[0] !== allAttrs) {
         external.add(item);
       }
     }
 
     operator.parent.replaceChild(operator, res);
+    if (nested.plan instanceof LogicalPlanTupleOperator) {
+      const temp = res.schema;
+      res.schema = operator.schema;
+      res.schemaSet = operator.schemaSet;
+      res.clearSchema();
+      res.addToSchema(temp);
+    }
     return external;
   }
 }

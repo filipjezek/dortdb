@@ -501,17 +501,19 @@ quantifier:
 
 function-invocation:
   symbolic-name LPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); }
+  | symbolic-name LPAR RPAR { $$ = yy.wrapFn($1, []); }
   | symbolic-name PARENVAR { $$ = yy.wrapFn($1, [new yy.ast.CypherIdentifier($2.slice(1, -1).trim())]); }
-  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); } ;
+  | SCHEMANAMELPAR distinct_opt expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); }
+  | SCHEMANAMELPAR RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), []); } ;
 
 existential-subquery:
-  EXISTS LCUR regular-query RCUR { $$ = new yy.ast.ASTExists(); $$.query = $3; }
-  | EXISTS LCUR LANGSWITCH RCUR { $$ = new yy.ast.ASTExists(); $$.query = $yy.messageQueue.shift(); }
-  | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ASTExists(); $$.pattern = $3; $$.where = $4; } ;
+  EXISTS LCUR regular-query RCUR { $$ = new yy.ast.ExistsSubquery(); $$.query = $3; }
+  | EXISTS LCUR LANGSWITCH RCUR { $$ = new yy.ast.ExistsSubquery(); $$.query = new yy.ast.LangSwitch($3, yy.messageQueue.shift()); }
+  | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ExistsSubquery(); $$.pattern = $3; $$.where = $4; } ;
 
 explicit-procedure-invocation:
-  symbolic-name LPAR expression-list RPAR { $$ = yy.wrapFn($1, $4, $3); $$.procedure = true; }
-  | SCHEMANAMELPAR expression-list RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); $$.procedure = true; } ;
+  symbolic-name LPAR expression-list_opt RPAR { $$ = yy.wrapFn($1, $4, $3); $$.procedure = true; }
+  | SCHEMANAMELPAR expression-list_opt RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); $$.procedure = true; } ;
 
 implicit-procedure-invocation:
   symbolic-name { $$ = yy.wrapFn($1); $$.procedure = true; }

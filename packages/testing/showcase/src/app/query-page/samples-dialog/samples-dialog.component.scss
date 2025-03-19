@@ -1,0 +1,39 @@
+@use '@angular/material' as mat;
+
+mat-form-field {
+  margin: 0;
+  width: 100%;
+}
+.sample-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  pre {
+    font-size: 0.8em;
+  }
+  pre,
+  .name {
+    white-space: nowrap;
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .name {
+    flex-shrink: 0;
+    max-width: 175px;
+  }
+
+  .tags {
+    padding: 0 10px;
+  }
+  .tag {
+    display: inline-block;
+    background-color: var(--mat-sys-secondary);
+    color: var(--mat-sys-on-secondary);
+    font-size: 0.8em;
+    padding: 0px 6px;
+    border-radius: 3px;
+    margin: 0 5px;
+  }
+}

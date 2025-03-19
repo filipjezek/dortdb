@@ -4,13 +4,13 @@ import {
   ASTIdentifier,
   ASTFunction,
   allAttrs,
-  boundParam,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { SQLVisitor } from './visitor.js';
 import { parseIdentifier, parseStringLiteral } from '../utils/string.js';
 import { OrderByItem } from './select.js';
 import { WindowSpec } from './window.js';
+import { ASTExpressionAlias } from './alias.js';
 
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(original: string) {
@@ -32,6 +32,7 @@ export class SQLIdentifier extends ASTIdentifier {
     ...schemasOriginal: string[]
   ) {
     super();
+    this.schemasOriginal = schemasOriginal;
     this.parts =
       idOriginal === allAttrs ? [idOriginal] : [parseIdentifier(idOriginal)];
     this.parts.unshift(
@@ -73,7 +74,7 @@ export class ASTArray implements ASTNode {
 }
 
 export class ASTRow implements ASTNode {
-  constructor(public items: ASTNode[]) {}
+  constructor(public items: ASTExpressionAlias[] | ASTIdentifier) {}
 
   accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitRow(this, arg);

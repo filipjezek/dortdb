@@ -5,6 +5,7 @@ import {
   LangSwitch,
   ASTNode,
   allAttrs,
+  ASTIdentifier,
 } from '@dortdb/core';
 import {
   ASTTableAlias,
@@ -64,6 +65,8 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
       : `ARRAY(${node.items.accept(this)})`;
   }
   visitRow(node: ASTRow): string {
+    if (node.items instanceof ASTIdentifier)
+      return `ROW(${node.items.accept(this)})`;
     return `ROW(${node.items.map(this.processNode).join(',')})`;
   }
   visitCast(node: ASTCast): string {
