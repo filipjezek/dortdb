@@ -1,9 +1,27 @@
-<form [formGroup]="form">
+<form [formGroup]="form" [style.visibility]="plan() ? 'visible' : 'hidden'">
   <fieldset>
     <legend>Language indicators:</legend>
     <mat-checkbox formControlName="shadows">Shadows</mat-checkbox>
     <mat-checkbox formControlName="triangles">Triangles</mat-checkbox>
   </fieldset>
+  <div class="image-buttons">
+    <button
+      type="button"
+      mat-icon-button
+      (click)="fullSize = !fullSize"
+      title="Toggle full size"
+    >
+      <mat-icon>{{ fullSize ? 'close_fullscreen' : 'open_in_full' }}</mat-icon>
+    </button>
+    <button
+      type="button"
+      mat-icon-button
+      (click)="saveImage($any(svg))"
+      title="Save as PNG"
+    >
+      <mat-icon>download</mat-icon>
+    </button>
+  </div>
 </form>
 <div class="scroll-container">
   <svg
@@ -11,5 +29,6 @@
     id="svg-output-{{ id }}"
     #svg
     [ngClass]="form.value"
+    [class.full-size]="fullSize"
   ></svg>
 </div>

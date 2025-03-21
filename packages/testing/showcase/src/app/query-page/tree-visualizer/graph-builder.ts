@@ -40,6 +40,15 @@ export class GraphBuilder
 {
   private readonly drawingContainer: SVGGElement;
   private readonly textContainer = document.createElement('p');
+  public readonly cssVariables: ReadonlySet<string>;
+  public get width() {
+    return this._width;
+  }
+  public get height() {
+    return this._height;
+  }
+  private _width = 0;
+  private _height = 0;
 
   constructor(
     private readonly container: SVGSVGElement,
@@ -47,6 +56,19 @@ export class GraphBuilder
   ) {
     this.container.innerHTML = `
       <style>
+        svg {
+          &.shadows {
+            rect {
+              filter: drop-shadow(0 0 5px var(--lang-color));
+              stroke: var(--lang-color);
+            }
+          }
+          &.triangles {
+            polygon {
+              fill: var(--lang-color);
+            }
+          }
+        }
         svg * {
           stroke-width: ${STROKE * 2}px;
           paint-order: stroke;
@@ -111,6 +133,11 @@ export class GraphBuilder
       </style>
       <g id="drawing-container"></g>
     `;
+    this.cssVariables = new Set(
+      Array.from(this.container.innerHTML.matchAll(/var\((--[^),]+)\)/g)).map(
+        (m) => m[1],
+      ),
+    );
     this.drawingContainer = this.container.querySelector('#drawing-container');
   }
 
@@ -136,7 +163,8 @@ export class GraphBuilder
   ): SVGGElement {
     const schemaTemplate = this.getSchemaTemplate(operator);
 
-    const foEl = this.markup(`<foreignObject height="2000" width="200">
+    const foEl = this
+      .markup(`<foreignObject height="2000" width="200" xmlns="http://www.w3.org/1999/xhtml">
       <div class="${textClass}">
         ${schemaTemplate || ''}
         ${text}
@@ -212,6 +240,7 @@ export class GraphBuilder
     this.container
       .querySelectorAll('#drawing-container ~ *')
       .forEach((el) => el.remove());
+    this.container.removeAttribute('viewBox');
     const root = plan.accept(this.vmap);
     this.drawingContainer.innerHTML = '';
     root.setAttribute(
@@ -220,14 +249,10 @@ export class GraphBuilder
     );
     this.container.appendChild(root);
     const bbox = root.getBBox();
-    this.container.setAttribute(
-      'width',
-      `${bbox.width + STROKE * 2 + PADDING * 2}`,
-    );
-    this.container.setAttribute(
-      'height',
-      `${bbox.height + STROKE * 2 + PADDING * 2}`,
-    );
+    this._width = bbox.width + STROKE * 2 + PADDING * 2;
+    this._height = bbox.height + STROKE * 2 + PADDING * 2;
+    this.container.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
+    this.container.setAttribute('width', this.width + '');
   }
 
   private drawBranches(parent: SVGGraphicsElement, ...branches: Branch[]) {

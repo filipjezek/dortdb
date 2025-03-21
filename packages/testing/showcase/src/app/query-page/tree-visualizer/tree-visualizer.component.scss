@@ -2,22 +2,20 @@ svg {
   display: block;
   margin: 10px auto;
 
-  &.shadows ::ng-deep {
-    rect {
-      filter: drop-shadow(0 0 5px var(--lang-color));
-      stroke: var(--lang-color);
-    }
-  }
-  &.triangles ::ng-deep {
-    polygon {
-      fill: var(--lang-color);
-    }
+  &:not(.full-size) {
+    max-width: 100%;
   }
 }
 
 .scroll-container {
   overflow: auto;
   max-width: 100%;
+}
+
+form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 fieldset {
