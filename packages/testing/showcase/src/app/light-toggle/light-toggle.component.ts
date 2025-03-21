@@ -13,8 +13,12 @@ const THEME_KEY = 'theme';
 })
 export class LightToggleComponent {
   isDarkTheme: boolean;
+  private prismLink: HTMLLinkElement;
 
   constructor() {
+    this.prismLink = document.querySelector(
+      'link[rel="stylesheet"][href*="prism"]',
+    );
     const ls = localStorage.getItem(THEME_KEY);
     if (ls) {
       this.isDarkTheme = ls === 'dark';
@@ -32,5 +36,11 @@ export class LightToggleComponent {
   private applyToBody() {
     document.body.classList.toggle('dark', this.isDarkTheme);
     document.body.classList.toggle('light', !this.isDarkTheme);
+    if (this.prismLink) {
+      this.prismLink.href = this.prismLink.href.replace(
+        this.isDarkTheme ? 'light' : 'dark',
+        this.isDarkTheme ? 'dark' : 'light',
+      );
+    }
   }
 }

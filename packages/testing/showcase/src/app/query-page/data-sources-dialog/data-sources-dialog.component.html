@@ -1,0 +1,24 @@
+<h2 mat-dialog-title>Data Sources</h2>
+<mat-dialog-content>
+  <mat-accordion multi>
+    @for (source of sources; track source.name) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <code>{{ source.name }}</code>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ source.description }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+        <p>{{ source.description }}</p>
+        <pre
+          class="language-{{ source.lang }}"
+        ><code class="language-{{source.lang}}" [innerHTML]="source.exampleHighlighted"></code></pre>
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+</mat-dialog-content>
+<mat-dialog-actions>
+  <button mat-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

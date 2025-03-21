@@ -1,0 +1,14 @@
+:host mat-accordion {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  display: block;
+
+  mat-panel-description {
+    text-wrap: nowrap;
+    text-overflow: ellipsis;
+    font-weight: normal;
+    min-width: 0;
+    overflow: hidden;
+    display: block;
+  }
+}

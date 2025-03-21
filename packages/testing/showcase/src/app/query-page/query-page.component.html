@@ -17,6 +17,9 @@
         <button type="button" mat-stroked-button (click)="openHistory()">
           History
         </button>
+        <button type="button" mat-stroked-button (click)="openDataSources()">
+          Data sources
+        </button>
         <button
           type="button"
           mat-flat-button
@@ -24,6 +27,14 @@
           [disabled]="!form.valid"
         >
           Parse
+        </button>
+        <button
+          type="button"
+          mat-flat-button
+          (click)="parse()"
+          [disabled]="!form.valid"
+        >
+          Execute
         </button>
       </div>
     </form>

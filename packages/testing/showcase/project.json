@@ -24,7 +24,17 @@
         ],
         "styles": [
           "@angular/material/prebuilt-themes/azure-blue.css",
-          "packages/testing/showcase/src/styles.scss"
+          "packages/testing/showcase/src/styles.scss",
+          {
+            "input": "node_modules/prismjs/themes/prism.min.css",
+            "inject": true,
+            "bundleName": "prism-light"
+          },
+          {
+            "input": "node_modules/prismjs/themes/prism-tomorrow.min.css",
+            "inject": false,
+            "bundleName": "prism-dark"
+          }
         ],
         "scripts": []
       },

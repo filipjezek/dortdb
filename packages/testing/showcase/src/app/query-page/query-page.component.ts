@@ -29,6 +29,7 @@ import {
   Sample,
   SamplesDialogComponent,
 } from './samples-dialog/samples-dialog.component';
+import { DataSourcesDialogComponent } from './data-sources-dialog/data-sources-dialog.component';
 
 @Component({
   selector: 'dort-query-page',
@@ -60,6 +61,9 @@ export class QueryPageComponent {
   form = new FormGroup({
     lang: new FormControl<'sql' | 'xquery' | 'cypher'>('sql'),
     query: new FormControl<string>('', Validators.required),
+    dataSources: new FormGroup({
+      defaultGraph: new FormControl(true),
+    }),
   });
   private lang = toSignal(this.form.get('lang').valueChanges, {
     initialValue: this.form.get('lang').value,
@@ -120,6 +124,14 @@ export class QueryPageComponent {
       this.form.get('lang').setValue(query.lang);
       this.form.get('query').setValue(query.query);
       this.queryHistory.push(query.query);
+    });
+  }
+
+  openDataSources() {
+    const ref = this.dialogS.open(DataSourcesDialogComponent, {
+      autoFocus: 'dialog',
+      width: '80vw',
+      minWidth: '60vw',
     });
   }
 }
