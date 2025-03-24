@@ -31,7 +31,7 @@
         <button
           type="button"
           mat-flat-button
-          (click)="parse()"
+          (click)="execute()"
           [disabled]="!form.valid"
         >
           Execute
@@ -47,9 +47,17 @@
     </mat-card-content>
   </mat-card>
 }
-<mat-card appearance="outlined">
-  <mat-card-content>
-    <dort-tree-visualizer
-      [plan]="plan"
-    ></dort-tree-visualizer> </mat-card-content
-></mat-card>
+@if (plan) {
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <dort-tree-visualizer [plan]="plan" />
+    </mat-card-content>
+  </mat-card>
+}
+@if (output) {
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <dort-ds-table [keys]="output.schema" [src]="output.data"></dort-ds-table>
+    </mat-card-content>
+  </mat-card>
+}

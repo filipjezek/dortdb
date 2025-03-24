@@ -1,0 +1,6 @@
+@for (item of bag() | keyvalue; track item.value) {
+  <div class="item" [style.border-color]="strToColor($any(item.key))">
+    <span class="key">{{ item.key }}:</span
+    ><span class="value">{{ item.value | json }}</span>
+  </div>
+}

@@ -1,0 +1,69 @@
+:host {
+  display: block;
+}
+
+.settings {
+  padding: 10px;
+  text-align: right;
+}
+
+.table,
+.no-results {
+  font-size: 0.9em;
+  border-radius: var(--mat-sys-corner-small);
+  overflow: hidden;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.no-results {
+  font-style: italic;
+  padding: 10px;
+}
+
+.row {
+  padding: 0 10px;
+  position: relative;
+}
+.header {
+  font-weight: bold;
+  color: var(--mat-sys-inverse-on-surface);
+  background-color: var(--mat-sys-inverse-surface);
+  position: sticky;
+  top: -10px;
+  z-index: 1;
+}
+
+.table-body {
+  .row:nth-child(even) {
+    background-color: var(--mat-sys-surface-variant);
+  }
+}
+
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 25px 20px 15px;
+
+  label {
+    margin-right: 30px;
+    font-size: 0.9em;
+
+    mozaik-input {
+      width: 50px;
+      font-size: 1.1em;
+    }
+  }
+}
+
+.row ::ng-deep {
+  mozaik-cell-generic,
+  mozaik-cell-object,
+  mozaik-cell-list,
+  mozaik-cell-link,
+  mozaik-cell-keyvalue,
+  mozaik-cell-empty {
+    margin: auto 0;
+    overflow-y: auto;
+  }
+}

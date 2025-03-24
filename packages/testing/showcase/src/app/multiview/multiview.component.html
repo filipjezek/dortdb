@@ -1,0 +1,23 @@
+@for (col of partitionGrid(); track col; let i = $index; let size = $count) {
+  <div
+    class="group"
+    [style.flex-basis]="
+      relativeRatios() ? ratios()[i] + '%' : ratios()[i] + 'px'
+    "
+  >
+    @if (i > 0) {
+      <div class="handle" (mousedown)="startDrag($event, i)"></div>
+    }
+
+    <div class="content">
+      @for (item of col; track item) {
+        <ng-container [ngTemplateOutlet]="item.content"></ng-container>
+      }
+    </div>
+  </div>
+}
+@if (!relativeRatios()) {
+  <div class="group" style="flex-basis: 0">
+    <div class="handle" (mousedown)="startDrag($event, ratios.length)"></div>
+  </div>
+}

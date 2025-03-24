@@ -36,13 +36,30 @@ export class DortDB<LangNames extends string> {
     );
   }
 
-  public query<T = unknown>(query: string): T[] {
-    return [];
+  public query<T = unknown>(query: string): QueryResult<T> {
+    return {
+      data: [
+        { foo: 1, bar: 'a' },
+        {
+          foo: {
+            baz: 2,
+            qux: 3,
+          },
+          bar: 'b',
+        },
+      ] as any,
+      schema: ['foo', 'bar'],
+    };
   }
 
   public registerSource(source: (symbol | string)[], data: unknown) {
     this.registeredSources.set(source, data);
   }
+}
+
+export interface QueryResult<T = unknown> {
+  data: T[];
+  schema?: string[];
 }
 
 export interface DortDBConfig<LangNames extends string> {

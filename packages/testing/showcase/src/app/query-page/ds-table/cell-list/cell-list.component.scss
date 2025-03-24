@@ -1,0 +1,18 @@
+:host {
+  padding: 5px;
+  overflow-x: auto;
+
+  .item {
+    display: inline-block;
+    margin: 2px;
+    padding: 3px;
+    background-color: var(--primary);
+    color: var(--primary-text);
+    border-radius: 4px;
+
+    &.object {
+      font-family: "Courier New", Courier, monospace;
+      white-space: pre;
+    }
+  }
+}

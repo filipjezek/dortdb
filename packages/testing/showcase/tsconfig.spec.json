@@ -5,7 +5,8 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "target": "es2016",
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "lib": ["ES2024", "DOM"]
   },
   "files": ["src/test-setup.ts"],
   "include": [

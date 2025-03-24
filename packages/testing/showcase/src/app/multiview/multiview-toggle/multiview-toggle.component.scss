@@ -1,0 +1,17 @@
+:host {
+  writing-mode: vertical-lr;
+  display: block;
+  box-shadow: 0 0 3px #00000078;
+  background-color: var(--secondary);
+  color: var(--secondary-text);
+  padding: 16px 5px;
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  transition: 0.1s;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: 0 0 5px #00000078;
+  }
+}

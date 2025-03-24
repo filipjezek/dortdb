@@ -56,6 +56,9 @@ export class TreeVisualizerComponent implements AfterViewInit {
     const vmap: Record<string, LogicalPlanVisitor<SVGGElement>> = {};
     this.graphBuilder = new GraphBuilder(this.svg().nativeElement, vmap);
     vmap['xquery'] = vmap['sql'] = vmap['cypher'] = this.graphBuilder;
+    if (this.plan()) {
+      this.graphBuilder.drawTree(this.plan());
+    }
   }
 
   saveImage(svgNode: SVGSVGElement) {

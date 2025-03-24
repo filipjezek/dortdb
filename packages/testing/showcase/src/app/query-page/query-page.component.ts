@@ -5,7 +5,7 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DortDB, LogicalPlanOperator } from '@dortdb/core';
+import { DortDB, LogicalPlanOperator, QueryResult } from '@dortdb/core';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
 import { Cypher } from '@dortdb/lang-cypher';
@@ -30,6 +30,7 @@ import {
   SamplesDialogComponent,
 } from './samples-dialog/samples-dialog.component';
 import { DataSourcesDialogComponent } from './data-sources-dialog/data-sources-dialog.component';
+import { DsTableComponent } from './ds-table/ds-table.component';
 
 @Component({
   selector: 'dort-query-page',
@@ -42,6 +43,7 @@ import { DataSourcesDialogComponent } from './data-sources-dialog/data-sources-d
     MatFormFieldModule,
     MatButtonModule,
     MatCardModule,
+    DsTableComponent,
   ],
   templateUrl: './query-page.component.html',
   styleUrl: './query-page.component.scss',
@@ -78,6 +80,7 @@ export class QueryPageComponent {
     });
   });
   plan: LogicalPlanOperator;
+  output: QueryResult;
   error: Error;
 
   constructor() {
@@ -87,6 +90,8 @@ export class QueryPageComponent {
   parse() {
     const query = this.form.get('query').value;
     this.error = null;
+    this.plan = null;
+    this.output = null;
     this.queryHistory.push(query);
     try {
       const ast = this.db().parse(query);
@@ -98,6 +103,21 @@ export class QueryPageComponent {
       console.error(err);
     }
   }
+
+  execute() {
+    const query = this.form.get('query').value;
+    this.error = null;
+    this.plan = null;
+    this.output = null;
+    this.queryHistory.push(query);
+    try {
+      this.output = this.db().query(query);
+    } catch (err) {
+      this.error = err as Error;
+      console.error(err);
+    }
+  }
+
   openHistory() {
     const ref = this.dialogS.open(HistoryDialogComponent, {
       autoFocus: 'dialog',

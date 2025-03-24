@@ -1,0 +1,59 @@
+<div class="settings">
+  <mat-checkbox [formControl]="clampRowsControl"
+    >Fixed height rows</mat-checkbox
+  >
+</div>
+@if (currPageRows().length) {
+  <div class="table">
+    <div class="row header">
+      <ng-container dortDsRow>
+        <dort-multiview [(ratios)]="colSizes">
+          @for (key of keys(); track key) {
+            <dort-multiview-partition>
+              <dort-cell-header [key]="key"></dort-cell-header>
+            </dort-multiview-partition>
+          }
+        </dort-multiview>
+      </ng-container>
+    </div>
+    <div class="table-body">
+      @for (row of currPageRows(); track row; let i = $index) {
+        <div
+          class="row"
+          [style.height.px]="clampRowsControl.value ? rowHeight : null"
+        >
+          <ng-container dortDsRow #rowRef="DsRow">
+            <dort-multiview [(ratios)]="colSizes">
+              @for (key of keys(); track key) {
+                <dort-multiview-partition>
+                  @if (isEmpty(row[key])) {
+                    <dort-cell-empty></dort-cell-empty>
+                  } @else {
+                    <ng-template
+                      *ngComponentOutlet="
+                        cellTypes[getColType(row[key])];
+                        injector: getInjector(row[key], rowRef.injector)
+                      "
+                    ></ng-template>
+                  }
+                </dort-multiview-partition>
+              }
+            </dort-multiview>
+          </ng-container>
+        </div>
+      }
+    </div>
+  </div>
+  <div class="pagination-container">
+    <mat-paginator
+      [length]="src().length"
+      [pageIndex]="page()"
+      (page)="page.set($event.pageIndex); pageSize.set($event.pageSize)"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="[5, 10, 20, 50, 100]"
+      [showFirstLastButtons]="true"
+    ></mat-paginator>
+  </div>
+} @else {
+  <div class="no-results">No results</div>
+}

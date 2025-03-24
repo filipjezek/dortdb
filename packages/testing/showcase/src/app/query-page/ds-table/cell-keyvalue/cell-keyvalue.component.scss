@@ -1,0 +1,27 @@
+:host {
+  overflow-x: auto;
+}
+.name {
+  padding: 12px 5px;
+}
+
+.popup {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  background-color: white;
+  box-shadow: 0 0 3px #00000078;
+  padding: 10px;
+  overflow-x: auto;
+}
+.arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: white;
+  box-shadow: 0 0 3px #00000078;
+  transform: translate(-50%, -50%) rotate(45deg);
+  top: 50%;
+  z-index: 2;
+}

@@ -1,0 +1,10 @@
+:host {
+  display: flex;
+  min-height: 40px;
+}
+
+.empty {
+  border-bottom: 1px solid var(--secondary-light);
+  margin: auto;
+  width: 20px;
+}

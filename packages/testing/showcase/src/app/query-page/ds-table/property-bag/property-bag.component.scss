@@ -1,0 +1,25 @@
+:host {
+  padding: 5px;
+  display: block;
+
+  .item {
+    display: inline-block;
+    margin: 2px;
+    padding: 3px;
+    border-left: 6px solid;
+    border-radius: 4px;
+    font-family: "Courier New", Courier, monospace;
+    white-space: pre;
+    box-shadow: 0 0 2px #00000078;
+    background-color: var(--bg, white);
+    color: var(--text, black);
+
+    .key {
+      font-size: 0.75em;
+      font-family: inherit;
+    }
+    .value {
+      font-family: inherit;
+    }
+  }
+}
