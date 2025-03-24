@@ -54,17 +54,6 @@ export class QuantifiedExpr implements ASTNode {
   }
 }
 
-export class ASTParameter extends CypherIdentifier {
-  constructor(idOriginal: string) {
-    super(idOriginal);
-    this.parts.unshift(boundParam);
-  }
-
-  override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
-    return visitor.visitParameter(this, arg);
-  }
-}
-
 export class PatternComprehension implements ASTNode {
   constructor(
     public pattern: PatternElChain,

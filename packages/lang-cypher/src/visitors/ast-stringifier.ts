@@ -12,7 +12,6 @@ import {
   FnCallWrapper,
   ExistsSubquery,
   QuantifiedExpr,
-  ASTParameter,
   PatternComprehension,
   ListComprehension,
   CaseExpr,
@@ -135,9 +134,6 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     let chain = node.chain.map(this.processNode).join('');
     if (node.variable) chain = node.variable.accept(this) + '=' + chain;
     return chain;
-  }
-  visitParameter(node: ASTParameter): string {
-    return '$' + this.visitIdentifier(node);
   }
   visitNodePattern(node: NodePattern): string {
     let res = '(';

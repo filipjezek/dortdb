@@ -343,7 +343,7 @@ rel-detail:
 
 properties:
   map-literal
-  | PARAM { $$ = new yy.ast.ASTParameter($1); } ;
+  | PARAM { $$ = new yy.ast.CypherIdentifier($1.slice(1)); $$.parts.unshift(yy.ast.boundParam); } ;
 
 rel-type-union:
   COLON schema-name { $$ = [$2]; }
@@ -449,7 +449,7 @@ label-filter-expression:
 
 atom:
   atom-no-pattern
-  | PARAM { $$ = new yy.ast.ASTParameter($1); }
+  | PARAM { $$ = new yy.ast.CypherIdentifier($1.slice(1)); $$.parts.unshift(yy.ast.boundParam); }
   | variable %prec PAREN_EXPR_PRIORITY
   | map-literal ;
 

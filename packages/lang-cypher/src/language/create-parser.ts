@@ -5,6 +5,7 @@ import {
   ASTLiteral,
   ASTNode,
   ASTOperator,
+  boundParam,
   LangSwitch,
   LanguageManager,
 } from '@dortdb/core';
@@ -50,6 +51,7 @@ export function createParser(mgr: LanguageManager) {
       ASTIdentifier,
       LangSwitch,
       allAttrs,
+      boundParam,
     },
   };
 

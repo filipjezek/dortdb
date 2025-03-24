@@ -12,7 +12,6 @@ export interface CypherVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitExistsSubquery(node: ast.ExistsSubquery, arg?: Arg): Ret;
   visitQuantifiedExpr(node: ast.QuantifiedExpr, arg?: Arg): Ret;
   visitPatternElChain(node: ast.PatternElChain, arg?: Arg): Ret;
-  visitParameter(node: ast.ASTParameter, arg?: Arg): Ret;
   visitNodePattern(node: ast.NodePattern, arg?: Arg): Ret;
   visitRelPattern(node: ast.RelPattern, arg?: Arg): Ret;
   visitPatternComprehension(node: ast.PatternComprehension, arg?: Arg): Ret;

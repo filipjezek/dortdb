@@ -145,7 +145,7 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): LogicalPlanOperator {
     const names = node.items.map((i) => i[1].parts[0]);
-    const values = node.items.map((i) => this.processFnArg(i[1], args));
+    const values = node.items.map((i) => this.processFnArg(i[0], args));
     return new plan.FnCall('cypher', values, (...vals) => {
       const res: Record<string | symbol, unknown> = {};
       for (let i = 0; i < vals.length; i++) {
@@ -330,7 +330,7 @@ export class CypherLogicalPlanBuilder
   ) {
     if (!el.props) return src;
     const graphName = this.graphName;
-    if (el.props instanceof AST.ASTParameter) {
+    if (el.props instanceof ASTIdentifier) {
       return new plan.Selection(
         'cypher',
         new plan.Calculation(
@@ -515,12 +515,6 @@ export class CypherLogicalPlanBuilder
     res = new plan.Projection('cypher', cols, res);
 
     return res;
-  }
-  visitParameter(
-    node: AST.ASTParameter,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
-    return this.visitIdentifier(node, args);
   }
   visitNodePattern(
     node: AST.NodePattern,
