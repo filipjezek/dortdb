@@ -11,6 +11,7 @@
             <mat-option value="cypher">Cypher</mat-option>
           </mat-select>
         </mat-form-field>
+        <mat-checkbox formControlName="optimizer">Optimizer</mat-checkbox>
         <button type="button" mat-stroked-button (click)="openSamples()">
           Examples
         </button>
@@ -44,6 +45,20 @@
   <mat-card class="error-output">
     <mat-card-content>
       <pre>{{ error.message }}</pre>
+    </mat-card-content>
+  </mat-card>
+}
+@if (form.value.optimizer) {
+  <mat-card appearance="outlined" @fade>
+    <mat-card-content>
+      <form [formGroup]="optimizerOptions" class="optimizer-options">
+        <mat-checkbox formControlName="pushdown"
+          >Projection and selection pushdown</mat-checkbox
+        >
+        <mat-checkbox formControlName="duplicates"
+          >Merge operators when possible</mat-checkbox
+        >
+      </form>
     </mat-card-content>
   </mat-card>
 }

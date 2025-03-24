@@ -2,14 +2,16 @@
 <mat-dialog-content>
   <mat-accordion multi>
     @for (source of sources; track source.name) {
-      <mat-expansion-panel>
+      <mat-expansion-panel #panel>
         <mat-expansion-panel-header>
           <mat-panel-title>
             <code>{{ source.name }}</code>
           </mat-panel-title>
-          <mat-panel-description>
-            {{ source.description }}
-          </mat-panel-description>
+          @if (!panel.expanded) {
+            <mat-panel-description>
+              {{ source.description }}
+            </mat-panel-description>
+          }
         </mat-expansion-panel-header>
         <p>{{ source.description }}</p>
         <pre
