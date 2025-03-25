@@ -42,6 +42,14 @@ import {
   SamplesDialogComponent,
 } from './samples-dialog/samples-dialog.component';
 import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.component';
+import {
+  addresses,
+  customers,
+  customersGraph,
+  feedback,
+  invoices,
+  orders,
+} from './data-sources';
 
 @Component({
   selector: 'dort-query-page',
@@ -93,6 +101,8 @@ export class QueryPageComponent {
   error: Error;
 
   constructor() {
+    this.registerSources();
+
     lsSyncForm('query-page-form', this.form);
     combineLatest([
       this.optimizerOptions.valueChanges,
@@ -116,6 +126,15 @@ export class QueryPageComponent {
           components,
         });
       });
+  }
+
+  private registerSources() {
+    this.db.registerSource(['defaultGraph'], customersGraph);
+    this.db.registerSource(['customers'], customers);
+    this.db.registerSource(['addresses'], addresses);
+    this.db.registerSource(['orders'], orders);
+    this.db.registerSource(['feedback'], feedback);
+    this.db.registerSource(['invoices'], invoices);
   }
 
   parse() {
