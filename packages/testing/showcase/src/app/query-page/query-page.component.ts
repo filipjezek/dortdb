@@ -34,6 +34,7 @@ import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.compo
 import { MatCheckbox } from '@angular/material/checkbox';
 import { transition, trigger, useAnimation } from '@angular/animations';
 import { dropdownIn, dropdownOut } from '../animations';
+import { optimizedPlan } from './optimized-plan';
 
 @Component({
   selector: 'dort-query-page',
@@ -110,10 +111,14 @@ export class QueryPageComponent {
     this.output = null;
     this.queryHistory.push(query);
     try {
-      const ast = this.db().parse(query);
-      console.log(ast);
-      this.plan = this.db().buildPlan(ast.value[0]).plan;
-      console.log(this.plan);
+      if (this.form.get('optimizer').value) {
+        this.plan = optimizedPlan;
+      } else {
+        const ast = this.db().parse(query);
+        console.log(ast);
+        this.plan = this.db().buildPlan(ast.value[0]).plan;
+        console.log(this.plan);
+      }
     } catch (err) {
       this.error = err as Error;
       console.error(err);

@@ -92,6 +92,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
+    console.log('tuple source', operator.schema.slice(), ctx);
     const external = new Trie<string | symbol>();
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
@@ -206,9 +207,11 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
     operator.removeFromSchema(external);
 
+    // this might modify operator.schema if `left` is a langswitch
     for (const item of operator.left.accept(this.vmap, ctx)) {
       external.add(item);
     }
+    // this might modify operator.schema if `right` is a langswitch
     for (const item of operator.right.accept(this.vmap, ctx)) {
       external.add(item);
     }
@@ -222,11 +225,19 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     return this.visitCartesianProduct(operator, ctx);
   }
   visitProjectionConcat(operator: plan.ProjectionConcat, ctx: IdSet): IdSet {
+    const extra = difference(
+      operator.schemaSet,
+      operator.source.schemaSet,
+      operator.mapping.schemaSet,
+    );
+    extra.delete([allAttrs]);
+    // this might modify operator.schema if the mapping is a langswitch
     const horizontal = operator.mapping.accept(
       this.vmap,
-      union(ctx, operator.source.schema),
+      union(ctx, operator.source.schema, extra),
     );
     operator.source.addToSchema(horizontal);
+    operator.source.addToSchema(extra);
     const vertical = operator.source.accept(this.vmap, ctx);
     operator.clearSchema();
     operator.addToSchema(

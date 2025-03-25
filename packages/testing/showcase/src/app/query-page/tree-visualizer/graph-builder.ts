@@ -101,6 +101,10 @@ export class GraphBuilder
             color: var(--mat-sys-outline);
             font-weight: normal;
             margin: 0 auto 4px;
+
+            span[title] {
+              font-size: inherit;
+            }
           }
         }
         rect {
@@ -215,12 +219,12 @@ export class GraphBuilder
             : x?.toString(),
       )
       .join('.');
-    if (full.length < 18) {
+    if (full.length < 19) {
       return full;
     }
     return `<span title="${this.escapeAttr(full)}">${full.slice(
       0,
-      15,
+      16,
     )}&hellip;</span>`;
   }
 

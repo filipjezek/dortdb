@@ -47,13 +47,11 @@ JOIN (
     RETURN friend.id AS id
 ) friends ON friends.id = addresses.customerId
 JOIN LATERAL (
-    lang xquery
+    LANG xquery
     $invoices/Invoice[PersonId=$friends:id]/Orderline[0]/productId
 ) products
-WHERE addresses.city = 'Prague' OR addresses.city = ANY(
-    SELECT city FROM addresses WHERE customerId = :myId
-)
-GROUP BY products.value
+WHERE addresses.city = 'Prague'
+GROUP BY products.name
 HAVING productCount > 2`,
     },
     ...unibenchQueries.map<Sample>((query, i) => ({

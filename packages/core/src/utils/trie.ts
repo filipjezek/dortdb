@@ -10,30 +10,31 @@ export function schemaToTrie(schema: ASTIdentifier[]) {
   return res;
 }
 
-export function union(a: IdSet, b: IdSet | ASTIdentifier[]): IdSet {
+export function union(...parts: (IdSet | ASTIdentifier[])[]): IdSet {
   const result = new Trie<string | symbol>();
-  for (const id of a) {
-    result.add(id);
-  }
-  if (Array.isArray(b)) {
-    for (const id of b) {
-      result.add(id.parts);
-    }
-  } else {
-    for (const id of b) {
-      result.add(id);
+  for (const part of parts) {
+    if (Array.isArray(part)) {
+      for (const id of part) {
+        result.add(id.parts);
+      }
+    } else {
+      for (const id of part) {
+        result.add(id);
+      }
     }
   }
   return result;
 }
 
-export function difference(a: IdSet, b: IdSet): IdSet {
+export function difference(a: IdSet, ...others: IdSet[]): IdSet {
   const result = new Trie<string | symbol>();
   for (const id of a) {
     result.add(id);
   }
-  for (const id of b) {
-    result.delete(id);
+  for (const b of others) {
+    for (const id of b) {
+      result.delete(id);
+    }
   }
   return result;
 }
