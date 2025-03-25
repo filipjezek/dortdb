@@ -35,6 +35,7 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { transition, trigger, useAnimation } from '@angular/animations';
 import { dropdownIn, dropdownOut } from '../animations';
 import { optimizedPlan } from './optimized-plan';
+import { optimizedPlanCrossmodel } from './optimized-plan-crossmodel';
 
 @Component({
   selector: 'dort-query-page',
@@ -112,7 +113,11 @@ export class QueryPageComponent {
     this.queryHistory.push(query);
     try {
       if (this.form.get('optimizer').value) {
-        this.plan = optimizedPlan;
+        if (this.form.get('lang').value === 'xquery') {
+          this.plan = optimizedPlanCrossmodel;
+        } else {
+          this.plan = optimizedPlan;
+        }
       } else {
         const ast = this.db().parse(query);
         console.log(ast);

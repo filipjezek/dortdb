@@ -75,6 +75,21 @@ from foo`,
     },
     {
       lang: 'xquery',
+      name: 'Cross model optimization',
+      tags: [],
+      query: `(: See how the optimizer pushes down an xquery selection into the sql subquery :)
+
+for $invoice:person in $invoices//PersonId
+let $address := (
+  LANG SQL
+  SELECT ROW(city, street) FROM addresses
+  WHERE invoice.person = addresses.personId
+)
+where $address/@city = 'Prague'
+return $address`,
+    },
+    {
+      lang: 'xquery',
       name: 'Example from the "A Complete and Efficient Algebraic Compiler for XQuery" paper',
       tags: [],
       query: `for $p in $auction//person

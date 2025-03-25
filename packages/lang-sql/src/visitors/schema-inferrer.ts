@@ -92,7 +92,6 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
-    console.log('tuple source', operator.schema.slice(), ctx);
     const external = new Trie<string | symbol>();
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
@@ -100,7 +99,10 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
         operator.removeFromSchema(attr);
         external.add(attr.parts);
-      } else if (attr.parts[attr.parts.length - 1] === toInfer) {
+      } else if (
+        attr.parts[attr.parts.length - 1] === toInfer ||
+        attr.parts[0] === allAttrs
+      ) {
         operator.removeFromSchema(attr);
       }
     }
