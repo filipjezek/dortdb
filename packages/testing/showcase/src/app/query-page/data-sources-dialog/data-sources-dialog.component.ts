@@ -106,6 +106,32 @@ export class DataSourcesDialogComponent {
   ]
 }, /* ... */]`,
     },
+    {
+      lang: 'javascript',
+      name: 'addresses',
+      description: 'Addresses of customers. Represented as JS objects.',
+      example: `[{
+  "customerId": 1,
+  "street": "Ke Karlovu",
+  "city": "Prague",
+  "zip": "12000",
+}, /* ... */]`,
+    },
+    {
+      lang: 'javascript',
+      name: 'defaultGraph',
+      description:
+        'Relationships between customers. Represented as Graphology graph.',
+      example: `const defaultGraph = new MultiDirectedGraph();
+defaultGraph.addNode('1', { id: 1, name: 'Alice' });
+defaultGraph.addNode('2', { id: 2, name: 'Bob' });
+defaultGraph.addNode('3', { id: 3, name: 'Cynthia' });
+defaultGraph.addNode('4', { id: 4, name: 'Daniel' });
+defaultGraph.addEdge('2', '1', { type: 'hasFriend' });
+defaultGraph.addEdge('2', '3', { type: 'hasFriend' });
+defaultGraph.addEdge('2', '4', { type: 'hasFriend' });
+// ...`,
+    },
   ];
   languages: Record<string, Prism.Grammar> = {
     markup: Prism.languages['markup'],

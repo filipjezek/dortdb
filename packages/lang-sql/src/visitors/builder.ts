@@ -28,7 +28,7 @@ import { LangSwitch as PlanLangSwitch } from '../plan/langswitch.js';
 import { assertCalcLiteral, overrideSource } from '@dortdb/core/utils';
 import { ret1 } from '@dortdb/core/internal-fns';
 
-export const DEFAULT_COLUMN = toId('item');
+export const DEFAULT_COLUMN = toId('value');
 
 function toId(id: string | symbol): ASTIdentifier {
   return AST.SQLIdentifier.fromParts([id]);
