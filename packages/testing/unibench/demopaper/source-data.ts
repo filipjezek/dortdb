@@ -49,7 +49,7 @@ const db = new DortDB({
   mainLang: SQL(),
   additionalLangs: [
     Cypher({
-      defaultGraph: 'defaultGraph',
+      defaultGraph: 'friends',
     }),
     XQuery(),
   ],
@@ -59,4 +59,14 @@ db.registerSource(['addresses'], addresses);
 db.registerSource(['invoices'], invoices.firstChild);
 db.registerSource(['friends'], friends);
 
-const result = db.query('...');
+const result = db.query(`
+  SELECT addresses.city AS city
+  FROM addresses
+  JOIN (
+    LANG cypher
+    MATCH (bob {id: 2})-[:hasFriend]->(friend)
+    RETURN friend.id AS friendId
+  ) bobsFriends
+  ON addresses.customerId = bobsFriends.friendId
+`);
+console.log(result);

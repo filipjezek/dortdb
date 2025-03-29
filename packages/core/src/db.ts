@@ -46,16 +46,11 @@ export class DortDB<LangNames extends string> {
   ): QueryResult<T> {
     return {
       data: [
-        { foo: 1, bar: 'a' },
-        {
-          foo: {
-            baz: 2,
-            qux: 3,
-          },
-          bar: 'b',
-        },
+        { city: 'Istanbul' },
+        { city: 'Ankara' },
+        { city: 'Prague' },
       ] as any,
-      schema: ['foo', 'bar'],
+      schema: ['city'],
     };
   }
 
