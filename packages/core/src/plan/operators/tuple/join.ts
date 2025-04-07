@@ -42,6 +42,9 @@ export class CartesianProduct extends LogicalPlanTupleOperator {
     this.addToSchema(this.left.schema);
     this.addToSchema(this.right.schema);
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.left, this.right];
+  }
 }
 
 export class Join extends CartesianProduct {
@@ -76,5 +79,8 @@ export class Join extends CartesianProduct {
         replacement as LogicalPlanTupleOperator,
       );
     }
+  }
+  override getChildren(): LogicalPlanOperator[] {
+    return [this.left, this.right, this.on];
   }
 }

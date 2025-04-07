@@ -36,4 +36,11 @@ export class Selection extends LogicalPlanTupleOperator {
       this.source = replacement as LogicalPlanTupleOperator;
     }
   }
+  getChildren(): LogicalPlanOperator[] {
+    const res: LogicalPlanOperator[] = [this.source];
+    if (this.condition instanceof Calculation) {
+      res.push(this.condition);
+    }
+    return res;
+  }
 }

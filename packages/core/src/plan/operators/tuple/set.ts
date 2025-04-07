@@ -41,6 +41,9 @@ export abstract class SetOperator extends LogicalPlanTupleOperator {
       this.right = replacement;
     }
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.left, this.right];
+  }
 }
 
 export class Union extends SetOperator {

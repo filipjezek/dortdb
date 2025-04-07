@@ -14,17 +14,7 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
-import {
-  csToJoin,
-  DortDB,
-  LogicalPlanOperator,
-  mergeProjections,
-  mergeSelections,
-  mergeToFromItems,
-  OptimizerComponent,
-  pushdownSelections,
-  QueryResult,
-} from '@dortdb/core';
+import { DortDB, LogicalPlanOperator, QueryResult } from '@dortdb/core';
 import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
@@ -109,23 +99,7 @@ export class QueryPageComponent {
       this.form.get('optimizer').valueChanges,
     ])
       .pipe(takeUntilDestroyed())
-      .subscribe(([options, enabled]) => {
-        const components: OptimizerComponent[] = [];
-        if (enabled) {
-          if (options.pushdown) components.push(pushdownSelections);
-          if (options.duplicates) {
-            components.push(
-              mergeToFromItems,
-              mergeSelections,
-              mergeProjections,
-              csToJoin,
-            );
-          }
-        }
-        this.db.optimizer.reconfigure({
-          components,
-        });
-      });
+      .subscribe(([options, enabled]) => {});
   }
 
   private registerSources() {

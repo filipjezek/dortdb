@@ -8,6 +8,7 @@ import {
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { isCalc } from '../../../internal-fns/index.js';
 
 export class TupleSource extends LogicalPlanTupleOperator {
   public knownSchema = false;
@@ -33,6 +34,9 @@ export class TupleSource extends LogicalPlanTupleOperator {
     replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
+  }
+  getChildren(): LogicalPlanOperator[] {
+    return [];
   }
 }
 
@@ -64,5 +68,8 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
   ): void {
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;
+  }
+  getChildren(): LogicalPlanOperator[] {
+    return this.args.filter(isCalc);
   }
 }

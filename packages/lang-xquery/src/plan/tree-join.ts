@@ -47,4 +47,7 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     this.addToSchema(this.source.schema);
     this.addToSchema(ctxCols);
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.source, this.step];
+  }
 }

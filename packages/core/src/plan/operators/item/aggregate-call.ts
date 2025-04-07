@@ -9,6 +9,7 @@ import {
 import { TupleSource } from '../tuple/tuple-source.js';
 import { Calculation } from './calculation.js';
 import { GroupBy } from '../tuple/groupby.js';
+import { isCalc } from '../../../internal-fns/index.js';
 
 /**
  * Container for aggregate calls used in {@link GroupBy}
@@ -52,5 +53,8 @@ export class AggregateCall implements LogicalPlanOperator {
     replacement: LogicalPlanOperator,
   ): void {
     throw new Error('Method not implemented.');
+  }
+  getChildren(): LogicalPlanOperator[] {
+    return this.args.filter(isCalc);
   }
 }

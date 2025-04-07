@@ -1,4 +1,8 @@
-import { ASTIdentifier, LogicalPlanTupleOperator } from '@dortdb/core';
+import {
+  ASTIdentifier,
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+} from '@dortdb/core';
 import { XQueryLogicalPlanVisitor } from './index.js';
 import { schemaToTrie } from '@dortdb/core/utils';
 
@@ -29,5 +33,8 @@ export class ProjectionSize extends LogicalPlanTupleOperator {
     this.clearSchema();
     this.addToSchema(replacement.schema.filter((x) => !x.equals(this.sizeCol)));
     this.addToSchema(this.sizeCol);
+  }
+  override getChildren(): LogicalPlanOperator[] {
+    return [this.source];
   }
 }

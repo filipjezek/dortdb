@@ -1,4 +1,9 @@
-import { ASTIdentifier, IdSet, LogicalPlanTupleOperator } from '@dortdb/core';
+import {
+  ASTIdentifier,
+  IdSet,
+  LogicalPlanOperator,
+  LogicalPlanTupleOperator,
+} from '@dortdb/core';
 import { Projection, Selection } from '@dortdb/core/plan';
 import { SchemaInferrer } from '../visitors/schema-inferrer.js';
 import { Trie } from '@dortdb/core/data-structures';
@@ -41,6 +46,9 @@ export class Using extends LogicalPlanTupleOperator {
     this.source = replacement as CartesianProduct;
     this.clearSchema();
     this.calculateSchema();
+  }
+  override getChildren(): LogicalPlanOperator[] {
+    return [this.source];
   }
 
   calculateSchema(): void {

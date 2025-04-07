@@ -46,4 +46,13 @@ export class OrderBy extends LogicalPlanTupleOperator {
         replacement as Calculation;
     }
   }
+  getChildren(): LogicalPlanOperator[] {
+    const res: LogicalPlanOperator[] = [this.source];
+    for (const o of this.orders) {
+      if (o.key instanceof Calculation) {
+        res.push(o.key);
+      }
+    }
+    return res;
+  }
 }

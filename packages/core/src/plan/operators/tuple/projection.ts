@@ -1,4 +1,4 @@
-import { Trie, TrieMap } from 'mnemonist';
+import { TrieMap } from 'mnemonist';
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
@@ -42,6 +42,15 @@ export class Projection extends LogicalPlanTupleOperator {
     } else {
       this.attrs.find((x) => x[0] === current)[0] = replacement as Calculation;
     }
+  }
+  getChildren(): LogicalPlanOperator[] {
+    const res: LogicalPlanOperator[] = [this.source];
+    for (const x of this.attrs) {
+      if (x[0] instanceof Calculation) {
+        res.push(x[0]);
+      }
+    }
+    return res;
   }
 }
 
@@ -91,6 +100,9 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
     this.removeFromSchema(this.mapping.schema);
     this.addToSchema(this.mapping.schema);
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.source, this.mapping];
+  }
 }
 
 export class ProjectionIndex extends LogicalPlanTupleOperator {
@@ -125,5 +137,8 @@ export class ProjectionIndex extends LogicalPlanTupleOperator {
       replacement.schema.filter((x) => !x.equals(this.indexCol)),
     );
     this.addToSchema(this.indexCol);
+  }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.source];
   }
 }

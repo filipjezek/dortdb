@@ -30,4 +30,7 @@ export class Limit extends LogicalPlanTupleOperator {
   ): void {
     this.source = replacement;
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.source];
+  }
 }

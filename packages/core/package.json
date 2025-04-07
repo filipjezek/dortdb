@@ -29,9 +29,9 @@
       "build": {}
     }
   },
-  "devDependencies": {},
   "dependencies": {
     "@swc/helpers": "^0.5.15",
-    "mnemonist": "^0.39.8"
+    "mnemonist": "^0.39.8",
+    "stable-hash": "^0.0.5"
   }
 }

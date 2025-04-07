@@ -6,7 +6,7 @@ import {
   LogicalPlanVisitors,
 } from './visitors/index.js';
 import { ASTNode } from './ast.js';
-import { DortDB, DortDBAsFriend } from './db.js';
+import { DortDBAsFriend } from './db.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -37,6 +37,8 @@ export class LanguageManager {
   private functions = new TrieMap<(string | symbol)[], Fn>(Array);
   private aggregates = new TrieMap<(string | symbol)[], AggregateFn>(Array);
   private castables = new TrieMap<(string | symbol)[], Castable>(Array);
+
+  constructor(private db: DortDBAsFriend) {}
 
   public registerExtension(ext: Extension) {
     const scope = ext.scope ?? ([LanguageManager.allLangs] as const);
@@ -80,8 +82,9 @@ export class LanguageManager {
     const vmap = {} as Record<string, InstanceType<LogicalPlanVisitors[T]>>;
     for (const lang in this.langs) {
       const VClass =
-        this.langs[lang].visitors[visitor] ?? coreVisitors.logicalPlan[visitor];
-      vmap[lang] = new VClass(vmap, this) as InstanceType<
+        (this.langs[lang].visitors[visitor] as LogicalPlanVisitors[T]) ??
+        coreVisitors.logicalPlan[visitor];
+      vmap[lang] = new VClass(vmap as any, this.db) as InstanceType<
         LogicalPlanVisitors[T]
       >;
     }

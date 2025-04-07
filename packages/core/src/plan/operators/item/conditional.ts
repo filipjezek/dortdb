@@ -27,4 +27,9 @@ export class Conditional implements LogicalPlanOperator {
   ): void {
     throw new Error('Method not implemented.');
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.condition, ...this.whenThens.flat(), this.defaultCase].filter(
+      (ch) => ch && !(ch instanceof ASTIdentifier),
+    ) as LogicalPlanOperator[];
+  }
 }

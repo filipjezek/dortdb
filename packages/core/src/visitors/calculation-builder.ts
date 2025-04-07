@@ -8,6 +8,7 @@ import {
   LogicalPlanVisitor,
 } from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
+import { DortDBAsFriend } from '../db.js';
 
 export type CalculationParams = {
   args: LogicalOpOrId[];
@@ -77,7 +78,7 @@ export class CalculationBuilder
 {
   constructor(
     private vmap: Record<string, LogicalPlanVisitor<CalculationParams>>,
-    private langMgr: LanguageManager,
+    private db: DortDBAsFriend,
   ) {
     this.processItem = this.processItem.bind(this);
     this.processFnArg = this.processFnArg.bind(this);

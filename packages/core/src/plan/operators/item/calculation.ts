@@ -1,3 +1,4 @@
+import { ASTIdentifier } from '../../../ast.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import {
   LogicalOpOrId,
@@ -43,5 +44,15 @@ export class Calculation implements LogicalPlanOperator {
     const arr = current instanceof AggregateCall ? this.aggregates : this.args;
     const idx = arr.indexOf(current);
     arr[idx] = replacement;
+  }
+  getChildren(): LogicalPlanOperator[] {
+    const res: LogicalPlanOperator[] = [];
+    for (const arg of this.args) {
+      if (!(arg instanceof ASTIdentifier)) {
+        res.push(arg);
+      }
+    }
+    res.push(...this.aggregates);
+    return res;
   }
 }

@@ -25,4 +25,7 @@ export class NullSource extends LogicalPlanTupleOperator {
   ): void {
     throw new Error('Method not implemented.');
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [];
+  }
 }

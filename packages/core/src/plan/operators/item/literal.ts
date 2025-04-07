@@ -21,4 +21,7 @@ export class Literal<T = unknown> implements LogicalPlanOperator {
   ): void {
     throw new Error('Method not implemented.');
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [];
+  }
 }

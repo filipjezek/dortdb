@@ -1,4 +1,5 @@
 import { ASTNode, ASTVisitor } from '../ast.js';
+import { DortDBAsFriend } from '../db.js';
 import { LanguageManager } from '../lang-manager.js';
 import {
   IdSet,
@@ -9,12 +10,13 @@ import {
   CalculationBuilder,
   CalculationParams,
 } from './calculation-builder.js';
+import { CostEstimator } from './cost-estimator.js';
 
-type VisitorConstr<T> = {
+type VisitorConstr<T, U = never> = {
   new (
-    visitors: Record<string, LogicalPlanVisitor<T>>,
-    langMgr: LanguageManager,
-  ): LogicalPlanVisitor<T>;
+    visitors: Record<string, LogicalPlanVisitor<T, U>>,
+    db: DortDBAsFriend,
+  ): LogicalPlanVisitor<T, U>;
 };
 
 export interface LogicalPlanVisitors {
@@ -22,6 +24,10 @@ export interface LogicalPlanVisitors {
    * Combines fncalls, literals etc. into a single function with clearly specified inputs
    */
   calculationBuilder: VisitorConstr<CalculationParams>;
+  /**
+   * A visitor that estimates the cost of a logical plan operator based on cardinality of its inputs.
+   */
+  costEstimator: VisitorConstr<number, number[]>;
 }
 
 /**
@@ -61,6 +67,7 @@ export const toInfer = Symbol('toInfer');
 export const coreVisitors = {
   logicalPlan: {
     calculationBuilder: CalculationBuilder,
+    costEstimator: CostEstimator,
   } satisfies LogicalPlanVisitors,
 };
 

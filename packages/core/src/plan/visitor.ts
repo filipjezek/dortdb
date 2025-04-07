@@ -14,6 +14,7 @@ export interface LogicalPlanOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void;
+  getChildren(): LogicalPlanOperator[];
 }
 export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
   public schema: ASTIdentifier[];
@@ -29,6 +30,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void;
+  abstract getChildren(): LogicalPlanOperator[];
 
   /** will preserve object references */
   public addToSchema(item: ASTIdentifier | ASTIdentifier[] | IdSet) {

@@ -2,19 +2,22 @@ import { Trie } from './data-structures/trie.js';
 import { ASTNode } from './ast.js';
 import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
-import { Optimizer, OptimizerOptions } from './optimizer.js';
+import { Optimizer } from './optimizer/optimizer.js';
 
 export class DortDB<LangNames extends string> {
-  private langMgr = new LanguageManager();
+  private langMgr: LanguageManager = null;
   private registeredSources = new Trie<symbol | string, unknown>();
+  public readonly optimizer = new Optimizer();
   private friendInterface: DortDBAsFriend = {
     langMgr: this.langMgr,
+    optimizer: this.optimizer,
     getSource: (source) => this.registeredSources.get(source),
   };
 
-  public readonly optimizer = new Optimizer();
-
   constructor(private config: DortDBConfig<LangNames>) {
+    this.langMgr = this.friendInterface.langMgr = new LanguageManager(
+      this.friendInterface,
+    );
     this.langMgr.registerExtension(core);
     this.langMgr.registerLang(config.mainLang);
     this.config.additionalLangs?.forEach((lang) =>
@@ -45,12 +48,8 @@ export class DortDB<LangNames extends string> {
     options?: QueryOptions<LangNames>,
   ): QueryResult<T> {
     return {
-      data: [
-        { city: 'Istanbul' },
-        { city: 'Ankara' },
-        { city: 'Prague' },
-      ] as any,
-      schema: ['city'],
+      data: [] as any,
+      schema: [],
     };
   }
 
@@ -72,10 +71,10 @@ export interface DortDBConfig<LangNames extends string> {
   mainLang: Language<LangNames>;
   additionalLangs?: Language<LangNames>[];
   extensions?: Extension<LangNames>[];
-  optimizer?: OptimizerOptions;
 }
 
 export interface DortDBAsFriend {
   langMgr: LanguageManager;
   getSource(source: (symbol | string)[]): unknown;
+  optimizer: Optimizer;
 }

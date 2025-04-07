@@ -1,4 +1,4 @@
-import { LogicalPlanTupleOperator } from '@dortdb/core';
+import { LogicalPlanOperator, LogicalPlanTupleOperator } from '@dortdb/core';
 import { LangSwitch as ASTLangSwitch } from '@dortdb/core';
 import { Trie } from '@dortdb/core/data-structures';
 import { SQLLogicalPlanVisitor } from './index.js';
@@ -28,4 +28,7 @@ export class LangSwitch extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {}
+  override getChildren(): LogicalPlanOperator[] {
+    return [];
+  }
 }

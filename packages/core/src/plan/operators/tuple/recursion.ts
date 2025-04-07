@@ -40,4 +40,7 @@ export class Recursion extends LogicalPlanTupleOperator {
       this.source = replacement as LogicalPlanTupleOperator;
     }
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.source, this.condition];
+  }
 }

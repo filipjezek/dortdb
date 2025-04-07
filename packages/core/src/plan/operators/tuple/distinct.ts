@@ -1,4 +1,5 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
+import { isCalc } from '../../../internal-fns/index.js';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
@@ -37,5 +38,12 @@ export class Distinct extends LogicalPlanTupleOperator {
       );
       (this.attrs as Calculation[])[index] = replacement as Calculation;
     }
+  }
+  getChildren(): LogicalPlanOperator[] {
+    const res: LogicalPlanOperator[] = [this.source];
+    if (this.attrs !== allAttrs) {
+      res.push(...this.attrs.filter(isCalc));
+    }
+    return res;
   }
 }

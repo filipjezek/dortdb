@@ -1,3 +1,5 @@
+import { Calculation } from '../plan/operators/index.js';
+
 export function ret1<T>(a: T): T {
   return a;
 }
@@ -12,4 +14,7 @@ export function retI1<T>(x: [unknown, T, ...unknown[]]): T {
 }
 export function toPair<T>(x: T): [T, T] {
   return [x, x];
+}
+export function isCalc(x: unknown): x is Calculation {
+  return x instanceof Calculation;
 }

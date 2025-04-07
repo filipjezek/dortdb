@@ -49,4 +49,14 @@ export class GroupBy extends LogicalPlanTupleOperator {
       this.keys.find((k) => k[0] === current)[0] = replacement as Calculation;
     }
   }
+  getChildren(): LogicalPlanOperator[] {
+    const res = [this.source] as LogicalPlanOperator[];
+    for (const k of this.keys) {
+      if (k[0] instanceof Calculation) {
+        res.push(k[0]);
+      }
+    }
+    res.push(...this.aggs);
+    return res;
+  }
 }

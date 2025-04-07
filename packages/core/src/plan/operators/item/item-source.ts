@@ -1,4 +1,5 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { isCalc } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import {
   Aliased,
@@ -26,6 +27,9 @@ export class ItemSource implements LogicalPlanOperator {
   ): void {
     throw new Error('Method not implemented.');
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [];
+  }
 }
 
 export class ItemFnSource implements LogicalPlanOperator {
@@ -51,5 +55,8 @@ export class ItemFnSource implements LogicalPlanOperator {
   ): void {
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;
+  }
+  getChildren(): LogicalPlanOperator[] {
+    return this.args.filter(isCalc);
   }
 }

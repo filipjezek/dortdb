@@ -36,4 +36,13 @@ export class FnCall implements LogicalPlanOperator {
   ): void {
     throw new Error('Method not implemented.');
   }
+  getChildren(): LogicalPlanOperator[] {
+    const res: LogicalPlanOperator[] = [];
+    for (const arg of this.args) {
+      if ('op' in arg) {
+        res.push(arg.op);
+      }
+    }
+    return res;
+  }
 }

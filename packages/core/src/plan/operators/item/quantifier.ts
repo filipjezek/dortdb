@@ -26,4 +26,7 @@ export class Quantifier implements LogicalPlanOperator {
   ): void {
     throw new Error('Method not implemented.');
   }
+  getChildren(): LogicalPlanOperator[] {
+    return [this.query];
+  }
 }

@@ -5,4 +5,3 @@ export * from './db.js';
 export * from './plan/visitor.js';
 export * from './visitors/index.js';
 export * from './errors.js';
-export * from './optimizer.js';
