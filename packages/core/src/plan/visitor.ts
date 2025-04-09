@@ -5,6 +5,7 @@ import { Trie } from '../data-structures/trie.js';
 export interface LogicalPlanOperator {
   lang: Lowercase<string>;
   parent?: LogicalPlanOperator;
+  dependencies: IdSet;
 
   accept<Ret, Arg>(
     visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
@@ -21,6 +22,7 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
   public schemaSet: IdSet;
   public lang: Lowercase<string>;
   public parent?: LogicalPlanOperator;
+  public dependencies = new Trie<string | symbol>();
 
   abstract accept<Ret, Arg>(
     visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,

@@ -2,19 +2,21 @@ import { Trie } from './data-structures/trie.js';
 import { ASTNode } from './ast.js';
 import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
-import { Optimizer } from './optimizer/optimizer.js';
+import { Optimizer, OptimizerConfig } from './optimizer/optimizer.js';
 
 export class DortDB<LangNames extends string> {
   private langMgr: LanguageManager = null;
   private registeredSources = new Trie<symbol | string, unknown>();
-  public readonly optimizer = new Optimizer();
-  private friendInterface: DortDBAsFriend = {
-    langMgr: this.langMgr,
-    optimizer: this.optimizer,
-    getSource: (source) => this.registeredSources.get(source),
-  };
+  public readonly optimizer: Optimizer;
+  private friendInterface: DortDBAsFriend;
 
   constructor(private config: DortDBConfig<LangNames>) {
+    this.optimizer = new Optimizer(config.optimizer);
+    this.friendInterface = {
+      langMgr: this.langMgr,
+      optimizer: this.optimizer,
+      getSource: (source) => this.registeredSources.get(source),
+    };
     this.langMgr = this.friendInterface.langMgr = new LanguageManager(
       this.friendInterface,
     );
@@ -37,10 +39,11 @@ export class DortDB<LangNames extends string> {
     const Visitor = this.langMgr.getLang(
       options?.mainLang ?? this.config.mainLang.name,
     ).visitors.logicalPlanBuilder;
-    return new Visitor(this.friendInterface).buildPlan(
+    const plan = new Visitor(this.friendInterface).buildPlan(
       query,
       new Trie<symbol | string>(),
     );
+    return this.optimizer.optimize(plan.plan);
   }
 
   public query<T = unknown>(
@@ -71,6 +74,7 @@ export interface DortDBConfig<LangNames extends string> {
   mainLang: Language<LangNames>;
   additionalLangs?: Language<LangNames>[];
   extensions?: Extension<LangNames>[];
+  optimizer: OptimizerConfig;
 }
 
 export interface DortDBAsFriend {

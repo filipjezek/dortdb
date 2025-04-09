@@ -1,4 +1,5 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { Trie } from '../../../data-structures/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import {
   LogicalOpOrId,
@@ -18,6 +19,7 @@ export const CalcIntermediate = Symbol('CalcIntermediate');
  */
 export class Calculation implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
+  public dependencies = new Trie<string | symbol>();
 
   constructor(
     public lang: Lowercase<string>,

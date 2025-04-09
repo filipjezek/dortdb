@@ -1,4 +1,5 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { Trie } from '../../../data-structures/trie.js';
 import { isCalc } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import {
@@ -10,6 +11,8 @@ import { Calculation } from './calculation.js';
 
 export class ItemSource implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
+  public dependencies = new Trie<string | symbol>();
+
   constructor(
     public lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>,
@@ -34,6 +37,8 @@ export class ItemSource implements LogicalPlanOperator {
 
 export class ItemFnSource implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
+  public dependencies = new Trie<string | symbol>();
+
   constructor(
     public lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],

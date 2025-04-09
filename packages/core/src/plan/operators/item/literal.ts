@@ -1,8 +1,13 @@
-import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  IdSet,
+  LogicalPlanOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
 export class Literal<T = unknown> implements LogicalPlanOperator {
   public [CalcIntermediate] = true;
+  public dependencies: IdSet;
 
   constructor(
     public lang: Lowercase<string>,

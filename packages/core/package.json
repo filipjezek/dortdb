@@ -14,7 +14,8 @@
     "./plan": "./dist/plan/operators/index.js",
     "./ast": "./dist/ast.js",
     "./internal-fns": "./dist/internal-fns/index.js",
-    "./data-structures": "./dist/data-structures/index.js"
+    "./data-structures": "./dist/data-structures/index.js",
+    "./optimizer": "./dist/optimizer/index.js"
   },
   "files": [
     "dist",

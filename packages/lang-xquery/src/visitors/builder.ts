@@ -234,12 +234,14 @@ export class XQueryLogicalPlanBuilder
       if (args.ctx.has([node.parts[0], toInfer])) {
         args.inferred.add(node.parts);
       }
-      return new plan.ItemFnSource(
+      const res = new plan.ItemFnSource(
         'xquery',
         [node],
         unwind.impl,
         ASTIdentifier.fromParts([unwind.name]),
       );
+      res.dependencies.add(node.parts);
+      return res;
     }
     return new plan.ItemSource('xquery', node);
   }

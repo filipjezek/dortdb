@@ -25,6 +25,7 @@ export class AggregateCall implements LogicalPlanOperator {
   }
   private _postGSource: LogicalPlanTupleOperator;
   public parent: Calculation;
+  public dependencies = new Trie<string | symbol>();
 
   constructor(
     public lang: Lowercase<string>,

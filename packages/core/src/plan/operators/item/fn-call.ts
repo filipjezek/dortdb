@@ -1,5 +1,9 @@
 import { ASTIdentifier } from '../../../ast.js';
-import { LogicalPlanOperator, LogicalPlanVisitor } from '../../visitor.js';
+import {
+  IdSet,
+  LogicalPlanOperator,
+  LogicalPlanVisitor,
+} from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
 export interface PlanOpAsArg {
@@ -12,6 +16,7 @@ export interface PlanOpAsArg {
 
 export class FnCall implements LogicalPlanOperator {
   public [CalcIntermediate] = true;
+  public dependencies: IdSet;
 
   constructor(
     public lang: Lowercase<string>,

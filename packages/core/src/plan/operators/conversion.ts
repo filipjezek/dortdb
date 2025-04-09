@@ -5,9 +5,11 @@ import {
   LogicalPlanVisitor,
 } from '../visitor.js';
 import { schemaToTrie } from '../../utils/trie.js';
+import { Trie } from '../../data-structures/trie.js';
 
 export class MapToItem implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
+  public dependencies = new Trie<string | symbol>();
 
   constructor(
     public lang: Lowercase<string>,

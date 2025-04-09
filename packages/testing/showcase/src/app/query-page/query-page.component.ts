@@ -18,7 +18,7 @@ import { DortDB, LogicalPlanOperator, QueryResult } from '@dortdb/core';
 import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
-import { combineLatest } from 'rxjs';
+import { combineLatest, startWith } from 'rxjs';
 import { dropdownIn, dropdownOut } from '../animations';
 import { lsSyncForm } from '../utils/ls-sync-form';
 import { DataSourcesDialogComponent } from './data-sources-dialog/data-sources-dialog.component';
@@ -40,6 +40,12 @@ import {
   invoices,
   orders,
 } from './data-sources';
+import {
+  mergeFromToItems,
+  mergeToFromItems,
+  PatternRule,
+  pushdownSelections,
+} from '@dortdb/core/optimizer';
 
 @Component({
   selector: 'dort-query-page',
@@ -69,6 +75,9 @@ export class QueryPageComponent {
   private readonly db = new DortDB({
     mainLang: SQL(),
     additionalLangs: [XQuery(), Cypher({ defaultGraph: 'defaultGraph' })],
+    optimizer: {
+      rules: [],
+    },
   });
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
@@ -95,11 +104,28 @@ export class QueryPageComponent {
 
     lsSyncForm('query-page-form', this.form);
     combineLatest([
-      this.optimizerOptions.valueChanges,
-      this.form.get('optimizer').valueChanges,
+      this.optimizerOptions.valueChanges.pipe(
+        startWith(this.optimizerOptions.value),
+      ),
+      this.form
+        .get('optimizer')
+        .valueChanges.pipe(startWith(this.form.get('optimizer').value)),
     ])
       .pipe(takeUntilDestroyed())
-      .subscribe(([options, enabled]) => {});
+      .subscribe(([options, enabled]) => {
+        const rules: PatternRule<any>[] = [];
+        if (enabled) {
+          if (options.duplicates) {
+            rules.push(mergeToFromItems, mergeFromToItems);
+          }
+          if (options.pushdown) {
+            rules.push(pushdownSelections);
+          }
+        }
+        this.db.optimizer.reconfigure({
+          rules,
+        });
+      });
   }
 
   private registerSources() {
@@ -118,22 +144,14 @@ export class QueryPageComponent {
     this.output = null;
     this.queryHistory.push(formVal.query);
     try {
-      if (formVal.optimizer) {
-        if (formVal.lang === 'xquery') {
-          this.plan = optimizedPlanCrossmodel;
-        } else {
-          this.plan = optimizedPlan;
-        }
-      } else {
-        const ast = this.db.parse(formVal.query, {
-          mainLang: formVal.lang,
-        });
-        console.log(ast);
-        this.plan = this.db.buildPlan(ast.value[0], {
-          mainLang: formVal.lang,
-        }).plan;
-        console.log(this.plan);
-      }
+      const ast = this.db.parse(formVal.query, {
+        mainLang: formVal.lang,
+      });
+      console.log(ast);
+      this.plan = this.db.buildPlan(ast.value[0], {
+        mainLang: formVal.lang,
+      });
+      console.log(this.plan);
     } catch (err) {
       this.error = err as Error;
       console.error(err);
