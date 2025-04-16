@@ -240,7 +240,6 @@ export class XQueryLogicalPlanBuilder
         unwind.impl,
         ASTIdentifier.fromParts([unwind.name]),
       );
-      res.dependencies.add(node.parts);
       return res;
     }
     return new plan.ItemSource('xquery', node);

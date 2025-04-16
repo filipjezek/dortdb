@@ -2,6 +2,7 @@ import { Trie } from '../../../data-structures/trie.js';
 import { ASTIdentifier } from '../../../ast.js';
 import { AggregateFn } from '../../../extension.js';
 import {
+  IdSet,
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
@@ -9,7 +10,8 @@ import {
 import { TupleSource } from '../tuple/tuple-source.js';
 import { Calculation } from './calculation.js';
 import { GroupBy } from '../tuple/groupby.js';
-import { isCalc } from '../../../internal-fns/index.js';
+import { isCalc, isId } from '../../../internal-fns/index.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 
 /**
  * Container for aggregate calls used in {@link GroupBy}
@@ -25,7 +27,7 @@ export class AggregateCall implements LogicalPlanOperator {
   }
   private _postGSource: LogicalPlanTupleOperator;
   public parent: Calculation;
-  public dependencies = new Trie<string | symbol>();
+  public dependencies: IdSet;
 
   constructor(
     public lang: Lowercase<string>,
@@ -41,6 +43,7 @@ export class AggregateCall implements LogicalPlanOperator {
     this._postGSource.schema = [];
     this._postGSource.schemaSet = new Trie<string | symbol>();
     this.postGroupOp = this._postGSource;
+    this.dependencies = schemaToTrie(args.filter(isId));
   }
 
   accept<Ret, Arg>(

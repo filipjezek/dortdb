@@ -1,7 +1,10 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { Trie } from '../../../data-structures/trie.js';
+import { isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 import {
+  IdSet,
   LogicalOpOrId,
   LogicalPlanOperator,
   LogicalPlanVisitor,
@@ -19,7 +22,7 @@ export const CalcIntermediate = Symbol('CalcIntermediate');
  */
 export class Calculation implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
-  public dependencies = new Trie<string | symbol>();
+  public dependencies: IdSet;
 
   constructor(
     public lang: Lowercase<string>,
@@ -31,6 +34,7 @@ export class Calculation implements LogicalPlanOperator {
   ) {
     arrSetParent(args, this);
     arrSetParent(aggregates, this);
+    this.dependencies = schemaToTrie(this.args.filter(isId));
   }
 
   accept<Ret, Arg>(

@@ -1,6 +1,5 @@
 import { ASTNode, ASTVisitor } from '../ast.js';
 import { DortDBAsFriend } from '../db.js';
-import { LanguageManager } from '../lang-manager.js';
 import {
   IdSet,
   LogicalPlanOperator,
@@ -10,7 +9,7 @@ import {
   CalculationBuilder,
   CalculationParams,
 } from './calculation-builder.js';
-import { CostEstimator } from './cost-estimator.js';
+import { TransitiveDependencies } from './transitive-deps.js';
 
 type VisitorConstr<T, U = never> = {
   new (
@@ -24,10 +23,7 @@ export interface LogicalPlanVisitors {
    * Combines fncalls, literals etc. into a single function with clearly specified inputs
    */
   calculationBuilder: VisitorConstr<CalculationParams>;
-  /**
-   * A visitor that estimates the cost of a logical plan operator based on cardinality of its inputs.
-   */
-  costEstimator: VisitorConstr<number, number[]>;
+  transitiveDependencies: VisitorConstr<IdSet>;
 }
 
 /**
@@ -67,8 +63,9 @@ export const toInfer = Symbol('toInfer');
 export const coreVisitors = {
   logicalPlan: {
     calculationBuilder: CalculationBuilder,
-    costEstimator: CostEstimator,
+    transitiveDependencies: TransitiveDependencies,
   } satisfies LogicalPlanVisitors,
 };
 
 export * from './calculation-builder.js';
+export * from './transitive-deps.js';

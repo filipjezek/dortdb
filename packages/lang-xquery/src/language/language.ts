@@ -7,6 +7,7 @@ import * as fns from '../functions/index.js';
 import * as operators from '../operators/index.js';
 import { createParser } from './create-parser.js';
 import { XQueryDataAdapter, DomDataAdapter } from './data-adapter.js';
+import { XQueryTransitiveDependencies } from '../visitors/transitive-deps.js';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
@@ -26,6 +27,7 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
     visitors: {
       logicalPlanBuilder: XQueryLogicalPlanBuilder,
       calculationBuilder: XQueryCalculationBuilder,
+      transitiveDependencies: XQueryTransitiveDependencies,
     },
     dataAdapter: config?.adapter ?? new DomDataAdapter(document),
   };

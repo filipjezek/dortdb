@@ -1,3 +1,4 @@
+import { ASTIdentifier } from '../ast.js';
 import { Calculation } from '../plan/operators/index.js';
 
 export function ret1<T>(a: T): T {
@@ -17,4 +18,7 @@ export function toPair<T>(x: T): [T, T] {
 }
 export function isCalc(x: unknown): x is Calculation {
   return x instanceof Calculation;
+}
+export function isId(x: unknown): x is ASTIdentifier {
+  return x instanceof ASTIdentifier;
 }

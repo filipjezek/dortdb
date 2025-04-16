@@ -8,7 +8,8 @@ import {
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
-import { isCalc } from '../../../internal-fns/index.js';
+import { isCalc, isId } from '../../../internal-fns/index.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 
 export class TupleSource extends LogicalPlanTupleOperator {
   public knownSchema = false;
@@ -54,6 +55,7 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
     this.schema = [];
     this.schemaSet = new Trie<string | symbol>();
     arrSetParent(this.args, this);
+    this.dependencies = schemaToTrie(args.filter(isId));
   }
 
   accept<Ret, Arg>(

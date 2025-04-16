@@ -1,9 +1,11 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { Trie } from '../../../data-structures/trie.js';
-import { isCalc } from '../../../internal-fns/index.js';
+import { isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 import {
   Aliased,
+  IdSet,
   LogicalPlanOperator,
   LogicalPlanVisitor,
 } from '../../visitor.js';
@@ -37,7 +39,7 @@ export class ItemSource implements LogicalPlanOperator {
 
 export class ItemFnSource implements LogicalPlanOperator {
   public parent: LogicalPlanOperator;
-  public dependencies = new Trie<string | symbol>();
+  public dependencies: IdSet;
 
   constructor(
     public lang: Lowercase<string>,
@@ -46,6 +48,7 @@ export class ItemFnSource implements LogicalPlanOperator {
     public name?: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {
     arrSetParent(this.args, this);
+    this.dependencies = schemaToTrie(this.args.filter(isId));
   }
 
   accept<Ret, Arg>(

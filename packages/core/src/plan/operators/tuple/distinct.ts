@@ -1,5 +1,6 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
-import { isCalc } from '../../../internal-fns/index.js';
+import { isCalc, isId } from '../../../internal-fns/index.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
@@ -18,6 +19,11 @@ export class Distinct extends LogicalPlanTupleOperator {
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     source.parent = this;
+    if (attrs === allAttrs) {
+      this.dependencies.add([allAttrs]);
+    } else {
+      this.dependencies = schemaToTrie(attrs.filter(isId));
+    }
   }
 
   accept<Ret, Arg>(

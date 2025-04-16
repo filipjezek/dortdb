@@ -9,6 +9,7 @@ import {
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { isCalc, isId, retI0, retI1 } from '../../../internal-fns/index.js';
 
 export class Projection extends LogicalPlanTupleOperator {
   constructor(
@@ -18,13 +19,11 @@ export class Projection extends LogicalPlanTupleOperator {
   ) {
     super();
     this.lang = lang;
-    this.schema = attrs.map((a) => a[1]);
+    this.schema = attrs.map(retI1);
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;
-    arrSetParent(
-      this.attrs.map((x) => x[0]),
-      this,
-    );
+    arrSetParent(this.attrs.map(retI0), this);
+    this.dependencies = schemaToTrie(this.attrs.map(retI0).filter(isId));
   }
 
   accept<Ret, Arg>(
@@ -44,12 +43,8 @@ export class Projection extends LogicalPlanTupleOperator {
     }
   }
   getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = [this.source];
-    for (const x of this.attrs) {
-      if (x[0] instanceof Calculation) {
-        res.push(x[0]);
-      }
-    }
+    const res: LogicalPlanOperator[] = this.attrs.map(retI0).filter(isCalc);
+    res.push(this.source);
     return res;
   }
 }

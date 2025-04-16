@@ -17,6 +17,7 @@ export class Selection extends LogicalPlanTupleOperator {
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     if (condition instanceof Calculation) condition.parent = this;
+    else this.dependencies.add(condition.parts);
     source.parent = this;
   }
 

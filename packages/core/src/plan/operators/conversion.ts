@@ -22,6 +22,7 @@ export class MapToItem implements LogicalPlanOperator {
           ? source.schema[0]
           : ASTIdentifier.fromParts([allAttrs]);
     }
+    this.dependencies.add(this.key.parts);
     source.parent = this;
   }
 

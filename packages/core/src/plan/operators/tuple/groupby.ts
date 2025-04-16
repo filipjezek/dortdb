@@ -9,6 +9,7 @@ import { AggregateCall } from '../item/aggregate-call.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { isId, retI0, retI1 } from '../../../internal-fns/index.js';
 
 export class GroupBy extends LogicalPlanTupleOperator {
   constructor(
@@ -20,13 +21,11 @@ export class GroupBy extends LogicalPlanTupleOperator {
   ) {
     super();
     this.lang = lang;
-    this.schema = keys.map((k) => k[1]).concat(aggs.map((a) => a.fieldName));
+    this.schema = keys.map(retI1).concat(aggs.map((a) => a.fieldName));
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;
-    arrSetParent(
-      keys.map((k) => k[0]),
-      this,
-    );
+    this.dependencies = schemaToTrie(this.keys.map(retI0).filter(isId));
+    arrSetParent(keys.map(retI0), this);
     arrSetParent(aggs, this);
   }
 

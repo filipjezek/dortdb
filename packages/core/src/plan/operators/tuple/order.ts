@@ -1,11 +1,17 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
+
+function getKey(o: Order) {
+  return o.key;
+}
 
 export interface Order {
   key: Calculation | ASTIdentifier;
@@ -23,10 +29,8 @@ export class OrderBy extends LogicalPlanTupleOperator {
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     source.parent = this;
-    arrSetParent(
-      orders.map((o) => o.key),
-      this,
-    );
+    arrSetParent(orders.map(getKey), this);
+    this.dependencies = schemaToTrie(this.orders.map(getKey).filter(isId));
   }
 
   accept<Ret, Arg>(
@@ -47,12 +51,8 @@ export class OrderBy extends LogicalPlanTupleOperator {
     }
   }
   getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = [this.source];
-    for (const o of this.orders) {
-      if (o.key instanceof Calculation) {
-        res.push(o.key);
-      }
-    }
+    const res: LogicalPlanOperator[] = this.orders.map(getKey).filter(isCalc);
+    res.push(this.source);
     return res;
   }
 }
