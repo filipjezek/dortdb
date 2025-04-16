@@ -5,25 +5,26 @@ import {
   LogicalPlanOperator,
   LogicalPlanVisitor,
 } from '../plan/visitor.js';
+import { AttributeRenameChecker } from './attribute-rename-checker.js';
+import { AttributeRenamer } from './attribute-renamer.js';
 import {
   CalculationBuilder,
   CalculationParams,
 } from './calculation-builder.js';
 import { TransitiveDependencies } from './transitive-deps.js';
 
-type VisitorConstr<T, U = never> = {
-  new (
-    visitors: Record<string, LogicalPlanVisitor<T, U>>,
-    db: DortDBAsFriend,
-  ): LogicalPlanVisitor<T, U>;
+type VisitorConstr<T extends LogicalPlanVisitor<any>> = {
+  new (visitors: Record<string, T>, db: DortDBAsFriend): T;
 };
 
 export interface LogicalPlanVisitors {
   /**
    * Combines fncalls, literals etc. into a single function with clearly specified inputs
    */
-  calculationBuilder: VisitorConstr<CalculationParams>;
-  transitiveDependencies: VisitorConstr<IdSet>;
+  calculationBuilder: VisitorConstr<LogicalPlanVisitor<CalculationParams>>;
+  transitiveDependencies: VisitorConstr<TransitiveDependencies>;
+  attributeRenamer: VisitorConstr<AttributeRenamer>;
+  attributeRenameChecker: VisitorConstr<AttributeRenameChecker>;
 }
 
 /**
@@ -64,8 +65,12 @@ export const coreVisitors = {
   logicalPlan: {
     calculationBuilder: CalculationBuilder,
     transitiveDependencies: TransitiveDependencies,
+    attributeRenamer: AttributeRenamer,
+    attributeRenameChecker: AttributeRenameChecker,
   } satisfies LogicalPlanVisitors,
 };
 
 export * from './calculation-builder.js';
 export * from './transitive-deps.js';
+export * from './attribute-rename-checker.js';
+export * from './attribute-renamer.js';

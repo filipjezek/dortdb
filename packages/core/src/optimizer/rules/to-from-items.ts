@@ -5,10 +5,10 @@ import { PatternRule } from '../rule.js';
 export const mergeToFromItems: PatternRule<MapToItem> = {
   operator: MapToItem,
   match: (node) => {
-    return (
-      node.source.constructor === MapFromItem &&
+    return node.source.constructor === MapFromItem &&
       node.key.equals((node.source as MapToItem).key)
-    );
+      ? { bindings: {} }
+      : null;
   },
   transform: (node) => {
     const source = node.source as MapFromItem;
@@ -18,7 +18,7 @@ export const mergeToFromItems: PatternRule<MapToItem> = {
 export const mergeFromToItems: PatternRule<MapFromItem> = {
   operator: MapFromItem,
   match: (node) => {
-    return node.source.constructor === MapToItem;
+    return node.source.constructor === MapToItem ? { bindings: {} } : null;
   },
   transform: (node) => {
     const source = node.source as MapToItem;

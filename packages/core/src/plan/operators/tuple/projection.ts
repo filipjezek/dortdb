@@ -1,4 +1,3 @@
-import { TrieMap } from 'mnemonist';
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
@@ -9,9 +8,14 @@ import {
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
-import { isCalc, isId, retI0, retI1 } from '../../../internal-fns/index.js';
+import { isCalc, retI0, retI1 } from '../../../internal-fns/index.js';
+import { Trie } from '../../../data-structures/trie.js';
+
+export type RenameMap = Trie<string | symbol, (string | symbol)[]>;
 
 export class Projection extends LogicalPlanTupleOperator {
+  public renames: RenameMap = new Trie();
+
   constructor(
     lang: Lowercase<string>,
     public attrs: Aliased<ASTIdentifier | Calculation>[],
@@ -23,7 +27,12 @@ export class Projection extends LogicalPlanTupleOperator {
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;
     arrSetParent(this.attrs.map(retI0), this);
-    this.dependencies = schemaToTrie(this.attrs.map(retI0).filter(isId));
+    for (const [attr, alias] of this.attrs) {
+      if (attr instanceof ASTIdentifier) {
+        this.renames.set(attr.parts, alias.parts);
+        this.dependencies.add(attr.parts);
+      }
+    }
   }
 
   accept<Ret, Arg>(
@@ -56,7 +65,7 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
   /**
    * empty value for the outer join
    */
-  public emptyVal = new TrieMap<(symbol | string)[], unknown>(Array);
+  public emptyVal = new Trie<symbol | string, unknown>();
 
   constructor(
     lang: Lowercase<string>,

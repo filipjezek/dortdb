@@ -77,8 +77,8 @@ export class CalculationBuilder
   implements LogicalPlanVisitor<CalculationParams>
 {
   constructor(
-    private vmap: Record<string, LogicalPlanVisitor<CalculationParams>>,
-    private db: DortDBAsFriend,
+    protected vmap: Record<string, LogicalPlanVisitor<CalculationParams>>,
+    protected db: DortDBAsFriend,
   ) {
     this.processItem = this.processItem.bind(this);
     this.processFnArg = this.processFnArg.bind(this);

@@ -38,3 +38,44 @@ export function difference(a: IdSet, ...others: IdSet[]): IdSet {
   }
   return result;
 }
+
+export function containsAll(a: IdSet, b: IdSet | ASTIdentifier[]): boolean {
+  if (Array.isArray(b)) {
+    for (const id of b) {
+      if (!a.has(id.parts)) {
+        return false;
+      }
+    }
+  } else {
+    for (const id of b) {
+      if (!a.has(id)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+export function containsAny(a: IdSet, b: IdSet | ASTIdentifier[]): boolean {
+  if (Array.isArray(b)) {
+    for (const id of b) {
+      if (a.has(id.parts)) {
+        return true;
+      }
+    }
+  } else {
+    for (const id of b) {
+      if (a.has(id)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+export function invert<K, V>(trie: Trie<K, V[]>): Trie<V, K[]> {
+  const result = new Trie<V, K[]>();
+  for (const [key, value] of trie.entries()) {
+    result.set(value as V[], key);
+  }
+  return result;
+}

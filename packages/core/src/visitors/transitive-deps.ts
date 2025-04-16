@@ -17,10 +17,6 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
     this.processNode = this.processNode.bind(this);
   }
 
-  public get(op: LogicalPlanOperator) {
-    return op.accept(this.vmap);
-  }
-
   protected onlyExternal(deps: IdSet, op: LogicalPlanTupleOperator) {
     for (const id of op.schema) {
       deps.delete(id.parts);
@@ -40,7 +36,9 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
       this.visitCalculation(operator.condition),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitProjection(operator: plan.Projection): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -51,7 +49,9 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
       ),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitSelection(operator: plan.Selection): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -61,7 +61,9 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
         : this.visitCalculation(operator.condition),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitTupleSource(operator: plan.TupleSource): IdSet {
     return operator.dependencies;
@@ -77,22 +79,26 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
   }
   visitCalculation(operator: plan.Calculation): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return union(
+    const result = union(
       ...(operator.args.filter((x) => !isId(x)) as LogicalPlanOperator[]).map(
         this.processNode,
       ),
       operator.dependencies,
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitConditional(operator: plan.Conditional): IdSet {
     return operator.dependencies;
   }
   visitCartesianProduct(operator: plan.CartesianProduct): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return union(
+    const result = union(
       operator.left.accept(this.vmap),
       operator.right.accept(this.vmap),
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitJoin(operator: plan.Join): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -100,11 +106,13 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
       operator.on.accept(this.vmap),
       operator,
     );
-    return union(
+    const result = union(
       horizontal,
       operator.left.accept(this.vmap),
       operator.right.accept(this.vmap),
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitProjectionConcat(operator: plan.ProjectionConcat): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -112,33 +120,43 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
       operator.mapping.accept(this.vmap),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitMapToItem(operator: plan.MapToItem): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return operator.source.accept(this.vmap);
+    const result = operator.source.accept(this.vmap);
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitMapFromItem(operator: plan.MapFromItem): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return operator.source.accept(this.vmap);
+    const result = operator.source.accept(this.vmap);
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitProjectionIndex(operator: plan.ProjectionIndex): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return operator.source.accept(this.vmap);
+    const result = operator.source.accept(this.vmap);
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitOrderBy(operator: plan.OrderBy): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const horizontal = this.onlyExternal(
       union(
         ...operator.orders
-          .map((x) => x.key)
+          .map(plan.getKey)
           .filter(isCalc)
           .map(this.processNode),
         operator.dependencies,
       ),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitGroupBy(operator: plan.GroupBy): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -150,7 +168,9 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
       ),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitLimit(operator: plan.Limit): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -158,10 +178,12 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
   }
   private visitSetOp(operator: plan.SetOperator) {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return union(
+    const result = union(
       operator.left.accept(this.vmap),
       operator.right.accept(this.vmap),
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitUnion(operator: plan.Union): IdSet {
     return this.visitSetOp(operator);
@@ -184,36 +206,57 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
             ),
             operator,
           );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitNullSource(operator: plan.NullSource): IdSet {
     return operator.dependencies;
   }
   visitAggregate(operator: plan.AggregateCall): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return union(
+    const result = union(
       ...operator.args.filter(isCalc).map(this.processNode),
       operator.dependencies,
+      operator.postGroupOp.accept(this.vmap),
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitItemFnSource(operator: plan.ItemFnSource): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return union(
+    const result = union(
       ...operator.args.filter(isCalc).map(this.processNode),
       operator.dependencies,
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitTupleFnSource(operator: plan.TupleFnSource): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return union(
+    const result = union(
       ...operator.args.filter(isCalc).map(this.processNode),
       operator.dependencies,
     );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitQuantifier(operator: plan.Quantifier): IdSet {
     return operator.dependencies;
   }
-  public invalidateCache(changed: LogicalPlanOperator) {
+  public clearCache() {
     tdepsCache = new WeakMap();
+  }
+  public invalidateCacheDownstream(operator: LogicalPlanOperator) {
+    while (operator) {
+      tdepsCache.delete(operator);
+      operator = operator.parent;
+    }
+  }
+  public invalidateCacheUpstream(operator: LogicalPlanOperator) {
+    tdepsCache.delete(operator);
+    for (const child of operator.getChildren()) {
+      this.invalidateCacheUpstream(child);
+    }
   }
 }

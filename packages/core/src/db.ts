@@ -8,23 +8,25 @@ export class DortDB<LangNames extends string> {
   private langMgr: LanguageManager = null;
   private registeredSources = new Trie<symbol | string, unknown>();
   public readonly optimizer: Optimizer;
-  private friendInterface: DortDBAsFriend;
+  private friendInterface: DortDBAsFriend = {
+    langMgr: null,
+    optimizer: null,
+    getSource: (source) => this.registeredSources.get(source),
+  };
 
   constructor(private config: DortDBConfig<LangNames>) {
-    this.optimizer = new Optimizer(config.optimizer);
-    this.friendInterface = {
-      langMgr: this.langMgr,
-      optimizer: this.optimizer,
-      getSource: (source) => this.registeredSources.get(source),
-    };
     this.langMgr = this.friendInterface.langMgr = new LanguageManager(
       this.friendInterface,
     );
+    this.friendInterface.langMgr = this.langMgr;
+
     this.langMgr.registerExtension(core);
     this.langMgr.registerLang(config.mainLang);
     this.config.additionalLangs?.forEach((lang) =>
       this.langMgr.registerLang(lang),
     );
+    this.optimizer = new Optimizer(config.optimizer, this.friendInterface);
+    this.friendInterface.optimizer = this.optimizer;
     this.config.extensions?.forEach((e) => this.langMgr.registerExtension(e));
   }
 

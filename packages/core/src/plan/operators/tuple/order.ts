@@ -9,7 +9,7 @@ import {
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
-function getKey(o: Order) {
+export function getKey(o: Order) {
   return o.key;
 }
 

@@ -44,7 +44,8 @@ import {
   mergeFromToItems,
   mergeToFromItems,
   PatternRule,
-  pushdownSelections,
+  PatternRuleConstructor,
+  PushdownSelections,
 } from '@dortdb/core/optimizer';
 
 @Component({
@@ -113,13 +114,13 @@ export class QueryPageComponent {
     ])
       .pipe(takeUntilDestroyed())
       .subscribe(([options, enabled]) => {
-        const rules: PatternRule<any>[] = [];
+        const rules: (PatternRule<any> | PatternRuleConstructor<any>)[] = [];
         if (enabled) {
           if (options.duplicates) {
             rules.push(mergeToFromItems, mergeFromToItems);
           }
           if (options.pushdown) {
-            rules.push(pushdownSelections);
+            rules.push(PushdownSelections);
           }
         }
         this.db.optimizer.reconfigure({

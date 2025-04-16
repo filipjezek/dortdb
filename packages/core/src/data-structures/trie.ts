@@ -122,6 +122,18 @@ export class Trie<T, U = true> {
     }
     yield* this.iterTrieInner(lvl, prefix);
   }
+
+  public *entries(prefix: T[] = []): IterableIterator<[T[], U | true]> {
+    let lvl = this.root;
+    for (const key of prefix) {
+      if (!lvl.has(key)) {
+        return;
+      }
+      lvl = lvl.get(key);
+    }
+    yield* this.iterTrieInnerEntries(lvl, prefix);
+  }
+
   private *iterTrieInner(
     lvl: TrieInner<T, U>,
     path: T[],
@@ -131,6 +143,18 @@ export class Trie<T, U = true> {
         yield path;
       } else if (next) {
         yield* this.iterTrieInner(next, path.concat(key));
+      }
+    }
+  }
+  private *iterTrieInnerEntries(
+    lvl: TrieInner<T, U>,
+    path: T[],
+  ): IterableIterator<[T[], U | true]> {
+    for (const [key, next] of lvl) {
+      if (key === SENTINEL) {
+        yield [path, lvl.get(SENTINEL) as U | true];
+      } else if (next) {
+        yield* this.iterTrieInnerEntries(next, path.concat(key));
       }
     }
   }

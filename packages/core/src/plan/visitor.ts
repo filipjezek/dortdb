@@ -92,7 +92,7 @@ export type LogicalOpOrId = LogicalPlanOperator | ASTIdentifier;
 
 export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
-export type IdSet = Trie<string | symbol>;
+export type IdSet = Trie<string | symbol, any>;
 
 export interface LogicalPlanVisitor<Ret, Arg = never> {
   visitRecursion(operator: operators.Recursion, arg?: Arg): Ret;

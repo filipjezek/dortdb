@@ -25,11 +25,15 @@ export class XQueryTransitiveDependencies
       operator.step.accept(this.vmap),
       operator,
     );
-    return union(horizontal, operator.source.accept(this.vmap));
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitProjectionSize(operator: ProjectionSize): IdSet {
     const tdepsCache = this.getCache();
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
-    return operator.source.accept(this.vmap);
+    const result = operator.source.accept(this.vmap);
+    tdepsCache.set(operator, result);
+    return result;
   }
 }

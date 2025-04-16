@@ -8,6 +8,8 @@ import * as operators from '../operators/index.js';
 import { createParser } from './create-parser.js';
 import { XQueryDataAdapter, DomDataAdapter } from './data-adapter.js';
 import { XQueryTransitiveDependencies } from '../visitors/transitive-deps.js';
+import { XQueryAttributeRenameChecker } from '../visitors/attr-rename-checker.js';
+import { XQueryAttributeRenamer } from '../visitors/attr-renamer.js';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
@@ -28,6 +30,8 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
       logicalPlanBuilder: XQueryLogicalPlanBuilder,
       calculationBuilder: XQueryCalculationBuilder,
       transitiveDependencies: XQueryTransitiveDependencies,
+      attributeRenameChecker: XQueryAttributeRenameChecker,
+      attributeRenamer: XQueryAttributeRenamer,
     },
     dataAdapter: config?.adapter ?? new DomDataAdapter(document),
   };
