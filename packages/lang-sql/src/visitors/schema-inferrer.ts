@@ -233,6 +233,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
       operator.mapping.schemaSet,
     );
     extra.delete([allAttrs]);
+    operator.mapping.addToSchema(extra);
     // this might modify operator.schema if the mapping is a langswitch
     const horizontal = operator.mapping.accept(
       this.vmap,

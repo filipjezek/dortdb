@@ -8,7 +8,6 @@ import {
 import * as plan from '../plan/operators/index.js';
 import { DortDBAsFriend } from '../db.js';
 import { TransitiveDependencies } from './transitive-deps.js';
-import { difference, union } from '../utils/trie.js';
 import { ASTIdentifier } from '../ast.js';
 import { retI0 } from '../internal-fns/index.js';
 
@@ -25,7 +24,8 @@ export class AttributeRenamer implements LogicalPlanVisitor<void> {
 
   public rename(plan: LogicalPlanOperator, renames: plan.RenameMap) {
     this.renames = renames;
-    return plan.accept(this.vmap);
+    plan.accept(this.vmap);
+    this.tdepsVmap[plan.lang].invalidateCacheUpstream(plan);
   }
 
   protected processArray(
@@ -36,7 +36,7 @@ export class AttributeRenamer implements LogicalPlanVisitor<void> {
     for (const item of array) {
       if (item instanceof ASTIdentifier) {
         if (this.renames.has(item.parts) && deps.has(item.parts)) {
-          const newAttr = this.renames.get(item.parts) as (string | symbol)[];
+          const newAttr = this.renames.get(item.parts);
           item.parts = newAttr;
         }
       } else {
@@ -46,7 +46,7 @@ export class AttributeRenamer implements LogicalPlanVisitor<void> {
     if (removeDeps) {
       for (const [k, v] of this.renames.entries()) {
         if (deps.delete(k)) {
-          deps.add(v as (string | symbol)[]);
+          deps.add(v);
         }
       }
     }

@@ -24,7 +24,6 @@ export class AttributeRenameChecker implements LogicalPlanVisitor<boolean> {
 
   public canRename(plan: LogicalPlanOperator, renamesInv: plan.RenameMap) {
     this.renamesInv = renamesInv;
-    console.log('canRename', plan, renamesInv);
     return plan.accept(this.vmap);
   }
 
@@ -55,12 +54,10 @@ export class AttributeRenameChecker implements LogicalPlanVisitor<boolean> {
     for (const v of vertical) {
       if (!(v instanceof ASTIdentifier)) {
         if (!v.accept(this.vmap)) {
-          console.log('checkVerticalArray failed', v);
           return false;
         }
       }
     }
-    console.log('checkVerticalArray ok');
     return true;
   }
 

@@ -39,6 +39,24 @@ export function difference(a: IdSet, ...others: IdSet[]): IdSet {
   return result;
 }
 
+export function restriction(a: IdSet, b: IdSet | ASTIdentifier[]): IdSet {
+  const result = new Trie<string | symbol>();
+  if (Array.isArray(b)) {
+    for (const id of b) {
+      if (a.has(id.parts)) {
+        result.add(id.parts);
+      }
+    }
+  } else {
+    for (const id of b) {
+      if (a.has(id)) {
+        result.add(id);
+      }
+    }
+  }
+  return result;
+}
+
 export function containsAll(a: IdSet, b: IdSet | ASTIdentifier[]): boolean {
   if (Array.isArray(b)) {
     for (const id of b) {

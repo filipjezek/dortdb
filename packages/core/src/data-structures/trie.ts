@@ -1,6 +1,9 @@
+import { cloneDeep } from 'lodash-es';
+
 const SENTINEL = Symbol('SENTINEL');
 
 type TrieInner<T, U> = Map<T, TrieInner<T, U>> & Map<typeof SENTINEL, U | true>;
+
 export class Trie<T, U = true> {
   private root: TrieInner<T, U> = new Map();
   public get size(): number {
@@ -60,7 +63,7 @@ export class Trie<T, U = true> {
     }
     return lvl.has(SENTINEL);
   }
-  public get(parts: T[]): U | true | undefined {
+  public get(parts: T[]): U | undefined {
     let lvl = this.root;
     for (const part of parts) {
       if (!lvl.has(part)) {
@@ -68,7 +71,7 @@ export class Trie<T, U = true> {
       }
       lvl = lvl.get(part) as TrieInner<T, U>;
     }
-    return lvl.get(SENTINEL);
+    return lvl.get(SENTINEL) as U;
   }
 
   public delete(parts: T[]): boolean {
@@ -123,7 +126,7 @@ export class Trie<T, U = true> {
     yield* this.iterTrieInner(lvl, prefix);
   }
 
-  public *entries(prefix: T[] = []): IterableIterator<[T[], U | true]> {
+  public *entries(prefix: T[] = []): IterableIterator<[T[], U]> {
     let lvl = this.root;
     for (const key of prefix) {
       if (!lvl.has(key)) {
@@ -149,13 +152,35 @@ export class Trie<T, U = true> {
   private *iterTrieInnerEntries(
     lvl: TrieInner<T, U>,
     path: T[],
-  ): IterableIterator<[T[], U | true]> {
+  ): IterableIterator<[T[], U]> {
     for (const [key, next] of lvl) {
       if (key === SENTINEL) {
-        yield [path, lvl.get(SENTINEL) as U | true];
+        yield [path, lvl.get(SENTINEL) as U];
       } else if (next) {
         yield* this.iterTrieInnerEntries(next, path.concat(key));
       }
     }
+  }
+
+  public clone(deep = false): Trie<T, U> {
+    const clonedRoot = deep
+      ? cloneDeep(this.root)
+      : this.shallowClone(this.root);
+    const clonedTrie = new Trie<T, U>();
+    clonedTrie.root = clonedRoot;
+    clonedTrie._size = this._size;
+    return clonedTrie;
+  }
+
+  private shallowClone(map: TrieInner<T, U>): TrieInner<T, U> {
+    const clonedMap: TrieInner<T, U> = new Map();
+    for (const [key, value] of map) {
+      if (key === SENTINEL) {
+        clonedMap.set(key, value);
+      } else {
+        clonedMap.set(key, this.shallowClone(value));
+      }
+    }
+    return clonedMap;
   }
 }

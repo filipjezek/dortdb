@@ -69,7 +69,7 @@ export class Optimizer {
       operator.schema === operator.parent.schema
     ) {
       operator.parent.schema = operator.schema.slice();
-      operator.parent.schemaSet = union(operator.schemaSet);
+      operator.parent.schemaSet = operator.schemaSet.clone();
     }
     for (const child of operator.getChildren()) {
       this.breakReferences(child);

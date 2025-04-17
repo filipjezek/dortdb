@@ -15,6 +15,7 @@ export type RenameMap = Trie<string | symbol, (string | symbol)[]>;
 
 export class Projection extends LogicalPlanTupleOperator {
   public renames: RenameMap = new Trie();
+  public renamesInv: RenameMap = new Trie();
 
   constructor(
     lang: Lowercase<string>,
@@ -30,6 +31,7 @@ export class Projection extends LogicalPlanTupleOperator {
     for (const [attr, alias] of this.attrs) {
       if (attr instanceof ASTIdentifier) {
         this.renames.set(attr.parts, alias.parts);
+        this.renamesInv.set(alias.parts, attr.parts);
         this.dependencies.add(attr.parts);
       }
     }

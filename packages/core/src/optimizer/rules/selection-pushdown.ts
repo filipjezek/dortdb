@@ -1,3 +1,4 @@
+import { cloneDeep } from 'lodash-es';
 import { ASTIdentifier } from '../../ast.js';
 import { Trie } from '../../data-structures/trie.js';
 import { DortDBAsFriend } from '../../db.js';
@@ -18,8 +19,17 @@ import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
 } from '../../plan/visitor.js';
-import { areDepsOnlyRenamed } from '../../utils/projection.js';
-import { containsAll, difference, invert, union } from '../../utils/trie.js';
+import {
+  areDepsOnlyRenamed,
+  RenamedDepsResult,
+} from '../../utils/projection.js';
+import {
+  containsAll,
+  difference,
+  invert,
+  restriction,
+  union,
+} from '../../utils/trie.js';
 import { AttributeRenameChecker } from '../../visitors/attribute-rename-checker.js';
 import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
@@ -99,7 +109,7 @@ export class PushdownSelections
   protected matchJoins(bindings: PushdownSelectionsBindings) {
     const src = bindings.source as CartesianProduct;
     for (const s of bindings.selections) {
-      const tdeps = difference(src.schemaSet, this.getSelectionDeps(s));
+      const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
       if (
         containsAll(src.left.schemaSet, tdeps) ||
         containsAll(src.right.schemaSet, tdeps)
@@ -112,7 +122,7 @@ export class PushdownSelections
   protected matchProjectionConcat(bindings: PushdownSelectionsBindings) {
     const src = bindings.source as ProjectionConcat;
     for (const s of bindings.selections) {
-      const tdeps = difference(src.schemaSet, this.getSelectionDeps(s));
+      const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
       if (
         containsAll(src.source.schemaSet, tdeps) ||
         containsAll(src.mapping.schemaSet, tdeps)
@@ -124,15 +134,7 @@ export class PushdownSelections
   }
   protected matchProjection(bindings: PushdownSelectionsBindings) {
     for (const s of bindings.selections) {
-      const tdeps = this.getSelectionDeps(s);
-      if (
-        areDepsOnlyRenamed(tdeps, bindings.source as Projection) &&
-        (s.condition instanceof ASTIdentifier ||
-          this.renameCheckerVmap[s.condition.lang].canRename(
-            s.condition,
-            (bindings.source as Projection).renames,
-          ))
-      ) {
+      if (this.checkProjection(s, bindings.source as Projection)) {
         return { bindings };
       }
     }
@@ -213,22 +215,14 @@ export class PushdownSelections
   protected transformProjection(source: Projection, selections: Selection[]) {
     const canPushdown: Selection[] = [];
     const mustStay: Selection[] = [];
+    const toRename = new Set<Selection>();
     for (const s of selections) {
-      const tdeps = this.getSelectionDeps(s);
-      if (
-        areDepsOnlyRenamed(tdeps, source) &&
-        (s.condition instanceof ASTIdentifier ||
-          this.renameCheckerVmap[s.condition.lang].canRename(
-            s.condition,
-            source.renames,
-          ))
-      ) {
+      if (this.checkProjection(s, source, toRename)) {
         canPushdown.push(s);
       } else {
         mustStay.push(s);
       }
     }
-    const renamesInv = invert(source.renames);
 
     for (let i = 0; i < mustStay.length - 1; i++) {
       mustStay[i].source = mustStay[i + 1];
@@ -237,13 +231,28 @@ export class PushdownSelections
     for (let i = 0; i < canPushdown.length - 1; i++) {
       canPushdown[i].source = canPushdown[i + 1];
       canPushdown[i + 1].parent = canPushdown[i];
-      this.renamerVmap[canPushdown[i].lang].rename(canPushdown[i], renamesInv);
+      if (toRename.has(canPushdown[i])) {
+        this.renamerVmap[canPushdown[i].lang].rename(
+          canPushdown[i],
+          source.renamesInv,
+        );
+      }
     }
-    canPushdown[canPushdown.length - 1].source = source.source;
-    source.source.parent = canPushdown[canPushdown.length - 1];
+
+    for (const s of canPushdown) {
+      s.schema = source.source.schema.slice();
+      s.schemaSet = source.source.schemaSet.clone();
+    }
+
+    const lastCP = canPushdown[canPushdown.length - 1];
+    lastCP.source = source.source;
+    source.source.parent = lastCP;
     source.source = canPushdown[0];
     canPushdown[0].parent = source;
-    this.renamerVmap[canPushdown[0].lang].rename(canPushdown[0], renamesInv);
+    if (toRename.has(lastCP)) {
+      this.renamerVmap[lastCP.lang].rename(lastCP, source.renamesInv);
+    }
+
     if (mustStay.length) {
       mustStay[mustStay.length - 1].source = source;
       source.parent = mustStay[mustStay.length - 1];
@@ -258,7 +267,7 @@ export class PushdownSelections
     const rights: Selection[] = [];
     const stays: Selection[] = [];
     for (const s of selections) {
-      const tdeps = difference(source.schemaSet, this.getSelectionDeps(s));
+      const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
       if (containsAll(source.left.schemaSet, tdeps)) {
         lefts.push(s);
       } else if (containsAll(source.right.schemaSet, tdeps)) {
@@ -275,18 +284,8 @@ export class PushdownSelections
       }
     }
 
-    if (lefts.length) {
-      lefts[lefts.length - 1].source = source.left;
-      source.left.parent = lefts[lefts.length - 1];
-      source.left = lefts[0];
-      lefts[0].parent = source;
-    }
-    if (rights.length) {
-      rights[rights.length - 1].source = source.right;
-      source.right.parent = rights[rights.length - 1];
-      source.right = rights[0];
-      rights[0].parent = source;
-    }
+    this.pushSelectionsUnder(lefts, 'left', source);
+    this.pushSelectionsUnder(rights, 'right', source);
     if (stays.length) {
       stays[stays.length - 1].source = source;
       source.parent = stays[stays.length - 1];
@@ -304,7 +303,8 @@ export class PushdownSelections
     const verts: Selection[] = [];
     const stays: Selection[] = [];
     for (const s of selections) {
-      const tdeps = difference(source.schemaSet, this.getSelectionDeps(s));
+      const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
+      console.log(this.getSelectionDeps(s), source.schemaSet);
       if (containsAll(source.mapping.schemaSet, tdeps)) {
         horizs.push(s);
       } else if (containsAll(source.source.schemaSet, tdeps)) {
@@ -321,18 +321,8 @@ export class PushdownSelections
       }
     }
 
-    if (horizs.length) {
-      horizs[horizs.length - 1].source = source.mapping;
-      source.mapping.parent = horizs[horizs.length - 1];
-      source.mapping = horizs[0];
-      horizs[0].parent = source;
-    }
-    if (verts.length) {
-      verts[verts.length - 1].source = source.source;
-      source.source.parent = verts[verts.length - 1];
-      source.source = verts[0];
-      verts[0].parent = source;
-    }
+    this.pushSelectionsUnder(horizs, 'mapping', source);
+    this.pushSelectionsUnder(verts, 'source', source);
     if (stays.length) {
       stays[stays.length - 1].source = source;
       source.parent = stays[stays.length - 1];
@@ -342,16 +332,50 @@ export class PushdownSelections
     }
   }
 
-  protected cloneSelections(selections: Selection[]) {
+  protected cloneSelections(selections: Selection[]): Selection[] {
     return selections.map((s) => {
-      const clone = new Selection(
-        s.lang,
-        structuredClone(s.condition),
-        s.source,
-      );
+      const clone = new Selection(s.lang, cloneDeep(s.condition), s.source);
       clone.schema = clone.schema.slice();
-      clone.schemaSet = union(clone.schemaSet);
+      clone.schemaSet = clone.schemaSet.clone();
       return clone;
     });
+  }
+
+  protected checkProjection(
+    s: Selection,
+    p: Projection,
+    toRenameContainer?: Set<Selection>,
+  ): boolean {
+    const tdeps = this.getSelectionDeps(s);
+    const areRenamed = areDepsOnlyRenamed(tdeps, p);
+    if (areRenamed === RenamedDepsResult.modified) return false;
+    if (areRenamed === RenamedDepsResult.unchanged) return true;
+
+    if (
+      s.condition instanceof ASTIdentifier ||
+      this.renameCheckerVmap[s.condition.lang].canRename(s.condition, p.renames)
+    ) {
+      if (toRenameContainer) {
+        toRenameContainer.add(s);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  protected pushSelectionsUnder<
+    Key extends string,
+    Op extends LogicalPlanTupleOperator & Record<Key, LogicalPlanTupleOperator>,
+  >(selections: Selection[], key: Key, source: Op): void {
+    if (selections.length) {
+      for (const s of selections) {
+        s.schema = source[key].schema.slice();
+        s.schemaSet = source[key].schemaSet.clone();
+      }
+      selections[selections.length - 1].source = source[key];
+      source[key].parent = selections[selections.length - 1];
+      source[key] = selections[0] as any;
+      selections[0].parent = source;
+    }
   }
 }
