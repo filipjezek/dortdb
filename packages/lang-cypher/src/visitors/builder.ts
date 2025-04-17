@@ -28,7 +28,12 @@ import { CypherLanguage } from '../language/language.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { isEqual, isMatch } from 'lodash-es';
 import { ret1, toPair } from '@dortdb/core/internal-fns';
-import { assertCalcLiteral, schemaToTrie, union } from '@dortdb/core/utils';
+import {
+  assertCalcLiteral,
+  exprToSelection,
+  schemaToTrie,
+  union,
+} from '@dortdb/core/utils';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [
@@ -210,7 +215,12 @@ export class CypherLogicalPlanBuilder
       );
     }
     if (node.where) {
-      res = new plan.Selection('cypher', this.toCalc(node.where, args), res);
+      res = exprToSelection(
+        this.processNode(node.where, args),
+        res,
+        this.calcBuilders,
+        'cypher',
+      );
     }
     return res;
   }
@@ -735,10 +745,14 @@ export class CypherLogicalPlanBuilder
       res = this.visitPatternElChain(node.pattern[i], { ...args, src: res });
     }
     if (node.where) {
-      res = new plan.Selection(
-        'cypher',
-        this.toCalc(node.where, { ...args, ctx: union(args.ctx, res.schema) }),
+      res = exprToSelection(
+        this.processNode(node.where, {
+          ...args,
+          ctx: union(args.ctx, res.schema),
+        }),
         res,
+        this.calcBuilders,
+        'cypher',
       );
     }
     if (node.optional) {
@@ -933,13 +947,14 @@ export class CypherLogicalPlanBuilder
   ): LogicalPlanOperator {
     let res = this.visitProjectionBody(node.body, { ...args, append: true });
     if (node.where) {
-      res = new plan.Selection(
-        'cypher',
-        this.toCalc(node.where, {
+      res = exprToSelection(
+        this.processNode(node.where, {
           ...args,
           ctx: union(args.ctx, res.schemaSet),
         }),
         res,
+        this.calcBuilders,
+        'cypher',
       );
     }
     return res;

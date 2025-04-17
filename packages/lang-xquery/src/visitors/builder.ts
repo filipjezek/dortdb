@@ -29,7 +29,12 @@ import { treeStep } from '../language/tree-step.js';
 import { toBool } from '../castables/basic-types.js';
 import { ProjectionSize } from '../plan/projection-size.js';
 import { collect } from '@dortdb/core/aggregates';
-import { resolveArgs, schemaToTrie, union } from '@dortdb/core/utils';
+import {
+  exprToSelection,
+  resolveArgs,
+  schemaToTrie,
+  union,
+} from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { FnContext } from '../functions/fn-context.js';
@@ -342,13 +347,14 @@ export class XQueryLogicalPlanBuilder
     node: AST.FLWORWhere,
     args: DescentArgs,
   ): LogicalPlanOperator {
-    return new plan.Selection(
-      'xquery',
-      this.toCalc(node.expr, {
+    return exprToSelection(
+      this.processNode(node.expr, {
         ctx: union(args.ctx, args.src.schemaSet),
         inferred: args.inferred,
       }),
       args.src,
+      this.calcBuilders,
+      'xquery',
     );
   }
 

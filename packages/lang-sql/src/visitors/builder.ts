@@ -25,7 +25,11 @@ import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { SchemaInferrer } from './schema-inferrer.js';
 import { Using } from '../plan/using.js';
 import { LangSwitch as PlanLangSwitch } from '../plan/langswitch.js';
-import { assertCalcLiteral, overrideSource } from '@dortdb/core/utils';
+import {
+  assertCalcLiteral,
+  exprToSelection,
+  overrideSource,
+} from '@dortdb/core/utils';
 import { ret1 } from '@dortdb/core/internal-fns';
 
 export const DEFAULT_COLUMN = toId('value');
@@ -359,13 +363,23 @@ export class SQLLogicalPlanBuilder
       throw new UnsupportedError('Window functions not supported');
     }
     if (node.where) {
-      op = new plan.Selection('sql', this.toCalc(node.where), op);
+      op = exprToSelection(
+        this.processNode(node.where),
+        op,
+        this.calcBuilders,
+        'sql',
+      );
     }
     if (aggregates.length) {
       op = this.visitGroupByClause(node.groupBy, op, aggregates);
     }
     if (node.having) {
-      op = new plan.Selection('sql', this.toCalc(node.having), op);
+      op = exprToSelection(
+        this.processNode(node.having),
+        op,
+        this.calcBuilders,
+        'sql',
+      );
     }
     op = new plan.Projection('sql', items, op);
     if (node.distinct) {
@@ -454,7 +468,12 @@ export class SQLLogicalPlanBuilder
       : new plan.CartesianProduct('sql', left, right);
 
     if (node.condition) {
-      op = new plan.Selection('sql', this.toCalc(node.condition), op);
+      op = exprToSelection(
+        this.processNode(node.condition),
+        op,
+        this.calcBuilders,
+        'sql',
+      );
     } else if (node.using) {
       if (!leftName)
         throw new Error('Using can be only used with two named relations');

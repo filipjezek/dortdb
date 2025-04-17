@@ -23,13 +23,7 @@ import {
   areDepsOnlyRenamed,
   RenamedDepsResult,
 } from '../../utils/projection.js';
-import {
-  containsAll,
-  difference,
-  invert,
-  restriction,
-  union,
-} from '../../utils/trie.js';
+import { containsAll, restriction } from '../../utils/trie.js';
 import { AttributeRenameChecker } from '../../visitors/attribute-rename-checker.js';
 import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
@@ -65,6 +59,7 @@ export class PushdownSelections
     this.renameCheckerVmap = this.db.langMgr.getVisitorMap(
       'attributeRenameChecker',
     );
+    this.cloneSelection = this.cloneSelection.bind(this);
   }
 
   public match(node: Selection) {
@@ -196,7 +191,7 @@ export class PushdownSelections
     last: Selection,
     selections: Selection[],
   ) {
-    const clones = this.cloneSelections(selections);
+    const clones = selections.map(this.cloneSelection);
     last.source = source.left;
     source.left.parent = last;
     source.left = first;
@@ -268,11 +263,18 @@ export class PushdownSelections
     const stays: Selection[] = [];
     for (const s of selections) {
       const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
+      let used = false;
       if (containsAll(source.left.schemaSet, tdeps)) {
         lefts.push(s);
-      } else if (containsAll(source.right.schemaSet, tdeps)) {
-        rights.push(s);
-      } else {
+        used = true;
+      }
+      if (containsAll(source.right.schemaSet, tdeps)) {
+        if (used) {
+          rights.push(this.cloneSelection(s));
+        } else {
+          rights.push(s);
+        }
+      } else if (!used) {
         stays.push(s);
       }
     }
@@ -303,13 +305,19 @@ export class PushdownSelections
     const verts: Selection[] = [];
     const stays: Selection[] = [];
     for (const s of selections) {
+      let used = false;
       const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
-      console.log(this.getSelectionDeps(s), source.schemaSet);
       if (containsAll(source.mapping.schemaSet, tdeps)) {
         horizs.push(s);
-      } else if (containsAll(source.source.schemaSet, tdeps)) {
-        verts.push(s);
-      } else {
+        used = true;
+      }
+      if (containsAll(source.source.schemaSet, tdeps)) {
+        if (used) {
+          verts.push(this.cloneSelection(s));
+        } else {
+          verts.push(s);
+        }
+      } else if (!used) {
         stays.push(s);
       }
     }
@@ -332,13 +340,11 @@ export class PushdownSelections
     }
   }
 
-  protected cloneSelections(selections: Selection[]): Selection[] {
-    return selections.map((s) => {
-      const clone = new Selection(s.lang, cloneDeep(s.condition), s.source);
-      clone.schema = clone.schema.slice();
-      clone.schemaSet = clone.schemaSet.clone();
-      return clone;
-    });
+  protected cloneSelection(s: Selection): Selection {
+    const clone = new Selection(s.lang, cloneDeep(s.condition), s.source);
+    clone.schema = clone.schema.slice();
+    clone.schemaSet = clone.schemaSet.clone();
+    return clone;
   }
 
   protected checkProjection(

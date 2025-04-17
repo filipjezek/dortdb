@@ -44,17 +44,19 @@ export class Optimizer {
   }
 
   private visitOperator(operator: LogicalPlanOperator, rule: PatternRule) {
+    console.log('Visiting operator', operator.constructor.name);
     if (operator.constructor === rule.operator) {
       const matchResult = rule.match(operator);
-      if (matchResult === null) return;
-      const parent = operator.parent;
-      const transformedOperator = rule.transform(
-        operator,
-        matchResult.bindings,
-      );
-      if (transformedOperator !== operator) {
-        parent.replaceChild(operator, transformedOperator);
-        operator = transformedOperator;
+      if (matchResult !== null) {
+        const parent = operator.parent;
+        const transformedOperator = rule.transform(
+          operator,
+          matchResult.bindings,
+        );
+        if (transformedOperator !== operator) {
+          parent.replaceChild(operator, transformedOperator);
+          operator = transformedOperator;
+        }
       }
     }
     for (const child of operator.getChildren()) {
