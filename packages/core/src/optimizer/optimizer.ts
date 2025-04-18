@@ -44,7 +44,6 @@ export class Optimizer {
   }
 
   private visitOperator(operator: LogicalPlanOperator, rule: PatternRule) {
-    console.log('Visiting operator', operator.constructor.name);
     if (operator.constructor === rule.operator) {
       const matchResult = rule.match(operator);
       if (matchResult !== null) {

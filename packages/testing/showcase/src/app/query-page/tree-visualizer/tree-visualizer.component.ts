@@ -15,6 +15,7 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { lsSyncForm } from '../../utils/ls-sync-form';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import * as d3 from 'd3';
 
 @Component({
   selector: 'dort-tree-visualizer',
@@ -34,22 +35,30 @@ export class TreeVisualizerComponent implements AfterViewInit {
   private static instances = 0;
   readonly id = TreeVisualizerComponent.instances++;
   private graphBuilder: GraphBuilder;
+  private zoom: d3.ZoomBehavior<Element, unknown>;
   form = new FormGroup({
     shadows: new FormControl(false),
     triangles: new FormControl(true),
   });
 
   plan = input<LogicalPlanOperator>();
-  fullSize = false;
 
   constructor() {
     lsSyncForm(`tree-visualizer-${this.id}-form`, this.form);
     effect(() => {
       const p = this.plan();
       if (p && this.graphBuilder) {
+        this.resetZoom();
         this.graphBuilder.drawTree(p);
       }
     });
+  }
+
+  private resetZoom() {
+    this.zoom.transform(
+      d3.select(this.svg().nativeElement.parentElement as Element),
+      d3.zoomIdentity,
+    );
   }
 
   ngAfterViewInit(): void {
@@ -59,6 +68,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
     if (this.plan()) {
       this.graphBuilder.drawTree(this.plan());
     }
+    this.zoom = this.initZoom();
   }
 
   saveImage(svgNode: SVGSVGElement) {
@@ -108,5 +118,22 @@ export class TreeVisualizerComponent implements AfterViewInit {
         cancelable: true,
       }),
     );
+  }
+
+  private initZoom() {
+    const zoom = d3
+      .zoom()
+      .scaleExtent([1, Infinity])
+      .on('zoom', (e: d3.D3ZoomEvent<Element, unknown>) => {
+        this.svg().nativeElement.setAttribute(
+          'transform',
+          e.transform.toString(),
+        );
+      });
+    const zoomContainer = d3.select(
+      this.svg().nativeElement.parentElement as Element,
+    );
+    zoomContainer.call(zoom);
+    return zoom;
   }
 }

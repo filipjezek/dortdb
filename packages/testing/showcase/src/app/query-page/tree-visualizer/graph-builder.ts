@@ -23,9 +23,6 @@ const langColors: Record<string, string> = {
 function sum(args: number[]) {
   return args.reduce((a, b) => a + b, 0);
 }
-const PADDING = 8;
-const STROKE = 1;
-const CHILD_OFFSET = 30;
 
 interface Branch {
   el: SVGGElement;
@@ -38,6 +35,10 @@ export class GraphBuilder
     LogicalPlanVisitor<SVGGElement>,
     XQueryLogicalPlanVisitor<SVGGElement>
 {
+  public static readonly STROKE = 1;
+  public static readonly PADDING = 8;
+  public static readonly CHILD_OFFSET = 30;
+
   private readonly drawingContainer: SVGGElement;
   private readonly textContainer = document.createElement('p');
   public readonly cssVariables: ReadonlySet<string>;
@@ -70,7 +71,7 @@ export class GraphBuilder
           }
         }
         svg * {
-          stroke-width: ${STROKE * 2}px;
+          stroke-width: ${GraphBuilder.STROKE * 2}px;
           paint-order: stroke;
           font-family: Georgia, Times, 'Times New Roman', serif;
           font-size: 15px;
@@ -180,17 +181,17 @@ export class GraphBuilder
     foEl.setAttribute('height', textBBox.height + '');
     foEl.setAttribute(
       'y',
-      (textBBox.height - textBBox.height) / 2 + PADDING + '',
+      (textBBox.height - textBBox.height) / 2 + GraphBuilder.PADDING + '',
     );
     foEl.setAttribute(
       'x',
-      (textBBox.width - textBBox.width) / 2 + PADDING + '',
+      (textBBox.width - textBBox.width) / 2 + GraphBuilder.PADDING + '',
     );
 
     const result = this.markup<SVGGElement>(`
     <g style="--lang-color: ${langColors[operator.lang]}">
-      <rect width="${textBBox.width + PADDING * 2}" height="${
-        textBBox.height + PADDING * 2
+      <rect width="${textBBox.width + GraphBuilder.PADDING * 2}" height="${
+        textBBox.height + GraphBuilder.PADDING * 2
       }" />
       <polygon points="0,0 0,10 10,0" />
     </g>
@@ -249,14 +250,17 @@ export class GraphBuilder
     this.drawingContainer.innerHTML = '';
     root.setAttribute(
       'transform',
-      `translate(${STROKE + PADDING}, ${STROKE + PADDING})`,
+      `translate(${GraphBuilder.STROKE + GraphBuilder.PADDING}, ${GraphBuilder.STROKE + GraphBuilder.PADDING})`,
     );
     this.container.appendChild(root);
     const bbox = root.getBBox();
-    this._width = bbox.width + STROKE * 2 + PADDING * 2;
-    this._height = bbox.height + STROKE * 2 + PADDING * 2;
+    this._width =
+      bbox.width + GraphBuilder.STROKE * 2 + GraphBuilder.PADDING * 2;
+    this._height =
+      bbox.height + GraphBuilder.STROKE * 2 + GraphBuilder.PADDING * 2;
     this.container.setAttribute('viewBox', `0 0 ${this.width} ${this.height}`);
     this.container.setAttribute('width', this.width + '');
+    this.container.style.aspectRatio = `${this.width} / ${this.height}`;
   }
 
   private drawBranches(parent: SVGGraphicsElement, ...branches: Branch[]) {
@@ -265,7 +269,8 @@ export class GraphBuilder
     const parentBBox = parent.getBoundingClientRect();
     const bboxes = branches.map((b) => b.el.getBBox());
     const childrenWidth =
-      sum(bboxes.map((b) => b.width + PADDING * 2)) - 2 * PADDING;
+      sum(bboxes.map((b) => b.width + GraphBuilder.PADDING * 2)) -
+      2 * GraphBuilder.PADDING;
     const totalWidth = Math.max(childrenWidth, parentBBox.width);
 
     parent.setAttribute(
@@ -277,7 +282,7 @@ export class GraphBuilder
     for (let i = 0; i < branches.length; i++) {
       branches[i].el.setAttribute(
         'transform',
-        `translate(${x}, ${parentBBox.height + CHILD_OFFSET})`,
+        `translate(${x}, ${parentBBox.height + GraphBuilder.CHILD_OFFSET})`,
       );
 
       const edge = this.drawEdge(
@@ -293,7 +298,7 @@ export class GraphBuilder
       } else {
         g.prepend(edge);
       }
-      x += bboxes[i].width + PADDING * 2;
+      x += bboxes[i].width + GraphBuilder.PADDING * 2;
     }
     return g;
   }
@@ -312,13 +317,13 @@ export class GraphBuilder
         x1="${srcBBox.x - parent.x + srcBBox.width / 2}"
         y1="${srcBBox.y - parent.y + srcBBox.height}"
         x2="${x + bbox.width / 2}"
-        y2="${parent.height + CHILD_OFFSET}"
+        y2="${parent.height + GraphBuilder.CHILD_OFFSET}"
       ></line>`
         : `<line
         x1="${totalWidth / 2}"
         y1="${parent.height / 2}"
         x2="${x + bbox.width / 2}"
-        y2="${parent.height + CHILD_OFFSET}"
+        y2="${parent.height + GraphBuilder.CHILD_OFFSET}"
       ></line>`,
     );
     if (edgeType) {
@@ -518,15 +523,18 @@ export class GraphBuilder
         ),
       })),
     );
-    parent.setAttribute('transform', `translate(${PADDING}, ${PADDING})`);
+    parent.setAttribute(
+      'transform',
+      `translate(${GraphBuilder.PADDING}, ${GraphBuilder.PADDING})`,
+    );
     this.drawingContainer.appendChild(parent);
     const bbox = parent.getBBox();
     const groupbyWrapper = this
       .markup<SVGGElement>(`<g style="--lang-color: ${langColors[operator.lang]}"><rect
       x="0"
       y="0"
-      width="${bbox.width + PADDING * 2}"
-      height="${bbox.height + PADDING * 2}"
+      width="${bbox.width + GraphBuilder.PADDING * 2}"
+      height="${bbox.height + GraphBuilder.PADDING * 2}"
     ></rect><polygon points="0,0 0,10 10,0" /></g>`);
     groupbyWrapper.appendChild(parent);
 

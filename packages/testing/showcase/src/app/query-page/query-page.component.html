@@ -11,7 +11,9 @@
             <mat-option value="cypher">Cypher</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-checkbox formControlName="optimizer">Optimizer</mat-checkbox>
+        <mat-checkbox formControlName="optimizerSettings"
+          >Optimizer settings</mat-checkbox
+        >
         <button type="button" mat-stroked-button (click)="openSamples()">
           Examples
         </button>
@@ -48,31 +50,35 @@
     </mat-card-content>
   </mat-card>
 }
-@if (form.value.optimizer) {
-  <mat-card appearance="outlined" @fade>
-    <mat-card-content>
-      <form [formGroup]="optimizerOptions" class="optimizer-options">
-        <mat-checkbox formControlName="pushdown"
-          >Projection and selection pushdown</mat-checkbox
-        >
-        <mat-checkbox formControlName="duplicates"
-          >Merge operators when possible</mat-checkbox
-        >
-      </form>
-    </mat-card-content>
-  </mat-card>
-}
-@if (plan) {
-  <mat-card appearance="outlined">
-    <mat-card-content>
-      <dort-tree-visualizer [plan]="plan" />
-    </mat-card-content>
-  </mat-card>
-}
-@if (output) {
-  <mat-card appearance="outlined">
-    <mat-card-content>
-      <dort-ds-table [keys]="output.schema" [src]="output.data"></dort-ds-table>
-    </mat-card-content>
-  </mat-card>
-}
+<div class="row">
+  @if (plan) {
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <dort-tree-visualizer [plan]="plan" />
+      </mat-card-content>
+    </mat-card>
+  }
+  @if (output) {
+    <mat-card appearance="outlined">
+      <mat-card-content>
+        <dort-ds-table
+          [keys]="output.schema"
+          [src]="output.data"
+        ></dort-ds-table>
+      </mat-card-content>
+    </mat-card>
+  }
+  @if (form.value.optimizerSettings) {
+    <mat-card appearance="outlined" @fade class="optimizer-settings">
+      <mat-card-header>
+        <mat-card-title>Optimizer settings</mat-card-title>
+      </mat-card-header>
+      <mat-card-content [formGroup]="optimizerOptions">
+        <mat-checkbox formControlName="enabled">Enabled</mat-checkbox>
+        <dort-optimizer-list
+          formControlName="optimizations"
+        ></dort-optimizer-list>
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

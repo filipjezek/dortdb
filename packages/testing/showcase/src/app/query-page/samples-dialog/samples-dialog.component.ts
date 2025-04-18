@@ -93,13 +93,13 @@ return $address`,
       name: 'Example from the "A Complete and Efficient Algebraic Compiler for XQuery" paper',
       tags: [],
       query: `for $p in $auction//person
-      let $a :=
-        for $t in $auction//closed_auction
-        where $t/buyer/@person = $p/@id
-        return $t
-      return <item person="{ $p/name }">
-        { fn:count($a) }
-      </item>`,
+let $a :=
+  for $t in $auction//closed_auction
+  where $t/buyer/@person = $p/@id
+  return $t
+return <item person="{ $p/name }">
+  { fn:count($a) }
+</item>`,
     },
   ];
   private preparedQueries = this.queries.map((query) => ({

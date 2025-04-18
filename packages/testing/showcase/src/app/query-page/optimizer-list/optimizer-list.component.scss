@@ -1,0 +1,10 @@
+mat-list-option {
+  background-color: var(--mat-sys-surface);
+
+  &.cdk-drag-placeholder {
+    visibility: hidden;
+  }
+}
+h3 {
+  font-weight: normal;
+}

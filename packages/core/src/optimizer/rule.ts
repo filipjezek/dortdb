@@ -10,8 +10,8 @@ export interface PatternRule<
   U = any,
 > {
   operator: new (...args: any[]) => T;
-  match: (node: T) => PatternRuleMatchResult<U> | null;
-  transform: (node: T, bindings: U) => LogicalPlanOperator;
+  match(node: T): PatternRuleMatchResult<U> | null;
+  transform(node: T, bindings: U): LogicalPlanOperator;
 }
 
 export interface PatternRuleConstructor<T extends PatternRule = PatternRule> {

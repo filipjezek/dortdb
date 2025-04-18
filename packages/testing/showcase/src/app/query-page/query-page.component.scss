@@ -54,8 +54,27 @@ mat-card {
   margin: 16px;
 }
 
-.optimizer-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
-  gap: 10px;
+.optimizer-settings {
+  width: 340px;
+  margin-left: auto;
+  flex-shrink: 0;
+
+  mat-checkbox {
+    margin-top: 15px;
+  }
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+
+  & > mat-card {
+    margin-top: 0;
+
+    &:not(.optimizer-settings) {
+      min-width: 0;
+      flex-basis: 100%;
+    }
+  }
 }

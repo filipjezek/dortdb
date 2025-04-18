@@ -1,14 +1,12 @@
 svg {
   display: block;
   margin: 10px auto;
-
-  &:not(.full-size) {
-    max-width: 100%;
-  }
+  transform-origin: 0 0;
+  max-width: 100%;
 }
 
-.scroll-container {
-  overflow: auto;
+.zoom-container {
+  overflow: hidden;
   max-width: 100%;
 }
 

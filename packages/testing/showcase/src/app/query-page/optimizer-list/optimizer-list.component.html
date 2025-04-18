@@ -1,0 +1,15 @@
+<h3>Optimizations</h3>
+<mat-selection-list cdkDropList (cdkDropListDropped)="handleDragDrop($event)">
+  @for (item of items(); track item.value) {
+    <mat-list-option
+      [selected]="item.enabled"
+      (selectedChange)="handleCheckbox(item, $event)"
+      cdkDrag
+      cdkDragBoundary="mat-selection-list"
+      [attr.title]="item.name"
+    >
+      <mat-icon matListItemIcon cdkDragHandle title="Reorder">reorder</mat-icon>
+      {{ item.name }}
+    </mat-list-option>
+  }
+</mat-selection-list>

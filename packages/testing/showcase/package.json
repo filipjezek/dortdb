@@ -25,10 +25,12 @@
     "@angular/platform-browser-dynamic": "^19.1.6",
     "@angular/router": "^19.1.6",
     "@swc/helpers": "^0.5.15",
+    "d3": "^7.9.0",
     "fuzzysort": "^3.1.0",
     "prismjs": "^1.30.0"
   },
   "devDependencies": {
+    "@types/d3": "^7.4.3",
     "@types/prismjs": "^1.26.5"
   }
 }

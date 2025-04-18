@@ -1,5 +1,11 @@
-import { transition, trigger, useAnimation } from '@angular/animations';
-import { CommonModule } from '@angular/common';
+import {
+  animate,
+  query,
+  style,
+  transition,
+  trigger,
+} from '@angular/animations';
+import { CommonModule, ViewportScroller } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -18,35 +24,28 @@ import { DortDB, LogicalPlanOperator, QueryResult } from '@dortdb/core';
 import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
-import { combineLatest, startWith } from 'rxjs';
-import { dropdownIn, dropdownOut } from '../animations';
+import { startWith } from 'rxjs';
 import { lsSyncForm } from '../utils/ls-sync-form';
 import { DataSourcesDialogComponent } from './data-sources-dialog/data-sources-dialog.component';
 import { DsTableComponent } from './ds-table/ds-table.component';
 import { History } from './history';
 import { HistoryDialogComponent } from './history-dialog/history-dialog.component';
-import { optimizedPlan } from './optimized-plan';
-import { optimizedPlanCrossmodel } from './optimized-plan-crossmodel';
 import {
   Sample,
   SamplesDialogComponent,
 } from './samples-dialog/samples-dialog.component';
 import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.component';
 import {
-  addresses,
-  customers,
-  customersGraph,
-  feedback,
-  invoices,
-  orders,
-} from './data-sources';
-import {
   mergeFromToItems,
   mergeToFromItems,
-  PatternRule,
-  PatternRuleConstructor,
+  ProjConcatToJoin,
   PushdownSelections,
+  removeEmptyProjConcat,
 } from '@dortdb/core/optimizer';
+import {
+  OptimizerListComponent,
+  OptimizerListItem,
+} from './optimizer-list/optimizer-list.component';
 
 @Component({
   selector: 'dort-query-page',
@@ -61,14 +60,28 @@ import {
     MatCardModule,
     MatCheckbox,
     DsTableComponent,
+    OptimizerListComponent,
   ],
   templateUrl: './query-page.component.html',
   styleUrl: './query-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
     trigger('fade', [
-      transition(':enter', useAnimation(dropdownIn)),
-      transition(':leave', useAnimation(dropdownOut)),
+      transition(':enter', [
+        style({ width: 0, overflow: 'hidden' }),
+        query(':scope > *', style({ opacity: 0 })),
+        animate('0.15s ease-out', style({ width: '*' })),
+        query(
+          ':scope > *',
+          animate('0.25s ease-in-out', style({ opacity: 1 })),
+        ),
+      ]),
+      transition(':leave', [
+        style({ width: '*' }),
+        query(':scope > *', animate('0.05s ease-in', style({ opacity: 0 }))),
+        query(':scope > *', style({ opacity: 0 })),
+        animate('0.05s 0.05s ease-in', style({ width: 0 })),
+      ]),
     ]),
   ],
 })
@@ -82,10 +95,29 @@ export class QueryPageComponent {
   });
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
+  private allOptimizations: OptimizerListItem[] = [
+    { name: 'merge to-from items', value: mergeToFromItems, enabled: true },
+    { name: 'merge from-to items', value: mergeFromToItems, enabled: true },
+    {
+      name: 'pushdown selections',
+      value: PushdownSelections,
+      enabled: true,
+    },
+    {
+      name: 'remove empty projection concat',
+      value: removeEmptyProjConcat,
+      enabled: true,
+    },
+    {
+      name: 'projection concat to join',
+      value: ProjConcatToJoin,
+      enabled: true,
+    },
+  ];
 
   optimizerOptions = new FormGroup({
-    pushdown: new FormControl(true),
-    duplicates: new FormControl(true),
+    enabled: new FormControl(false),
+    optimizations: new FormControl(this.allOptimizations),
   });
   form = new FormGroup({
     lang: new FormControl<'sql' | 'xquery' | 'cypher'>('sql'),
@@ -93,55 +125,32 @@ export class QueryPageComponent {
     dataSources: new FormGroup({
       defaultGraph: new FormControl(true),
     }),
-    optimizer: new FormControl(false),
-    optimizerOptions: this.optimizerOptions,
+    optimizerSettings: new FormControl(false),
   });
   plan: LogicalPlanOperator;
   output: QueryResult;
   error: Error;
 
   constructor() {
-    this.registerSources();
-
     lsSyncForm('query-page-form', this.form);
-    combineLatest([
-      this.optimizerOptions.valueChanges.pipe(
-        startWith(this.optimizerOptions.value),
-      ),
-      this.form
-        .get('optimizer')
-        .valueChanges.pipe(startWith(this.form.get('optimizer').value)),
-    ])
-      .pipe(takeUntilDestroyed())
-      .subscribe(([options, enabled]) => {
-        const rules: (PatternRule<any> | PatternRuleConstructor<any>)[] = [];
-        if (enabled) {
-          if (options.duplicates) {
-            rules.push(mergeToFromItems, mergeFromToItems);
-          }
-          if (options.pushdown) {
-            rules.push(PushdownSelections);
-          }
+    this.optimizerOptions.valueChanges
+      .pipe(startWith(this.optimizerOptions.value), takeUntilDestroyed())
+      .subscribe((options) => {
+        if (options.enabled) {
+          this.db.optimizer.reconfigure({
+            rules: options.optimizations
+              .filter((x) => x.enabled)
+              .map((x) => x.value),
+          });
+        } else {
+          this.db.optimizer.reconfigure({ rules: [] });
         }
-        this.db.optimizer.reconfigure({
-          rules,
-        });
       });
-  }
-
-  private registerSources() {
-    this.db.registerSource(['defaultGraph'], customersGraph);
-    this.db.registerSource(['customers'], customers);
-    this.db.registerSource(['addresses'], addresses);
-    this.db.registerSource(['orders'], orders);
-    this.db.registerSource(['feedback'], feedback);
-    this.db.registerSource(['invoices'], invoices);
   }
 
   parse() {
     const formVal = this.form.value;
     this.error = null;
-    this.plan = null;
     this.output = null;
     this.queryHistory.push(formVal.query);
     try {
@@ -154,6 +163,7 @@ export class QueryPageComponent {
       });
       console.log(this.plan);
     } catch (err) {
+      this.plan = null;
       this.error = err as Error;
       console.error(err);
     }
