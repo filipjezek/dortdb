@@ -10,9 +10,17 @@ export class XQueryCalculationBuilder
   implements XQueryLogicalPlanVisitor<CalculationParams>
 {
   visitTreeJoin(operator: TreeJoin): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitProjectionSize(operator: ProjectionSize): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
 }

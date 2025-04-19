@@ -1,6 +1,5 @@
 import { ret1, ret2 } from '../internal-fns/index.js';
 import { ASTIdentifier } from '../ast.js';
-import { LanguageManager } from '../lang-manager.js';
 import * as operators from '../plan/operators/index.js';
 import {
   LogicalOpOrId,
@@ -9,13 +8,22 @@ import {
 } from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
 import { DortDBAsFriend } from '../db.js';
+import { isEqual } from 'lodash-es';
+import { or } from '../operators/logical.js';
 
-export type CalculationParams = {
+export interface ArgMeta {
+  maybeSkipped?: boolean;
+  containingFn?: operators.AggregateCall;
+  usedMultipleTimes?: boolean;
+  acceptSequence?: boolean;
+}
+export interface CalculationParams {
   args: LogicalOpOrId[];
   impl: (...args: any[]) => unknown;
+  argMeta: (ArgMeta | undefined)[];
   literal?: boolean;
   aggregates?: operators.AggregateCall[];
-};
+}
 
 // avoid creating a new function every time
 
@@ -31,6 +39,9 @@ function getArgs(a: CalculationParams | ASTIdentifier) {
 function getAggrs(a: CalculationParams | ASTIdentifier) {
   return (a instanceof ASTIdentifier ? null : a.aggregates) ?? [];
 }
+function getMetas(a: CalculationParams | ASTIdentifier) {
+  return a instanceof ASTIdentifier ? [undefined] : a.argMeta;
+}
 function getWhenThenArgs(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
 ) {
@@ -40,6 +51,11 @@ function getWhenThenAggrs(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
 ) {
   return [getAggrs(a[0]), getAggrs(a[1])];
+}
+function getWhenThenMetas(
+  a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
+) {
+  return [getMetas(a[0]), getMetas(a[1])];
 }
 function* cartesian(iters: Iterable<unknown>[]): Iterable<unknown[]> {
   if (iters.length === 0) {
@@ -73,6 +89,68 @@ function getQuantifierIndices(
     );
 }
 
+function areEqual(
+  a: LogicalOpOrId,
+  aMeta: ArgMeta | undefined,
+  b: LogicalOpOrId,
+  bMeta: ArgMeta | undefined,
+) {
+  if (a instanceof ASTIdentifier || b instanceof ASTIdentifier) {
+    return (
+      a instanceof ASTIdentifier && b instanceof ASTIdentifier && a.equals(b)
+    );
+  }
+  if (aMeta?.containingFn || bMeta?.containingFn) {
+    return isEqual(a, b);
+  }
+  return isEqual(a, b);
+}
+
+export function simplifyCalcParams(
+  params: CalculationParams,
+): CalculationParams {
+  const uniqueArgs: LogicalOpOrId[] = [params.args[0]];
+  const argMeta: (ArgMeta | undefined)[] = [params.argMeta[0]];
+  const indexes: number[] = [0];
+  outer: for (let i = 1; i < params.args.length; i++) {
+    for (let j = 0; j < i; j++) {
+      if (
+        areEqual(params.args[i], params.argMeta[i], uniqueArgs[j], argMeta[j])
+      ) {
+        indexes.push(j);
+        if (params.argMeta[i]) {
+          argMeta[j].maybeSkipped &&= params.argMeta[i].maybeSkipped;
+          argMeta[j].usedMultipleTimes = true;
+        }
+        continue outer;
+      }
+    }
+    uniqueArgs.push(params.args[i]);
+    indexes.push(uniqueArgs.length - 1);
+    argMeta.push(params.argMeta[i]);
+  }
+
+  if (uniqueArgs.length === params.args.length) return params;
+  const ret: CalculationParams = {
+    args: uniqueArgs,
+    impl: (...args: unknown[]) => {
+      const mapped: unknown[] = [];
+      for (const i of indexes) {
+        mapped.push(args[i]);
+      }
+      return params.impl.apply(null, mapped);
+    },
+    argMeta,
+    literal: params.literal,
+  };
+  if (params.aggregates?.length) {
+    ret.aggregates = argMeta
+      .filter((a) => a?.containingFn instanceof operators.AggregateCall)
+      .map((a) => a.containingFn) as operators.AggregateCall[];
+  }
+  return ret;
+}
+
 export class CalculationBuilder
   implements LogicalPlanVisitor<CalculationParams>
 {
@@ -96,16 +174,28 @@ export class CalculationBuilder
   }
 
   visitProjection(operator: operators.Projection): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitSelection(operator: operators.Selection): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitTupleSource(operator: operators.TupleSource): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitItemSource(operator: operators.ItemSource): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne };
+    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
   }
 
   private processItem(item: LogicalOpOrId) {
@@ -157,7 +247,33 @@ export class CalculationBuilder
     const children = operator.args.map(this.processFnArg);
     if (operator.pure && children.every(isLit)) {
       const args = (children as CalculationParams[]).map(callImpl);
-      return { args: [], impl: () => operator.impl(...args), literal: true };
+      return {
+        args: [],
+        impl: () => operator.impl(...args),
+        literal: true,
+        argMeta: [],
+      };
+    }
+    const nestedMetas = children.map(getMetas);
+    for (let i = 0; i < nestedMetas.length; i++) {
+      if (
+        !(operator.args[i] instanceof ASTIdentifier) &&
+        !(
+          operators.CalcIntermediate in
+          (operator.args[i] as operators.PlanOpAsArg).op
+        )
+      ) {
+        nestedMetas[i][0].acceptSequence =
+          (operator.args[i] as operators.PlanOpAsArg).acceptSequence ?? false;
+      }
+    }
+    const metas = nestedMetas.flat();
+    if (operator.impl === or.impl) {
+      for (let i = nestedMetas[0].length; i < metas.length; i++) {
+        if (metas[i]) {
+          metas[i].maybeSkipped = true;
+        }
+      }
     }
 
     return {
@@ -168,14 +284,20 @@ export class CalculationBuilder
             const resolvedArgs = resolveArgs(args, children);
             return operator.impl(...resolvedArgs);
           },
+      argMeta: metas,
       aggregates: children.flatMap(getAggrs),
     };
   }
   visitLiteral(operator: operators.Literal<unknown>): CalculationParams {
-    return { args: [], impl: () => operator.value, literal: true };
+    return {
+      args: [],
+      impl: () => operator.value,
+      literal: true,
+      argMeta: [],
+    };
   }
   visitCalculation(operator: operators.Calculation): CalculationParams {
-    return { args: [operator], impl: ret1 };
+    return { args: [operator], impl: ret1, argMeta: [{}] };
   }
 
   private processWhenThen(item: [LogicalOpOrId, LogicalOpOrId]) {
@@ -190,59 +312,45 @@ export class CalculationBuilder
     const defaultCase =
       operator.defaultCase && this.processItem(operator.defaultCase);
     const args: (
-      | (ASTIdentifier | LogicalOpOrId[])[]
       | (ASTIdentifier | LogicalOpOrId[])
+      | (ASTIdentifier | LogicalOpOrId[])[]
     )[] = whenthens.map(getWhenThenArgs);
     const aggrs: (
       | operators.AggregateCall
       | operators.AggregateCall[]
       | operators.AggregateCall[][]
     )[] = whenthens.map(getWhenThenAggrs);
-    if (cond) {
-      args.unshift(getArgs(cond));
-      aggrs.push(getAggrs(cond));
-    }
+    const metas = whenthens.map(getWhenThenMetas).flat(2);
     if (defaultCase) {
       args.push(getArgs(defaultCase));
       aggrs.push(getAggrs(defaultCase));
+      metas.push(...getMetas(defaultCase));
+    }
+    for (const m of metas) {
+      if (m) {
+        m.maybeSkipped = true;
+      }
+    }
+    if (cond) {
+      args.unshift(getArgs(cond));
+      aggrs.push(getAggrs(cond));
+      metas.unshift(...getMetas(cond));
     }
 
     if ((cond as CalculationParams)?.literal) {
-      const resolvedCond = (cond as CalculationParams).impl();
-      let broken = false;
-      // try to compute during compilation
-      for (const [w, t] of whenthens) {
-        if ((w as CalculationParams).literal) {
-          if (resolvedCond === (w as CalculationParams).impl()) {
-            if ((t as CalculationParams).literal) {
-              return {
-                args: [],
-                impl: () => (t as CalculationParams).impl(),
-                literal: true,
-              };
-            }
-            broken = true;
-            break;
-          }
-        } else {
-          broken = true;
-          break;
-        }
-      }
-      if (
-        !broken &&
-        defaultCase &&
-        (defaultCase as CalculationParams).literal
-      ) {
-        return {
-          args: [],
-          impl: () => (defaultCase as CalculationParams).impl(),
-          literal: true,
-        };
+      const maybeProcessed = this.processLiteralConditional(
+        cond as CalculationParams,
+        whenthens,
+        defaultCase,
+      );
+      if (maybeProcessed) {
+        return maybeProcessed;
       }
     }
+
     return {
       args: args.flat(2),
+      argMeta: metas,
       impl: (...args: unknown[]) => {
         let i = 0;
         const resolve = (a: CalculationParams | ASTIdentifier) =>
@@ -266,33 +374,103 @@ export class CalculationBuilder
       aggregates: aggrs.flat(2),
     };
   }
+
+  private processLiteralConditional(
+    cond: CalculationParams,
+    whenthens: [
+      CalculationParams | ASTIdentifier,
+      CalculationParams | ASTIdentifier,
+    ][],
+    defaultCase?: ASTIdentifier | CalculationParams,
+  ): CalculationParams | null {
+    const resolvedCond = cond.impl();
+    let broken = false;
+    // try to compute during compilation
+    for (const [w, t] of whenthens) {
+      if ((w as CalculationParams).literal) {
+        if (resolvedCond === (w as CalculationParams).impl()) {
+          if ((t as CalculationParams).literal) {
+            return {
+              args: [],
+              impl: () => (t as CalculationParams).impl(),
+              literal: true,
+              argMeta: [],
+            };
+          }
+          broken = true;
+          break;
+        }
+      } else {
+        broken = true;
+        break;
+      }
+    }
+    if (!broken && defaultCase && (defaultCase as CalculationParams).literal) {
+      return {
+        args: [],
+        impl: () => (defaultCase as CalculationParams).impl(),
+        literal: true,
+        argMeta: [],
+      };
+    }
+    return null;
+  }
+
   visitCartesianProduct(
     operator: operators.CartesianProduct,
   ): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitJoin(operator: operators.Join): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitProjectionConcat(
     operator: operators.ProjectionConcat,
   ): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitMapToItem(operator: operators.MapToItem): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne };
+    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
   }
   visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitOrderBy(operator: operators.OrderBy): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitLimit(operator: operators.Limit): CalculationParams {
     return {
@@ -302,6 +480,7 @@ export class CalculationBuilder
           : operator,
       ],
       impl: this.assertMaxOne,
+      argMeta: [{}],
     };
   }
   visitUnion(operator: operators.Union): CalculationParams {
@@ -312,6 +491,7 @@ export class CalculationBuilder
           : operator,
       ],
       impl: this.assertMaxOne,
+      argMeta: [{}],
     };
   }
   visitIntersection(operator: operators.Intersection): CalculationParams {
@@ -322,6 +502,7 @@ export class CalculationBuilder
           : operator,
       ],
       impl: this.assertMaxOne,
+      argMeta: [{}],
     };
   }
   visitDifference(operator: operators.Difference): CalculationParams {
@@ -332,27 +513,45 @@ export class CalculationBuilder
           : operator,
       ],
       impl: this.assertMaxOne,
+      argMeta: [{}],
     };
   }
   visitDistinct(operator: operators.Distinct): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitNullSource(operator: operators.NullSource): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne };
+    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
   }
   visitAggregate(operator: operators.AggregateCall): CalculationParams {
-    return { args: [operator.fieldName], impl: ret1, aggregates: [operator] };
+    return {
+      args: [operator.fieldName],
+      impl: ret1,
+      aggregates: [operator],
+      argMeta: [{ containingFn: operator }],
+    };
   }
   visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne };
+    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
   }
   visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
     return operator.query.accept(this.vmap);
   }
   visitRecursion(operator: operators.Recursion): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
 }

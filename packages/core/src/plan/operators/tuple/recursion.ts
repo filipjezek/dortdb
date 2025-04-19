@@ -34,6 +34,7 @@ export class Recursion extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     if (current === this.condition) {
       this.condition = replacement as Calculation;
     } else {

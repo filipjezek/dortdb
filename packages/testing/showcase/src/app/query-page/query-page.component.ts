@@ -5,7 +5,7 @@ import {
   transition,
   trigger,
 } from '@angular/animations';
-import { CommonModule, ViewportScroller } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -41,6 +41,7 @@ import {
   ProjConcatToJoin,
   PushdownSelections,
   removeEmptyProjConcat,
+  UnnestSubqueries,
 } from '@dortdb/core/optimizer';
 import {
   OptimizerListComponent,
@@ -95,29 +96,38 @@ export class QueryPageComponent {
   });
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
-  private allOptimizations: OptimizerListItem[] = [
-    { name: 'merge to-from items', value: mergeToFromItems, enabled: true },
-    { name: 'merge from-to items', value: mergeFromToItems, enabled: true },
+  private allOptimizations = [
+    UnnestSubqueries,
+    mergeToFromItems,
+    mergeFromToItems,
+    PushdownSelections,
+    removeEmptyProjConcat,
+    ProjConcatToJoin,
+  ];
+  private ruleList: OptimizerListItem[] = [
+    { name: 'unnest subqueries', value: 0, enabled: true },
+    { name: 'merge to-from items', value: 1, enabled: true },
+    { name: 'merge from-to items', value: 2, enabled: true },
     {
       name: 'pushdown selections',
-      value: PushdownSelections,
+      value: 3,
       enabled: true,
     },
     {
       name: 'remove empty projection concat',
-      value: removeEmptyProjConcat,
+      value: 4,
       enabled: true,
     },
     {
       name: 'projection concat to join',
-      value: ProjConcatToJoin,
+      value: 5,
       enabled: true,
     },
   ];
 
   optimizerOptions = new FormGroup({
     enabled: new FormControl(false),
-    optimizations: new FormControl(this.allOptimizations),
+    optimizations: new FormControl(this.ruleList),
   });
   form = new FormGroup({
     lang: new FormControl<'sql' | 'xquery' | 'cypher'>('sql'),
@@ -126,6 +136,7 @@ export class QueryPageComponent {
       defaultGraph: new FormControl(true),
     }),
     optimizerSettings: new FormControl(false),
+    optimizerOptions: this.optimizerOptions,
   });
   plan: LogicalPlanOperator;
   output: QueryResult;
@@ -133,6 +144,12 @@ export class QueryPageComponent {
 
   constructor() {
     lsSyncForm('query-page-form', this.form);
+    if (
+      this.optimizerOptions.value.optimizations.length <
+      this.allOptimizations.length
+    ) {
+      this.optimizerOptions.get('optimizations').setValue(this.ruleList);
+    }
     this.optimizerOptions.valueChanges
       .pipe(startWith(this.optimizerOptions.value), takeUntilDestroyed())
       .subscribe((options) => {
@@ -140,7 +157,7 @@ export class QueryPageComponent {
           this.db.optimizer.reconfigure({
             rules: options.optimizations
               .filter((x) => x.enabled)
-              .map((x) => x.value),
+              .map((x) => this.allOptimizations[x.value]),
           });
         } else {
           this.db.optimizer.reconfigure({ rules: [] });

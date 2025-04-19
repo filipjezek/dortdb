@@ -43,6 +43,7 @@ export class Using extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {
+    replacement.parent = this;
     this.source = replacement as CartesianProduct;
     this.clearSchema();
     this.calculateSchema();

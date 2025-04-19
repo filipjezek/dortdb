@@ -35,6 +35,7 @@ export abstract class SetOperator extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     if (this.left === current) {
       this.left = replacement;
     } else {

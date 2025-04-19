@@ -1,10 +1,11 @@
 svg {
   display: block;
   margin: 10px auto;
-  transform-origin: 0 0;
   max-width: 100%;
 }
-
+.svg-container {
+  transform-origin: 0 0;
+}
 .zoom-container {
   overflow: hidden;
   max-width: 100%;

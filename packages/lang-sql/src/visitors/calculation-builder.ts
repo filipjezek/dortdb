@@ -6,9 +6,17 @@ export class SQLCalculationBuilder
   implements SQLLogicalPlanVisitor<CalculationParams>
 {
   visitLangSwitch(operator: LangSwitch): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
   visitUsing(operator: Using): CalculationParams {
-    return { args: [this.toItem(operator)], impl: this.assertMaxOne };
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
   }
 }

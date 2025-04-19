@@ -17,6 +17,7 @@ import {
   IdSet,
   toInfer,
   DortDBAsFriend,
+  simplifyCalcParams,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -31,6 +32,7 @@ import {
   overrideSource,
 } from '@dortdb/core/utils';
 import { ret1 } from '@dortdb/core/internal-fns';
+import { inOp } from '../operators/basic.js';
 
 export const DEFAULT_COLUMN = toId('value');
 
@@ -91,11 +93,13 @@ export class SQLLogicalPlanBuilder
   }
   private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
-    const calcParams = node.accept(this).accept(this.calcBuilders);
+    let calcParams = node.accept(this).accept(this.calcBuilders);
+    calcParams = simplifyCalcParams(calcParams);
     return new plan.Calculation(
       'sql',
       calcParams.impl,
       calcParams.args,
+      calcParams.argMeta,
       calcParams.aggregates,
       calcParams.literal,
     );
@@ -585,12 +589,16 @@ export class SQLLogicalPlanBuilder
     return new plan.Literal('sql', node.value);
   }
   visitOperator(node: ASTOperator): LogicalPlanOperator {
-    return new plan.FnCall(
+    const result = new plan.FnCall(
       node.lang,
-      node.operands.map((x) => ({ op: x.accept(this) })), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
+      node.operands.map(this.processFnArg), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
       this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
       true,
     );
+    if (result.impl === inOp.impl && 'op' in result.args[1]) {
+      result.args[1].acceptSequence = true;
+    }
+    return result;
   }
   visitFunction(node: ASTFunction): LogicalPlanOperator {
     const [id, schema] = idToPair(node.id);

@@ -1,6 +1,8 @@
 import { DortDBAsFriend } from '../../db.js';
 import {
+  Calculation,
   CartesianProduct,
+  Join,
   ProjectionConcat,
 } from '../../plan/operators/index.js';
 import { LogicalPlanOperator } from '../../plan/visitor.js';
@@ -36,6 +38,19 @@ export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
     return null;
   }
   transform(node: ProjectionConcat, bindings: any): LogicalPlanOperator {
-    return new CartesianProduct(node.lang, node.source, node.mapping);
+    let res: CartesianProduct;
+    if (node.outer) {
+      res = new Join(
+        node.lang,
+        node.source,
+        node.mapping,
+        new Calculation(node.lang, () => true, [], []),
+      );
+      (res as Join).leftOuter = true;
+    } else {
+      res = new CartesianProduct(node.lang, node.source, node.mapping);
+    }
+    res.validateSingleValue = node.validateSingleValue;
+    return res;
   }
 }

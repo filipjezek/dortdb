@@ -7,6 +7,11 @@ import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 
 export class CartesianProduct extends LogicalPlanTupleOperator {
+  /**
+   * if true, the `right` is not allowed to return multiple values per one `left` value
+   */
+  public validateSingleValue = false;
+
   constructor(
     lang: Lowercase<string>,
     public left: LogicalPlanTupleOperator,
@@ -33,6 +38,7 @@ export class CartesianProduct extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {
+    replacement.parent = this;
     if (current === this.left) {
       this.left = replacement as LogicalPlanTupleOperator;
     } else {
@@ -71,6 +77,7 @@ export class Join extends CartesianProduct {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     if (current === this.on) {
       this.on = replacement as Calculation;
     } else {

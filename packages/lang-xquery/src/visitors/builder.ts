@@ -19,6 +19,7 @@ import {
   DortDBAsFriend,
   Fn,
   AggregateFn,
+  simplifyCalcParams,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -76,6 +77,12 @@ function infer(item: AST.ASTVariable, args: DescentArgs) {
     }
   }
 }
+function getArgs(p: CalculationParams) {
+  return p.args;
+}
+function getMeta(p: CalculationParams) {
+  return p.argMeta;
+}
 
 interface DescentArgs {
   src?: LogicalPlanTupleOperator;
@@ -126,11 +133,13 @@ export class XQueryLogicalPlanBuilder
       infer(node, args);
       if (skipVars) return node;
     }
-    const calcParams = node.accept(this, args).accept(this.calcBuilders);
+    let calcParams = node.accept(this, args).accept(this.calcBuilders);
+    calcParams = simplifyCalcParams(calcParams);
     return new plan.Calculation(
       'xquery',
       calcParams.impl,
       calcParams.args,
+      calcParams.argMeta,
       calcParams.aggregates,
       calcParams.literal,
     );
@@ -139,11 +148,13 @@ export class XQueryLogicalPlanBuilder
   private maybeToCalc(item: ASTNode, args: DescentArgs) {
     const res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
-      const params = res.accept(this.calcBuilders);
+      let params = res.accept(this.calcBuilders);
+      params = simplifyCalcParams(params);
       return new plan.Calculation(
         'xquery',
         params.impl,
         params.args,
+        params.argMeta,
         params.aggregates,
         params.literal,
       );
@@ -457,7 +468,7 @@ export class XQueryLogicalPlanBuilder
     subq = new plan.Limit('xquery', 0, 1, subq);
     subq = new plan.Projection(
       'xquery',
-      [[new plan.Calculation('xquery', () => !invert, [], [], true), DOT]],
+      [[new plan.Calculation('xquery', () => !invert, [], [], [], true), DOT]],
       subq,
     );
     return new plan.FnCall(
@@ -589,8 +600,10 @@ export class XQueryLogicalPlanBuilder
     const calcParams = node.exprs.map((x) =>
       this.toCalcParams(x, { ctx: calcCtx, inferred: dargs.inferred }),
     );
-    const args = calcParams.flatMap((p) => p.args);
+    const args = calcParams.flatMap(getArgs);
     args.push(POS);
+    const metas = calcParams.flatMap(getMeta);
+    metas.push(undefined);
     const calc = new plan.Calculation(
       'xquery',
       (...args) => {
@@ -599,6 +612,7 @@ export class XQueryLogicalPlanBuilder
         return typeof res === 'number' ? res === pos : toBool.convert(res);
       },
       args,
+      metas,
     );
     return new plan.Selection('xquery', calc, dargs.src);
   }
@@ -608,7 +622,12 @@ export class XQueryLogicalPlanBuilder
   ): LogicalPlanTupleOperator {
     let res: LogicalPlanTupleOperator = new TreeJoin(
       'xquery',
-      new plan.Calculation('xquery', treeStep(node.nodeTest, node.axis), [DOT]),
+      new plan.Calculation(
+        'xquery',
+        treeStep(node.nodeTest, node.axis),
+        [DOT],
+        [undefined],
+      ),
       args.src,
     );
     for (const pred of node.predicates) {
@@ -892,6 +911,7 @@ export class XQueryLogicalPlanBuilder
           'xquery',
           (i1, i2, c1, c2) => i1 === i2 || c1 === 1 || c2 === 1,
           [posNames[i - 1], posNames[i], countNames[i - 1], countNames[i]],
+          [undefined, undefined, undefined, undefined],
         ),
       );
       (joined as plan.Join).leftOuter = (joined as plan.Join).rightOuter = true;
@@ -901,7 +921,8 @@ export class XQueryLogicalPlanBuilder
 
   private prepareAggArg(arg: LogicalPlanOperator): LogicalPlanTupleOperator {
     if (plan.CalcIntermediate in arg) {
-      const calcParams = arg.accept(this.calcBuilders);
+      let calcParams = arg.accept(this.calcBuilders);
+      calcParams = simplifyCalcParams(calcParams);
 
       if (calcParams.literal) {
         const ret = coalesceSeq(calcParams.impl());
@@ -914,6 +935,7 @@ export class XQueryLogicalPlanBuilder
         'xquery',
         calcParams.impl,
         calcParams.args,
+        calcParams.argMeta,
         calcParams.aggregates,
         calcParams.literal,
       );

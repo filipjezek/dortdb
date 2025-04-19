@@ -28,6 +28,7 @@ export class Limit extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     this.source = replacement;
   }
   getChildren(): LogicalPlanOperator[] {

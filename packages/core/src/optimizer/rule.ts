@@ -9,7 +9,7 @@ export interface PatternRule<
   T extends LogicalPlanOperator = LogicalPlanOperator,
   U = any,
 > {
-  operator: new (...args: any[]) => T;
+  operator: (new (...args: any[]) => T) | (new (...args: any[]) => T)[] | null;
   match(node: T): PatternRuleMatchResult<U> | null;
   transform(node: T, bindings: U): LogicalPlanOperator;
 }

@@ -16,10 +16,12 @@
   </div>
 </form>
 <div class="zoom-container">
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    id="svg-output-{{ id }}"
-    #svg
-    [ngClass]="form.value"
-  ></svg>
+  <div class="svg-container">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      id="svg-output-{{ id }}"
+      #svg
+      [ngClass]="form.value"
+    ></svg>
+  </div>
 </div>

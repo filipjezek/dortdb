@@ -68,6 +68,7 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;
   }

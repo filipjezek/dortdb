@@ -29,6 +29,7 @@ export class ProjectionSize extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {
+    replacement.parent = this;
     this.source = replacement;
     this.clearSchema();
     this.addToSchema(replacement.schema.filter((x) => !x.equals(this.sizeCol)));

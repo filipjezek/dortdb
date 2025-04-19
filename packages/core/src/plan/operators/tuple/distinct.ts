@@ -36,6 +36,7 @@ export class Distinct extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     if (this.source === current) {
       this.source = replacement as LogicalPlanTupleOperator;
     } else {

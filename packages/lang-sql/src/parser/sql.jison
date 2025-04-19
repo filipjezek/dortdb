@@ -498,8 +498,8 @@ string-set-range-expression:
 		yy.parentOp($4, '>=');
 		yy.parentOp($6, '<=');
 	}
-	| userop-expression not_opt IN LPAR expression-list RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
-	| userop-expression not_opt IN LPAR subquery RPAR { $$ = yy.wrapNot(yy.makeOp($3, [$1, $5]), $2); }
+	| userop-expression not_opt IN LPAR expression-list RPAR { $$ = yy.makeOp($2 ? 'not in' : 'in', [$1, $5]); }
+	| userop-expression not_opt IN LPAR subquery RPAR { $$ = yy.makeOp($2 ? 'not in' : 'in', [$1, $5]); }
 	| userop-expression not_opt LIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); yy.parentOp($4, 'LIKE'); }
 	| userop-expression not_opt ILIKE userop-or-quantified-expression { $$ = yy.wrapNot(yy.makeOp($3, [$1, $4]), $2); yy.parentOp($4, 'ILIKE'); } ;
 

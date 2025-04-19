@@ -18,12 +18,11 @@ import {
   moveItemInArray,
 } from '@angular/cdk/drag-drop';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { PatternRule, PatternRuleConstructor } from '@dortdb/core/optimizer';
 import { MatIcon } from '@angular/material/icon';
 
 export interface OptimizerListItem {
   enabled: boolean;
-  value: PatternRule | PatternRuleConstructor;
+  value: number;
   name: string;
 }
 
@@ -57,7 +56,18 @@ export class OptimizerListComponent implements ControlValueAccessor {
   items = signal<OptimizerListItem[]>([]);
 
   writeValue(obj: OptimizerListItem[]): void {
-    this.items.set(obj);
+    const current = this.items();
+    if (current.length <= obj.length) {
+      this.items.set(obj);
+    } else {
+      this.items.set(
+        current.map((item) => ({
+          ...item,
+          enabled:
+            obj.find((i) => i.value === item.value)?.enabled ?? item.enabled,
+        })),
+      );
+    }
   }
   registerOnChange(fn: any): void {
     this.onChangeCb = fn;

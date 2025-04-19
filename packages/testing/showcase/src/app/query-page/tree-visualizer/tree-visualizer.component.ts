@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   ElementRef,
   input,
@@ -32,6 +33,12 @@ import * as d3 from 'd3';
 })
 export class TreeVisualizerComponent implements AfterViewInit {
   private svg = viewChild<ElementRef<SVGSVGElement>>('svg');
+  private zoomContainer = computed(() =>
+    d3.select(this.svg().nativeElement.parentElement.parentElement as Element),
+  );
+  private svgContainer = computed(() =>
+    d3.select(this.svg().nativeElement.parentElement as Element),
+  );
   private static instances = 0;
   readonly id = TreeVisualizerComponent.instances++;
   private graphBuilder: GraphBuilder;
@@ -44,7 +51,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
   plan = input<LogicalPlanOperator>();
 
   constructor() {
-    lsSyncForm(`tree-visualizer-${this.id}-form`, this.form);
+    lsSyncForm(`tree-visualizer-form`, this.form);
     effect(() => {
       const p = this.plan();
       if (p && this.graphBuilder) {
@@ -55,10 +62,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
   }
 
   private resetZoom() {
-    this.zoom.transform(
-      d3.select(this.svg().nativeElement.parentElement as Element),
-      d3.zoomIdentity,
-    );
+    this.zoom.transform(this.zoomContainer(), d3.zoomIdentity);
   }
 
   ngAfterViewInit(): void {
@@ -125,15 +129,12 @@ export class TreeVisualizerComponent implements AfterViewInit {
       .zoom()
       .scaleExtent([1, Infinity])
       .on('zoom', (e: d3.D3ZoomEvent<Element, unknown>) => {
-        this.svg().nativeElement.setAttribute(
+        this.svgContainer().style(
           'transform',
-          e.transform.toString(),
+          `translate(${e.transform.x}px, ${e.transform.y}px) scale(${e.transform.k})`,
         );
       });
-    const zoomContainer = d3.select(
-      this.svg().nativeElement.parentElement as Element,
-    );
-    zoomContainer.call(zoom);
+    this.zoomContainer().call(zoom);
     return zoom;
   }
 }

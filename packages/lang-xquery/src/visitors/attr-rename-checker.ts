@@ -8,24 +8,31 @@ import {
   TreeJoin,
   XQueryLogicalPlanVisitor,
 } from '../plan/index.js';
+import { RenameMap } from '@dortdb/core/plan';
 
 export class XQueryAttributeRenameChecker
   extends AttributeRenameChecker
-  implements XQueryLogicalPlanVisitor<boolean>
+  implements XQueryLogicalPlanVisitor<boolean, RenameMap>
 {
   constructor(
-    vmap: Record<string, LogicalPlanVisitor<boolean>>,
+    vmap: Record<string, LogicalPlanVisitor<boolean, RenameMap>>,
     db: DortDBAsFriend,
   ) {
     super(vmap, db);
   }
-  visitTreeJoin(operator: TreeJoin): boolean {
+  visitTreeJoin(operator: TreeJoin, renamesInv: RenameMap): boolean {
     return (
-      this.checkHorizontal(operator.step, operator.source.schemaSet) &&
-      operator.source.accept(this.vmap)
+      this.checkHorizontal(
+        operator.step,
+        operator.source.schemaSet,
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitProjectionSize(operator: ProjectionSize): boolean {
-    return operator.source.accept(this.vmap);
+  visitProjectionSize(
+    operator: ProjectionSize,
+    renamesInv: RenameMap,
+  ): boolean {
+    return operator.source.accept(this.vmap, renamesInv);
   }
 }

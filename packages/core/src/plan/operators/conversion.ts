@@ -36,6 +36,7 @@ export class MapToItem implements LogicalPlanOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {
+    replacement.parent = this;
     this.source = replacement;
   }
   getChildren(): LogicalPlanOperator[] {
@@ -66,6 +67,7 @@ export class MapFromItem extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     this.source = replacement;
   }
   getChildren(): LogicalPlanOperator[] {

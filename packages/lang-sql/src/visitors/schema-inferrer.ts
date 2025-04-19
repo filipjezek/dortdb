@@ -31,6 +31,9 @@ function zip<T, U>(a: T[], b: U[]): [T, U][] {
   }
   return res;
 }
+function getUnd(): undefined {
+  return undefined;
+}
 
 /**
  * Infers the schema of a logical plan.
@@ -403,6 +406,9 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
 
   visitUsing(operator: Using, ctx: IdSet): IdSet {
+    const conditionCols = operator.overriddenCols.concat(
+      operator.columns.map((c) => overrideSource(operator.rightName, c)),
+    );
     const condition = new plan.Calculation(
       'sql',
       (...args) => {
@@ -412,9 +418,8 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
         }
         return true;
       },
-      operator.overriddenCols.concat(
-        operator.columns.map((c) => overrideSource(operator.rightName, c)),
-      ),
+      conditionCols,
+      conditionCols.map(getUnd),
     );
     let replacement: LogicalPlanTupleOperator = new plan.Selection(
       'sql',

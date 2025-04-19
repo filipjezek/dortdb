@@ -11,38 +11,40 @@ import { containsAny, difference, union } from '../utils/trie.js';
 import { ASTIdentifier } from '../ast.js';
 import { retI0 } from '../internal-fns/index.js';
 
-export class AttributeRenameChecker implements LogicalPlanVisitor<boolean> {
-  protected renamesInv: plan.RenameMap;
+export class AttributeRenameChecker
+  implements LogicalPlanVisitor<boolean, plan.RenameMap>
+{
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
   constructor(
-    protected vmap: Record<string, LogicalPlanVisitor<boolean>>,
+    protected vmap: Record<string, LogicalPlanVisitor<boolean, plan.RenameMap>>,
     protected db: DortDBAsFriend,
   ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
 
   public canRename(plan: LogicalPlanOperator, renamesInv: plan.RenameMap) {
-    this.renamesInv = renamesInv;
-    return plan.accept(this.vmap);
+    return plan.accept(this.vmap, renamesInv);
   }
 
   protected checkHorizontal(
     horizontal: LogicalPlanOperator,
     verticalCtx: IdSet,
+    renamesInv: plan.RenameMap,
   ) {
     const tdeps = difference(horizontal.accept(this.tdepsVmap), verticalCtx);
-    if (containsAny(tdeps, this.renamesInv)) return false;
-    return horizontal.accept(this.vmap);
+    if (containsAny(tdeps, renamesInv)) return false;
+    return horizontal.accept(this.vmap, renamesInv);
   }
 
   protected checkHorizontalArray(
     horizontal: LogicalOpOrId[],
     verticalCtx: IdSet,
+    renamesInv: plan.RenameMap,
   ) {
     for (const h of horizontal) {
       if (!(h instanceof ASTIdentifier)) {
-        if (!this.checkHorizontal(h, verticalCtx)) {
+        if (!this.checkHorizontal(h, verticalCtx, renamesInv)) {
           return false;
         }
       }
@@ -50,10 +52,13 @@ export class AttributeRenameChecker implements LogicalPlanVisitor<boolean> {
     return true;
   }
 
-  protected checkVerticalArray(vertical: LogicalOpOrId[]) {
+  protected checkVerticalArray(
+    vertical: LogicalOpOrId[],
+    renamesInv: plan.RenameMap,
+  ) {
     for (const v of vertical) {
       if (!(v instanceof ASTIdentifier)) {
-        if (!v.accept(this.vmap)) {
+        if (!v.accept(this.vmap, renamesInv)) {
           return false;
         }
       }
@@ -61,127 +66,217 @@ export class AttributeRenameChecker implements LogicalPlanVisitor<boolean> {
     return true;
   }
 
-  visitRecursion(operator: plan.Recursion): boolean {
+  visitRecursion(
+    operator: plan.Recursion,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return (
-      this.checkHorizontal(operator.condition, operator.source.schemaSet) &&
-      operator.source.accept(this.vmap)
+      this.checkHorizontal(
+        operator.condition,
+        operator.source.schemaSet,
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitProjection(operator: plan.Projection): boolean {
+  visitProjection(
+    operator: plan.Projection,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return (
       this.checkHorizontalArray(
         operator.attrs.map(retI0),
         operator.source.schemaSet,
-      ) && operator.source.accept(this.vmap)
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitSelection(operator: plan.Selection): boolean {
+  visitSelection(
+    operator: plan.Selection,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return (
       (operator.condition instanceof plan.Calculation
-        ? this.checkHorizontal(operator.condition, operator.source.schemaSet)
-        : true) && operator.source.accept(this.vmap)
+        ? this.checkHorizontal(
+            operator.condition,
+            operator.source.schemaSet,
+            renamesInv,
+          )
+        : true) && operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitTupleSource(operator: plan.TupleSource): boolean {
+  visitTupleSource(
+    operator: plan.TupleSource,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return true;
   }
-  visitItemSource(operator: plan.ItemSource): boolean {
+  visitItemSource(
+    operator: plan.ItemSource,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return true;
   }
-  visitFnCall(operator: plan.FnCall): boolean {
+  visitFnCall(operator: plan.FnCall, renamesInv: plan.RenameMap): boolean {
     throw new Error('Method not implemented.');
   }
-  visitLiteral(operator: plan.Literal): boolean {
+  visitLiteral(operator: plan.Literal, renamesInv: plan.RenameMap): boolean {
     throw new Error('Method not implemented.');
   }
-  visitCalculation(operator: plan.Calculation): boolean {
-    return this.checkVerticalArray(operator.args);
+  visitCalculation(
+    operator: plan.Calculation,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return this.checkVerticalArray(operator.args, renamesInv);
   }
-  visitConditional(operator: plan.Conditional): boolean {
+  visitConditional(
+    operator: plan.Conditional,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     throw new Error('Method not implemented.');
   }
-  visitCartesianProduct(operator: plan.CartesianProduct): boolean {
-    return operator.left.accept(this.vmap) && operator.right.accept(this.vmap);
+  visitCartesianProduct(
+    operator: plan.CartesianProduct,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return (
+      operator.left.accept(this.vmap, renamesInv) &&
+      operator.right.accept(this.vmap, renamesInv)
+    );
   }
-  visitJoin(operator: plan.Join): boolean {
+  visitJoin(operator: plan.Join, renamesInv: plan.RenameMap): boolean {
     return (
       this.checkHorizontal(
         operator.on,
         union(operator.left.schemaSet, operator.right.schemaSet),
-      ) && this.visitCartesianProduct(operator)
+        renamesInv,
+      ) && this.visitCartesianProduct(operator, renamesInv)
     );
   }
-  visitProjectionConcat(operator: plan.ProjectionConcat): boolean {
+  visitProjectionConcat(
+    operator: plan.ProjectionConcat,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return (
-      this.checkHorizontal(operator.mapping, operator.source.schemaSet) &&
-      operator.source.accept(this.vmap)
+      this.checkHorizontal(
+        operator.mapping,
+        operator.source.schemaSet,
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitMapToItem(operator: plan.MapToItem): boolean {
-    return operator.source.accept(this.vmap);
+  visitMapToItem(
+    operator: plan.MapToItem,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return operator.source.accept(this.vmap, renamesInv);
   }
-  visitMapFromItem(operator: plan.MapFromItem): boolean {
-    return operator.source.accept(this.vmap);
+  visitMapFromItem(
+    operator: plan.MapFromItem,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return operator.source.accept(this.vmap, renamesInv);
   }
-  visitProjectionIndex(operator: plan.ProjectionIndex): boolean {
-    return operator.source.accept(this.vmap);
+  visitProjectionIndex(
+    operator: plan.ProjectionIndex,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return operator.source.accept(this.vmap, renamesInv);
   }
-  visitOrderBy(operator: plan.OrderBy): boolean {
+  visitOrderBy(operator: plan.OrderBy, renamesInv: plan.RenameMap): boolean {
     return (
       this.checkHorizontalArray(
         operator.orders.map(plan.getKey),
         operator.source.schemaSet,
-      ) && operator.source.accept(this.vmap)
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitGroupBy(operator: plan.GroupBy): boolean {
+  visitGroupBy(operator: plan.GroupBy, renamesInv: plan.RenameMap): boolean {
     return (
       this.checkHorizontalArray(
         operator.keys.map(retI0),
         operator.source.schemaSet,
+        renamesInv,
       ) &&
-      this.checkHorizontalArray(operator.aggs, operator.source.schemaSet) &&
-      operator.source.accept(this.vmap)
+      this.checkHorizontalArray(
+        operator.aggs,
+        operator.source.schemaSet,
+        renamesInv,
+      ) &&
+      operator.source.accept(this.vmap, renamesInv)
     );
   }
-  visitLimit(operator: plan.Limit): boolean {
-    return operator.source.accept(this.vmap);
+  visitLimit(operator: plan.Limit, renamesInv: plan.RenameMap): boolean {
+    return operator.source.accept(this.vmap, renamesInv);
   }
-  protected visitSetOp(operator: plan.SetOperator): boolean {
-    return operator.left.accept(this.vmap) && operator.right.accept(this.vmap);
+  protected visitSetOp(
+    operator: plan.SetOperator,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return (
+      operator.left.accept(this.vmap, renamesInv) &&
+      operator.right.accept(this.vmap, renamesInv)
+    );
   }
-  visitUnion(operator: plan.Union): boolean {
-    return this.visitSetOp(operator);
+  visitUnion(operator: plan.Union, renamesInv: plan.RenameMap): boolean {
+    return this.visitSetOp(operator, renamesInv);
   }
-  visitIntersection(operator: plan.Intersection): boolean {
-    return this.visitSetOp(operator);
+  visitIntersection(
+    operator: plan.Intersection,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return this.visitSetOp(operator, renamesInv);
   }
-  visitDifference(operator: plan.Difference): boolean {
-    return this.visitSetOp(operator);
+  visitDifference(
+    operator: plan.Difference,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return this.visitSetOp(operator, renamesInv);
   }
-  visitDistinct(operator: plan.Distinct): boolean {
+  visitDistinct(operator: plan.Distinct, renamesInv: plan.RenameMap): boolean {
     if (Array.isArray(operator.attrs)) {
-      if (!this.checkHorizontalArray(operator.attrs, operator.source.schemaSet))
+      if (
+        !this.checkHorizontalArray(
+          operator.attrs,
+          operator.source.schemaSet,
+          renamesInv,
+        )
+      )
         return false;
     }
-    return operator.source.accept(this.vmap);
+    return operator.source.accept(this.vmap, renamesInv);
   }
-  visitNullSource(operator: plan.NullSource): boolean {
+  visitNullSource(
+    operator: plan.NullSource,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return true;
   }
-  visitAggregate(operator: plan.AggregateCall): boolean {
+  visitAggregate(
+    operator: plan.AggregateCall,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     return (
-      this.checkVerticalArray(operator.args) &&
-      operator.postGroupOp.accept(this.vmap)
+      this.checkVerticalArray(operator.args, renamesInv) &&
+      operator.postGroupOp.accept(this.vmap, renamesInv)
     );
   }
-  visitItemFnSource(operator: plan.ItemFnSource): boolean {
-    return this.checkVerticalArray(operator.args);
+  visitItemFnSource(
+    operator: plan.ItemFnSource,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return this.checkVerticalArray(operator.args, renamesInv);
   }
-  visitTupleFnSource(operator: plan.TupleFnSource): boolean {
-    return this.checkVerticalArray(operator.args);
+  visitTupleFnSource(
+    operator: plan.TupleFnSource,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return this.checkVerticalArray(operator.args, renamesInv);
   }
-  visitQuantifier(operator: plan.Quantifier): boolean {
+  visitQuantifier(
+    operator: plan.Quantifier,
+    renamesInv: plan.RenameMap,
+  ): boolean {
     throw new Error('Method not implemented.');
   }
 }

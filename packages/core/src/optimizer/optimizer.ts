@@ -4,7 +4,6 @@ import {
   LogicalPlanOperator,
   LogicalPlanTupleOperator,
 } from '../plan/visitor.js';
-import { union } from '../utils/trie.js';
 import { PatternRule, PatternRuleConstructor } from './rule.js';
 
 export interface OptimizerConfig {
@@ -44,7 +43,12 @@ export class Optimizer {
   }
 
   private visitOperator(operator: LogicalPlanOperator, rule: PatternRule) {
-    if (operator.constructor === rule.operator) {
+    if (
+      rule.operator === null ||
+      operator.constructor === rule.operator ||
+      (Array.isArray(rule.operator) &&
+        rule.operator.includes(operator.constructor as any))
+    ) {
       const matchResult = rule.match(operator);
       if (matchResult !== null) {
         const parent = operator.parent;
@@ -59,6 +63,10 @@ export class Optimizer {
       }
     }
     for (const child of operator.getChildren()) {
+      if (child.parent !== operator) {
+        console.log('Parent mismatch', operator, child);
+        throw new Error('Parent mismatch');
+      }
       this.visitOperator(child, rule);
     }
   }

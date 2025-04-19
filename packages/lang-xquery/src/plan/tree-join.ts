@@ -38,6 +38,7 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     if (current === this.source) {
       this.source = replacement as LogicalPlanTupleOperator;
     } else {

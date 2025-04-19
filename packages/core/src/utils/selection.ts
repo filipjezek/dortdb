@@ -11,7 +11,10 @@ import {
   LogicalPlanTupleOperator,
   LogicalPlanVisitor,
 } from '../plan/visitor.js';
-import { CalculationParams } from '../visitors/calculation-builder.js';
+import {
+  CalculationParams,
+  simplifyCalcParams,
+} from '../visitors/calculation-builder.js';
 
 /**
  * Converts a calculation intermediate expression into possibly multiple chained selections.
@@ -28,11 +31,13 @@ export function exprToSelection(
     if (andExpr instanceof ASTIdentifier) {
       source = new Selection(lang, andExpr, source);
     } else {
-      const calcParams = andExpr.accept(calcBuilders);
+      let calcParams = andExpr.accept(calcBuilders);
+      calcParams = simplifyCalcParams(calcParams);
       const calc = new Calculation(
         lang,
         calcParams.impl,
         calcParams.args,
+        calcParams.argMeta,
         calcParams.aggregates,
         calcParams.literal,
       );

@@ -38,17 +38,17 @@ export class PushdownSelections
   implements PatternRule<Selection, PushdownSelectionsBindings>
 {
   public operator = Selection;
-  public alwaysSwap = new Set<{
+  public alwaysSwap: {
     new (
       ...args: any[]
     ): LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator };
-  }>([OrderBy, Distinct]);
-  public setOps = new Set<{
+  }[] = [OrderBy, Distinct];
+  public setOps: {
     new (...args: any[]): LogicalPlanTupleOperator & {
       left: LogicalPlanOperator;
       right: LogicalPlanOperator;
     };
-  }>([Union, Intersection, Difference]);
+  }[] = [Union, Intersection, Difference];
   protected tdepsVmap: Record<string, TransitiveDependencies>;
   protected renamerVmap: Record<string, AttributeRenamer>;
   protected renameCheckerVmap: Record<string, AttributeRenameChecker>;
@@ -75,8 +75,8 @@ export class PushdownSelections
     bindings.source = node.source;
 
     if (
-      this.alwaysSwap.has(bindings.source.constructor as any) ||
-      (this.setOps.has(bindings.source.constructor as any) &&
+      this.alwaysSwap.includes(bindings.source.constructor as any) ||
+      (this.setOps.includes(bindings.source.constructor as any) &&
         bindings.source.schema)
     ) {
       return { bindings };
@@ -149,10 +149,10 @@ export class PushdownSelections
   ): LogicalPlanOperator {
     const { selections, source } = bindings;
     const last = selections[selections.length - 1];
-    if (this.alwaysSwap.has(source.constructor as any)) {
+    if (this.alwaysSwap.includes(source.constructor as any)) {
       return this.transformBasic(source as any, node, last);
     }
-    if (this.setOps.has(source.constructor as any)) {
+    if (this.setOps.includes(source.constructor as any)) {
       return this.tranformSetOp(source as any, node, last, selections);
     }
     if (source.constructor === Projection) {

@@ -3,6 +3,7 @@ import { Trie } from '../../../data-structures/trie.js';
 import { isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
+import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import {
   IdSet,
   LogicalOpOrId,
@@ -29,6 +30,7 @@ export class Calculation implements LogicalPlanOperator {
     public impl: (...args: any[]) => any,
     /** args which are logical operators will be instantiated as arrays during execution */
     public args: LogicalOpOrId[],
+    public argMeta: ArgMeta[],
     public aggregates: AggregateCall[] = [],
     public literal = false,
   ) {
@@ -47,6 +49,7 @@ export class Calculation implements LogicalPlanOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     const arr = current instanceof AggregateCall ? this.aggregates : this.args;
     const idx = arr.indexOf(current);
     arr[idx] = replacement;
@@ -58,7 +61,6 @@ export class Calculation implements LogicalPlanOperator {
         res.push(arg);
       }
     }
-    res.push(...this.aggregates);
     return res;
   }
 }

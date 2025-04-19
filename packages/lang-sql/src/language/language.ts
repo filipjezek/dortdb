@@ -4,6 +4,7 @@ import { SQLLogicalPlanBuilder } from '../visitors/builder.js';
 import { SQLCalculationBuilder } from '../visitors/calculation-builder.js';
 import { ObjectDataAdapter, SQLDataAdapter } from './data-adapter.js';
 import { createParser } from './create-parser.js';
+import { inOp, notInOp } from '../operators/basic.js';
 
 export interface SQLConfig {
   /** defaults to {@link ObjectDataAdapter} */
@@ -17,7 +18,7 @@ export interface SQLLanguage extends Language<'sql'> {
 export function SQL(config?: SQLConfig): SQLLanguage {
   return {
     name: 'sql',
-    operators: [],
+    operators: [inOp, notInOp],
     aggregates: [],
     functions: [coalesce],
     castables: [],

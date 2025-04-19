@@ -47,6 +47,7 @@ export class Projection extends LogicalPlanTupleOperator {
     current: LogicalPlanOperator,
     replacement: LogicalPlanOperator,
   ): void {
+    replacement.parent = this;
     if (current === this.source) {
       this.source = replacement as LogicalPlanTupleOperator;
     } else {
@@ -65,9 +66,13 @@ export class Projection extends LogicalPlanTupleOperator {
  */
 export class ProjectionConcat extends LogicalPlanTupleOperator {
   /**
-   * empty value for the outer join
+   * empty value for the outer join (default is null)
    */
   public emptyVal = new Trie<symbol | string, unknown>();
+  /**
+   * if true, the `mapping` is not allowed to return multiple values per one `source` value
+   */
+  public validateSingleValue = false;
 
   constructor(
     lang: Lowercase<string>,
@@ -96,6 +101,7 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {
+    replacement.parent = this;
     if (current === this.mapping) {
       this.mapping = replacement;
     } else {
@@ -137,6 +143,7 @@ export class ProjectionIndex extends LogicalPlanTupleOperator {
     current: LogicalPlanTupleOperator,
     replacement: LogicalPlanTupleOperator,
   ): void {
+    replacement.parent = this;
     this.source = replacement;
     this.clearSchema();
     this.addToSchema(

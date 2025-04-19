@@ -259,4 +259,7 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
       this.invalidateCacheUpstream(child);
     }
   }
+  public invalidateCacheElement(operator: LogicalPlanOperator) {
+    tdepsCache.delete(operator);
+  }
 }

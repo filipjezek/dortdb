@@ -22,13 +22,6 @@ export const mergeFromToItems: PatternRule<MapFromItem> = {
   },
   transform: (node) => {
     const source = node.source as MapToItem;
-    const result = new Projection(
-      node.lang,
-      [[source.key, node.key]],
-      source.source,
-    );
-    result.schema = node.schema;
-    result.schemaSet = node.schemaSet;
-    return result;
+    return new Projection(node.lang, [[source.key, node.key]], source.source);
   },
 };
