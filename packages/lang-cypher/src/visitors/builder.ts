@@ -83,10 +83,31 @@ export class CypherLogicalPlanBuilder
     this.graphName = lang.defaultGraph;
   }
 
+  private maybeId(node: ASTNode, args: DescentArgs): ASTNode {
+    if (!(node instanceof AST.PropLookup)) return node;
+    const parts = [node.prop.parts[0]];
+    let root = node.expr;
+    while (root instanceof AST.PropLookup) {
+      parts.push(root.prop.parts[0]);
+      root = root.expr;
+    }
+    if (
+      root instanceof ASTIdentifier &&
+      root.parts[0] !== boundParam &&
+      !args.ctx.has(root.parts)
+    ) {
+      parts.push(root.parts[0]);
+      parts.reverse();
+      return ASTIdentifier.fromParts(parts);
+    }
+    return node;
+  }
+
   private toCalc(
     node: ASTNode,
     args: DescentArgs,
   ): plan.Calculation | ASTIdentifier {
+    node = this.maybeId(node, args);
     if (node instanceof ASTIdentifier) return infer(node, args);
     let calcParams = node.accept(this, args).accept(this.calcBuilders);
     calcParams = simplifyCalcParams(calcParams);
@@ -103,6 +124,7 @@ export class CypherLogicalPlanBuilder
     item: ASTNode,
     args: DescentArgs,
   ): plan.PlanOpAsArg | ASTIdentifier {
+    item = this.maybeId(item, args);
     return item instanceof ASTIdentifier
       ? infer(item, args)
       : { op: item.accept(this, args) };
@@ -111,6 +133,11 @@ export class CypherLogicalPlanBuilder
     attr: ASTNode | Aliased<ASTNode>,
     args: DescentArgs,
   ): Aliased<ASTIdentifier | plan.Calculation> {
+    if (Array.isArray(attr)) {
+      attr[0] = this.maybeId(attr[0], args);
+    } else {
+      attr = this.maybeId(attr, args);
+    }
     if (attr instanceof ASTIdentifier) {
       return [infer(attr, args), attr];
     }
@@ -121,6 +148,7 @@ export class CypherLogicalPlanBuilder
     return [this.toCalc(attr, args), alias];
   }
   private processNode(node: ASTNode, args: DescentArgs) {
+    node = this.maybeId(node, args);
     return node instanceof ASTIdentifier
       ? infer(node, args)
       : node.accept(this, args);

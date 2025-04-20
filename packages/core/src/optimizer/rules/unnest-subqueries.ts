@@ -8,9 +8,9 @@ import {
 import { ASTIdentifier } from '../../ast.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { DortDBAsFriend } from '../../db.js';
-import { toPair } from '../../internal-fns/index.js';
+import { isNotNull, toPair } from '../../internal-fns/index.js';
 
-export interface UnnestSubqueryBinding {
+export interface UnnestSubqueriesBindings {
   subqueries: [plan.Calculation, number[]][];
 }
 
@@ -20,7 +20,7 @@ export class UnnestSubqueries
   implements
     PatternRule<
       LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator },
-      UnnestSubqueryBinding
+      UnnestSubqueriesBindings
     >
 {
   operator = [
@@ -39,7 +39,7 @@ export class UnnestSubqueries
 
   match(
     node: LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator },
-  ): PatternRuleMatchResult<UnnestSubqueryBinding> {
+  ): PatternRuleMatchResult<UnnestSubqueriesBindings> {
     const calcs = node
       .getChildren()
       .map((child) => {
@@ -50,17 +50,17 @@ export class UnnestSubqueries
             const meta = child.argMeta[i];
             return !meta.acceptSequence && !meta.maybeSkipped ? i : null;
           })
-          .filter(Boolean);
+          .filter(isNotNull);
         return subqs.length
           ? ([child, subqs] as [plan.Calculation, number[]])
           : null;
       })
-      .filter(Boolean);
+      .filter(isNotNull);
     return calcs.length ? { bindings: { subqueries: calcs } } : null;
   }
   transform(
     node: LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator },
-    bindings: UnnestSubqueryBinding,
+    bindings: UnnestSubqueriesBindings,
   ): LogicalPlanOperator {
     let newAttrCounter = 0;
     const tdeps = this.tdepsVmap[node.lang];

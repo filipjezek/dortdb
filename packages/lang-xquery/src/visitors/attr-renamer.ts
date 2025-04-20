@@ -22,7 +22,7 @@ export class XQueryAttributeRenamer
   }
   visitTreeJoin(operator: TreeJoin, renames: RenameMap): void {
     operator.source.accept(this.vmap, renames);
-    this.processArray([operator.step], operator.dependencies, renames);
+    this.processItem(operator, 'step', operator.dependencies, renames);
   }
   visitProjectionSize(operator: ProjectionSize, renames: RenameMap): void {
     operator.source.accept(this.vmap, renames);

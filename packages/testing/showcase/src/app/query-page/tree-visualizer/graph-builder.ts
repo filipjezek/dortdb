@@ -108,6 +108,9 @@ export class GraphBuilder
             }
           }
         }
+        foreignObject > div {
+          padding: 1px 0;
+        }
         rect {
           fill: var(--mat-sys-surface);
           stroke: var(--mat-sys-outline);

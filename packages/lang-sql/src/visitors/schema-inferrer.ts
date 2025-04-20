@@ -45,12 +45,16 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     private db: DortDBAsFriend,
   ) {}
 
-  public inferSchema(operator: LogicalPlanOperator, ctx: IdSet): IdSet {
+  public inferSchema(
+    operator: LogicalPlanOperator,
+    ctx: IdSet,
+  ): [LogicalPlanOperator, IdSet] {
+    const tempHead = new plan.Limit('sql', 0, 1, operator);
     const external = operator.accept(this.vmap, ctx);
     for (const item of external.keys([boundParam])) {
       external.delete(item);
     }
-    return external;
+    return [tempHead.source, external];
   }
 
   visitProjection(operator: plan.Projection, ctx: IdSet): IdSet {
@@ -286,10 +290,14 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
     operator.source.addToSchema(tempSchema.schema);
     const external = operator.source.accept(this.vmap, ctx);
-    const proj = operator instanceof plan.Distinct ? operator.source : operator;
+    const proj =
+      operator.source instanceof plan.Distinct
+        ? operator.source.source
+        : operator.source;
 
     if (proj instanceof plan.Projection) {
       // otherwise it's a set op
+      const parent = operator.parent;
       const parentProj = new plan.Projection(
         'sql',
         proj.attrs.slice(),
@@ -312,7 +320,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
           }
         }
       }
-      operator.parent.replaceChild(operator, parentProj);
+      parent.replaceChild(operator, parentProj);
     }
 
     return external;

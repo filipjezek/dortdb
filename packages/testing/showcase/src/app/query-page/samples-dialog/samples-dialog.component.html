@@ -7,7 +7,7 @@
     @for (item of filteredQueries(); track item) {
       <button mat-list-item [mat-dialog-close]="item" [title]="item.query">
         <span class="sample-line">
-          <span class="name">{{ item.name }}</span>
+          <span class="name" [title]="item.name">{{ item.name }}</span>
           <span class="tags">
             @for (tag of item.tags; track tag) {
               <span class="tag">{{ tag }}</span>

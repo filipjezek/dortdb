@@ -5,6 +5,7 @@ import {
   ASTMapLiteral,
   ASTNumberLiteral,
 } from './literal.js';
+import { PropLookup } from './expression.js';
 
 export class PatternElChain implements ASTNode {
   public chain: (NodePattern | RelPattern)[];

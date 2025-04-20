@@ -5,3 +5,4 @@ export * from './rules/to-from-items.js';
 export * from './rules/selection-pushdown.js';
 export * from './rules/remove-projection-concat.js';
 export * from './rules/unnest-subqueries.js';
+export * from './rules/merge-projections.js';

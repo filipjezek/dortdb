@@ -37,10 +37,10 @@ import {
 import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.component';
 import {
   mergeFromToItems,
+  MergeProjections,
   mergeToFromItems,
   ProjConcatToJoin,
   PushdownSelections,
-  removeEmptyProjConcat,
   UnnestSubqueries,
 } from '@dortdb/core/optimizer';
 import {
@@ -101,8 +101,8 @@ export class QueryPageComponent {
     mergeToFromItems,
     mergeFromToItems,
     PushdownSelections,
-    removeEmptyProjConcat,
     ProjConcatToJoin,
+    MergeProjections,
   ];
   private ruleList: OptimizerListItem[] = [
     { name: 'unnest subqueries', value: 0, enabled: true },
@@ -114,12 +114,12 @@ export class QueryPageComponent {
       enabled: true,
     },
     {
-      name: 'remove empty projection concat',
+      name: 'projection concat to join',
       value: 4,
       enabled: true,
     },
     {
-      name: 'projection concat to join',
+      name: 'merge projections',
       value: 5,
       enabled: true,
     },

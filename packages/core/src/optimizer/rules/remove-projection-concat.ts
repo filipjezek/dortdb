@@ -10,19 +10,6 @@ import { containsAny } from '../../utils/trie.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 
-export const removeEmptyProjConcat: PatternRule<ProjectionConcat> = {
-  operator: ProjectionConcat,
-  match(operator) {
-    if (!operator.mapping.schema.length) {
-      return { bindings: {} };
-    }
-    return null;
-  },
-  transform(operator, bindings) {
-    return operator.source;
-  },
-};
-
 export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
   public operator = ProjectionConcat;
   protected tdepsVmap: Record<string, TransitiveDependencies>;

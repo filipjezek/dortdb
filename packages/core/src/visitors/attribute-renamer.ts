@@ -34,15 +34,44 @@ export class AttributeRenamer
     renames: plan.RenameMap,
     removeDeps = true,
   ) {
-    for (const item of array) {
+    for (let i = 0; i < array.length; i++) {
+      const item = array[i];
       if (item instanceof ASTIdentifier) {
         if (renames.has(item.parts) && deps.has(item.parts)) {
           const newAttr = renames.get(item.parts);
-          item.parts = newAttr;
+          array[i] = ASTIdentifier.fromParts(newAttr);
         }
       } else {
         item.accept(this.vmap, renames);
       }
+    }
+    if (removeDeps) {
+      for (const [k, v] of renames.entries()) {
+        if (deps.delete(k)) {
+          deps.add(v);
+        }
+      }
+    }
+  }
+
+  protected processItem<
+    Key extends string,
+    Obj extends Record<Key, LogicalOpOrId>,
+  >(
+    obj: Obj,
+    key: Key,
+    deps: IdSet,
+    renames: plan.RenameMap,
+    removeDeps = true,
+  ) {
+    const item = obj[key];
+    if (item instanceof ASTIdentifier) {
+      if (renames.has(item.parts) && deps.has(item.parts)) {
+        const newAttr = renames.get(item.parts);
+        obj[key] = ASTIdentifier.fromParts(newAttr) as Obj[Key];
+      }
+    } else {
+      item.accept(this.vmap, renames);
     }
     if (removeDeps) {
       for (const [k, v] of renames.entries()) {
@@ -68,7 +97,7 @@ export class AttributeRenamer
   visitSelection(operator: plan.Selection, renames: plan.RenameMap): void {
     operator.source.accept(this.vmap, renames);
     if (operator.condition instanceof ASTIdentifier) {
-      this.processArray([operator.condition], operator.dependencies, renames);
+      this.processItem(operator, 'condition', operator.dependencies, renames);
     } else {
       operator.condition.accept(this.vmap, renames);
     }
@@ -96,14 +125,14 @@ export class AttributeRenamer
   }
   visitJoin(operator: plan.Join, renames: plan.RenameMap): void {
     this.visitCartesianProduct(operator, renames);
-    this.processArray([operator.on], operator.dependencies, renames);
+    this.processItem(operator, 'on', operator.dependencies, renames);
   }
   visitProjectionConcat(
     operator: plan.ProjectionConcat,
     renames: plan.RenameMap,
   ): void {
     operator.source.accept(this.vmap, renames);
-    this.processArray([operator.mapping], operator.dependencies, renames);
+    this.processItem(operator, 'mapping', operator.dependencies, renames);
   }
   visitMapToItem(operator: plan.MapToItem, renames: plan.RenameMap): void {
     operator.source.accept(this.vmap, renames);

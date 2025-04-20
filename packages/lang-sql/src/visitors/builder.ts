@@ -80,8 +80,10 @@ export class SQLLogicalPlanBuilder
   }
 
   buildPlan(node: ASTNode, ctx: IdSet) {
-    const plan = node.accept(this);
-    const inferred = this.inferrerMap['sql'].inferSchema(plan, ctx);
+    const [plan, inferred] = this.inferrerMap['sql'].inferSchema(
+      node.accept(this),
+      ctx,
+    );
     return { plan, inferred };
   }
 

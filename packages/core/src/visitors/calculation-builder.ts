@@ -13,7 +13,7 @@ import { or } from '../operators/logical.js';
 
 export interface ArgMeta {
   maybeSkipped?: boolean;
-  containingFn?: operators.AggregateCall;
+  aggregate?: operators.AggregateCall;
   usedMultipleTimes?: boolean;
   acceptSequence?: boolean;
 }
@@ -100,7 +100,7 @@ function areEqual(
       a instanceof ASTIdentifier && b instanceof ASTIdentifier && a.equals(b)
     );
   }
-  if (aMeta?.containingFn || bMeta?.containingFn) {
+  if (aMeta?.aggregate || bMeta?.aggregate) {
     return isEqual(a, b);
   }
   return isEqual(a, b);
@@ -109,6 +109,7 @@ function areEqual(
 export function simplifyCalcParams(
   params: CalculationParams,
 ): CalculationParams {
+  if (params.args.length === 0) return params;
   const uniqueArgs: LogicalOpOrId[] = [params.args[0]];
   const argMeta: (ArgMeta | undefined)[] = [params.argMeta[0]];
   const indexes: number[] = [0];
@@ -118,10 +119,9 @@ export function simplifyCalcParams(
         areEqual(params.args[i], params.argMeta[i], uniqueArgs[j], argMeta[j])
       ) {
         indexes.push(j);
-        if (params.argMeta[i]) {
-          argMeta[j].maybeSkipped &&= params.argMeta[i].maybeSkipped;
-          argMeta[j].usedMultipleTimes = true;
-        }
+        argMeta[j] ??= {};
+        argMeta[j].usedMultipleTimes = true;
+        argMeta[j].maybeSkipped &&= params.argMeta[i]?.maybeSkipped;
         continue outer;
       }
     }
@@ -145,8 +145,8 @@ export function simplifyCalcParams(
   };
   if (params.aggregates?.length) {
     ret.aggregates = argMeta
-      .filter((a) => a?.containingFn instanceof operators.AggregateCall)
-      .map((a) => a.containingFn) as operators.AggregateCall[];
+      .filter((a) => a?.aggregate instanceof operators.AggregateCall)
+      .map((a) => a.aggregate) as operators.AggregateCall[];
   }
   return ret;
 }
@@ -531,7 +531,7 @@ export class CalculationBuilder
       args: [operator.fieldName],
       impl: ret1,
       aggregates: [operator],
-      argMeta: [{ containingFn: operator }],
+      argMeta: [{ aggregate: operator }],
     };
   }
   visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {

@@ -224,13 +224,16 @@ export class PushdownSelections
       mustStay[i + 1].parent = mustStay[i];
     }
     for (let i = 0; i < canPushdown.length - 1; i++) {
-      canPushdown[i].source = canPushdown[i + 1];
-      canPushdown[i + 1].parent = canPushdown[i];
-      if (toRename.has(canPushdown[i])) {
-        this.renamerVmap[canPushdown[i].lang].rename(
-          canPushdown[i],
-          source.renamesInv,
-        );
+      const curr = canPushdown[i];
+      curr.source = canPushdown[i + 1];
+      canPushdown[i + 1].parent = curr;
+      if (toRename.has(curr)) {
+        if (curr.condition instanceof ASTIdentifier) {
+          const renamed = source.renamesInv.get(curr.condition.parts);
+          if (renamed) curr.condition = ASTIdentifier.fromParts(renamed);
+        } else {
+          this.renamerVmap[curr.lang].rename(curr.condition, source.renamesInv);
+        }
       }
     }
 
@@ -245,7 +248,15 @@ export class PushdownSelections
     source.source = canPushdown[0];
     canPushdown[0].parent = source;
     if (toRename.has(lastCP)) {
-      this.renamerVmap[lastCP.lang].rename(lastCP, source.renamesInv);
+      if (lastCP.condition instanceof ASTIdentifier) {
+        const renamed = source.renamesInv.get(lastCP.condition.parts);
+        if (renamed) lastCP.condition = ASTIdentifier.fromParts(renamed);
+      } else {
+        this.renamerVmap[lastCP.lang].rename(
+          lastCP.condition,
+          source.renamesInv,
+        );
+      }
     }
 
     if (mustStay.length) {

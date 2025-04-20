@@ -101,6 +101,13 @@ return <item person="{ $p/name }">
   { fn:count($a) }
 </item>`,
     },
+    {
+      lang: 'sql',
+      name: 'Optimization example',
+      tags: [],
+      query: `select x + 1 as xx from foo
+where x + (select count(y) from bar) > (select cat from dog)`,
+    },
   ];
   private preparedQueries = this.queries.map((query) => ({
     original: query,

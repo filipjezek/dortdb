@@ -22,3 +22,6 @@ export function isCalc(x: unknown): x is Calculation {
 export function isId(x: unknown): x is ASTIdentifier {
   return x instanceof ASTIdentifier;
 }
+export function isNotNull<T>(x: T): x is NonNullable<T> {
+  return x !== null;
+}

@@ -140,7 +140,6 @@ RARR      [⟩〉﹥＞]
     return res;
   }
   this.yy.messageQueue.push(res.value);
-  console.log('LANG', langName, res);
   this._input = res.remainingInput;
   yytext = langName;
   return this.yy.AdditionalTokens.LANGSWITCH;

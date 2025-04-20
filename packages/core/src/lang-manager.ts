@@ -1,4 +1,3 @@
-import { TrieMap } from 'mnemonist';
 import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
 import {
   coreVisitors,
@@ -7,6 +6,7 @@ import {
 } from './visitors/index.js';
 import { ASTNode } from './ast.js';
 import { DortDBAsFriend } from './db.js';
+import { Trie } from './data-structures/trie.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -33,10 +33,10 @@ export class LanguageManager {
   private langs: Record<string, Language> = {};
   private static readonly allLangs = Symbol('allLangs');
 
-  private operators = new TrieMap<(string | symbol)[], Operator>(Array);
-  private functions = new TrieMap<(string | symbol)[], Fn>(Array);
-  private aggregates = new TrieMap<(string | symbol)[], AggregateFn>(Array);
-  private castables = new TrieMap<(string | symbol)[], Castable>(Array);
+  private operators = new Trie<string | symbol, Operator>();
+  private functions = new Trie<string | symbol, Fn>();
+  private aggregates = new Trie<string | symbol, AggregateFn>();
+  private castables = new Trie<string | symbol, Castable>();
 
   constructor(private db: DortDBAsFriend) {}
 
