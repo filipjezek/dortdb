@@ -1,18 +1,14 @@
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
-export class Recursion extends LogicalPlanTupleOperator {
+export class Recursion extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public min: number,
     public max: number,
     /** any referenced attributes of the input tuples will be resolved as `[first, second]` */
     public condition: Calculation,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -25,23 +21,20 @@ export class Recursion extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitRecursion(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.condition) {
       this.condition = replacement as Calculation;
     } else {
-      this.source = replacement as LogicalPlanTupleOperator;
+      this.source = replacement as PlanTupleOperator;
     }
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.source, this.condition];
   }
 }

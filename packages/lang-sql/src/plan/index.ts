@@ -1,9 +1,9 @@
-import { LogicalPlanVisitor } from '@dortdb/core';
+import { PlanVisitor } from '@dortdb/core';
 import { LangSwitch } from './langswitch.js';
 import { Using } from './using.js';
 
-export interface SQLLogicalPlanVisitor<Ret, Arg = never>
-  extends LogicalPlanVisitor<Ret, Arg> {
+export interface SQLPlanVisitor<Ret, Arg = never>
+  extends PlanVisitor<Ret, Arg> {
   visitLangSwitch(operator: LangSwitch, arg?: Arg): Ret;
   visitUsing(operator: Using, arg?: Arg): Ret;
 }

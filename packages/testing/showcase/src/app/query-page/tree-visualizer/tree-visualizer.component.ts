@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { LogicalPlanOperator, LogicalPlanVisitor } from '@dortdb/core';
+import { PlanOperator, PlanVisitor } from '@dortdb/core';
 import { GraphBuilder } from './graph-builder';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -48,7 +48,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
     triangles: new FormControl(true),
   });
 
-  plan = input<LogicalPlanOperator>();
+  plan = input<PlanOperator>();
 
   constructor() {
     lsSyncForm(`tree-visualizer-form`, this.form);
@@ -66,7 +66,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    const vmap: Record<string, LogicalPlanVisitor<SVGGElement>> = {};
+    const vmap: Record<string, PlanVisitor<SVGGElement>> = {};
     this.graphBuilder = new GraphBuilder(this.svg().nativeElement, vmap);
     vmap['xquery'] = vmap['sql'] = vmap['cypher'] = this.graphBuilder;
     if (this.plan()) {

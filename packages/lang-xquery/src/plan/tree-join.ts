@@ -1,7 +1,7 @@
-import { LogicalPlanOperator, LogicalPlanTupleOperator } from '@dortdb/core';
+import { PlanOperator, PlanTupleOperator } from '@dortdb/core';
 import { schemaToTrie } from '@dortdb/core/utils';
 import { Calculation, ProjectionConcat } from '@dortdb/core/plan';
-import { XQueryLogicalPlanVisitor } from './index.js';
+import { XQueryPlanVisitor } from './index.js';
 import { DOT, LEN, POS } from '../utils/dot.js';
 
 const ctxCols = [DOT, POS, LEN];
@@ -11,11 +11,11 @@ const ctxCols = [DOT, POS, LEN];
  * The {@link Calculation} output in `step` will be spread into multiple output
  * tuples if it is an array. Removes duplicates of `Node` values.
  */
-export class TreeJoin extends LogicalPlanTupleOperator {
+export class TreeJoin extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public step: Calculation,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -29,18 +29,15 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     this.schemaSet = schemaToTrie(this.schema);
   }
   accept<Ret, Arg>(
-    visitors: Record<string, XQueryLogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, XQueryPlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitTreeJoin(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.source) {
-      this.source = replacement as LogicalPlanTupleOperator;
+      this.source = replacement as PlanTupleOperator;
     } else {
       this.step = replacement as Calculation;
     }
@@ -48,7 +45,7 @@ export class TreeJoin extends LogicalPlanTupleOperator {
     this.addToSchema(this.source.schema);
     this.addToSchema(ctxCols);
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.source, this.step];
   }
 }

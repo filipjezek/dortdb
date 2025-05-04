@@ -5,7 +5,7 @@ import {
   Join,
   ProjectionConcat,
 } from '../../plan/operators/index.js';
-import { LogicalPlanOperator } from '../../plan/visitor.js';
+import { PlanOperator } from '../../plan/visitor.js';
 import { containsAny } from '../../utils/trie.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
@@ -24,7 +24,7 @@ export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
     }
     return null;
   }
-  transform(node: ProjectionConcat, bindings: any): LogicalPlanOperator {
+  transform(node: ProjectionConcat, bindings: any): PlanOperator {
     let res: CartesianProduct;
     if (node.outer) {
       res = new Join(

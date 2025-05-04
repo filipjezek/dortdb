@@ -1,8 +1,8 @@
 import {
   IdSet,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
 import { union } from '../utils/trie.js';
@@ -10,20 +10,20 @@ import { isCalc, isId, retI0 } from '../internal-fns/index.js';
 import { allAttrs, ASTIdentifier } from '../ast.js';
 import { Trie } from '../data-structures/trie.js';
 
-let tdepsCache = new WeakMap<LogicalPlanOperator, IdSet>();
+let tdepsCache = new WeakMap<PlanOperator, IdSet>();
 
-export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
-  constructor(protected vmap: Record<string, LogicalPlanVisitor<IdSet>>) {
+export class TransitiveDependencies implements PlanVisitor<IdSet> {
+  constructor(protected vmap: Record<string, PlanVisitor<IdSet>>) {
     this.processNode = this.processNode.bind(this);
   }
 
-  protected onlyExternal(deps: IdSet, op: LogicalPlanTupleOperator) {
+  protected onlyExternal(deps: IdSet, op: PlanTupleOperator) {
     for (const id of op.schema) {
       deps.delete(id.parts);
     }
     return deps;
   }
-  protected processNode(node: LogicalPlanOperator) {
+  protected processNode(node: PlanOperator) {
     return node.accept(this.vmap);
   }
   protected getCache() {
@@ -80,7 +80,7 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
   visitCalculation(operator: plan.Calculation): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const result = union(
-      ...(operator.args.filter((x) => !isId(x)) as LogicalPlanOperator[]).map(
+      ...(operator.args.filter((x) => !isId(x)) as PlanOperator[]).map(
         this.processNode,
       ),
       operator.dependencies,
@@ -247,19 +247,19 @@ export class TransitiveDependencies implements LogicalPlanVisitor<IdSet> {
   public clearCache() {
     tdepsCache = new WeakMap();
   }
-  public invalidateCacheDownstream(operator: LogicalPlanOperator) {
+  public invalidateCacheDownstream(operator: PlanOperator) {
     while (operator) {
       tdepsCache.delete(operator);
       operator = operator.parent;
     }
   }
-  public invalidateCacheUpstream(operator: LogicalPlanOperator) {
+  public invalidateCacheUpstream(operator: PlanOperator) {
     tdepsCache.delete(operator);
     for (const child of operator.getChildren()) {
       this.invalidateCacheUpstream(child);
     }
   }
-  public invalidateCacheElement(operator: LogicalPlanOperator) {
+  public invalidateCacheElement(operator: PlanOperator) {
     tdepsCache.delete(operator);
   }
 }

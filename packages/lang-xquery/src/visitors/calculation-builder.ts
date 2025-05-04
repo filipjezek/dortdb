@@ -1,13 +1,9 @@
 import { CalculationBuilder, CalculationParams } from '@dortdb/core';
-import {
-  ProjectionSize,
-  TreeJoin,
-  XQueryLogicalPlanVisitor,
-} from '../plan/index.js';
+import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 
 export class XQueryCalculationBuilder
   extends CalculationBuilder
-  implements XQueryLogicalPlanVisitor<CalculationParams>
+  implements XQueryPlanVisitor<CalculationParams>
 {
   visitTreeJoin(operator: TreeJoin): CalculationParams {
     return {

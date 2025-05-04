@@ -1,20 +1,16 @@
 import { ASTIdentifier } from '../../../ast.js';
-import {
-  IdSet,
-  LogicalPlanOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
 export interface PlanOpAsArg {
-  op: LogicalPlanOperator;
+  op: PlanOperator;
   /** can the subquery return more than one value?
    * if true, the subquery will be converted to an array of values
    */
   acceptSequence?: boolean;
 }
 
-export class FnCall implements LogicalPlanOperator {
+export class FnCall implements PlanOperator {
   public [CalcIntermediate] = true;
   public dependencies: IdSet;
 
@@ -30,19 +26,16 @@ export class FnCall implements LogicalPlanOperator {
   ) {}
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitFnCall(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     throw new Error('Method not implemented.');
   }
-  getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = [];
+  getChildren(): PlanOperator[] {
+    const res: PlanOperator[] = [];
     for (const arg of this.args) {
       if ('op' in arg) {
         res.push(arg.op);

@@ -1,20 +1,12 @@
-import {
-  IdSet,
-  LogicalPlanVisitor,
-  TransitiveDependencies,
-} from '@dortdb/core';
-import {
-  ProjectionSize,
-  TreeJoin,
-  XQueryLogicalPlanVisitor,
-} from '../plan/index.js';
+import { IdSet, PlanVisitor, TransitiveDependencies } from '@dortdb/core';
+import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { union } from '@dortdb/core/utils';
 
 export class XQueryTransitiveDependencies
   extends TransitiveDependencies
-  implements XQueryLogicalPlanVisitor<IdSet>
+  implements XQueryPlanVisitor<IdSet>
 {
-  constructor(vmap: Record<string, LogicalPlanVisitor<IdSet>>) {
+  constructor(vmap: Record<string, PlanVisitor<IdSet>>) {
     super(vmap);
   }
 

@@ -2,16 +2,16 @@ import { Trie } from '../../../data-structures/trie.js';
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 
-export class TupleSource extends LogicalPlanTupleOperator {
+export class TupleSource extends PlanTupleOperator {
   public knownSchema = false;
 
   constructor(
@@ -25,23 +25,20 @@ export class TupleSource extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitTupleSource(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     throw new Error('Method not implemented.');
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [];
   }
 }
 
-export class TupleFnSource extends LogicalPlanTupleOperator {
+export class TupleFnSource extends PlanTupleOperator {
   public knownSchema = false;
 
   constructor(
@@ -59,20 +56,17 @@ export class TupleFnSource extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitTupleFnSource(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
   }
 }

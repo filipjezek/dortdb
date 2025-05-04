@@ -1,10 +1,6 @@
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 import * as plan from '../../plan/operators/index.js';
-import {
-  IdSet,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-} from '../../plan/visitor.js';
+import { IdSet, PlanOperator, PlanTupleOperator } from '../../plan/visitor.js';
 import { ASTIdentifier } from '../../ast.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { DortDBAsFriend } from '../../db.js';
@@ -19,7 +15,7 @@ export const unnestedAttr = Symbol('unnested');
 export class UnnestSubqueries
   implements
     PatternRule<
-      LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator },
+      PlanTupleOperator & { source: PlanTupleOperator },
       UnnestSubqueriesBindings
     >
 {
@@ -38,7 +34,7 @@ export class UnnestSubqueries
   }
 
   match(
-    node: LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator },
+    node: PlanTupleOperator & { source: PlanTupleOperator },
   ): PatternRuleMatchResult<UnnestSubqueriesBindings> {
     const calcs = node
       .getChildren()
@@ -59,9 +55,9 @@ export class UnnestSubqueries
     return calcs.length ? { bindings: { subqueries: calcs } } : null;
   }
   transform(
-    node: LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator },
+    node: PlanTupleOperator & { source: PlanTupleOperator },
     bindings: UnnestSubqueriesBindings,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     let newAttrCounter = 0;
     const tdeps = this.tdepsVmap[node.lang];
     tdeps.invalidateCacheElement(node);
@@ -74,7 +70,7 @@ export class UnnestSubqueries
           unnestedAttr,
           newAttrCounter++ + '',
         ]);
-        const subq = calc.args[i] as LogicalPlanOperator;
+        const subq = calc.args[i] as PlanOperator;
         calc.args[i] = newAttr;
         calc.argMeta[i] = undefined;
         calc.dependencies.add(newAttr.parts);
@@ -94,7 +90,7 @@ export class UnnestSubqueries
     return new plan.Projection(node.lang, restrictedAttrs, node);
   }
 
-  protected isGuaranteedValue(node: LogicalPlanOperator): boolean {
+  protected isGuaranteedValue(node: PlanOperator): boolean {
     switch (node.constructor) {
       case plan.MapToItem:
       case plan.MapFromItem:

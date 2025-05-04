@@ -1,12 +1,12 @@
-import { LogicalPlanOperator, LogicalPlanTupleOperator } from '@dortdb/core';
+import { PlanOperator, PlanTupleOperator } from '@dortdb/core';
 import { LangSwitch as ASTLangSwitch } from '@dortdb/core';
 import { Trie } from '@dortdb/core/data-structures';
-import { SQLLogicalPlanVisitor } from './index.js';
+import { SQLPlanVisitor } from './index.js';
 
 /**
  * This operator is a temporary operator which is replaced in {@link LangSwitchResolver}.
  */
-export class LangSwitch extends LogicalPlanTupleOperator {
+export class LangSwitch extends PlanTupleOperator {
   public alias: string;
 
   constructor(
@@ -19,16 +19,16 @@ export class LangSwitch extends LogicalPlanTupleOperator {
     this.schemaSet = new Trie<string | symbol>();
   }
   accept<Ret, Arg>(
-    visitors: Record<string, SQLLogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, SQLPlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitLangSwitch(this, arg);
   }
   replaceChild(
-    current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator,
+    current: PlanTupleOperator,
+    replacement: PlanTupleOperator,
   ): void {}
-  override getChildren(): LogicalPlanOperator[] {
+  override getChildren(): PlanOperator[] {
     return [];
   }
 }

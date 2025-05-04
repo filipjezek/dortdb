@@ -6,13 +6,13 @@ import {
   LangSwitch,
   ASTNode,
   LogicalPlanBuilder,
-  LogicalPlanOperator,
+  PlanOperator,
   CalculationParams,
-  LogicalPlanVisitor,
+  PlanVisitor,
   UnsupportedError,
-  LogicalPlanTupleOperator,
+  PlanTupleOperator,
   Aliased,
-  LogicalOpOrId,
+  OpOrId,
   IdSet,
   boundParam,
   toInfer,
@@ -20,6 +20,7 @@ import {
   Fn,
   AggregateFn,
   simplifyCalcParams,
+  EqualityChecker,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -52,8 +53,8 @@ function idToPair(id: ASTIdentifier): [string, string] {
 function toId(id: string | symbol): ASTIdentifier {
   return AST.XQueryIdentifier.fromParts([id]);
 }
-function toTuples(op: LogicalPlanOperator) {
-  return op instanceof LogicalPlanTupleOperator
+function toTuples(op: PlanOperator) {
+  return op instanceof PlanTupleOperator
     ? op
     : new plan.MapFromItem('xquery', DOT, op);
 }
@@ -85,15 +86,16 @@ function getMeta(p: CalculationParams) {
 }
 
 interface DescentArgs {
-  src?: LogicalPlanTupleOperator;
+  src?: PlanTupleOperator;
   ctx: IdSet;
   inferred: IdSet;
 }
 
 export class XQueryLogicalPlanBuilder
-  implements XQueryVisitor<LogicalPlanOperator, DescentArgs>, LogicalPlanBuilder
+  implements XQueryVisitor<PlanOperator, DescentArgs>, LogicalPlanBuilder
 {
-  private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
+  private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  private eqCheckers: Record<string, EqualityChecker>;
   private prologOptions = {
     namespaces: new Map<string, string>([
       [undefined, 'http://www.w3.org/1999/xhtml'],
@@ -104,6 +106,7 @@ export class XQueryLogicalPlanBuilder
 
   constructor(private db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.dataAdapter = db.langMgr.getLang<'xquery', XQueryLanguage>(
       'xquery',
     ).dataAdapter;
@@ -133,13 +136,15 @@ export class XQueryLogicalPlanBuilder
       infer(node, args);
       if (skipVars) return node;
     }
-    let calcParams = node.accept(this, args).accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams);
+    const intermediate = node.accept(this, args);
+    let calcParams = intermediate.accept(this.calcBuilders);
+    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
     return new plan.Calculation(
       'xquery',
       calcParams.impl,
       calcParams.args,
       calcParams.argMeta,
+      intermediate,
       calcParams.aggregates,
       calcParams.literal,
     );
@@ -149,19 +154,20 @@ export class XQueryLogicalPlanBuilder
     const res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
       let params = res.accept(this.calcBuilders);
-      params = simplifyCalcParams(params);
+      params = simplifyCalcParams(params, this.eqCheckers, 'xquery');
       return new plan.Calculation(
         'xquery',
         params.impl,
         params.args,
         params.argMeta,
+        res,
         params.aggregates,
         params.literal,
       );
     }
     return res;
   }
-  private processNode(item: ASTNode, args: DescentArgs): LogicalOpOrId {
+  private processNode(item: ASTNode, args: DescentArgs): OpOrId {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
       return item;
@@ -182,7 +188,7 @@ export class XQueryLogicalPlanBuilder
     return node.accept(this, args).accept(this.calcBuilders);
   }
 
-  visitProlog(node: AST.Prolog, args: DescentArgs): LogicalPlanOperator {
+  visitProlog(node: AST.Prolog, args: DescentArgs): PlanOperator {
     for (const decl of node.declarations) {
       decl.accept(this, args);
     }
@@ -191,32 +197,29 @@ export class XQueryLogicalPlanBuilder
   visitDefaultNSDeclaration(
     node: AST.DefaultNSDeclaration,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     this.prologOptions.namespaces.set(undefined, node.uri.value);
     return null;
   }
   visitBaseURIDeclaration(
     node: AST.BaseURIDeclaration,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     throw new UnsupportedError('Base URI declaration not supported.');
   }
   visitOrderingDeclaration(
     node: AST.OrderingDeclaration,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     throw new UnsupportedError('Ordering mode declaration not supported.');
   }
   visitEmptyOrderDeclaration(
     node: AST.EmptyOrderDeclaration,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     throw new UnsupportedError('Empty order declaration not supported.');
   }
-  visitNSDeclaration(
-    node: AST.NSDeclaration,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitNSDeclaration(node: AST.NSDeclaration, args: DescentArgs): PlanOperator {
     this.prologOptions.namespaces.set(
       node.prefix.parts[0] as string,
       node.uri.value,
@@ -226,22 +229,22 @@ export class XQueryLogicalPlanBuilder
   visitStringLiteral(
     node: AST.ASTStringLiteral,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     return new plan.Literal('xquery', node.value);
   }
   visitNumberLiteral(
     node: AST.ASTNumberLiteral,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     return new plan.Literal('xquery', node.value);
   }
   visitXQueryIdentifier(
     node: AST.XQueryIdentifier,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     return this.visitIdentifier(node, args);
   }
-  visitVariable(node: AST.ASTVariable, args: DescentArgs): LogicalPlanOperator {
+  visitVariable(node: AST.ASTVariable, args: DescentArgs): PlanOperator {
     if (
       node.parts[0] === boundParam ||
       args.ctx.has(node.parts) ||
@@ -260,30 +263,30 @@ export class XQueryLogicalPlanBuilder
     }
     return new plan.ItemSource('xquery', node);
   }
-  visitFLWORExpr(node: AST.FLWORExpr, args: DescentArgs): LogicalPlanOperator {
+  visitFLWORExpr(node: AST.FLWORExpr, args: DescentArgs): PlanOperator {
     let res = node.clauses[0].accept(this, {
       ...args,
       src: null,
-    }) as LogicalPlanTupleOperator;
+    }) as PlanTupleOperator;
     for (let i = 1; i < node.clauses.length; i++) {
       res = node.clauses[i].accept(this, {
         ...args,
         src: res,
-      }) as LogicalPlanTupleOperator;
+      }) as PlanTupleOperator;
     }
     return res;
   }
 
   private maybeProjectConcat(
-    op: LogicalPlanTupleOperator,
-    src: LogicalPlanTupleOperator,
-  ): LogicalPlanTupleOperator {
+    op: PlanTupleOperator,
+    src: PlanTupleOperator,
+  ): PlanTupleOperator {
     if (src) {
       return new plan.ProjectionConcat('xquery', op, false, src);
     }
     return op;
   }
-  visitFLWORFor(node: AST.FLWORFor, args: DescentArgs): LogicalPlanOperator {
+  visitFLWORFor(node: AST.FLWORFor, args: DescentArgs): PlanOperator {
     let res = this.visitFLWORForBinding(node.bindings[0], args);
     for (let i = 1; i < node.bindings.length; i++) {
       res = this.visitFLWORForBinding(node.bindings[i], {
@@ -297,8 +300,8 @@ export class XQueryLogicalPlanBuilder
   visitFLWORForBinding(
     node: AST.FLWORForBinding,
     args: DescentArgs,
-  ): LogicalPlanTupleOperator {
-    let res: LogicalPlanTupleOperator = new plan.MapFromItem(
+  ): PlanTupleOperator {
+    let res: PlanTupleOperator = new plan.MapFromItem(
       'xquery',
       node.variable,
       this.maybeToCalc(node.expr, {
@@ -325,7 +328,7 @@ export class XQueryLogicalPlanBuilder
     }
     return res;
   }
-  visitFLWORLet(node: AST.FLWORLet, dargs: DescentArgs): LogicalPlanOperator {
+  visitFLWORLet(node: AST.FLWORLet, dargs: DescentArgs): PlanOperator {
     const res = dargs.src ?? new plan.NullSource('xquery');
     const attrs: Aliased<ASTIdentifier | plan.Calculation>[] =
       res.schema.map(toPair);
@@ -348,16 +351,10 @@ export class XQueryLogicalPlanBuilder
     }
     return new plan.Projection('xquery', attrs, res);
   }
-  visitFLWORWindow(
-    node: AST.FLWORWindow,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitFLWORWindow(node: AST.FLWORWindow, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Window clause not supported.');
   }
-  visitFLWORWhere(
-    node: AST.FLWORWhere,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitFLWORWhere(node: AST.FLWORWhere, args: DescentArgs): PlanOperator {
     return exprToSelection(
       this.processNode(node.expr, {
         ctx: union(args.ctx, args.src.schemaSet),
@@ -365,6 +362,7 @@ export class XQueryLogicalPlanBuilder
       }),
       args.src,
       this.calcBuilders,
+      this.eqCheckers,
       'xquery',
     );
   }
@@ -375,10 +373,7 @@ export class XQueryLogicalPlanBuilder
   ): Aliased<ASTIdentifier | plan.Calculation> {
     return [this.toCalc(item[1], args), item[0]];
   }
-  visitFLWORGroupBy(
-    node: AST.FLWORGroupBy,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitFLWORGroupBy(node: AST.FLWORGroupBy, args: DescentArgs): PlanOperator {
     const keySet = schemaToTrie(node.bindings.map(retI0));
     const keys = node.bindings.map((x) => this.processGroupByItem(x, args));
     return new plan.GroupBy(
@@ -399,10 +394,7 @@ export class XQueryLogicalPlanBuilder
       key: this.toCalc(item.expr, args),
     };
   }
-  visitFLWOROrderBy(
-    node: AST.FLWOROrderBy,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitFLWOROrderBy(node: AST.FLWOROrderBy, args: DescentArgs): PlanOperator {
     const attrCtx = union(args.ctx, args.src.schemaSet);
     return new plan.OrderBy(
       'xquery',
@@ -412,16 +404,10 @@ export class XQueryLogicalPlanBuilder
       args.src,
     );
   }
-  visitFLWORCount(
-    node: AST.FLWORCount,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitFLWORCount(node: AST.FLWORCount, args: DescentArgs): PlanOperator {
     return new plan.ProjectionIndex('xquery', node.variable, args.src);
   }
-  visitFLWORReturn(
-    node: AST.FLWORReturn,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitFLWORReturn(node: AST.FLWORReturn, args: DescentArgs): PlanOperator {
     if (node.expr instanceof AST.ASTVariable) {
       infer(node.expr, args);
       return new plan.MapToItem('xquery', node.expr, args.src);
@@ -448,9 +434,9 @@ export class XQueryLogicalPlanBuilder
   visitQuantifiedExpr(
     node: AST.QuantifiedExpr,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     const invert = node.quantifier === AST.Quantifier.EVERY;
-    let subq: LogicalPlanTupleOperator = null;
+    let subq: PlanTupleOperator = null;
     for (const [variable, expr] of node.variables) {
       subq = this.visitFLWORForBinding(
         { expr, variable } as AST.FLWORForBinding,
@@ -468,7 +454,12 @@ export class XQueryLogicalPlanBuilder
     subq = new plan.Limit('xquery', 0, 1, subq);
     subq = new plan.Projection(
       'xquery',
-      [[new plan.Calculation('xquery', () => !invert, [], [], [], true), DOT]],
+      [
+        [
+          new plan.Calculation('xquery', () => !invert, [], [], null, [], true),
+          DOT,
+        ],
+      ],
       subq,
     );
     return new plan.FnCall(
@@ -478,24 +469,20 @@ export class XQueryLogicalPlanBuilder
       true,
     );
   }
-  visitSwitchExpr(
-    node: AST.SwitchExpr,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitSwitchExpr(node: AST.SwitchExpr, args: DescentArgs): PlanOperator {
     return new plan.Conditional(
       'xquery',
       node.expr && this.processNode(node.expr, args),
       node.cases.flatMap(([ws, t]) => {
         const then = this.processNode(t, args);
         return ws.map(
-          (w) =>
-            [this.processNode(w, args), then] as [LogicalOpOrId, LogicalOpOrId],
+          (w) => [this.processNode(w, args), then] as [OpOrId, OpOrId],
         );
       }),
       node.defaultCase && this.processNode(node.defaultCase, args),
     );
   }
-  visitIfExpr(node: AST.IfExpr, args: DescentArgs): LogicalPlanOperator {
+  visitIfExpr(node: AST.IfExpr, args: DescentArgs): PlanOperator {
     return new plan.Conditional(
       'xquery',
       null,
@@ -511,16 +498,16 @@ export class XQueryLogicalPlanBuilder
   visitSequenceType(
     node: AST.ASTSequenceType,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     throw new Error('Method not implemented.');
   }
   visitInstanceOfExpr(
     node: AST.InstanceOfExpr,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     throw new UnsupportedError('Instanceof not supported.');
   }
-  visitCastExpr(node: AST.CastExpr, args: DescentArgs): LogicalPlanOperator {
+  visitCastExpr(node: AST.CastExpr, args: DescentArgs): PlanOperator {
     const impl = this.db.langMgr.getCast('xquery', ...idToPair(node.type));
     return new plan.FnCall(
       'sql',
@@ -529,14 +516,14 @@ export class XQueryLogicalPlanBuilder
       impl.pure,
     );
   }
-  visitItemType(node: AST.ASTItemType, args: DescentArgs): LogicalPlanOperator {
+  visitItemType(node: AST.ASTItemType, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
 
   private processPathStart(
     first: ASTNode,
     args: DescentArgs,
-  ): LogicalPlanTupleOperator {
+  ): PlanTupleOperator {
     if (first instanceof AST.PathAxis) {
       if (!args.ctx.has(DOT.parts)) {
         throw new Error(
@@ -571,7 +558,7 @@ export class XQueryLogicalPlanBuilder
         args.src,
       );
     } else if (step instanceof AST.PathAxis) {
-      return step.accept(this, args) as LogicalPlanTupleOperator;
+      return step.accept(this, args) as PlanTupleOperator;
     } else {
       const calc = this.toCalc(
         step,
@@ -581,7 +568,7 @@ export class XQueryLogicalPlanBuilder
       return new TreeJoin('xquery', calc, args.src);
     }
   }
-  visitPathExpr(node: AST.PathExpr, args: DescentArgs): LogicalPlanOperator {
+  visitPathExpr(node: AST.PathExpr, args: DescentArgs): PlanOperator {
     if (node.start) {
       throw new UnsupportedError('Only relative paths are supported');
     }
@@ -595,7 +582,7 @@ export class XQueryLogicalPlanBuilder
   visitPathPredicate(
     node: AST.PathPredicate,
     dargs: DescentArgs,
-  ): LogicalPlanTupleOperator {
+  ): PlanTupleOperator {
     const calcCtx = union(dargs.ctx, dargs.src.schemaSet);
     const calcParams = node.exprs.map((x) =>
       this.toCalcParams(x, { ctx: calcCtx, inferred: dargs.inferred }),
@@ -616,11 +603,8 @@ export class XQueryLogicalPlanBuilder
     );
     return new plan.Selection('xquery', calc, dargs.src);
   }
-  visitPathAxis(
-    node: AST.PathAxis,
-    args: DescentArgs,
-  ): LogicalPlanTupleOperator {
-    let res: LogicalPlanTupleOperator = new TreeJoin(
+  visitPathAxis(node: AST.PathAxis, args: DescentArgs): PlanTupleOperator {
+    let res: PlanTupleOperator = new TreeJoin(
       'xquery',
       new plan.Calculation(
         'xquery',
@@ -635,10 +619,7 @@ export class XQueryLogicalPlanBuilder
     }
     return res;
   }
-  visitFilterExpr(
-    node: AST.FilterExpr,
-    args: DescentArgs,
-  ): LogicalPlanTupleOperator {
+  visitFilterExpr(node: AST.FilterExpr, args: DescentArgs): PlanTupleOperator {
     let res = toTuples(node.expr.accept(this, args));
     res = new plan.ProjectionIndex('xquery', POS, res);
     res = new ProjectionSize('xquery', LEN, res);
@@ -647,7 +628,7 @@ export class XQueryLogicalPlanBuilder
   visitDynamicFunctionCall(
     node: AST.DynamicFunctionCall,
     dargs: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     const args = node.args.map((x) => this.processFnArg(x, dargs));
     args.push({ op: node.nameOrExpr.accept(this, dargs) });
     return new plan.FnCall('xquery', args, (...as) => as.pop()(...as));
@@ -655,17 +636,14 @@ export class XQueryLogicalPlanBuilder
   visitSequenceConstructor(
     node: AST.SequenceConstructor,
     dargs: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     return new plan.FnCall(
       'xquery',
       node.items.map((x) => this.processFnArg(x, dargs)),
       (...args) => args.flat(Infinity),
     );
   }
-  visitOrderedExpr(
-    node: AST.OrderedExpr,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitOrderedExpr(node: AST.OrderedExpr, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Ordered expressions not supported');
   }
 
@@ -696,7 +674,7 @@ export class XQueryLogicalPlanBuilder
   visitDirectElementConstructor(
     node: AST.DirectElementConstructor,
     dargs: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     const [ns, qname] = this.idToQName(node.name);
     const content = node.content.content
       .flat()
@@ -735,10 +713,10 @@ export class XQueryLogicalPlanBuilder
   visitDirConstrContent(
     node: AST.DirConstrContent,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     throw new Error('Method not implemented.');
   }
-  visitModule(node: AST.Module, args: DescentArgs): LogicalPlanOperator {
+  visitModule(node: AST.Module, args: DescentArgs): PlanOperator {
     node.prolog.accept(this, args);
     let res = this.maybeToCalc(node.body[0], args);
     for (let i = 1; i < node.body.length; i++) {
@@ -749,7 +727,7 @@ export class XQueryLogicalPlanBuilder
   visitDirectPIConstructor(
     node: AST.DirectPIConstructor,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     return new plan.FnCall('xquery', [], () =>
       this.dataAdapter.createProcInstr(node.name, node.content),
     );
@@ -757,7 +735,7 @@ export class XQueryLogicalPlanBuilder
   visitDirectCommentConstructor(
     node: AST.DirectCommentConstructor,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     return new plan.FnCall('xquery', [], () =>
       this.dataAdapter.createComment(node.content),
     );
@@ -765,7 +743,7 @@ export class XQueryLogicalPlanBuilder
   visitComputedConstructor(
     node: AST.ComputedConstructor,
     args: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     let ns: string, qname: string;
     const content = node.content.map((x) => this.processFnArg(x, args));
     if (
@@ -816,16 +794,13 @@ export class XQueryLogicalPlanBuilder
         });
     }
   }
-  visitInlineFn(
-    node: AST.InlineFunction,
-    args: DescentArgs,
-  ): LogicalPlanOperator {
+  visitInlineFn(node: AST.InlineFunction, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Inline functions not supported');
   }
   visitBoundFunction(
     node: AST.BoundFunction,
     dargs: DescentArgs,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     const args = node.boundArgs
       .map(retI1)
       .map((x) => this.processFnArg(x, dargs));
@@ -851,7 +826,7 @@ export class XQueryLogicalPlanBuilder
       };
     });
   }
-  visitLiteral<U>(node: ASTLiteral<U>, args: DescentArgs): LogicalPlanOperator {
+  visitLiteral<U>(node: ASTLiteral<U>, args: DescentArgs): PlanOperator {
     return new plan.Literal('xquery', node.value);
   }
   private processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
@@ -861,7 +836,7 @@ export class XQueryLogicalPlanBuilder
     }
     return { op: item.accept(this, args) };
   }
-  visitOperator(node: ASTOperator, args: DescentArgs): LogicalPlanOperator {
+  visitOperator(node: ASTOperator, args: DescentArgs): PlanOperator {
     return new plan.FnCall(
       'xquery',
       node.operands.map((x) => this.processOpArg(x, args)),
@@ -871,7 +846,7 @@ export class XQueryLogicalPlanBuilder
   }
 
   private renameAggSource(
-    src: LogicalPlanTupleOperator,
+    src: PlanTupleOperator,
     dot: ASTIdentifier,
     len: ASTIdentifier,
     pos: ASTIdentifier,
@@ -892,11 +867,11 @@ export class XQueryLogicalPlanBuilder
       src,
     );
   }
-  private joinAggArgs(args: LogicalPlanTupleOperator[]) {
+  private joinAggArgs(args: PlanTupleOperator[]) {
     const colNames = args.map((_, i) => toId(i + ''));
     const posNames = args.map((_, i) => toId('i' + i));
     const countNames = args.map((_, i) => toId('c' + i));
-    let joined: LogicalPlanTupleOperator = this.renameAggSource(
+    let joined: PlanTupleOperator = this.renameAggSource(
       args[0],
       colNames[0],
       countNames[0],
@@ -919,10 +894,10 @@ export class XQueryLogicalPlanBuilder
     return joined;
   }
 
-  private prepareAggArg(arg: LogicalPlanOperator): LogicalPlanTupleOperator {
+  private prepareAggArg(arg: PlanOperator): PlanTupleOperator {
     if (plan.CalcIntermediate in arg) {
       let calcParams = arg.accept(this.calcBuilders);
-      calcParams = simplifyCalcParams(calcParams);
+      calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
 
       if (calcParams.literal) {
         const ret = coalesceSeq(calcParams.impl());
@@ -936,6 +911,7 @@ export class XQueryLogicalPlanBuilder
         calcParams.impl,
         calcParams.args,
         calcParams.argMeta,
+        null,
         calcParams.aggregates,
         calcParams.literal,
       );
@@ -948,7 +924,7 @@ export class XQueryLogicalPlanBuilder
     }
     return toTuples(arg);
   }
-  visitFunction(node: ASTFunction, dargs: DescentArgs): LogicalPlanOperator {
+  visitFunction(node: ASTFunction, dargs: DescentArgs): PlanOperator {
     const [id, schema] = idToPair(node.id);
     let impl: Fn | AggregateFn;
     try {
@@ -1017,19 +993,19 @@ export class XQueryLogicalPlanBuilder
 
     return new plan.MapToItem('xquery', DOT, gb);
   }
-  visitLangSwitch(node: LangSwitch, args: DescentArgs): LogicalPlanOperator {
+  visitLangSwitch(node: LangSwitch, args: DescentArgs): PlanOperator {
     const nested = new (this.db.langMgr.getLang(
       node.lang,
     ).visitors.logicalPlanBuilder)(this.db).buildPlan(node.node, args.ctx);
     for (const item of nested.inferred) {
       args.inferred.add(item);
     }
-    if (nested.plan instanceof LogicalPlanTupleOperator) {
+    if (nested.plan instanceof PlanTupleOperator) {
       return new plan.MapToItem('xquery', null, nested.plan);
     }
     return nested.plan;
   }
-  visitIdentifier(node: ASTIdentifier, args: DescentArgs): LogicalPlanOperator {
+  visitIdentifier(node: ASTIdentifier, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
 }

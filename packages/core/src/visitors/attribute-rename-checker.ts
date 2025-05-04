@@ -1,9 +1,4 @@
-import {
-  IdSet,
-  LogicalOpOrId,
-  LogicalPlanOperator,
-  LogicalPlanVisitor,
-} from '../plan/visitor.js';
+import { IdSet, OpOrId, PlanOperator, PlanVisitor } from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
 import { DortDBAsFriend } from '../db.js';
 import { TransitiveDependencies } from './transitive-deps.js';
@@ -12,23 +7,23 @@ import { ASTIdentifier } from '../ast.js';
 import { retI0 } from '../internal-fns/index.js';
 
 export class AttributeRenameChecker
-  implements LogicalPlanVisitor<boolean, plan.RenameMap>
+  implements PlanVisitor<boolean, plan.RenameMap>
 {
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
   constructor(
-    protected vmap: Record<string, LogicalPlanVisitor<boolean, plan.RenameMap>>,
+    protected vmap: Record<string, PlanVisitor<boolean, plan.RenameMap>>,
     protected db: DortDBAsFriend,
   ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
 
-  public canRename(plan: LogicalPlanOperator, renamesInv: plan.RenameMap) {
+  public canRename(plan: PlanOperator, renamesInv: plan.RenameMap) {
     return plan.accept(this.vmap, renamesInv);
   }
 
   protected checkHorizontal(
-    horizontal: LogicalPlanOperator,
+    horizontal: PlanOperator,
     verticalCtx: IdSet,
     renamesInv: plan.RenameMap,
   ) {
@@ -38,7 +33,7 @@ export class AttributeRenameChecker
   }
 
   protected checkHorizontalArray(
-    horizontal: LogicalOpOrId[],
+    horizontal: OpOrId[],
     verticalCtx: IdSet,
     renamesInv: plan.RenameMap,
   ) {
@@ -52,10 +47,7 @@ export class AttributeRenameChecker
     return true;
   }
 
-  protected checkVerticalArray(
-    vertical: LogicalOpOrId[],
-    renamesInv: plan.RenameMap,
-  ) {
+  protected checkVerticalArray(vertical: OpOrId[], renamesInv: plan.RenameMap) {
     for (const v of vertical) {
       if (!(v instanceof ASTIdentifier)) {
         if (!v.accept(this.vmap, renamesInv)) {

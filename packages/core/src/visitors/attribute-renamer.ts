@@ -1,9 +1,9 @@
 import {
   IdSet,
-  LogicalOpOrId,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  OpOrId,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
 import { DortDBAsFriend } from '../db.js';
@@ -11,25 +11,23 @@ import { TransitiveDependencies } from './transitive-deps.js';
 import { ASTIdentifier } from '../ast.js';
 import { retI0 } from '../internal-fns/index.js';
 
-export class AttributeRenamer
-  implements LogicalPlanVisitor<void, plan.RenameMap>
-{
+export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
   constructor(
-    protected vmap: Record<string, LogicalPlanVisitor<void, plan.RenameMap>>,
+    protected vmap: Record<string, PlanVisitor<void, plan.RenameMap>>,
     protected db: DortDBAsFriend,
   ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
 
-  public rename(plan: LogicalPlanOperator, renames: plan.RenameMap) {
+  public rename(plan: PlanOperator, renames: plan.RenameMap) {
     plan.accept(this.vmap, renames);
     this.tdepsVmap[plan.lang].invalidateCacheUpstream(plan);
   }
 
   protected processArray(
-    array: LogicalOpOrId[],
+    array: OpOrId[],
     deps: IdSet,
     renames: plan.RenameMap,
     removeDeps = true,
@@ -54,10 +52,7 @@ export class AttributeRenamer
     }
   }
 
-  protected processItem<
-    Key extends string,
-    Obj extends Record<Key, LogicalOpOrId>,
-  >(
+  protected processItem<Key extends string, Obj extends Record<Key, OpOrId>>(
     obj: Obj,
     key: Key,
     deps: IdSet,

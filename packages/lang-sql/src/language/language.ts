@@ -5,6 +5,7 @@ import { SQLCalculationBuilder } from '../visitors/calculation-builder.js';
 import { ObjectDataAdapter, SQLDataAdapter } from './data-adapter.js';
 import { createParser } from './create-parser.js';
 import { inOp, notInOp } from '../operators/basic.js';
+import { SQLEqualityChecker } from '../visitors/equality-checker.js';
 
 export interface SQLConfig {
   /** defaults to {@link ObjectDataAdapter} */
@@ -26,6 +27,7 @@ export function SQL(config?: SQLConfig): SQLLanguage {
     visitors: {
       logicalPlanBuilder: SQLLogicalPlanBuilder,
       calculationBuilder: SQLCalculationBuilder,
+      equalityChecker: SQLEqualityChecker,
     },
     dataAdapter: config?.adapter ?? new ObjectDataAdapter(),
   };

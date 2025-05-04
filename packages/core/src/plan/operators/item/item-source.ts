@@ -3,16 +3,11 @@ import { Trie } from '../../../data-structures/trie.js';
 import { isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import {
-  Aliased,
-  IdSet,
-  LogicalPlanOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { Aliased, IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from './calculation.js';
 
-export class ItemSource implements LogicalPlanOperator {
-  public parent: LogicalPlanOperator;
+export class ItemSource implements PlanOperator {
+  public parent: PlanOperator;
   public dependencies = new Trie<string | symbol>();
 
   constructor(
@@ -21,24 +16,21 @@ export class ItemSource implements LogicalPlanOperator {
   ) {}
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitItemSource(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     throw new Error('Method not implemented.');
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [];
   }
 }
 
-export class ItemFnSource implements LogicalPlanOperator {
-  public parent: LogicalPlanOperator;
+export class ItemFnSource implements PlanOperator {
+  public parent: PlanOperator;
   public dependencies: IdSet;
 
   constructor(
@@ -52,19 +44,16 @@ export class ItemFnSource implements LogicalPlanOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitItemFnSource(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
   }
 }

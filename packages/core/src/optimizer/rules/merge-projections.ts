@@ -2,9 +2,9 @@ import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 import * as plan from '../../plan/operators/index.js';
 import {
   IdSet,
-  LogicalOpOrId,
-  LogicalPlanOperator,
-  LogicalPlanVisitor,
+  OpOrId,
+  PlanOperator,
+  PlanVisitor,
 } from '../../plan/visitor.js';
 import { Trie } from '../../data-structures/trie.js';
 import { ASTIdentifier } from '../../ast.js';
@@ -16,6 +16,7 @@ import {
   CalculationParams,
   simplifyCalcParams,
 } from '../../visitors/calculation-builder.js';
+import { EqualityChecker } from '../../visitors/equality-checker.js';
 
 export type MergeProjectionsBindings = plan.Projection[];
 export type ProjMap = Trie<string | symbol, ASTIdentifier | plan.Calculation>;
@@ -25,14 +26,13 @@ export class MergeProjections
 {
   operator = plan.Projection;
   protected tdepsVmap: Record<string, TransitiveDependencies>;
-  protected calcBuilderVmap: Record<
-    string,
-    LogicalPlanVisitor<CalculationParams>
-  >;
+  protected calcBuilderVmap: Record<string, PlanVisitor<CalculationParams>>;
+  protected eqCheckersVmap: Record<string, EqualityChecker>;
 
   constructor(protected db: DortDBAsFriend) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
     this.calcBuilderVmap = this.db.langMgr.getVisitorMap('calculationBuilder');
+    this.eqCheckersVmap = this.db.langMgr.getVisitorMap('equalityChecker');
   }
 
   match(
@@ -50,7 +50,7 @@ export class MergeProjections
   transform(
     node: plan.Projection,
     bindings: MergeProjectionsBindings,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     let last = node;
     for (let i = 1; i < bindings.length; i++) {
       last = this.mergeProjections(last, bindings[i]);
@@ -100,10 +100,7 @@ export class MergeProjections
     return a;
   }
 
-  protected calcToFnCall(
-    calc: plan.Calculation,
-    args: LogicalOpOrId[],
-  ): plan.FnCall {
+  protected calcToFnCall(calc: plan.Calculation, args: OpOrId[]): plan.FnCall {
     return new plan.FnCall(
       calc.lang,
       args.map((arg, i) => {
@@ -126,47 +123,33 @@ export class MergeProjections
     calc: plan.Calculation,
     projMap: ProjMap,
   ): plan.Calculation {
-    const fnArgs = calc.args.map((arg, i) => {
+    for (let i = 0; i < calc.args.length; i++) {
+      const arg = calc.args[i];
       if (arg instanceof ASTIdentifier) {
-        arg = projMap.get(arg.parts) ?? arg;
-        if (arg instanceof plan.Calculation) {
-          calc.argMeta[i] ??= {};
-          return this.calcToFnCall(arg, arg.args);
-        }
-      }
-      return arg;
-    });
-    const fn = this.calcToFnCall(calc, fnArgs);
-    const newCalcParams = simplifyCalcParams(fn.accept(this.calcBuilderVmap));
-
-    const invMetaMap = new Map(newCalcParams.args.map((x, i) => [x, i]));
-    for (let i = 0; i < fnArgs.length; i++) {
-      if (fnArgs[i] instanceof plan.FnCall) {
-        const original = projMap.get(
-          (calc.args[i] as ASTIdentifier).parts,
-        ) as plan.Calculation;
-        for (let j = 0; j < original.args.length; j++) {
-          const arg = original.args[j];
-          if (
-            original.argMeta[j]?.usedMultipleTimes ||
-            calc.argMeta[i]?.usedMultipleTimes
-          ) {
-            const revIndex = invMetaMap.get(arg);
-            newCalcParams.argMeta[revIndex] ??= {};
-            newCalcParams.argMeta[revIndex].usedMultipleTimes = true;
+        const mapped = projMap.get(arg.parts);
+        if (mapped) {
+          for (const [obj, key] of calc.argMeta[i].originalLocations) {
+            if (mapped instanceof plan.Calculation) {
+              obj[key] = mapped.original;
+            } else {
+              obj[key] = mapped;
+            }
           }
         }
-      } else if (calc.argMeta[i]?.usedMultipleTimes) {
-        const revIndex = invMetaMap.get(fnArgs[i]);
-        newCalcParams.argMeta[revIndex] ??= {};
-        newCalcParams.argMeta[revIndex].usedMultipleTimes = true;
       }
     }
+
+    const newCalcParams = simplifyCalcParams(
+      calc.original.accept(this.calcBuilderVmap),
+      this.eqCheckersVmap,
+      calc.lang,
+    );
     const newCalc = new plan.Calculation(
       calc.lang,
       newCalcParams.impl,
       newCalcParams.args,
       newCalcParams.argMeta,
+      calc.original,
       newCalcParams.aggregates,
       newCalcParams.literal,
     );
@@ -184,6 +167,7 @@ export class MergeProjections
       let usedTimes = 0;
       for (const [aVal, aAlias] of a.attrs) {
         if (aVal instanceof plan.Calculation) {
+          if (!aVal.original) canMerge = false;
           if (calcInputDeps.get(aVal).has(alias.parts)) {
             canMerge = false;
             return true;
@@ -193,17 +177,23 @@ export class MergeProjections
               (x) => x instanceof ASTIdentifier && x.equals(alias),
             );
             usedTimes += aVal.argMeta[metaIndex]?.usedMultipleTimes ? 2 : 1;
-            if (usedTimes > 1 && value instanceof plan.Calculation) {
-              canMerge = false;
-              return true;
+            if (value instanceof plan.Calculation) {
+              if (!value.original) canMerge = false;
+              if (usedTimes > 1) {
+                canMerge = false;
+                return true;
+              }
             }
             projMap.set(alias.parts, value);
           }
         } else if (aVal.equals(alias)) {
           usedTimes++;
-          if (usedTimes > 1 && value instanceof plan.Calculation) {
-            canMerge = false;
-            return true;
+          if (value instanceof plan.Calculation) {
+            if (!value.original) canMerge = false;
+            if (usedTimes > 1) {
+              canMerge = false;
+              return true;
+            }
           }
           projMap.set(alias.parts, value);
         }

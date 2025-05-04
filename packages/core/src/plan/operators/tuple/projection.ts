@@ -1,9 +1,9 @@
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
@@ -13,14 +13,14 @@ import { Trie } from '../../../data-structures/trie.js';
 
 export type RenameMap = Trie<string | symbol, (string | symbol)[]>;
 
-export class Projection extends LogicalPlanTupleOperator {
+export class Projection extends PlanTupleOperator {
   public renames: RenameMap = new Trie();
   public renamesInv: RenameMap = new Trie();
 
   constructor(
     lang: Lowercase<string>,
     public attrs: Aliased<ASTIdentifier | Calculation>[],
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -38,24 +38,21 @@ export class Projection extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitProjection(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.source) {
-      this.source = replacement as LogicalPlanTupleOperator;
+      this.source = replacement as PlanTupleOperator;
     } else {
       this.attrs.find((x) => x[0] === current)[0] = replacement as Calculation;
     }
   }
-  getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = this.attrs.map(retI0).filter(isCalc);
+  getChildren(): PlanOperator[] {
+    const res: PlanOperator[] = this.attrs.map(retI0).filter(isCalc);
     res.push(this.source);
     return res;
   }
@@ -64,7 +61,7 @@ export class Projection extends LogicalPlanTupleOperator {
 /**
  * dependent join, mapping can introduce columns which override the source
  */
-export class ProjectionConcat extends LogicalPlanTupleOperator {
+export class ProjectionConcat extends PlanTupleOperator {
   /**
    * empty value for the outer join (default is null)
    */
@@ -77,9 +74,9 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     /** mapping must be interpreted in the context of the source */
-    public mapping: LogicalPlanTupleOperator,
+    public mapping: PlanTupleOperator,
     public outer: boolean,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -92,14 +89,14 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitProjectionConcat(this, arg);
   }
   replaceChild(
-    current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator,
+    current: PlanTupleOperator,
+    replacement: PlanTupleOperator,
   ): void {
     replacement.parent = this;
     if (current === this.mapping) {
@@ -112,16 +109,16 @@ export class ProjectionConcat extends LogicalPlanTupleOperator {
     this.removeFromSchema(this.mapping.schema);
     this.addToSchema(this.mapping.schema);
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.source, this.mapping];
   }
 }
 
-export class ProjectionIndex extends LogicalPlanTupleOperator {
+export class ProjectionIndex extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public indexCol: ASTIdentifier,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -134,14 +131,14 @@ export class ProjectionIndex extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitProjectionIndex(this, arg);
   }
   replaceChild(
-    current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator,
+    current: PlanTupleOperator,
+    replacement: PlanTupleOperator,
   ): void {
     replacement.parent = this;
     this.source = replacement;
@@ -151,7 +148,7 @@ export class ProjectionIndex extends LogicalPlanTupleOperator {
     );
     this.addToSchema(this.indexCol);
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.source];
   }
 }

@@ -1,20 +1,16 @@
 import { allAttrs, ASTIdentifier } from '../../ast.js';
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../visitor.js';
 import { schemaToTrie } from '../../utils/trie.js';
 import { Trie } from '../../data-structures/trie.js';
 
-export class MapToItem implements LogicalPlanOperator {
-  public parent: LogicalPlanOperator;
+export class MapToItem implements PlanOperator {
+  public parent: PlanOperator;
   public dependencies = new Trie<string | symbol>();
 
   constructor(
     public lang: Lowercase<string>,
     public key: ASTIdentifier,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     if (!key) {
       this.key =
@@ -27,28 +23,28 @@ export class MapToItem implements LogicalPlanOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitMapToItem(this, arg);
   }
   replaceChild(
-    current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator,
+    current: PlanTupleOperator,
+    replacement: PlanTupleOperator,
   ): void {
     replacement.parent = this;
     this.source = replacement;
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.source];
   }
 }
 
-export class MapFromItem extends LogicalPlanTupleOperator {
+export class MapFromItem extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public key: ASTIdentifier,
-    public source: LogicalPlanOperator,
+    public source: PlanOperator,
   ) {
     super();
     this.lang = lang;
@@ -58,19 +54,16 @@ export class MapFromItem extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitMapFromItem(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     this.source = replacement;
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.source];
   }
 }

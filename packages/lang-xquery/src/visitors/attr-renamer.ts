@@ -1,21 +1,13 @@
-import {
-  AttributeRenamer,
-  DortDBAsFriend,
-  LogicalPlanVisitor,
-} from '@dortdb/core';
-import {
-  ProjectionSize,
-  TreeJoin,
-  XQueryLogicalPlanVisitor,
-} from '../plan/index.js';
+import { AttributeRenamer, DortDBAsFriend, PlanVisitor } from '@dortdb/core';
+import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { RenameMap } from '@dortdb/core/plan';
 
 export class XQueryAttributeRenamer
   extends AttributeRenamer
-  implements XQueryLogicalPlanVisitor<void, RenameMap>
+  implements XQueryPlanVisitor<void, RenameMap>
 {
   constructor(
-    vmap: Record<string, LogicalPlanVisitor<void, RenameMap>>,
+    vmap: Record<string, PlanVisitor<void, RenameMap>>,
     db: DortDBAsFriend,
   ) {
     super(vmap, db);

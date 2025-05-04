@@ -1,9 +1,9 @@
 import { CalculationBuilder, CalculationParams } from '@dortdb/core';
-import { LangSwitch, SQLLogicalPlanVisitor, Using } from '../plan/index.js';
+import { LangSwitch, SQLPlanVisitor, Using } from '../plan/index.js';
 
 export class SQLCalculationBuilder
   extends CalculationBuilder
-  implements SQLLogicalPlanVisitor<CalculationParams>
+  implements SQLPlanVisitor<CalculationParams>
 {
   visitLangSwitch(operator: LangSwitch): CalculationParams {
     return {

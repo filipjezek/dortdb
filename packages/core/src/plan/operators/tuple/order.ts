@@ -2,11 +2,7 @@ import { ASTIdentifier } from '../../../ast.js';
 import { isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export function getKey(o: Order) {
@@ -18,11 +14,11 @@ export interface Order {
   ascending: boolean;
   nullsFirst: boolean;
 }
-export class OrderBy extends LogicalPlanTupleOperator {
+export class OrderBy extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public orders: Order[],
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -34,25 +30,22 @@ export class OrderBy extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitOrderBy(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.source) {
-      this.source = replacement as LogicalPlanTupleOperator;
+      this.source = replacement as PlanTupleOperator;
     } else {
       this.orders.find((o) => o.key === current).key =
         replacement as Calculation;
     }
   }
-  getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = this.orders.map(getKey).filter(isCalc);
+  getChildren(): PlanOperator[] {
+    const res: PlanOperator[] = this.orders.map(getKey).filter(isCalc);
     res.push(this.source);
     return res;
   }

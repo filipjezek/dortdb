@@ -7,37 +7,40 @@ import {
   Selection,
 } from '../plan/operators/index.js';
 import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../plan/visitor.js';
 import {
   CalculationParams,
   simplifyCalcParams,
 } from '../visitors/calculation-builder.js';
+import { EqualityChecker } from '../visitors/equality-checker.js';
 
 /**
  * Converts a calculation intermediate expression into possibly multiple chained selections.
  */
 export function exprToSelection(
-  expr: LogicalPlanOperator | ASTIdentifier,
-  source: LogicalPlanTupleOperator,
-  calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>,
+  expr: PlanOperator | ASTIdentifier,
+  source: PlanTupleOperator,
+  calcBuilders: Record<string, PlanVisitor<CalculationParams>>,
+  eqCheckers: Record<string, EqualityChecker>,
   lang: Lowercase<string>,
 ) {
-  const andsContainer: (LogicalPlanOperator | ASTIdentifier)[] = [];
+  const andsContainer: (PlanOperator | ASTIdentifier)[] = [];
   splitAnds(expr, andsContainer);
   for (const andExpr of andsContainer) {
     if (andExpr instanceof ASTIdentifier) {
       source = new Selection(lang, andExpr, source);
     } else {
       let calcParams = andExpr.accept(calcBuilders);
-      calcParams = simplifyCalcParams(calcParams);
+      calcParams = simplifyCalcParams(calcParams, eqCheckers, lang);
       const calc = new Calculation(
         lang,
         calcParams.impl,
         calcParams.args,
         calcParams.argMeta,
+        andExpr,
         calcParams.aggregates,
         calcParams.literal,
       );
@@ -48,8 +51,8 @@ export function exprToSelection(
 }
 
 function splitAnds(
-  expr: LogicalPlanOperator | ASTIdentifier,
-  andsContainer: (LogicalPlanOperator | ASTIdentifier)[],
+  expr: PlanOperator | ASTIdentifier,
+  andsContainer: (PlanOperator | ASTIdentifier)[],
 ) {
   if (!(expr instanceof FnCall) || expr.impl !== and.impl) {
     andsContainer.push(expr);

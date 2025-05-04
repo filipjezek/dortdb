@@ -2,15 +2,15 @@ import {
   Aliased,
   allAttrs,
   ASTIdentifier,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import {
   ProjectionSize,
   TreeJoin,
-  XQueryLogicalPlanVisitor,
+  XQueryPlanVisitor,
 } from '@dortdb/lang-xquery';
 import { strToColor } from '../../utils/str-to-color';
 
@@ -31,9 +31,7 @@ interface Branch {
 }
 
 export class GraphBuilder
-  implements
-    LogicalPlanVisitor<SVGGElement>,
-    XQueryLogicalPlanVisitor<SVGGElement>
+  implements PlanVisitor<SVGGElement>, XQueryPlanVisitor<SVGGElement>
 {
   public static readonly STROKE = 1;
   public static readonly PADDING = 8;
@@ -53,7 +51,7 @@ export class GraphBuilder
 
   constructor(
     private readonly container: SVGSVGElement,
-    private vmap: Record<string, LogicalPlanVisitor<SVGGElement>>,
+    private vmap: Record<string, PlanVisitor<SVGGElement>>,
   ) {
     this.container.innerHTML = `
       <style>
@@ -149,9 +147,9 @@ export class GraphBuilder
     this.drawingContainer = this.container.querySelector('#drawing-container');
   }
 
-  private getSchemaTemplate(operator: LogicalPlanOperator) {
+  private getSchemaTemplate(operator: PlanOperator) {
     return (
-      operator instanceof LogicalPlanTupleOperator &&
+      operator instanceof PlanTupleOperator &&
       operator.schema &&
       `<div class="schema">[${operator.schema
         .map((id) => this.stringifyId(id))
@@ -166,7 +164,7 @@ export class GraphBuilder
 
   private drawNode(
     text: string,
-    operator: LogicalPlanOperator,
+    operator: PlanOperator,
     textClass = '',
   ): SVGGElement {
     const schemaTemplate = this.getSchemaTemplate(operator);
@@ -244,7 +242,7 @@ export class GraphBuilder
     return `<span class="placeholder placeholder-${counter.i++}">${aliasStr}</span>`;
   }
 
-  public drawTree(plan: LogicalPlanOperator): void {
+  public drawTree(plan: PlanOperator): void {
     this.container
       .querySelectorAll('#drawing-container ~ *')
       .forEach((el) => el.remove());
@@ -355,7 +353,7 @@ export class GraphBuilder
   }
 
   private processArg(
-    arg: ASTIdentifier | LogicalPlanOperator,
+    arg: ASTIdentifier | PlanOperator,
     counter: { i: number },
   ) {
     return arg instanceof ASTIdentifier
@@ -405,7 +403,7 @@ export class GraphBuilder
     const parent = this.drawNode(`calc(${args.join(', ')})`, operator);
     const ops = operator.args
       .filter((a) => !(a instanceof ASTIdentifier))
-      .map((a) => (a as LogicalPlanOperator).accept(this.vmap))
+      .map((a) => (a as PlanOperator).accept(this.vmap))
       .map((el, i) => ({
         el,
         src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
@@ -485,7 +483,7 @@ export class GraphBuilder
       { el: operator.source.accept(this.vmap) },
       ...operator.orders
         .filter((o) => o.key instanceof plan.Calculation)
-        .map((o) => (o.key as LogicalPlanOperator).accept(this.vmap))
+        .map((o) => (o.key as PlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
@@ -512,7 +510,7 @@ export class GraphBuilder
       parent,
       ...operator.keys
         .filter((k) => k instanceof plan.Calculation)
-        .map((k) => (k as LogicalPlanOperator).accept(this.vmap))
+        .map((k) => (k as PlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
@@ -591,7 +589,7 @@ export class GraphBuilder
       { el: operator.source.accept(this.vmap) },
       ...operator.attrs
         .filter((a) => a instanceof plan.Calculation)
-        .map((a) => (a as LogicalPlanOperator).accept(this.vmap))
+        .map((a) => (a as PlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
@@ -602,7 +600,7 @@ export class GraphBuilder
   visitNullSource(operator: plan.NullSource): SVGGElement {
     return this.drawNode(
       '&square;',
-      { lang: operator.lang } as LogicalPlanOperator, // do not draw schema
+      { lang: operator.lang } as PlanOperator, // do not draw schema
       'source-tuple',
     );
   }
@@ -629,7 +627,7 @@ export class GraphBuilder
       parent,
       ...operator.args
         .filter((a) => a instanceof plan.Calculation)
-        .map((a) => (a as LogicalPlanOperator).accept(this.vmap))
+        .map((a) => (a as PlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),

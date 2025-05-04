@@ -14,11 +14,7 @@ import {
   Selection,
   Union,
 } from '../../plan/operators/index.js';
-import {
-  IdSet,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-} from '../../plan/visitor.js';
+import { IdSet, PlanOperator, PlanTupleOperator } from '../../plan/visitor.js';
 import {
   areDepsOnlyRenamed,
   RenamedDepsResult,
@@ -31,7 +27,7 @@ import { PatternRule } from '../rule.js';
 
 export interface PushdownSelectionsBindings {
   selections: Selection[];
-  source: LogicalPlanTupleOperator;
+  source: PlanTupleOperator;
 }
 
 export class PushdownSelections
@@ -39,14 +35,12 @@ export class PushdownSelections
 {
   public operator = Selection;
   public alwaysSwap: {
-    new (
-      ...args: any[]
-    ): LogicalPlanTupleOperator & { source: LogicalPlanTupleOperator };
+    new (...args: any[]): PlanTupleOperator & { source: PlanTupleOperator };
   }[] = [OrderBy, Distinct];
   public setOps: {
-    new (...args: any[]): LogicalPlanTupleOperator & {
-      left: LogicalPlanOperator;
-      right: LogicalPlanOperator;
+    new (...args: any[]): PlanTupleOperator & {
+      left: PlanOperator;
+      right: PlanOperator;
     };
   }[] = [Union, Intersection, Difference];
   protected tdepsVmap: Record<string, TransitiveDependencies>;
@@ -146,7 +140,7 @@ export class PushdownSelections
   public transform(
     node: Selection,
     bindings: PushdownSelectionsBindings,
-  ): LogicalPlanOperator {
+  ): PlanOperator {
     const { selections, source } = bindings;
     const last = selections[selections.length - 1];
     if (this.alwaysSwap.includes(source.constructor as any)) {
@@ -171,7 +165,7 @@ export class PushdownSelections
   }
 
   protected transformBasic(
-    source: { source: LogicalPlanTupleOperator } & LogicalPlanTupleOperator,
+    source: { source: PlanTupleOperator } & PlanTupleOperator,
     first: Selection,
     last: Selection,
   ) {
@@ -184,9 +178,9 @@ export class PushdownSelections
 
   protected tranformSetOp(
     source: {
-      left: LogicalPlanTupleOperator;
-      right: LogicalPlanTupleOperator;
-    } & LogicalPlanTupleOperator,
+      left: PlanTupleOperator;
+      right: PlanTupleOperator;
+    } & PlanTupleOperator,
     first: Selection,
     last: Selection,
     selections: Selection[],
@@ -382,7 +376,7 @@ export class PushdownSelections
 
   protected pushSelectionsUnder<
     Key extends string,
-    Op extends LogicalPlanTupleOperator & Record<Key, LogicalPlanTupleOperator>,
+    Op extends PlanTupleOperator & Record<Key, PlanTupleOperator>,
   >(selections: Selection[], key: Key, source: Op): void {
     if (selections.length) {
       for (const s of selections) {

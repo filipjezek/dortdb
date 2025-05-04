@@ -1,12 +1,8 @@
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 
-export class CartesianProduct extends LogicalPlanTupleOperator {
+export class CartesianProduct extends PlanTupleOperator {
   /**
    * if true, the `right` is not allowed to return multiple values per one `left` value
    */
@@ -14,8 +10,8 @@ export class CartesianProduct extends LogicalPlanTupleOperator {
 
   constructor(
     lang: Lowercase<string>,
-    public left: LogicalPlanTupleOperator,
-    public right: LogicalPlanTupleOperator,
+    public left: PlanTupleOperator,
+    public right: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -29,26 +25,26 @@ export class CartesianProduct extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitCartesianProduct(this, arg);
   }
   replaceChild(
-    current: LogicalPlanTupleOperator,
-    replacement: LogicalPlanTupleOperator,
+    current: PlanTupleOperator,
+    replacement: PlanTupleOperator,
   ): void {
     replacement.parent = this;
     if (current === this.left) {
-      this.left = replacement as LogicalPlanTupleOperator;
+      this.left = replacement as PlanTupleOperator;
     } else {
-      this.right = replacement as LogicalPlanTupleOperator;
+      this.right = replacement as PlanTupleOperator;
     }
     this.clearSchema();
     this.addToSchema(this.left.schema);
     this.addToSchema(this.right.schema);
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return [this.left, this.right];
   }
 }
@@ -59,8 +55,8 @@ export class Join extends CartesianProduct {
 
   constructor(
     lang: Lowercase<string>,
-    left: LogicalPlanTupleOperator,
-    right: LogicalPlanTupleOperator,
+    left: PlanTupleOperator,
+    right: PlanTupleOperator,
     public on: Calculation,
   ) {
     super(lang, left, right);
@@ -68,26 +64,26 @@ export class Join extends CartesianProduct {
   }
 
   override accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitJoin(this, arg);
   }
   override replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
+    current: PlanOperator,
+    replacement: PlanOperator,
   ): void {
     replacement.parent = this;
     if (current === this.on) {
       this.on = replacement as Calculation;
     } else {
       super.replaceChild(
-        current as LogicalPlanTupleOperator,
-        replacement as LogicalPlanTupleOperator,
+        current as PlanTupleOperator,
+        replacement as PlanTupleOperator,
       );
     }
   }
-  override getChildren(): LogicalPlanOperator[] {
+  override getChildren(): PlanOperator[] {
     return [this.left, this.right, this.on];
   }
 }

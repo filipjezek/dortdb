@@ -3,21 +3,22 @@ import {
   ASTOperator,
   ASTFunction,
   ASTIdentifier,
-  LogicalPlanOperator,
+  PlanOperator,
   LangSwitch,
   Aliased,
   ASTNode,
   UnsupportedError,
   allAttrs,
   CalculationParams,
-  LogicalPlanVisitor,
-  LogicalOpOrId,
-  LogicalPlanTupleOperator,
+  PlanVisitor,
+  OpOrId,
+  PlanTupleOperator,
   LogicalPlanBuilder,
   IdSet,
   toInfer,
   DortDBAsFriend,
   simplifyCalcParams,
+  EqualityChecker,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -51,25 +52,27 @@ function idToPair(id: ASTIdentifier): [string, string] {
   ];
 }
 function attrToOpArg(
-  x: [LogicalOpOrId, ASTIdentifier],
+  x: [OpOrId, ASTIdentifier],
 ): plan.PlanOpAsArg | ASTIdentifier {
   return x[0] instanceof ASTIdentifier ? x[0] : { op: x[0] };
 }
-function toTuples(op: LogicalPlanOperator): LogicalPlanTupleOperator {
-  return op instanceof LogicalPlanTupleOperator
+function toTuples(op: PlanOperator): PlanTupleOperator {
+  return op instanceof PlanTupleOperator
     ? op
     : new plan.MapFromItem('sql', DEFAULT_COLUMN, op);
 }
 
 export class SQLLogicalPlanBuilder
-  implements SQLVisitor<LogicalPlanOperator>, LogicalPlanBuilder
+  implements SQLVisitor<PlanOperator>, LogicalPlanBuilder
 {
   private stringifier = new ASTDeterministicStringifier();
   private inferrerMap: Record<string, SchemaInferrer> = {};
-  private calcBuilders: Record<string, LogicalPlanVisitor<CalculationParams>>;
+  private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  private eqCheckers: Record<string, EqualityChecker>;
 
   constructor(private db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.inferrerMap['sql'] = new SchemaInferrer(this.inferrerMap, db);
 
     this.processNode = this.processNode.bind(this);
@@ -87,7 +90,7 @@ export class SQLLogicalPlanBuilder
     return { plan, inferred };
   }
 
-  private processNode(item: ASTNode): LogicalOpOrId {
+  private processNode(item: ASTNode): OpOrId {
     return item instanceof ASTIdentifier ? item : item.accept(this);
   }
   private processFnArg(item: ASTNode): plan.PlanOpAsArg | ASTIdentifier {
@@ -95,25 +98,27 @@ export class SQLLogicalPlanBuilder
   }
   private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
-    let calcParams = node.accept(this).accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams);
+    const intermediate = node.accept(this);
+    let calcParams = intermediate.accept(this.calcBuilders);
+    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'sql');
     return new plan.Calculation(
       'sql',
       calcParams.impl,
       calcParams.args,
       calcParams.argMeta,
+      intermediate,
       calcParams.aggregates,
       calcParams.literal,
     );
   }
 
-  visitStringLiteral(node: AST.ASTStringLiteral): LogicalPlanOperator {
+  visitStringLiteral(node: AST.ASTStringLiteral): PlanOperator {
     return new plan.Literal('sql', node.value);
   }
-  visitNumberLiteral(node: AST.ASTNumberLiteral): LogicalPlanOperator {
+  visitNumberLiteral(node: AST.ASTNumberLiteral): PlanOperator {
     return new plan.Literal('sql', node.value);
   }
-  visitArray(node: AST.ASTArray): LogicalPlanOperator {
+  visitArray(node: AST.ASTArray): PlanOperator {
     if (Array.isArray(node.items)) {
       return new plan.FnCall(
         'sql',
@@ -127,7 +132,7 @@ export class SQLLogicalPlanBuilder
       ret1,
     );
   }
-  visitRow(node: AST.ASTRow): LogicalPlanOperator {
+  visitRow(node: AST.ASTRow): PlanOperator {
     if (node.items instanceof ASTIdentifier) {
       return new plan.FnCall('sql', [node.items], ret1);
     }
@@ -140,7 +145,7 @@ export class SQLLogicalPlanBuilder
       return res;
     });
   }
-  visitCast(node: AST.ASTCast): LogicalPlanOperator {
+  visitCast(node: AST.ASTCast): PlanOperator {
     const impl = this.db.langMgr.getCast('sql', ...idToPair(node.type));
     return new plan.FnCall(
       'sql',
@@ -154,7 +159,7 @@ export class SQLLogicalPlanBuilder
       !node.isArray && impl.pure,
     );
   }
-  visitSubscript(node: AST.ASTSubscript): LogicalPlanOperator {
+  visitSubscript(node: AST.ASTSubscript): PlanOperator {
     const expr = this.processFnArg(node.expr);
     const index = this.processFnArg(node.from);
     return node.to
@@ -165,8 +170,8 @@ export class SQLLogicalPlanBuilder
         )
       : new plan.FnCall('sql', [expr, index], (e, i) => e[i], true);
   }
-  visitExists(node: AST.ASTExists): LogicalPlanOperator {
-    let res = node.query.accept(this) as LogicalPlanOperator;
+  visitExists(node: AST.ASTExists): PlanOperator {
+    let res = node.query.accept(this) as PlanOperator;
     res = new plan.Limit('sql', 0, 1, res);
     const col = toId('count');
     res = new plan.GroupBy(
@@ -186,8 +191,8 @@ export class SQLLogicalPlanBuilder
     return new plan.FnCall('sql', [{ op: res }], ret1);
   }
 
-  visitQuantifier(node: AST.ASTQuantifier): LogicalPlanOperator {
-    let query = node.query.accept(this) as LogicalPlanTupleOperator;
+  visitQuantifier(node: AST.ASTQuantifier): PlanOperator {
+    let query = node.query.accept(this) as PlanTupleOperator;
     if (query.schema.length !== 1)
       throw new Error('Quantified subquery must return exactly one column');
     const col = query.schema[0];
@@ -214,7 +219,7 @@ export class SQLLogicalPlanBuilder
             col,
           ),
         ],
-        query as LogicalPlanTupleOperator,
+        query as PlanTupleOperator,
       );
       return new plan.FnCall(
         'sql',
@@ -225,14 +230,14 @@ export class SQLLogicalPlanBuilder
 
     return new plan.Quantifier('sql', node.quantifier, query);
   }
-  visitIdentifier(node: ASTIdentifier): LogicalPlanOperator {
+  visitIdentifier(node: ASTIdentifier): PlanOperator {
     return new plan.FnCall('sql', [node], ret1, true);
   }
-  visitSQLIdentifier(node: AST.SQLIdentifier): LogicalPlanOperator {
+  visitSQLIdentifier(node: AST.SQLIdentifier): PlanOperator {
     return this.visitIdentifier(node);
   }
-  visitTableAlias(node: AST.ASTTableAlias): LogicalPlanTupleOperator {
-    let src: LogicalPlanTupleOperator;
+  visitTableAlias(node: AST.ASTTableAlias): PlanTupleOperator {
+    let src: PlanTupleOperator;
     if (node.table instanceof ASTIdentifier) {
       src = new plan.TupleSource('sql', node.table);
       src.addToSchema(ASTIdentifier.fromParts([...node.table.parts, toInfer]));
@@ -287,7 +292,7 @@ export class SQLLogicalPlanBuilder
       src,
     );
   }
-  visitExpressionAlias(node: AST.ASTExpressionAlias): LogicalPlanOperator {
+  visitExpressionAlias(node: AST.ASTExpressionAlias): PlanOperator {
     throw new Error('Method not implemented.');
   }
 
@@ -299,9 +304,9 @@ export class SQLLogicalPlanBuilder
     };
   }
   private processOrderBy(
-    op: LogicalPlanTupleOperator,
+    op: PlanTupleOperator,
     node: AST.SelectStatement,
-  ): LogicalPlanTupleOperator {
+  ): PlanTupleOperator {
     const orderItems = node.orderBy.map(this.processOrderItem);
     op = new plan.OrderBy('sql', orderItems, op);
     return op;
@@ -309,7 +314,7 @@ export class SQLLogicalPlanBuilder
   visitSelectStatement(node: AST.SelectStatement) {
     if (node.withQueries?.length)
       throw new UnsupportedError('With queries not supported');
-    let op = node.selectSet.accept(this) as LogicalPlanTupleOperator;
+    let op = node.selectSet.accept(this) as PlanTupleOperator;
     if (node.orderBy?.length) {
       op = this.processOrderBy(op, node);
     }
@@ -318,7 +323,7 @@ export class SQLLogicalPlanBuilder
     }
     return op;
   }
-  private buildLimit(node: AST.SelectStatement, op: LogicalPlanTupleOperator) {
+  private buildLimit(node: AST.SelectStatement, op: PlanTupleOperator) {
     const limit = node.limit && this.toCalc(node.limit);
     const offset = node.offset && this.toCalc(node.offset);
     if (limit && !assertCalcLiteral(limit, 'number'))
@@ -339,9 +344,9 @@ export class SQLLogicalPlanBuilder
    */
   visitSelectSetOp(
     node: AST.SelectSetOp,
-    left: LogicalPlanTupleOperator = null,
-  ): LogicalPlanTupleOperator {
-    let next = node.next.accept(this) as LogicalPlanTupleOperator;
+    left: PlanTupleOperator = null,
+  ): PlanTupleOperator {
+    let next = node.next.accept(this) as PlanTupleOperator;
     switch (node.type) {
       case AST.SelectSetOpType.UNION:
         next = new plan.Union('sql', left, next);
@@ -359,7 +364,7 @@ export class SQLLogicalPlanBuilder
     return next;
   }
 
-  visitSelectSet(node: AST.SelectSet): LogicalPlanTupleOperator {
+  visitSelectSet(node: AST.SelectSet): PlanTupleOperator {
     let op = node.from
       ? this.getTableName(node.from)[0]
       : new plan.NullSource('sql');
@@ -373,6 +378,7 @@ export class SQLLogicalPlanBuilder
         this.processNode(node.where),
         op,
         this.calcBuilders,
+        this.eqCheckers,
         'sql',
       );
     }
@@ -384,6 +390,7 @@ export class SQLLogicalPlanBuilder
         this.processNode(node.having),
         op,
         this.calcBuilders,
+        this.eqCheckers,
         'sql',
       );
     }
@@ -424,9 +431,9 @@ export class SQLLogicalPlanBuilder
    */
   visitGroupByClause(
     node: AST.GroupByClause,
-    src: LogicalPlanTupleOperator = null,
+    src: PlanTupleOperator = null,
     aggregates: plan.AggregateCall[] = [],
-  ): LogicalPlanTupleOperator {
+  ): PlanTupleOperator {
     let attrs: Aliased<ASTIdentifier | plan.Calculation>[] = [];
     if (node) {
       if (node.type !== AST.GroupByType.BASIC)
@@ -441,7 +448,7 @@ export class SQLLogicalPlanBuilder
       for (
         let step = aggr.postGroupSource;
         step?.schema === schemaToReplace;
-        step = step.parent as LogicalPlanTupleOperator
+        step = step.parent as PlanTupleOperator
       ) {
         step.schema = src.schema;
         step.schemaSet = src.schemaSet;
@@ -452,18 +459,18 @@ export class SQLLogicalPlanBuilder
 
   private getTableName(
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
-  ): [LogicalPlanTupleOperator, ASTIdentifier] {
+  ): [PlanTupleOperator, ASTIdentifier] {
     if (node instanceof ASTIdentifier) {
       const src = new plan.TupleSource('sql', node);
       src.addToSchema(ASTIdentifier.fromParts([...node.parts, toInfer]));
       return [src, node];
     }
-    const src = node.accept(this) as LogicalPlanTupleOperator;
+    const src = node.accept(this) as PlanTupleOperator;
     if (node instanceof AST.JoinClause) return [src, null];
     const name = node.name && toId(node.name);
     return [src, name];
   }
-  visitJoinClause(node: AST.JoinClause): LogicalPlanTupleOperator {
+  visitJoinClause(node: AST.JoinClause): PlanTupleOperator {
     if (node.natural) throw new UnsupportedError('Natural joins not supported');
     const [left, leftName] = this.getTableName(node.tableLeft);
     const [right, rightName] = this.getTableName(node.tableRight);
@@ -478,6 +485,7 @@ export class SQLLogicalPlanBuilder
         this.processNode(node.condition),
         op,
         this.calcBuilders,
+        this.eqCheckers,
         'sql',
       );
     } else if (node.using) {
@@ -498,7 +506,7 @@ export class SQLLogicalPlanBuilder
     }
     return op;
   }
-  visitCase(node: AST.ASTCase): LogicalPlanOperator {
+  visitCase(node: AST.ASTCase): PlanOperator {
     return new plan.Conditional(
       'sql',
       node.expr && this.processNode(node.expr),
@@ -506,7 +514,7 @@ export class SQLLogicalPlanBuilder
       node.elseExpr && this.processNode(node.elseExpr),
     );
   }
-  visitValues(node: AST.ValuesClause): LogicalPlanOperator {
+  visitValues(node: AST.ValuesClause): PlanOperator {
     const calcs = node.values.map((x) => x.map(this.toCalc));
     const external = calcs.flatMap((x) =>
       x.filter((x) => x instanceof ASTIdentifier || x.args.length > 0),
@@ -529,7 +537,7 @@ export class SQLLogicalPlanBuilder
     res.schema = calcs[0].map((_, i) => toId('col' + i));
     return res;
   }
-  visitAggregate(node: AST.ASTAggregate): LogicalPlanOperator {
+  visitAggregate(node: AST.ASTAggregate): PlanOperator {
     const impl = this.db.langMgr.getAggr(node.lang, ...idToPair(node.id));
     if (node.withinGroupArgs)
       throw new UnsupportedError('Within group not supported');
@@ -559,15 +567,15 @@ export class SQLLogicalPlanBuilder
     }
     return res;
   }
-  visitWindowSpec(node: AST.WindowSpec): LogicalPlanOperator {
+  visitWindowSpec(node: AST.WindowSpec): PlanOperator {
     throw new UnsupportedError('Window functions not supported');
   }
-  visitWindowFn(node: AST.ASTWindowFn): LogicalPlanOperator {
+  visitWindowFn(node: AST.ASTWindowFn): PlanOperator {
     throw new UnsupportedError('Window functions not supported');
   }
-  visitTableFn(node: AST.TableFn): LogicalPlanOperator {
+  visitTableFn(node: AST.TableFn): PlanOperator {
     const impl = this.db.langMgr.getFn(node.lang, ...idToPair(node.id));
-    let res: LogicalPlanTupleOperator = new plan.TupleFnSource(
+    let res: PlanTupleOperator = new plan.TupleFnSource(
       'sql',
       node.args.map(this.toCalc),
       impl.impl,
@@ -581,16 +589,16 @@ export class SQLLogicalPlanBuilder
       res = new plan.ProjectionIndex('sql', toId('ordinality'), res);
     return res;
   }
-  visitRowsFrom(node: AST.RowsFrom): LogicalPlanOperator {
+  visitRowsFrom(node: AST.RowsFrom): PlanOperator {
     throw new UnsupportedError('Rows from not supported.');
   }
-  visitWithQuery(node: AST.WithQuery): LogicalPlanOperator {
+  visitWithQuery(node: AST.WithQuery): PlanOperator {
     throw new UnsupportedError('With queries not supported');
   }
-  visitLiteral<U>(node: ASTLiteral<U>): LogicalPlanOperator {
+  visitLiteral<U>(node: ASTLiteral<U>): PlanOperator {
     return new plan.Literal('sql', node.value);
   }
-  visitOperator(node: ASTOperator): LogicalPlanOperator {
+  visitOperator(node: ASTOperator): PlanOperator {
     const result = new plan.FnCall(
       node.lang,
       node.operands.map(this.processFnArg), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
@@ -602,7 +610,7 @@ export class SQLLogicalPlanBuilder
     }
     return result;
   }
-  visitFunction(node: ASTFunction): LogicalPlanOperator {
+  visitFunction(node: ASTFunction): PlanOperator {
     const [id, schema] = idToPair(node.id);
     const impl = this.db.langMgr.getFnOrAggr('sql', id, schema);
 
@@ -621,7 +629,7 @@ export class SQLLogicalPlanBuilder
       impl.pure,
     );
   }
-  visitLangSwitch(node: LangSwitch): LogicalPlanOperator {
+  visitLangSwitch(node: LangSwitch): PlanOperator {
     return new PlanLangSwitch('sql', node);
   }
 }

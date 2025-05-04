@@ -4,8 +4,8 @@ import {
   boundParam,
   DortDBAsFriend,
   IdSet,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
+  PlanOperator,
+  PlanTupleOperator,
   toInfer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
@@ -20,7 +20,7 @@ import {
 } from '@dortdb/core/utils';
 import { retI1, toPair } from '@dortdb/core/internal-fns';
 import { LangSwitch } from '../plan/langswitch.js';
-import { SQLLogicalPlanVisitor } from '../plan/index.js';
+import { SQLPlanVisitor } from '../plan/index.js';
 import { DEFAULT_COLUMN } from './builder.js';
 
 const EMPTY = new Trie<string | symbol>();
@@ -39,16 +39,16 @@ function getUnd(): undefined {
  * Infers the schema of a logical plan.
  * Each method returns external references.
  */
-export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
+export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   constructor(
-    private vmap: Record<string, SQLLogicalPlanVisitor<IdSet, IdSet>>,
+    private vmap: Record<string, SQLPlanVisitor<IdSet, IdSet>>,
     private db: DortDBAsFriend,
   ) {}
 
   public inferSchema(
-    operator: LogicalPlanOperator,
+    operator: PlanOperator,
     ctx: IdSet,
-  ): [LogicalPlanOperator, IdSet] {
+  ): [PlanOperator, IdSet] {
     const tempHead = new plan.Limit('sql', 0, 1, operator);
     const external = operator.accept(this.vmap, ctx);
     for (const item of external.keys([boundParam])) {
@@ -74,8 +74,8 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
   }
 
   private processArg(
-    operator: LogicalPlanTupleOperator,
-    arg: ASTIdentifier | LogicalPlanOperator,
+    operator: PlanTupleOperator,
+    arg: ASTIdentifier | PlanOperator,
     ctx: IdSet,
   ) {
     if (arg instanceof ASTIdentifier) {
@@ -144,7 +144,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     throw new Error('Method not implemented.');
   }
 
-  private getRelNames(operator: LogicalPlanTupleOperator): IdSet {
+  private getRelNames(operator: PlanTupleOperator): IdSet {
     // joins are made of either TupleSources or Projections based on table aliases or other joins or langswitches
     if (
       operator instanceof plan.TupleSource ||
@@ -429,7 +429,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
       conditionCols,
       conditionCols.map(getUnd),
     );
-    let replacement: LogicalPlanTupleOperator = new plan.Selection(
+    let replacement: PlanTupleOperator = new plan.Selection(
       'sql',
       condition,
       operator.source,
@@ -454,9 +454,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
     replacement = new plan.Projection('sql', projectedCols, replacement);
 
-    if (
-      (operator.parent as LogicalPlanTupleOperator).schema === operator.schema
-    ) {
+    if ((operator.parent as PlanTupleOperator).schema === operator.schema) {
       // need to preserve references
       operator.clearSchema();
       operator.addToSchema(replacement.schema);
@@ -470,8 +468,8 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     const nested = new (this.db.langMgr.getLang(
       operator.node.lang,
     ).visitors.logicalPlanBuilder)(this.db).buildPlan(operator.node.node, ctx);
-    let res: LogicalPlanTupleOperator;
-    if (nested.plan instanceof LogicalPlanTupleOperator) {
+    let res: PlanTupleOperator;
+    if (nested.plan instanceof PlanTupleOperator) {
       res = operator.alias
         ? nested.plan
         : new plan.Projection(
@@ -498,7 +496,7 @@ export class SchemaInferrer implements SQLLogicalPlanVisitor<IdSet, IdSet> {
     }
 
     operator.parent.replaceChild(operator, res);
-    if (nested.plan instanceof LogicalPlanTupleOperator) {
+    if (nested.plan instanceof PlanTupleOperator) {
       const temp = res.schema;
       res.schema = operator.schema;
       res.schemaSet = operator.schemaSet;

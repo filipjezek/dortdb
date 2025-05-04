@@ -2,37 +2,31 @@ import { ASTIdentifier } from '../ast.js';
 import * as operators from './operators/index.js';
 import { Trie } from '../data-structures/trie.js';
 
-export interface LogicalPlanOperator {
+export interface PlanOperator {
   lang: Lowercase<string>;
-  parent?: LogicalPlanOperator;
+  parent?: PlanOperator;
   dependencies: IdSet;
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret;
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void;
-  getChildren(): LogicalPlanOperator[];
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void;
+  getChildren(): PlanOperator[];
 }
-export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
+export abstract class PlanTupleOperator implements PlanOperator {
   public schema: ASTIdentifier[];
   public schemaSet: IdSet;
   public lang: Lowercase<string>;
-  public parent?: LogicalPlanOperator;
+  public parent?: PlanOperator;
   public dependencies = new Trie<string | symbol>();
 
   abstract accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret;
-  abstract replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void;
-  abstract getChildren(): LogicalPlanOperator[];
+  abstract replaceChild(current: PlanOperator, replacement: PlanOperator): void;
+  abstract getChildren(): PlanOperator[];
 
   /** will preserve object references */
   public addToSchema(item: ASTIdentifier | ASTIdentifier[] | IdSet) {
@@ -88,13 +82,13 @@ export abstract class LogicalPlanTupleOperator implements LogicalPlanOperator {
   }
 }
 
-export type LogicalOpOrId = LogicalPlanOperator | ASTIdentifier;
+export type OpOrId = PlanOperator | ASTIdentifier;
 
 export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
 export type IdSet = Trie<string | symbol, any>;
 
-export interface LogicalPlanVisitor<Ret, Arg = never> {
+export interface PlanVisitor<Ret, Arg = never> {
   visitRecursion(operator: operators.Recursion, arg?: Arg): Ret;
   visitProjection(operator: operators.Projection, arg?: Arg): Ret;
   visitSelection(operator: operators.Selection, arg?: Arg): Ret;

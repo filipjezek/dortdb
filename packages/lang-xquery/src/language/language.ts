@@ -10,6 +10,7 @@ import { XQueryDataAdapter, DomDataAdapter } from './data-adapter.js';
 import { XQueryTransitiveDependencies } from '../visitors/transitive-deps.js';
 import { XQueryAttributeRenameChecker } from '../visitors/attr-rename-checker.js';
 import { XQueryAttributeRenamer } from '../visitors/attr-renamer.js';
+import { XQueryEqualityChecker } from '../visitors/equality-checker.js';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
@@ -32,6 +33,7 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
       transitiveDependencies: XQueryTransitiveDependencies,
       attributeRenameChecker: XQueryAttributeRenameChecker,
       attributeRenamer: XQueryAttributeRenamer,
+      equalityChecker: XQueryEqualityChecker,
     },
     dataAdapter: config?.adapter ?? new DomDataAdapter(document),
   };

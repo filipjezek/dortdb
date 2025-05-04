@@ -20,7 +20,7 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
-import { DortDB, LogicalPlanOperator, QueryResult } from '@dortdb/core';
+import { DortDB, PlanOperator, QueryResult } from '@dortdb/core';
 import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
@@ -138,7 +138,7 @@ export class QueryPageComponent {
     optimizerSettings: new FormControl(false),
     optimizerOptions: this.optimizerOptions,
   });
-  plan: LogicalPlanOperator;
+  plan: PlanOperator;
   output: QueryResult;
   error: Error;
 

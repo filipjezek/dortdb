@@ -1,9 +1,6 @@
 import { DortDBAsFriend } from '../db.js';
 import { Limit } from '../plan/operators/index.js';
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-} from '../plan/visitor.js';
+import { PlanOperator, PlanTupleOperator } from '../plan/visitor.js';
 import { PatternRule, PatternRuleConstructor } from './rule.js';
 
 export interface OptimizerConfig {
@@ -31,7 +28,7 @@ export class Optimizer {
     });
   }
 
-  public optimize(plan: LogicalPlanOperator): LogicalPlanOperator {
+  public optimize(plan: PlanOperator): PlanOperator {
     this.breakReferences(plan);
     const planParent = new Limit('dummy', 0, 1, plan);
     for (const rule of this.rules) {
@@ -42,7 +39,7 @@ export class Optimizer {
     return optimizedPlan;
   }
 
-  private visitOperator(operator: LogicalPlanOperator, rule: PatternRule) {
+  private visitOperator(operator: PlanOperator, rule: PatternRule) {
     if (
       rule.operator === null ||
       operator.constructor === rule.operator ||
@@ -71,10 +68,10 @@ export class Optimizer {
     }
   }
 
-  private breakReferences(operator: LogicalPlanOperator) {
+  private breakReferences(operator: PlanOperator) {
     if (
-      operator instanceof LogicalPlanTupleOperator &&
-      operator.parent instanceof LogicalPlanTupleOperator &&
+      operator instanceof PlanTupleOperator &&
+      operator.parent instanceof PlanTupleOperator &&
       operator.schema === operator.parent.schema
     ) {
       operator.parent.schema = operator.schema.slice();

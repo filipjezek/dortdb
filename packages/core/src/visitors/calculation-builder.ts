@@ -2,25 +2,28 @@ import { ret1, ret2 } from '../internal-fns/index.js';
 import { ASTIdentifier } from '../ast.js';
 import * as operators from '../plan/operators/index.js';
 import {
-  LogicalOpOrId,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  OpOrId,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
 import { DortDBAsFriend } from '../db.js';
 import { isEqual } from 'lodash-es';
 import { or } from '../operators/logical.js';
+import { EqualityChecker } from './equality-checker.js';
 
 export interface ArgMeta {
   maybeSkipped?: boolean;
   aggregate?: operators.AggregateCall;
+  originalLocations?: [any, number | string][];
   usedMultipleTimes?: boolean;
   acceptSequence?: boolean;
 }
 export interface CalculationParams {
-  args: LogicalOpOrId[];
+  args: OpOrId[];
   impl: (...args: any[]) => unknown;
-  argMeta: (ArgMeta | undefined)[];
+  argMeta: ArgMeta[];
   literal?: boolean;
   aggregates?: operators.AggregateCall[];
 }
@@ -39,8 +42,14 @@ function getArgs(a: CalculationParams | ASTIdentifier) {
 function getAggrs(a: CalculationParams | ASTIdentifier) {
   return (a instanceof ASTIdentifier ? null : a.aggregates) ?? [];
 }
-function getMetas(a: CalculationParams | ASTIdentifier) {
-  return a instanceof ASTIdentifier ? [undefined] : a.argMeta;
+function getMetas(
+  a: CalculationParams | ASTIdentifier,
+  obj: any,
+  key: string | number,
+): ArgMeta[] {
+  return a instanceof ASTIdentifier
+    ? [{ originalLocations: [obj, key] }]
+    : a.argMeta;
 }
 function getWhenThenArgs(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
@@ -54,8 +63,9 @@ function getWhenThenAggrs(
 }
 function getWhenThenMetas(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
+  obj: any,
 ) {
-  return [getMetas(a[0]), getMetas(a[1])];
+  return [getMetas(a[0], obj, 0), getMetas(a[1], obj, 1)];
 }
 function* cartesian(iters: Iterable<unknown>[]): Iterable<unknown[]> {
   if (iters.length === 0) {
@@ -89,38 +99,30 @@ function getQuantifierIndices(
     );
 }
 
-function areEqual(
-  a: LogicalOpOrId,
-  aMeta: ArgMeta | undefined,
-  b: LogicalOpOrId,
-  bMeta: ArgMeta | undefined,
-) {
-  if (a instanceof ASTIdentifier || b instanceof ASTIdentifier) {
-    return (
-      a instanceof ASTIdentifier && b instanceof ASTIdentifier && a.equals(b)
-    );
-  }
-  if (aMeta?.aggregate || bMeta?.aggregate) {
-    return isEqual(a, b);
-  }
-  return isEqual(a, b);
-}
-
 export function simplifyCalcParams(
   params: CalculationParams,
+  eqCheckers: Record<string, EqualityChecker>,
+  calcLang: Lowercase<string>,
 ): CalculationParams {
   if (params.args.length === 0) return params;
-  const uniqueArgs: LogicalOpOrId[] = [params.args[0]];
+  const uniqueArgs: OpOrId[] = [params.args[0]];
   const argMeta: (ArgMeta | undefined)[] = [params.argMeta[0]];
   const indexes: number[] = [0];
   outer: for (let i = 1; i < params.args.length; i++) {
+    const eqChecker =
+      eqCheckers[
+        params.args[i] instanceof ASTIdentifier
+          ? calcLang
+          : (params.args[i] as PlanOperator).lang
+      ];
     for (let j = 0; j < i; j++) {
-      if (
-        areEqual(params.args[i], params.argMeta[i], uniqueArgs[j], argMeta[j])
-      ) {
+      if (eqChecker.areEqual(params.args[i], uniqueArgs[j])) {
         indexes.push(j);
-        argMeta[j] ??= {};
         argMeta[j].usedMultipleTimes = true;
+        // original locations set always when the arg is an identifier
+        argMeta[j].originalLocations?.push(
+          ...params.argMeta[i].originalLocations,
+        );
         argMeta[j].maybeSkipped &&= params.argMeta[i]?.maybeSkipped;
         continue outer;
       }
@@ -151,11 +153,9 @@ export function simplifyCalcParams(
   return ret;
 }
 
-export class CalculationBuilder
-  implements LogicalPlanVisitor<CalculationParams>
-{
+export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   constructor(
-    protected vmap: Record<string, LogicalPlanVisitor<CalculationParams>>,
+    protected vmap: Record<string, PlanVisitor<CalculationParams>>,
     protected db: DortDBAsFriend,
   ) {
     this.processItem = this.processItem.bind(this);
@@ -163,7 +163,7 @@ export class CalculationBuilder
     this.processWhenThen = this.processWhenThen.bind(this);
   }
 
-  protected toItem(op: LogicalPlanTupleOperator): operators.MapToItem {
+  protected toItem(op: PlanTupleOperator): operators.MapToItem {
     return new operators.MapToItem(op.lang, null, op);
   }
 
@@ -198,7 +198,7 @@ export class CalculationBuilder
     return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
   }
 
-  private processItem(item: LogicalOpOrId) {
+  private processItem(item: OpOrId) {
     return item instanceof ASTIdentifier ? item : item.accept(this.vmap);
   }
   private processQuantifiedFn(
@@ -254,7 +254,7 @@ export class CalculationBuilder
         argMeta: [],
       };
     }
-    const nestedMetas = children.map(getMetas);
+    const nestedMetas = children.map((ch, i) => getMetas(ch, operator.args, i));
     for (let i = 0; i < nestedMetas.length; i++) {
       if (
         !(operator.args[i] instanceof ASTIdentifier) &&
@@ -270,9 +270,7 @@ export class CalculationBuilder
     const metas = nestedMetas.flat();
     if (operator.impl === or.impl) {
       for (let i = nestedMetas[0].length; i < metas.length; i++) {
-        if (metas[i]) {
-          metas[i].maybeSkipped = true;
-        }
+        metas[i].maybeSkipped = true;
       }
     }
 
@@ -300,7 +298,7 @@ export class CalculationBuilder
     return { args: [operator], impl: ret1, argMeta: [{}] };
   }
 
-  private processWhenThen(item: [LogicalOpOrId, LogicalOpOrId]) {
+  private processWhenThen(item: [OpOrId, OpOrId]) {
     return [this.processItem(item[0]), this.processItem(item[1])] as [
       CalculationParams | ASTIdentifier,
       CalculationParams | ASTIdentifier,
@@ -311,20 +309,20 @@ export class CalculationBuilder
     const cond = operator.condition && this.processItem(operator.condition);
     const defaultCase =
       operator.defaultCase && this.processItem(operator.defaultCase);
-    const args: (
-      | (ASTIdentifier | LogicalOpOrId[])
-      | (ASTIdentifier | LogicalOpOrId[])[]
-    )[] = whenthens.map(getWhenThenArgs);
+    const args: ((ASTIdentifier | OpOrId[]) | (ASTIdentifier | OpOrId[])[])[] =
+      whenthens.map(getWhenThenArgs);
     const aggrs: (
       | operators.AggregateCall
       | operators.AggregateCall[]
       | operators.AggregateCall[][]
     )[] = whenthens.map(getWhenThenAggrs);
-    const metas = whenthens.map(getWhenThenMetas).flat(2);
+    const metas = whenthens
+      .map((wt, i) => getWhenThenMetas(wt, operator.whenThens[i]))
+      .flat(2);
     if (defaultCase) {
       args.push(getArgs(defaultCase));
       aggrs.push(getAggrs(defaultCase));
-      metas.push(...getMetas(defaultCase));
+      metas.push(...getMetas(defaultCase, operator, 'defaultCase'));
     }
     for (const m of metas) {
       if (m) {
@@ -334,7 +332,7 @@ export class CalculationBuilder
     if (cond) {
       args.unshift(getArgs(cond));
       aggrs.push(getAggrs(cond));
-      metas.unshift(...getMetas(cond));
+      metas.unshift(...getMetas(cond, operator, 'condition'));
     }
 
     if ((cond as CalculationParams)?.literal) {
@@ -475,7 +473,7 @@ export class CalculationBuilder
   visitLimit(operator: operators.Limit): CalculationParams {
     return {
       args: [
-        operator.source instanceof LogicalPlanTupleOperator
+        operator.source instanceof PlanTupleOperator
           ? this.toItem(operator)
           : operator,
       ],
@@ -486,7 +484,7 @@ export class CalculationBuilder
   visitUnion(operator: operators.Union): CalculationParams {
     return {
       args: [
-        operator.left instanceof LogicalPlanTupleOperator
+        operator.left instanceof PlanTupleOperator
           ? this.toItem(operator)
           : operator,
       ],
@@ -497,7 +495,7 @@ export class CalculationBuilder
   visitIntersection(operator: operators.Intersection): CalculationParams {
     return {
       args: [
-        operator.left instanceof LogicalPlanTupleOperator
+        operator.left instanceof PlanTupleOperator
           ? this.toItem(operator)
           : operator,
       ],
@@ -508,7 +506,7 @@ export class CalculationBuilder
   visitDifference(operator: operators.Difference): CalculationParams {
     return {
       args: [
-        operator.left instanceof LogicalPlanTupleOperator
+        operator.left instanceof PlanTupleOperator
           ? this.toItem(operator)
           : operator,
       ],

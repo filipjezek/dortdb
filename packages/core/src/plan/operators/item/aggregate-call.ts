@@ -3,9 +3,9 @@ import { ASTIdentifier } from '../../../ast.js';
 import { AggregateFn } from '../../../extension.js';
 import {
   IdSet,
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
 } from '../../visitor.js';
 import { TupleSource } from '../tuple/tuple-source.js';
 import { Calculation } from './calculation.js';
@@ -16,16 +16,16 @@ import { schemaToTrie } from '../../../utils/trie.js';
 /**
  * Container for aggregate calls used in {@link GroupBy}
  */
-export class AggregateCall implements LogicalPlanOperator {
+export class AggregateCall implements PlanOperator {
   /**
    * Before a partition is piped into the aggregate function,
    * it will be passed through this operator.
    */
-  public postGroupOp: LogicalPlanTupleOperator;
-  public get postGroupSource(): LogicalPlanTupleOperator {
+  public postGroupOp: PlanTupleOperator;
+  public get postGroupSource(): PlanTupleOperator {
     return this._postGSource;
   }
-  private _postGSource: LogicalPlanTupleOperator;
+  private _postGSource: PlanTupleOperator;
   public parent: Calculation;
   public dependencies: IdSet;
 
@@ -47,18 +47,15 @@ export class AggregateCall implements LogicalPlanOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitAggregate(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     throw new Error('Method not implemented.');
   }
-  getChildren(): LogicalPlanOperator[] {
+  getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
   }
 }

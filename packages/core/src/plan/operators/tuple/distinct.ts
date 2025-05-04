@@ -1,18 +1,14 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
 import { isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
-export class Distinct extends LogicalPlanTupleOperator {
+export class Distinct extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public attrs: (ASTIdentifier | Calculation)[] | typeof allAttrs,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -27,18 +23,15 @@ export class Distinct extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitDistinct(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (this.source === current) {
-      this.source = replacement as LogicalPlanTupleOperator;
+      this.source = replacement as PlanTupleOperator;
     } else {
       const index = (this.attrs as Calculation[]).indexOf(
         current as Calculation,
@@ -46,8 +39,8 @@ export class Distinct extends LogicalPlanTupleOperator {
       (this.attrs as Calculation[])[index] = replacement as Calculation;
     }
   }
-  getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = [this.source];
+  getChildren(): PlanOperator[] {
+    const res: PlanOperator[] = [this.source];
     if (this.attrs !== allAttrs) {
       res.push(...this.attrs.filter(isCalc));
     }

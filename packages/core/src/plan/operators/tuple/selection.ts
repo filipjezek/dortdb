@@ -1,16 +1,12 @@
 import { ASTIdentifier } from '../../../ast.js';
-import {
-  LogicalPlanOperator,
-  LogicalPlanTupleOperator,
-  LogicalPlanVisitor,
-} from '../../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
-export class Selection extends LogicalPlanTupleOperator {
+export class Selection extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     public condition: Calculation | ASTIdentifier,
-    public source: LogicalPlanTupleOperator,
+    public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
@@ -22,24 +18,21 @@ export class Selection extends LogicalPlanTupleOperator {
   }
 
   accept<Ret, Arg>(
-    visitors: Record<string, LogicalPlanVisitor<Ret, Arg>>,
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitSelection(this, arg);
   }
-  replaceChild(
-    current: LogicalPlanOperator,
-    replacement: LogicalPlanOperator,
-  ): void {
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.condition) {
       this.condition = replacement as Calculation;
     } else {
-      this.source = replacement as LogicalPlanTupleOperator;
+      this.source = replacement as PlanTupleOperator;
     }
   }
-  getChildren(): LogicalPlanOperator[] {
-    const res: LogicalPlanOperator[] = [this.source];
+  getChildren(): PlanOperator[] {
+    const res: PlanOperator[] = [this.source];
     if (this.condition instanceof Calculation) {
       res.push(this.condition);
     }

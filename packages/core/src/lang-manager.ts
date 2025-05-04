@@ -2,7 +2,7 @@ import { AggregateFn, Castable, Extension, Fn, Operator } from './extension.js';
 import {
   coreVisitors,
   LogicalPlanBuilder,
-  LogicalPlanVisitors,
+  PlanVisitors,
 } from './visitors/index.js';
 import { ASTNode } from './ast.js';
 import { DortDBAsFriend } from './db.js';
@@ -22,7 +22,7 @@ export interface Language<Name extends string = string> {
   aggregates: AggregateFn[];
   castables: Castable[];
   createParser: (mgr: LanguageManager) => Parser;
-  visitors: Partial<LogicalPlanVisitors> & {
+  visitors: Partial<PlanVisitors> & {
     logicalPlanBuilder: {
       new (db: DortDBAsFriend): LogicalPlanBuilder;
     };
@@ -76,16 +76,16 @@ export class LanguageManager {
     return this.langs[name.toLowerCase()] as Lang;
   }
 
-  public getVisitorMap<T extends keyof LogicalPlanVisitors>(
+  public getVisitorMap<T extends keyof PlanVisitors>(
     visitor: T,
-  ): Record<string, InstanceType<LogicalPlanVisitors[T]>> {
-    const vmap = {} as Record<string, InstanceType<LogicalPlanVisitors[T]>>;
+  ): Record<string, InstanceType<PlanVisitors[T]>> {
+    const vmap = {} as Record<string, InstanceType<PlanVisitors[T]>>;
     for (const lang in this.langs) {
       const VClass =
-        (this.langs[lang].visitors[visitor] as LogicalPlanVisitors[T]) ??
+        (this.langs[lang].visitors[visitor] as PlanVisitors[T]) ??
         coreVisitors.logicalPlan[visitor];
       vmap[lang] = new VClass(vmap as any, this.db) as InstanceType<
-        LogicalPlanVisitors[T]
+        PlanVisitors[T]
       >;
     }
     return vmap;
