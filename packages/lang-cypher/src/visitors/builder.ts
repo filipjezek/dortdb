@@ -810,12 +810,7 @@ export class CypherLogicalPlanBuilder
       );
     }
     if (node.optional) {
-      res = new plan.Join(
-        'cypher',
-        new plan.NullSource('cypher'),
-        res,
-        new plan.Calculation('cypher', () => true, [], [], null, [], true),
-      );
+      res = new plan.Join('cypher', new plan.NullSource('cypher'), res, []);
       (res as plan.Join).leftOuter = (res as plan.Join).rightOuter = true;
     }
     return res;

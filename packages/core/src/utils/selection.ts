@@ -1,11 +1,7 @@
 import { ASTIdentifier } from '../ast.js';
+import { ret1 } from '../internal-fns/index.js';
 import { and } from '../operators/logical.js';
-import {
-  CalcIntermediate,
-  Calculation,
-  FnCall,
-  Selection,
-} from '../plan/operators/index.js';
+import { Calculation, FnCall, Selection } from '../plan/operators/index.js';
 import {
   PlanOperator,
   PlanTupleOperator,
@@ -27,43 +23,44 @@ export function exprToSelection(
   eqCheckers: Record<string, EqualityChecker>,
   lang: Lowercase<string>,
 ) {
-  const andsContainer: (PlanOperator | ASTIdentifier)[] = [];
-  splitAnds(expr, andsContainer);
+  const andsContainer: PlanOperator[] = [];
+  if (expr instanceof ASTIdentifier) {
+    andsContainer.push(new FnCall(lang, [expr], ret1));
+  } else {
+    splitAnds(expr, andsContainer);
+  }
   for (const andExpr of andsContainer) {
-    if (andExpr instanceof ASTIdentifier) {
-      source = new Selection(lang, andExpr, source);
-    } else {
-      let calcParams = andExpr.accept(calcBuilders);
-      calcParams = simplifyCalcParams(calcParams, eqCheckers, lang);
-      const calc = new Calculation(
-        lang,
-        calcParams.impl,
-        calcParams.args,
-        calcParams.argMeta,
-        andExpr,
-        calcParams.aggregates,
-        calcParams.literal,
-      );
-      source = new Selection(lang, calc, source);
-    }
+    let calcParams = andExpr.accept(calcBuilders);
+    calcParams = simplifyCalcParams(calcParams, eqCheckers, lang);
+    const calc = new Calculation(
+      lang,
+      calcParams.impl,
+      calcParams.args,
+      calcParams.argMeta,
+      andExpr,
+      calcParams.aggregates,
+      calcParams.literal,
+    );
+    source = new Selection(lang, calc, source);
   }
   return source;
 }
 
-function splitAnds(
-  expr: PlanOperator | ASTIdentifier,
-  andsContainer: (PlanOperator | ASTIdentifier)[],
-) {
+function splitAnds(expr: PlanOperator, andsContainer: PlanOperator[]) {
   if (!(expr instanceof FnCall) || expr.impl !== and.impl) {
     andsContainer.push(expr);
     return;
   }
   splitAnds(
-    expr.args[0] instanceof ASTIdentifier ? expr.args[0] : expr.args[0].op,
+    expr.args[0] instanceof ASTIdentifier
+      ? new FnCall(expr.lang, [expr.args[0]], ret1)
+      : expr.args[0].op,
     andsContainer,
   );
   splitAnds(
-    expr.args[1] instanceof ASTIdentifier ? expr.args[1] : expr.args[1].op,
+    expr.args[1] instanceof ASTIdentifier
+      ? new FnCall(expr.lang, [expr.args[1]], ret1)
+      : expr.args[1].op,
     andsContainer,
   );
 }

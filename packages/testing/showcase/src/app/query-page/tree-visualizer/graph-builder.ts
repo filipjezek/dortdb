@@ -365,17 +365,15 @@ export class GraphBuilder
     const src = operator.source.accept(this.vmap);
     const arg = this.processArg(operator.condition, { i: 0 });
     const parent = this.drawNode(`&sigma;(${arg})`, operator);
-    return operator.condition instanceof ASTIdentifier
-      ? this.drawBranches(parent, { el: src })
-      : this.drawBranches(
-          parent,
-          { el: src },
-          {
-            el: operator.condition.accept(this.vmap),
-            edgeType: 'djoin',
-            src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
-          },
-        );
+    return this.drawBranches(
+      parent,
+      { el: src },
+      {
+        el: operator.condition.accept(this.vmap),
+        edgeType: 'djoin',
+        src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
+      },
+    );
   }
   visitTupleSource(operator: plan.TupleSource): SVGGElement {
     const name =
@@ -422,21 +420,24 @@ export class GraphBuilder
     );
   }
   visitJoin(operator: plan.Join): SVGGElement {
-    const condition = this.processArg(operator.on, { i: 0 });
+    const opI = { i: 0 };
+    const conditions = operator.conditions.map((c) => this.processArg(c, opI));
     const parent = this.drawNode(
       `${operator.leftOuter ? '&deg;' : ''}&bowtie;${
         operator.rightOuter ? '&deg;' : ''
-      }(${condition})`,
+      }(${conditions.join(', ')})`,
       operator,
     );
     return this.drawBranches(
       parent,
       { el: operator.left.accept(this.vmap) },
-      {
-        el: operator.on.accept(this.vmap),
-        edgeType: 'djoin',
-        src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
-      },
+      ...operator.conditions
+        .map((a) => a.accept(this.vmap))
+        .map((el, i) => ({
+          el,
+          edgeType: 'djoin',
+          src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
+        })),
       { el: operator.right.accept(this.vmap) },
     );
   }

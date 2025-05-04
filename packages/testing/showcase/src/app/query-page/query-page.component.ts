@@ -39,6 +39,7 @@ import {
   mergeFromToItems,
   MergeProjections,
   mergeToFromItems,
+  productsToJoins,
   ProjConcatToJoin,
   PushdownSelections,
   UnnestSubqueries,
@@ -103,6 +104,7 @@ export class QueryPageComponent {
     PushdownSelections,
     ProjConcatToJoin,
     MergeProjections,
+    productsToJoins,
   ];
   private ruleList: OptimizerListItem[] = [
     { name: 'unnest subqueries', value: 0, enabled: true },
@@ -123,6 +125,7 @@ export class QueryPageComponent {
       value: 5,
       enabled: true,
     },
+    { name: 'products to joins', value: 6, enabled: true },
   ];
 
   optimizerOptions = new FormGroup({

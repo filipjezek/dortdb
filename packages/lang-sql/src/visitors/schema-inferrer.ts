@@ -228,8 +228,8 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return external;
   }
   visitJoin(operator: plan.Join, ctx: IdSet): IdSet {
-    if (operator.on) {
-      this.processArg(operator, operator.on, union(ctx, operator.schema));
+    for (const cond of operator.conditions) {
+      this.processArg(operator, cond, union(ctx, operator.schema));
     }
     return this.visitCartesianProduct(operator, ctx);
   }

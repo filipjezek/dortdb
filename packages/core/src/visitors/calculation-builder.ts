@@ -48,7 +48,7 @@ function getMetas(
   key: string | number,
 ): ArgMeta[] {
   return a instanceof ASTIdentifier
-    ? [{ originalLocations: [obj, key] }]
+    ? [{ originalLocations: [[obj, key]] }]
     : a.argMeta;
 }
 function getWhenThenArgs(

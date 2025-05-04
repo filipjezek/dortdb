@@ -27,12 +27,7 @@ export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
   transform(node: ProjectionConcat, bindings: any): PlanOperator {
     let res: CartesianProduct;
     if (node.outer) {
-      res = new Join(
-        node.lang,
-        node.source,
-        node.mapping,
-        new Calculation(node.lang, () => true, [], []),
-      );
+      res = new Join(node.lang, node.source, node.mapping, []);
       (res as Join).leftOuter = true;
     } else {
       res = new CartesianProduct(node.lang, node.source, node.mapping);

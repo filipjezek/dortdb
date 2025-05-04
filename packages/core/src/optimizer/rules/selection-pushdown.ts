@@ -1,6 +1,4 @@
 import { cloneDeep } from 'lodash-es';
-import { ASTIdentifier } from '../../ast.js';
-import { Trie } from '../../data-structures/trie.js';
 import { DortDBAsFriend } from '../../db.js';
 import {
   CartesianProduct,
@@ -131,9 +129,6 @@ export class PushdownSelections
   }
 
   protected getSelectionDeps(s: Selection): IdSet {
-    if (s.condition instanceof ASTIdentifier) {
-      return new Trie([s.condition.parts]);
-    }
     return this.tdepsVmap[s.lang].visitCalculation(s.condition);
   }
 
@@ -222,12 +217,7 @@ export class PushdownSelections
       curr.source = canPushdown[i + 1];
       canPushdown[i + 1].parent = curr;
       if (toRename.has(curr)) {
-        if (curr.condition instanceof ASTIdentifier) {
-          const renamed = source.renamesInv.get(curr.condition.parts);
-          if (renamed) curr.condition = ASTIdentifier.fromParts(renamed);
-        } else {
-          this.renamerVmap[curr.lang].rename(curr.condition, source.renamesInv);
-        }
+        this.renamerVmap[curr.lang].rename(curr.condition, source.renamesInv);
       }
     }
 
@@ -242,15 +232,7 @@ export class PushdownSelections
     source.source = canPushdown[0];
     canPushdown[0].parent = source;
     if (toRename.has(lastCP)) {
-      if (lastCP.condition instanceof ASTIdentifier) {
-        const renamed = source.renamesInv.get(lastCP.condition.parts);
-        if (renamed) lastCP.condition = ASTIdentifier.fromParts(renamed);
-      } else {
-        this.renamerVmap[lastCP.lang].rename(
-          lastCP.condition,
-          source.renamesInv,
-        );
-      }
+      this.renamerVmap[lastCP.lang].rename(lastCP.condition, source.renamesInv);
     }
 
     if (mustStay.length) {
@@ -363,7 +345,6 @@ export class PushdownSelections
     if (areRenamed === RenamedDepsResult.unchanged) return true;
 
     if (
-      s.condition instanceof ASTIdentifier ||
       this.renameCheckerVmap[s.condition.lang].canRename(s.condition, p.renames)
     ) {
       if (toRenameContainer) {

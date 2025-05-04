@@ -1,19 +1,25 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { idToCalculation } from '../../../utils/calculation.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Selection extends PlanTupleOperator {
+  public condition: Calculation;
+
   constructor(
     lang: Lowercase<string>,
-    public condition: Calculation | ASTIdentifier,
+    condition: Calculation | ASTIdentifier,
     public source: PlanTupleOperator,
   ) {
     super();
     this.lang = lang;
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
-    if (condition instanceof Calculation) condition.parent = this;
-    else this.dependencies.add(condition.parts);
+    this.condition =
+      condition instanceof Calculation
+        ? condition
+        : idToCalculation(condition, lang);
+    this.condition.parent = this;
     source.parent = this;
   }
 
@@ -32,10 +38,7 @@ export class Selection extends PlanTupleOperator {
     }
   }
   getChildren(): PlanOperator[] {
-    const res: PlanOperator[] = [this.source];
-    if (this.condition instanceof Calculation) {
-      res.push(this.condition);
-    }
+    const res: PlanOperator[] = [this.source, this.condition];
     return res;
   }
 }

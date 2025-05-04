@@ -166,7 +166,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     return (
       a.leftOuter === b.leftOuter &&
       a.rightOuter === b.rightOuter &&
-      this.processItem(a.on, { ...args, other: b.on }) &&
+      this.processArray(a.conditions, b.conditions, args) &&
       this.visitCartesianProduct(a, args)
     );
   }

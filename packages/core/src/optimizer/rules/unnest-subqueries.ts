@@ -1,6 +1,6 @@
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 import * as plan from '../../plan/operators/index.js';
-import { IdSet, PlanOperator, PlanTupleOperator } from '../../plan/visitor.js';
+import { PlanOperator, PlanTupleOperator } from '../../plan/visitor.js';
 import { ASTIdentifier } from '../../ast.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { DortDBAsFriend } from '../../db.js';

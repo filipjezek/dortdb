@@ -882,12 +882,14 @@ export class XQueryLogicalPlanBuilder
         'xquery',
         joined,
         this.renameAggSource(args[i], colNames[i], countNames[i], posNames[i]),
-        new plan.Calculation(
-          'xquery',
-          (i1, i2, c1, c2) => i1 === i2 || c1 === 1 || c2 === 1,
-          [posNames[i - 1], posNames[i], countNames[i - 1], countNames[i]],
-          [undefined, undefined, undefined, undefined],
-        ),
+        [
+          new plan.Calculation(
+            'xquery',
+            (i1, i2, c1, c2) => i1 === i2 || c1 === 1 || c2 === 1,
+            [posNames[i - 1], posNames[i], countNames[i - 1], countNames[i]],
+            [undefined, undefined, undefined, undefined],
+          ),
+        ],
       );
       (joined as plan.Join).leftOuter = (joined as plan.Join).rightOuter = true;
     }

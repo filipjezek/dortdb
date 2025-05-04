@@ -91,11 +91,7 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   }
   visitSelection(operator: plan.Selection, renames: plan.RenameMap): void {
     operator.source.accept(this.vmap, renames);
-    if (operator.condition instanceof ASTIdentifier) {
-      this.processItem(operator, 'condition', operator.dependencies, renames);
-    } else {
-      operator.condition.accept(this.vmap, renames);
-    }
+    operator.condition.accept(this.vmap, renames);
   }
   visitTupleSource(operator: plan.TupleSource, renames: plan.RenameMap): void {}
   visitItemSource(operator: plan.ItemSource, renames: plan.RenameMap): void {}
@@ -120,7 +116,7 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   }
   visitJoin(operator: plan.Join, renames: plan.RenameMap): void {
     this.visitCartesianProduct(operator, renames);
-    this.processItem(operator, 'on', operator.dependencies, renames);
+    this.processArray(operator.conditions, operator.dependencies, renames);
   }
   visitProjectionConcat(
     operator: plan.ProjectionConcat,

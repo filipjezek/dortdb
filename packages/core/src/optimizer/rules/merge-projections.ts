@@ -123,6 +123,7 @@ export class MergeProjections
     calc: plan.Calculation,
     projMap: ProjMap,
   ): plan.Calculation {
+    console.log(calc.args, calc.argMeta);
     for (let i = 0; i < calc.args.length; i++) {
       const arg = calc.args[i];
       if (arg instanceof ASTIdentifier) {

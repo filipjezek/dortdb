@@ -1,6 +1,7 @@
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
+import { arrSetParent } from '../../../utils/arr-set-parent.js';
 
 export class CartesianProduct extends PlanTupleOperator {
   /**
@@ -57,10 +58,10 @@ export class Join extends CartesianProduct {
     lang: Lowercase<string>,
     left: PlanTupleOperator,
     right: PlanTupleOperator,
-    public on: Calculation,
+    public conditions: Calculation[],
   ) {
     super(lang, left, right);
-    on.parent = this;
+    arrSetParent(this.conditions, this);
   }
 
   override accept<Ret, Arg>(
@@ -74,16 +75,18 @@ export class Join extends CartesianProduct {
     replacement: PlanOperator,
   ): void {
     replacement.parent = this;
-    if (current === this.on) {
-      this.on = replacement as Calculation;
-    } else {
-      super.replaceChild(
-        current as PlanTupleOperator,
-        replacement as PlanTupleOperator,
-      );
+    for (let i = 0; i < this.conditions.length; i++) {
+      if (this.conditions[i] === current) {
+        this.conditions[i] = replacement as Calculation;
+        return;
+      }
     }
+    super.replaceChild(
+      current as PlanTupleOperator,
+      replacement as PlanTupleOperator,
+    );
   }
   override getChildren(): PlanOperator[] {
-    return [this.left, this.right, this.on];
+    return [this.left, this.right, ...this.conditions];
   }
 }

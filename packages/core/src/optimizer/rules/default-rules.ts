@@ -1,5 +1,6 @@
 import { PatternRule, PatternRuleConstructor } from '../rule.js';
 import { MergeProjections } from './merge-projections.js';
+import { productsToJoins } from './products-to-joins.js';
 import { ProjConcatToJoin } from './remove-projection-concat.js';
 import { PushdownSelections } from './selection-pushdown.js';
 import { mergeFromToItems, mergeToFromItems } from './to-from-items.js';
@@ -15,4 +16,5 @@ export const defaultRules: (
   PushdownSelections,
   ProjConcatToJoin,
   MergeProjections,
+  productsToJoins,
 ];

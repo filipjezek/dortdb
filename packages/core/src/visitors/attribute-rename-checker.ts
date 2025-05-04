@@ -87,13 +87,11 @@ export class AttributeRenameChecker
     renamesInv: plan.RenameMap,
   ): boolean {
     return (
-      (operator.condition instanceof plan.Calculation
-        ? this.checkHorizontal(
-            operator.condition,
-            operator.source.schemaSet,
-            renamesInv,
-          )
-        : true) && operator.source.accept(this.vmap, renamesInv)
+      this.checkHorizontal(
+        operator.condition,
+        operator.source.schemaSet,
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
     );
   }
   visitTupleSource(
@@ -137,8 +135,8 @@ export class AttributeRenameChecker
   }
   visitJoin(operator: plan.Join, renamesInv: plan.RenameMap): boolean {
     return (
-      this.checkHorizontal(
-        operator.on,
+      this.checkHorizontalArray(
+        operator.conditions,
         union(operator.left.schemaSet, operator.right.schemaSet),
         renamesInv,
       ) && this.visitCartesianProduct(operator, renamesInv)
