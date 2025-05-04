@@ -8,6 +8,7 @@ import {
   boundParam,
   LangSwitch,
   LanguageManager,
+  Parser as ParserInterface,
 } from '@dortdb/core';
 import { AdditionalTokens, Keywords } from '../parser/tokens.js';
 import { YyContext } from '../parser/yycontext.js';
@@ -17,9 +18,9 @@ import {
   cypherLexer as Lexer,
 } from '../parser/cypher.cjs';
 
-const scopeExits = new Set([')', '}', ']']);
+const scopeExits = [')', '}', ']'];
 
-export function createParser(mgr: LanguageManager) {
+export function createParser(mgr: LanguageManager): ParserInterface {
   let remainingInput = '';
   const yy: YyContext = {
     Keywords,
@@ -57,19 +58,23 @@ export function createParser(mgr: LanguageManager) {
 
   const parser = new Parser(yy, new Lexer(yy));
   return {
-    parse: (input: string) => {
+    parse(input: string) {
       const result: {
         value: ASTNode[];
         scopeExit?: string;
         error?: string;
       } = parser.parse(input);
       let remaining = remainingInput;
-      if (scopeExits.has(result.error)) remaining = result.error + remaining;
+      if (scopeExits.includes(result.error))
+        remaining = result.error + remaining;
       if (result.scopeExit) remaining = result.scopeExit + remaining;
       return {
         value: result.value,
         remainingInput: remaining,
       };
+    },
+    parseExpr(input: string) {
+      return this.parse(`RETURN ${input}`);
     },
   };
 }

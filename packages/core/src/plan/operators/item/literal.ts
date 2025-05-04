@@ -1,9 +1,10 @@
-import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
+import { Trie } from '../../../data-structures/trie.js';
+import { PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
 export class Literal<T = unknown> implements PlanOperator {
   public [CalcIntermediate] = true;
-  public dependencies: IdSet;
+  public dependencies = new Trie<string | symbol>();
 
   constructor(
     public lang: Lowercase<string>,

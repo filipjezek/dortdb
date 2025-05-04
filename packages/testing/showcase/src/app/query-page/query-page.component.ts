@@ -20,7 +20,7 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
-import { DortDB, PlanOperator, QueryResult } from '@dortdb/core';
+import { DortDB, MapIndex, PlanOperator, QueryResult } from '@dortdb/core';
 import { Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
@@ -36,6 +36,7 @@ import {
 } from './samples-dialog/samples-dialog.component';
 import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.component';
 import {
+  JoinIndices,
   mergeFromToItems,
   MergeProjections,
   mergeToFromItems,
@@ -105,6 +106,7 @@ export class QueryPageComponent {
     ProjConcatToJoin,
     MergeProjections,
     productsToJoins,
+    JoinIndices,
   ];
   private ruleList: OptimizerListItem[] = [
     { name: 'unnest subqueries', value: 0, enabled: true },
@@ -126,6 +128,7 @@ export class QueryPageComponent {
       enabled: true,
     },
     { name: 'products to joins', value: 6, enabled: true },
+    { name: 'join indices', value: 7, enabled: true },
   ];
 
   optimizerOptions = new FormGroup({
@@ -166,6 +169,9 @@ export class QueryPageComponent {
           this.db.optimizer.reconfigure({ rules: [] });
         }
       });
+
+    this.db.createIndex(['t2'], ['id'], MapIndex);
+    this.db.createIndex(['t2'], ['a + b / 2'], MapIndex);
   }
 
   parse() {

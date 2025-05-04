@@ -1,17 +1,22 @@
 import { Trie } from './data-structures/trie.js';
-import { ASTNode } from './ast.js';
+import { ASTIdentifier, ASTNode } from './ast.js';
 import { Extension, core } from './extension.js';
 import { Language, LanguageManager } from './lang-manager.js';
 import { Optimizer, OptimizerConfig } from './optimizer/optimizer.js';
+import { Index } from './indices/index.js';
+import { Calculation, Projection } from './plan/operators/index.js';
+import { idToCalculation } from './utils/calculation.js';
 
 export class DortDB<LangNames extends string> {
   private langMgr: LanguageManager = null;
   private registeredSources = new Trie<symbol | string, unknown>();
   public readonly optimizer: Optimizer;
+  public indices = new Trie<symbol | string, Index[]>();
   private friendInterface: DortDBAsFriend = {
     langMgr: null,
     optimizer: null,
     getSource: (source) => this.registeredSources.get(source),
+    indices: this.indices,
   };
 
   constructor(private config: DortDBConfig<LangNames>) {
@@ -61,6 +66,42 @@ export class DortDB<LangNames extends string> {
   public registerSource(source: (symbol | string)[], data: unknown) {
     this.registeredSources.set(source, data);
   }
+
+  public createIndex(
+    source: (symbol | string)[],
+    expressions: [string],
+    indexCls: { new (expressions: Calculation[], db: DortDBAsFriend): Index },
+    options?: QueryOptions<LangNames>,
+  ) {
+    const lang = options?.mainLang ?? this.config.mainLang.name;
+    const parser = this.langMgr.getLang(lang).createParser(this.langMgr);
+    const calcs = expressions.map((expr) => {
+      const parsed = parser.parseExpr(expr);
+      if (parsed.remainingInput) {
+        throw new Error(`Unparsed input: ${parsed.remainingInput}`);
+      }
+      const maybeProj = this.buildPlan(parsed.value[0], options);
+      const res =
+        maybeProj instanceof Projection
+          ? maybeProj.attrs[0][0]
+          : (maybeProj as Calculation | ASTIdentifier);
+
+      if (res instanceof Calculation) {
+        if (res.getChildren().length) {
+          throw new Error('Expression cannot contain subqueries');
+        }
+        return res;
+      }
+      return idToCalculation(res, lang);
+    });
+    const index = new indexCls(calcs, this.friendInterface);
+    const currIndices = this.indices.get(source);
+    if (currIndices) {
+      currIndices.push(index);
+    } else {
+      this.indices.set(source, [index]);
+    }
+  }
 }
 
 export interface QueryResult<T = unknown> {
@@ -69,7 +110,7 @@ export interface QueryResult<T = unknown> {
 }
 
 export interface QueryOptions<LangNames extends string> {
-  mainLang?: LangNames;
+  mainLang?: Lowercase<LangNames>;
 }
 
 export interface DortDBConfig<LangNames extends string> {
@@ -83,4 +124,5 @@ export interface DortDBAsFriend {
   langMgr: LanguageManager;
   getSource(source: (symbol | string)[]): unknown;
   optimizer: Optimizer;
+  indices: Trie<symbol | string, Index[]>;
 }

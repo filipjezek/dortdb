@@ -6,6 +6,7 @@ import {
   LanguageManager,
   allAttrs,
   boundParam,
+  Parser as ParserInterface,
 } from '@dortdb/core';
 import { sqlLexer as Lexer, sqlParser as Parser } from '../parser/sql.cjs';
 import { Keywords, AdditionalTokens } from '../parser/tokens.js';
@@ -15,7 +16,7 @@ import { ASTLiteral } from '@dortdb/core';
 
 const scopeExits = new Set([')', '}', ']']);
 
-export function createParser(mgr: LanguageManager) {
+export function createParser(mgr: LanguageManager): ParserInterface {
   let remainingInput = '';
   const yy: YyContext = {
     Keywords,
@@ -56,7 +57,7 @@ export function createParser(mgr: LanguageManager) {
 
   const parser = new Parser(yy, new Lexer(yy));
   return {
-    parse: (input: string) => {
+    parse(input: string) {
       const result: {
         value: ASTNode[];
         scopeExit?: string;
@@ -69,6 +70,9 @@ export function createParser(mgr: LanguageManager) {
         value: result.value,
         remainingInput: remaining,
       };
+    },
+    parseExpr(input: string) {
+      return this.parse(`SELECT ${input}`);
     },
   };
 }

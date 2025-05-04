@@ -98,10 +98,35 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     }
     return operator.source.accept(this.vmap, ctx);
   }
+
+  private renameTupleSourceAttrs(
+    operator: plan.TupleSource | plan.TupleFnSource,
+  ) {
+    const toRemove: ASTIdentifier[] = [];
+    operator.parent.replaceChild(
+      operator,
+      new plan.Projection(
+        'sql',
+        operator.schema.map((id) => {
+          if (id.parts.length > 1) {
+            toRemove.push(id);
+            const shortened = ASTIdentifier.fromParts(id.parts.slice(-1));
+            operator.addToSchema(shortened);
+            return [shortened, id];
+          }
+          return [id, id];
+        }),
+        operator,
+      ),
+    );
+    operator.removeFromSchema(toRemove);
+  }
+
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
     const external = new Trie<string | symbol>();
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
+    let hasRenamedAttrs = false;
     for (const attr of operator.schema.slice()) {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
         operator.removeFromSchema(attr);
@@ -111,8 +136,18 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         attr.parts[0] === allAttrs
       ) {
         operator.removeFromSchema(attr);
+      } else if (attr.parts.length > 1) {
+        hasRenamedAttrs = true;
       }
     }
+
+    if (hasRenamedAttrs) {
+      this.renameTupleSourceAttrs(operator);
+    }
+    if (Array.isArray(operator.name)) {
+      operator.name = operator.name[0];
+    }
+
     return external;
   }
   visitItemSource(operator: plan.ItemSource): IdSet {
@@ -398,13 +433,26 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         operator.name instanceof ASTIdentifier
           ? operator.name
           : operator.name[1];
+      let hasRenamedAttrs = false;
       for (const attr of operator.schema.slice()) {
         if (attr.parts.length > 1 && !isTableAttr(attr, n)) {
           operator.removeFromSchema(attr);
           external.add(attr.parts);
-        } else if (attr.parts[attr.parts.length - 1] === toInfer) {
+        } else if (
+          attr.parts[attr.parts.length - 1] === toInfer ||
+          attr.parts[0] === allAttrs
+        ) {
           operator.removeFromSchema(attr);
+        } else if (attr.parts.length > 1) {
+          hasRenamedAttrs = true;
         }
+      }
+
+      if (hasRenamedAttrs) {
+        this.renameTupleSourceAttrs(operator);
+      }
+      if (Array.isArray(operator.name)) {
+        operator.name = operator.name[0];
       }
     }
     return external;

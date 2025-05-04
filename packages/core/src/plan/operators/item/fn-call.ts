@@ -1,4 +1,7 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { isId } from '../../../internal-fns/index.js';
+import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
@@ -23,7 +26,14 @@ export class FnCall implements PlanOperator {
      * This means that `() => ({})` is not pure.
      */
     public pure = false,
-  ) {}
+  ) {
+    this.dependencies = schemaToTrie(args.filter(isId));
+    for (const arg of args) {
+      if ('op' in arg) {
+        arg.op.parent = this;
+      }
+    }
+  }
 
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
@@ -32,7 +42,12 @@ export class FnCall implements PlanOperator {
     return visitors[this.lang].visitFnCall(this, arg);
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
-    throw new Error('Method not implemented.');
+    for (const arg of this.args) {
+      if ('op' in arg && arg.op === current) {
+        arg.op = replacement;
+        return;
+      }
+    }
   }
   getChildren(): PlanOperator[] {
     const res: PlanOperator[] = [];

@@ -7,7 +7,8 @@ import { containsAll } from '../utils/trie.js';
 
 export interface DescentArgs {
   other: PlanOperator;
-  ignoreLang?: boolean;
+  ignoreLang: boolean;
+  renameMap?: plan.RenameMap;
 }
 
 export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
@@ -15,31 +16,43 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     protected vmap: Record<string, PlanVisitor<boolean, DescentArgs>>,
   ) {}
 
+  protected maybeRename(id: ASTIdentifier, renameMap?: plan.RenameMap) {
+    const renamed = renameMap?.get(id.parts);
+    return renamed ? ASTIdentifier.fromParts(renamed) : id;
+  }
+
   protected processItem(
     operator: OpOrId,
-    { other, ignoreLang }: { other: OpOrId; ignoreLang?: boolean },
+    {
+      other,
+      ignoreLang,
+      renameMap,
+    }: { other: OpOrId; ignoreLang: boolean; renameMap?: plan.RenameMap },
   ): boolean {
     if (operator.constructor !== other.constructor) {
-      for (const [a, b] of [
-        [operator, other],
-        [other, operator],
-      ]) {
-        if (
-          a instanceof ASTIdentifier &&
-          b instanceof plan.FnCall &&
-          b.impl === ret1 &&
-          b.args.length === 1 &&
-          b.args[0] instanceof ASTIdentifier &&
-          b.args[0].equals(a)
-        ) {
-          return true;
-        }
+      if (
+        (operator instanceof ASTIdentifier &&
+          other instanceof plan.FnCall &&
+          other.impl === ret1 &&
+          other.args.length === 1 &&
+          other.args[0] instanceof ASTIdentifier &&
+          this.maybeRename(other.args[0], renameMap).equals(operator)) ||
+        (other instanceof ASTIdentifier &&
+          operator instanceof plan.FnCall &&
+          operator.impl === ret1 &&
+          operator.args.length === 1 &&
+          operator.args[0] instanceof ASTIdentifier &&
+          operator.args[0].equals(this.maybeRename(other, renameMap)))
+      ) {
+        return true;
       }
       return false;
     }
 
     if (operator instanceof ASTIdentifier) {
-      return operator.equals(other as ASTIdentifier);
+      return operator.equals(
+        this.maybeRename(other as ASTIdentifier, renameMap),
+      );
     }
     if (!ignoreLang && operator.lang !== (other as PlanOperator).lang) {
       return false;
@@ -47,6 +60,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     return operator.accept(this.vmap, {
       other: other as PlanOperator,
       ignoreLang,
+      renameMap,
     });
   }
 
@@ -63,8 +77,17 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     );
   }
 
-  public areEqual(op1: OpOrId, op2: OpOrId, ignoreLang = false) {
-    return this.processItem(op1, { other: op2, ignoreLang });
+  /**
+   * if `options.renameMap` is provided, it will be used to rename the items in the `op2` before comparing.
+   */
+  public areEqual(
+    op1: OpOrId,
+    op2: OpOrId,
+    options?: { ignoreLang?: boolean; renameMap?: plan.RenameMap },
+  ) {
+    const ignoreLang = options?.ignoreLang ?? false;
+    const renameMap = options?.renameMap;
+    return this.processItem(op1, { other: op2, ignoreLang, renameMap });
   }
 
   visitRecursion(a: plan.Recursion, args: DescentArgs): boolean {

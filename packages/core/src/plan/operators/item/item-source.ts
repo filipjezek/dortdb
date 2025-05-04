@@ -10,6 +10,9 @@ export class ItemSource implements PlanOperator {
   public parent: PlanOperator;
   public dependencies = new Trie<string | symbol>();
 
+  /**
+   * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
+   */
   constructor(
     public lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>,
@@ -33,6 +36,9 @@ export class ItemFnSource implements PlanOperator {
   public parent: PlanOperator;
   public dependencies: IdSet;
 
+  /**
+   * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
+   */
   constructor(
     public lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],

@@ -10,6 +10,10 @@ import { Trie } from './data-structures/trie.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
+  /** should return AST which parses into a projection with one attribute or the one attribute
+   * depending on whether the language returns tuples or items.
+   */
+  parseExpr: (input: string) => ParseResult;
 }
 export interface ParseResult {
   value: ASTNode[];

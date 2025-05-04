@@ -14,6 +14,9 @@ import { schemaToTrie } from '../../../utils/trie.js';
 export class TupleSource extends PlanTupleOperator {
   public knownSchema = false;
 
+  /**
+   * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
+   */
   constructor(
     lang: Lowercase<string>,
     public name: ASTIdentifier | Aliased<ASTIdentifier>,
@@ -41,6 +44,9 @@ export class TupleSource extends PlanTupleOperator {
 export class TupleFnSource extends PlanTupleOperator {
   public knownSchema = false;
 
+  /**
+   * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
+   */
   constructor(
     lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],

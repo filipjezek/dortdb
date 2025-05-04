@@ -70,7 +70,15 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     return operator.dependencies;
   }
   visitFnCall(operator: plan.FnCall): IdSet {
-    throw new Error('Method not implemented.');
+    if (tdepsCache.has(operator)) return tdepsCache.get(operator);
+    const result = union(
+      ...operator.args
+        .filter((arg) => 'op' in arg)
+        .map((arg) => this.processNode(arg.op)),
+      operator.dependencies,
+    );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitLiteral(operator: plan.Literal): IdSet {
     return operator.dependencies;
@@ -87,7 +95,13 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     return result;
   }
   visitConditional(operator: plan.Conditional): IdSet {
-    throw new Error('Method not implemented.');
+    if (tdepsCache.has(operator)) return tdepsCache.get(operator);
+    const result = union(
+      ...operator.getChildren().map(this.processNode),
+      operator.dependencies,
+    );
+    tdepsCache.set(operator, result);
+    return result;
   }
   visitCartesianProduct(operator: plan.CartesianProduct): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -240,7 +254,10 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     return result;
   }
   visitQuantifier(operator: plan.Quantifier): IdSet {
-    throw new Error('Method not implemented.');
+    if (tdepsCache.has(operator)) return tdepsCache.get(operator);
+    const res = operator.query.accept(this.vmap);
+    tdepsCache.set(operator, res);
+    return res;
   }
   public clearCache() {
     tdepsCache = new WeakMap();

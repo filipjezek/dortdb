@@ -4,6 +4,7 @@ import {
   ASTOperator,
   LangSwitch,
   LanguageManager,
+  Parser as ParserInterface,
 } from '@dortdb/core';
 import { AdditionalTokens, Keywords } from '../parser/tokens.js';
 import { YyContext } from '../parser/yycontext.js';
@@ -16,7 +17,7 @@ import {
 
 const scopeExits = new Set([')', '}', ']']);
 
-export function createParser(mgr: LanguageManager) {
+export function createParser(mgr: LanguageManager): ParserInterface {
   let remainingInput = '';
   const yy: YyContext = {
     Keywords,
@@ -53,7 +54,7 @@ export function createParser(mgr: LanguageManager) {
 
   const parser = new Parser(yy, new Lexer(yy));
   return {
-    parse: (input: string) => {
+    parse(input: string) {
       const result: {
         value: ast.Module;
         scopeExit?: string;
@@ -66,6 +67,9 @@ export function createParser(mgr: LanguageManager) {
         value: [result.value],
         remainingInput: remaining,
       };
+    },
+    parseExpr(input: string) {
+      return this.parse(input);
     },
   };
 }

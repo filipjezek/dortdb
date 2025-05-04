@@ -1,30 +1,42 @@
 import { DortDBAsFriend } from '../db.js';
-import { Calculation } from '../plan/operators/index.js';
-import { OpOrId } from '../plan/visitor.js';
+import { eq } from '../operators/relational.js';
+import { Calculation, RenameMap } from '../plan/operators/index.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
-import { Index } from './index.js';
+import { Index, IndexMatchInput } from './index.js';
 
 export class MapIndex implements Index {
-  expressions: Calculation[];
   private map: Map<unknown, unknown[]> = new Map();
   private eqCheckers: Record<string, EqualityChecker>;
 
-  constructor(expression: Calculation) {
-    this.expressions = [expression];
-  }
-
-  init(values: Iterable<unknown>, db: DortDBAsFriend): void {
+  constructor(
+    public expressions: Calculation[],
+    db: DortDBAsFriend,
+  ) {
+    if (expressions.length !== 1) {
+      throw new Error('MapIndex only supports one expression');
+    }
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
   }
+
+  reindex(values: Iterable<unknown>): void {}
 
   query(value: unknown): Iterable<unknown> {
     return this.map.get(value) ?? [];
   }
 
-  match(expressions: OpOrId[]): number[] | null {
+  match(
+    expressions: IndexMatchInput[],
+    renameMap?: RenameMap,
+  ): number[] | null {
     const eqChecker = this.eqCheckers[this.expressions[0].lang];
     for (let i = 0; i < expressions.length; i++) {
-      if (eqChecker.areEqual(this.expressions[0], expressions[i], true)) {
+      if (
+        expressions[i].containingFn.impl === eq.impl &&
+        eqChecker.areEqual(this.expressions[0].original, expressions[i].expr, {
+          ignoreLang: true,
+          renameMap,
+        })
+      ) {
         return [i];
       }
     }

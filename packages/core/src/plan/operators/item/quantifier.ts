@@ -1,4 +1,5 @@
-import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
+import { Trie } from '../../../data-structures/trie.js';
+import { PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
 export enum QuantifierType {
@@ -7,7 +8,7 @@ export enum QuantifierType {
 }
 export class Quantifier implements PlanOperator {
   public [CalcIntermediate] = true;
-  public dependencies: IdSet;
+  public dependencies = new Trie<string | symbol>();
 
   constructor(
     public lang: Lowercase<string>,
@@ -22,7 +23,7 @@ export class Quantifier implements PlanOperator {
     return visitors[this.lang].visitQuantifier(this, arg);
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
-    throw new Error('Method not implemented.');
+    this.query = replacement;
   }
   getChildren(): PlanOperator[] {
     return [this.query];

@@ -1,4 +1,5 @@
 import { PatternRule, PatternRuleConstructor } from '../rule.js';
+import { JoinIndices } from './join-indices.js';
 import { MergeProjections } from './merge-projections.js';
 import { productsToJoins } from './products-to-joins.js';
 import { ProjConcatToJoin } from './remove-projection-concat.js';
@@ -17,4 +18,5 @@ export const defaultRules: (
   ProjConcatToJoin,
   MergeProjections,
   productsToJoins,
+  JoinIndices,
 ];
