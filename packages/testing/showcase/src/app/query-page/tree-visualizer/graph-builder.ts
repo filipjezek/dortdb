@@ -679,4 +679,16 @@ export class GraphBuilder
       },
     );
   }
+
+  visitIndexScan(operator: plan.IndexScan): SVGGElement {
+    const arg = this.processArg(operator.access, { i: 0 });
+    const parent = this.drawNode(
+      `IndexScan(${this.stringifyId(operator.name as ASTIdentifier)}, ${arg})`,
+      operator,
+    );
+    return this.drawBranches(parent, {
+      el: operator.access.accept(this.vmap),
+      src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
+    });
+  }
 }

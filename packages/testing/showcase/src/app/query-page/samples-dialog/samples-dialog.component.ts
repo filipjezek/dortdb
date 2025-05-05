@@ -108,6 +108,13 @@ return <item person="{ $p/name }">
       query: `select x + 1 as xx from foo
 where x + (select count(y) from bar) > (select cat from dog)`,
     },
+    {
+      lang: 'sql',
+      name: 'Indices example',
+      tags: [],
+      query: `select t1.foo, t2.bar from t1 join t2 on t1.id = t2.id and t1.foo = t2.a
+-- select t1.foo, t2.bar from t1 join t2 on t1.id = t2.a + t2.b / 2 and t1.foo = t2.a`,
+    },
   ];
   private preparedQueries = this.queries.map((query) => ({
     original: query,

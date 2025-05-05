@@ -259,6 +259,15 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     tdepsCache.set(operator, res);
     return res;
   }
+  visitIndexScan(operator: plan.IndexScan): IdSet {
+    if (tdepsCache.has(operator)) return tdepsCache.get(operator);
+    const res = this.onlyExternal(
+      this.visitCalculation(operator.access),
+      operator,
+    );
+    tdepsCache.set(operator, res);
+    return res;
+  }
   public clearCache() {
     tdepsCache = new WeakMap();
   }

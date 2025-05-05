@@ -173,6 +173,10 @@ export class JoinIndices
       const cond = node.conditions[i];
       if (bindings.renameMap) {
         this.renamerVmap[cond.lang].rename(cond, bindings.renameMap);
+        this.renamerVmap[cond.original.lang].rename(
+          cond.original,
+          bindings.renameMap,
+        );
       }
       source.parent.replaceChild(
         source,

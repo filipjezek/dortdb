@@ -45,6 +45,7 @@ export class FnCall implements PlanOperator {
     for (const arg of this.args) {
       if ('op' in arg && arg.op === current) {
         arg.op = replacement;
+        replacement.parent = this;
         return;
       }
     }

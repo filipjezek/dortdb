@@ -327,4 +327,11 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.query, { ...args, other: b.query })
     );
   }
+  visitIndexScan(a: plan.IndexScan, args: DescentArgs): boolean {
+    const b = args.other as plan.IndexScan;
+    return (
+      this.visitTupleSource(a, args) &&
+      this.processItem(a.access, { ...args, other: b.access })
+    );
+  }
 }

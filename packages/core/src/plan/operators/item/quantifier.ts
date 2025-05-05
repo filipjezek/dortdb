@@ -23,6 +23,7 @@ export class Quantifier implements PlanOperator {
     return visitors[this.lang].visitQuantifier(this, arg);
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
+    replacement.parent = this;
     this.query = replacement;
   }
   getChildren(): PlanOperator[] {

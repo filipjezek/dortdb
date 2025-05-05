@@ -10,6 +10,7 @@ import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
+import { Index } from '../../../indices/index.js';
 
 export class TupleSource extends PlanTupleOperator {
   public knownSchema = false;
@@ -74,5 +75,36 @@ export class TupleFnSource extends PlanTupleOperator {
   }
   getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
+  }
+}
+
+export class IndexScan extends TupleSource {
+  constructor(
+    lang: Lowercase<string>,
+    name: ASTIdentifier,
+    public index: Index,
+    public access: Calculation,
+  ) {
+    super(lang, name);
+    this.access.parent = this;
+  }
+
+  override accept<Ret, Arg>(
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitIndexScan(this, arg);
+  }
+
+  override replaceChild(
+    current: PlanOperator,
+    replacement: PlanOperator,
+  ): void {
+    replacement.parent = this;
+    this.access = replacement as Calculation;
+  }
+
+  override getChildren(): PlanOperator[] {
+    return [this.access];
   }
 }

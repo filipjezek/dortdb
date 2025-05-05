@@ -150,6 +150,10 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
     return external;
   }
+  visitIndexScan(operator: plan.IndexScan, ctx: IdSet): IdSet {
+    this.processArg(operator, operator.access, union(ctx, operator.schema));
+    return this.visitTupleSource(operator, ctx);
+  }
   visitItemSource(operator: plan.ItemSource): IdSet {
     return EMPTY;
   }

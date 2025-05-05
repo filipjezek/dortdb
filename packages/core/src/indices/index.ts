@@ -7,11 +7,15 @@ export interface IndexMatchInput {
   containingFn: FnCall;
 }
 
-export interface Index {
+export interface EqIndexAccessor {
+  value: unknown;
+}
+
+export interface Index<Accessor = EqIndexAccessor> {
   expressions: (Calculation | ASTIdentifier)[];
 
   reindex(values: Iterable<unknown>): void;
-  query(value: unknown): Iterable<unknown>;
+  query(value: Accessor): Iterable<unknown>;
   /**
    * Can the index be used to match the given expressions?
    * @param expressions - expressions to match against the index
@@ -19,17 +23,23 @@ export interface Index {
    * @returns - ordered indices of the expressions that can be matched, or null if none can be matched
    */
   match(expressions: IndexMatchInput[], renameMap?: RenameMap): number[] | null;
+
+  /**
+   * Create an accessor for the given expressions.
+   * @param expressions - expressions matched by {@link match}
+   */
+  createAccessor(expressions: IndexMatchInput[]): Calculation;
 }
 
-export interface RangeQueryOptions {
+export interface RangeIndexAccessor {
   min?: unknown;
   max?: unknown;
   minExclusive?: boolean;
   maxExclusive?: boolean;
 }
 
-export interface RangeIndex extends Index {
-  rangeQuery(options: RangeQueryOptions): Iterable<unknown>;
+export interface RangeIndex
+  extends Index<EqIndexAccessor | RangeIndexAccessor> {
   getMin(): unknown;
   getMax(): unknown;
 }

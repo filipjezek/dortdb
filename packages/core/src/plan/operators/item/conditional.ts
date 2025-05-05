@@ -36,6 +36,7 @@ export class Conditional implements PlanOperator {
     return visitors[this.lang].visitConditional(this, arg);
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
+    replacement.parent = this;
     if (this.condition === current) {
       this.condition = replacement;
     } else if (this.defaultCase === current) {

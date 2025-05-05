@@ -116,4 +116,5 @@ export interface PlanVisitor<Ret, Arg = never> {
   visitItemFnSource(operator: operators.ItemFnSource, arg?: Arg): Ret;
   visitTupleFnSource(operator: operators.TupleFnSource, arg?: Arg): Ret;
   visitQuantifier(operator: operators.Quantifier, arg?: Arg): Ret;
+  visitIndexScan(operator: operators.IndexScan, arg?: Arg): Ret;
 }

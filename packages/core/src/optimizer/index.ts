@@ -8,3 +8,4 @@ export * from './rules/unnest-subqueries.js';
 export * from './rules/merge-projections.js';
 export * from './rules/products-to-joins.js';
 export * from './rules/join-indices.js';
+export * from './rules/index-scans.js';

@@ -107,10 +107,13 @@ export class AttributeRenameChecker
     return true;
   }
   visitFnCall(operator: plan.FnCall, renamesInv: plan.RenameMap): boolean {
-    throw new Error('Method not implemented.');
+    return this.checkVerticalArray(
+      operator.args.map((x) => ('op' in x ? x.op : x)),
+      renamesInv,
+    );
   }
   visitLiteral(operator: plan.Literal, renamesInv: plan.RenameMap): boolean {
-    throw new Error('Method not implemented.');
+    return true;
   }
   visitCalculation(
     operator: plan.Calculation,
@@ -122,7 +125,13 @@ export class AttributeRenameChecker
     operator: plan.Conditional,
     renamesInv: plan.RenameMap,
   ): boolean {
-    throw new Error('Method not implemented.');
+    return (
+      this.checkVerticalArray(operator.whenThens.flat(), renamesInv) &&
+      this.checkVerticalArray(
+        [operator.condition, operator.defaultCase].filter((x) => !!x),
+        renamesInv,
+      )
+    );
   }
   visitCartesianProduct(
     operator: plan.CartesianProduct,
@@ -267,6 +276,16 @@ export class AttributeRenameChecker
     operator: plan.Quantifier,
     renamesInv: plan.RenameMap,
   ): boolean {
-    throw new Error('Method not implemented.');
+    return operator.query.accept(this.vmap, renamesInv);
+  }
+  visitIndexScan(
+    operator: plan.IndexScan,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return this.checkHorizontal(
+      operator.access,
+      operator.schemaSet,
+      renamesInv,
+    );
   }
 }

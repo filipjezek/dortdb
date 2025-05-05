@@ -1,10 +1,4 @@
-import {
-  IdSet,
-  OpOrId,
-  PlanOperator,
-  PlanTupleOperator,
-  PlanVisitor,
-} from '../plan/visitor.js';
+import { IdSet, OpOrId, PlanOperator, PlanVisitor } from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
 import { DortDBAsFriend } from '../db.js';
 import { TransitiveDependencies } from './transitive-deps.js';
@@ -30,14 +24,20 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
     array: OpOrId[],
     deps: IdSet,
     renames: plan.RenameMap,
+    updateFn?: (newId: ASTIdentifier, i: number) => void,
     removeDeps = true,
   ) {
     for (let i = 0; i < array.length; i++) {
       const item = array[i];
       if (item instanceof ASTIdentifier) {
-        if (renames.has(item.parts) && deps.has(item.parts)) {
-          const newAttr = renames.get(item.parts);
-          array[i] = ASTIdentifier.fromParts(newAttr);
+        const fromRenames = renames.get(item.parts);
+        if (fromRenames && deps.has(item.parts)) {
+          const newAttr = ASTIdentifier.fromParts(fromRenames);
+          if (updateFn) {
+            updateFn(newAttr, i);
+          } else {
+            array[i] = newAttr;
+          }
         }
       } else {
         item.accept(this.vmap, renames);
@@ -87,6 +87,8 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
       operator.attrs.map(retI0),
       operator.dependencies,
       renames,
+      (id, i) => (operator.attrs[i][0] = id),
+      true,
     );
   }
   visitSelection(operator: plan.Selection, renames: plan.RenameMap): void {
@@ -96,16 +98,39 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   visitTupleSource(operator: plan.TupleSource, renames: plan.RenameMap): void {}
   visitItemSource(operator: plan.ItemSource, renames: plan.RenameMap): void {}
   visitFnCall(operator: plan.FnCall, renames: plan.RenameMap): void {
-    throw new Error('Method not implemented.');
+    this.processArray(
+      operator.args.map((a) => ('op' in a ? a.op : a)),
+      operator.dependencies,
+      renames,
+      (id, i) => (operator.args[i] = id),
+    );
   }
   visitLiteral(operator: plan.Literal, renames: plan.RenameMap): void {
-    throw new Error('Method not implemented.');
+    return;
   }
   visitCalculation(operator: plan.Calculation, renames: plan.RenameMap): void {
     this.processArray(operator.args, operator.dependencies, renames);
   }
   visitConditional(operator: plan.Conditional, renames: plan.RenameMap): void {
-    throw new Error('Method not implemented.');
+    for (const key of ['condition', 'defaultCase'] as const) {
+      const item = operator[key];
+      if (item instanceof ASTIdentifier) {
+        const fromRenames = renames.get(item.parts);
+        if (fromRenames) {
+          const newAttr = ASTIdentifier.fromParts(fromRenames);
+          operator[key] = newAttr;
+        }
+      } else {
+        item.accept(this.vmap, renames);
+      }
+    }
+
+    this.processArray(
+      operator.whenThens.flat(),
+      operator.dependencies,
+      renames,
+      (id, i) => (operator.whenThens[Math.floor(i / 2)][i % 2] = id),
+    );
   }
   visitCartesianProduct(
     operator: plan.CartesianProduct,
@@ -143,6 +168,7 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
       operator.orders.map(plan.getKey),
       operator.dependencies,
       renames,
+      (id, i) => (operator.orders[i].key = id),
     );
   }
   visitGroupBy(operator: plan.GroupBy, renames: plan.RenameMap): void {
@@ -151,6 +177,7 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
       operator.keys.map(retI0),
       operator.dependencies,
       renames,
+      (id, i) => (operator.keys[i][0] = id),
       false,
     );
     this.processArray(operator.aggs, operator.dependencies, renames);
@@ -198,6 +225,9 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
     this.processArray(operator.args, operator.dependencies, renames);
   }
   visitQuantifier(operator: plan.Quantifier, renames: plan.RenameMap): void {
-    throw new Error('Method not implemented.');
+    operator.query.accept(this.vmap, renames);
+  }
+  visitIndexScan(operator: plan.IndexScan, renames: plan.RenameMap): void {
+    operator.access.accept(this.vmap, renames);
   }
 }

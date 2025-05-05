@@ -552,4 +552,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{}],
     };
   }
+  visitIndexScan(operator: operators.IndexScan): CalculationParams {
+    return {
+      args: [this.toItem(operator)],
+      impl: this.assertMaxOne,
+      argMeta: [{}],
+    };
+  }
 }

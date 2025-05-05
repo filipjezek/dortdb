@@ -36,6 +36,7 @@ import {
 } from './samples-dialog/samples-dialog.component';
 import { TreeVisualizerComponent } from './tree-visualizer/tree-visualizer.component';
 import {
+  IndexScans,
   JoinIndices,
   mergeFromToItems,
   MergeProjections,
@@ -107,6 +108,7 @@ export class QueryPageComponent {
     MergeProjections,
     productsToJoins,
     JoinIndices,
+    IndexScans,
   ];
   private ruleList: OptimizerListItem[] = [
     { name: 'unnest subqueries', value: 0, enabled: true },
@@ -122,13 +124,14 @@ export class QueryPageComponent {
       value: 4,
       enabled: true,
     },
+    { name: 'products to joins', value: 5, enabled: true },
+    { name: 'join indices', value: 6, enabled: true },
+    { name: 'index scans', value: 7, enabled: true },
     {
       name: 'merge projections',
-      value: 5,
+      value: 8,
       enabled: true,
     },
-    { name: 'products to joins', value: 6, enabled: true },
-    { name: 'join indices', value: 7, enabled: true },
   ];
 
   optimizerOptions = new FormGroup({
