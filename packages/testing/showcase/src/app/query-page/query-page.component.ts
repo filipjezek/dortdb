@@ -105,10 +105,10 @@ export class QueryPageComponent {
     mergeFromToItems,
     PushdownSelections,
     ProjConcatToJoin,
-    MergeProjections,
     productsToJoins,
     JoinIndices,
     IndexScans,
+    MergeProjections,
   ];
   private ruleList: OptimizerListItem[] = [
     { name: 'unnest subqueries', value: 0, enabled: true },
