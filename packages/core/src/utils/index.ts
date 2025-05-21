@@ -6,3 +6,4 @@ export * from './arr-set-parent.js';
 export * from './projection.js';
 export * from './selection.js';
 export * from './calculation.js';
+export * from './serialize-to-objects.js';

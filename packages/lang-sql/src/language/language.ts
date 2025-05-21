@@ -7,7 +7,7 @@ import { createParser } from './create-parser.js';
 import { inOp, notInOp } from '../operators/basic.js';
 import { SQLEqualityChecker } from '../visitors/equality-checker.js';
 import { SQLExecutor } from '../visitors/executor.js';
-import { serializeToObjects } from './serialize.js';
+import { serializeToObjects } from '@dortdb/core/utils';
 
 export interface SQLConfig {
   /** defaults to {@link ObjectDataAdapter} */
@@ -34,6 +34,6 @@ export function SQL(config?: SQLConfig): SQLLanguage {
       executor: SQLExecutor,
     },
     dataAdapter: config?.adapter ?? new ObjectDataAdapter(),
-    serialize: config?.serialize ?? serializeToObjects,
+    serialize: config?.serialize ?? serializeToObjects(),
   };
 }

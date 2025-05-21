@@ -1,4 +1,4 @@
-import { Language } from '@dortdb/core';
+import { Language, QueryResult, SerializeFn } from '@dortdb/core';
 import { count } from '@dortdb/core/aggregates';
 import { XQueryLogicalPlanBuilder } from '../visitors/builder.js';
 import { castables } from '../castables/index.js';
@@ -12,10 +12,12 @@ import { XQueryAttributeRenameChecker } from '../visitors/attr-rename-checker.js
 import { XQueryAttributeRenamer } from '../visitors/attr-renamer.js';
 import { XQueryEqualityChecker } from '../visitors/equality-checker.js';
 import { XQueryVariableMapper } from '../visitors/variable-mapper.js';
+import { XQueryExecutor } from '../visitors/executor.js';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
   adapter?: XQueryDataAdapter;
+  serialize?: SerializeFn;
 }
 export interface XQueryLanguage extends Language<'xquery'> {
   dataAdapter: XQueryDataAdapter;
@@ -36,7 +38,11 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
       attributeRenamer: XQueryAttributeRenamer,
       equalityChecker: XQueryEqualityChecker,
       variableMapper: XQueryVariableMapper,
+      executor: XQueryExecutor,
     },
     dataAdapter: config?.adapter ?? new DomDataAdapter(document),
+    serialize:
+      config?.serialize ??
+      ((items): QueryResult => ({ data: Array.from(items) })),
   };
 }
