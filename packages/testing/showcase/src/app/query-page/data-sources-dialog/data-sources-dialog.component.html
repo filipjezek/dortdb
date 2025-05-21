@@ -1,23 +1,24 @@
 <h2 mat-dialog-title>Data Sources</h2>
 <mat-dialog-content>
-  <section class="download-progress">
+  <section class="download">
     <ul>
       <li>
         <span class="title">Unibench data</span>
         @switch (unibenchS.dataLocation) {
           @case ('remote') {
-            @if (unibenchS.downloadProgress === undefined) {
+            @if (unibenchS.downloadProgress() === undefined) {
               <button mat-button (click)="unibenchS.downloadData()">
-                Download
+                Download (95 MB)
               </button>
             } @else {
               <mat-progress-spinner
                 [mode]="
-                  unibenchS.downloadProgress < 1
+                  unibenchS.downloadProgress() < 1
                     ? 'determinate'
                     : 'indeterminate'
                 "
-                [value]="unibenchS.downloadProgress * 100"
+                [value]="unibenchS.downloadProgress() * 100"
+                [diameter]="20"
               ></mat-progress-spinner>
             }
           }
@@ -27,7 +28,7 @@
             </button>
           }
           @case ('indexeddb') {
-            <button mat-button (click)="unibenchS.clear()">
+            <button mat-button (click)="unibenchS.clear()" class="warning">
               Clear browser storage
             </button>
           }

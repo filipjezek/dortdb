@@ -1,3 +1,5 @@
+@use '@angular/material' as mat;
+
 :host mat-accordion {
   margin-top: 8px;
   margin-bottom: 8px;
@@ -10,5 +12,26 @@
     min-width: 0;
     overflow: hidden;
     display: block;
+  }
+}
+
+.download {
+  ul {
+    padding: 0;
+  }
+  li {
+    list-style-type: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+
+    button.warning {
+      @include mat.button-overrides(
+        (
+          text-label-text-color: var(--mat-sys-error),
+        )
+      );
+    }
   }
 }

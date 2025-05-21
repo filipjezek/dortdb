@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import {
   asapScheduler,
   from,
@@ -51,6 +51,7 @@ interface CSVParseOptions {
   key: UnibenchObjectKeys;
   cast?: Record<string, (v: string) => any>;
   columns?: string[];
+  separator?: string;
 }
 type StreamedEntry = Omit<zip.Entry, 'getData'> & {
   readable?: ReadableStream<Uint8Array>;
@@ -78,6 +79,7 @@ export class UnibenchService {
         creationDate: (v: string) => new Date(v),
         place: Number,
       },
+      separator: '|',
     },
     'Dataset/Feedback/Feedback.csv': {
       key: 'feedback',
@@ -85,6 +87,7 @@ export class UnibenchService {
         personId: Number,
       },
       columns: ['productAsin', 'personId', 'rating'],
+      separator: '|',
     },
     'Dataset/Product/BrandByProduct.csv': {
       key: 'brandProducts',
@@ -105,13 +108,11 @@ export class UnibenchService {
     'Dataset/SocialNetwork/post_0_0.csv': {
       key: 'posts',
       cast: { id: Number, creationDate: (v: string) => new Date(v) },
+      separator: '|',
     },
   };
 
-  private _downloadProgress: number = undefined;
-  public get downloadProgress(): number {
-    return this._downloadProgress;
-  }
+  public downloadProgress = signal<number>(undefined);
   public get dataLocation(): DataLocation {
     if (this.dbPopulated) {
       return 'indexeddb';
@@ -133,10 +134,11 @@ export class UnibenchService {
   }
 
   public downloadData(): Promise<UnibenchData> {
-    this._downloadProgress = 0;
+    this.downloadProgress.set(0);
+    let bytesRead = 0;
     const stream = from(
       fetch(
-        'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip',
+        'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.zip',
       ),
     ).pipe(
       switchMap((resp) => {
@@ -145,8 +147,9 @@ export class UnibenchService {
         return this.iterStream(resp.body);
       }),
       tap((chunk) => {
-        this.rawDataView.set(chunk, this._downloadProgress);
-        this._downloadProgress += chunk.length;
+        this.rawDataView.set(chunk, bytesRead);
+        bytesRead += chunk.length;
+        this.downloadProgress.set(bytesRead / this.rawData.byteLength);
       }),
     );
     return this.processArchive(stream);
@@ -225,11 +228,15 @@ export class UnibenchService {
         promises.push(this.parseInvoices(entry, result));
       } else if (entry.filename === 'Dataset/Order/Order.json') {
         promises.push(this.parseOrders(entry, result));
-      } else if (entry.filename.startsWith('Dataset/SocialNetwork/')) {
+      } else if (
+        entry.filename.startsWith('Dataset/SocialNetwork/') &&
+        entry.filename.endsWith('.csv')
+      ) {
         promises.push(this.csvToGraph(entry, graph));
       }
     }
     await Promise.all(promises);
+    console.log('Unibench data loaded');
     return result;
   }
 
@@ -270,7 +277,8 @@ export class UnibenchService {
       .pipeThrough(new TextDecoderStream())
       .pipeThrough(
         new CSVParser({
-          delimiter: '|',
+          delimiter: opts.separator ?? ',',
+          escape: '\\',
           columns: opts.columns ?? true,
           cast: (val, ctx) => {
             if (ctx.header) return val;
@@ -282,6 +290,7 @@ export class UnibenchService {
         }),
       );
     result[opts.key] = await this.toArray(this.iterStream(stream));
+    console.log(`${opts.key} parsed`);
   }
 
   private async parseInvoices(entry: StreamedEntry, result: UnibenchData) {
@@ -290,6 +299,7 @@ export class UnibenchService {
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, 'text/xml');
     result.invoices = xml;
+    console.log('Invoices parsed');
   }
 
   private async parseOrders(entry: StreamedEntry, result: UnibenchData) {
@@ -297,6 +307,7 @@ export class UnibenchService {
       .pipeThrough(new TextDecoderStream())
       .pipeThrough(new NDJSONParser());
     result.orders = await this.toArray(this.iterStream(stream));
+    console.log('Orders parsed');
   }
 
   private async csvToGraph(entry: StreamedEntry, graph: MultiDirectedGraph) {
@@ -308,19 +319,25 @@ export class UnibenchService {
           delimiter: '|',
           cast: true,
           castDate: true,
+          columns: undefined,
         }),
       );
     const iter = this.iterStream(stream)[
       Symbol.asyncIterator
     ]() as any as AsyncIterableIterator<any[]>;
-    const edgeProps = (await iter.next()).value.slice(2) as string[];
+    const currentState = await iter.next();
+    console.log(entry.filename, currentState);
+    const edgeProps = currentState.value.slice(2) as string[];
     for await (const row of iter) {
-      graph.addNode(from + row[0], { id: row[0], labels: [from] });
-      graph.addNode(to + row[1], { id: row[1], labels: [to] });
-      graph.addEdge(from + row[0], to + row[1], {
+      const fromNode = from + row[0];
+      const toNode = to + row[1];
+      graph.mergeNode(fromNode, { id: row[0], labels: [from] });
+      graph.mergeNode(toNode, { id: row[1], labels: [to] });
+      graph.addEdge(fromNode, toNode, {
         type: edgeType,
         ...Object.fromEntries(edgeProps.map((key, i) => [key, row[2 + i]])),
       });
     }
+    console.log(entry.filename, 'parsed');
   }
 }

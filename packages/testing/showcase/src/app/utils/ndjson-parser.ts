@@ -18,7 +18,9 @@ export class NDJSONParser extends TransformStream<string, string[]> {
         buffer += parts[parts.length - 1];
       },
       flush(controller) {
-        controller.enqueue(JSON.parse(buffer));
+        if (buffer) {
+          controller.enqueue(JSON.parse(buffer));
+        }
         controller.terminate();
       },
     };
