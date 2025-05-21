@@ -48,4 +48,7 @@ export class TreeJoin extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [this.source, this.step];
   }
+  clone(): TreeJoin {
+    return new TreeJoin(this.lang, this.step.clone(), this.source.clone());
+  }
 }

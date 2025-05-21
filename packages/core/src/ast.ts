@@ -41,7 +41,7 @@ export const allAttrs = Symbol('all attrs');
 export const boundParam = Symbol('bound param');
 
 export class ASTIdentifier implements ASTNode {
-  public parts: (string | symbol)[] = [];
+  public parts: (string | symbol | number)[] = [];
   [Symbol.iterator]() {
     return this.parts[Symbol.iterator]();
   }
@@ -50,7 +50,7 @@ export class ASTIdentifier implements ASTNode {
     return visitor.visitIdentifier(this, arg);
   }
 
-  static fromParts(parts: (string | symbol)[]): ASTIdentifier {
+  static fromParts(parts: (string | symbol | number)[]): ASTIdentifier {
     const ret = new ASTIdentifier();
     ret.parts = parts;
     return ret;

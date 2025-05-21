@@ -1,11 +1,11 @@
 import { ASTIdentifier } from '../../../ast.js';
-import { Trie } from '../../../data-structures/trie.js';
-import { isId } from '../../../internal-fns/index.js';
+import { clone, cloneIfPossible, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import { IdSet, OpOrId, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { AggregateCall } from './aggregate-call.js';
+import { clone as _clone } from 'lodash-es';
 
 /**
  * This property identifies plan operators which are intermediate steps for {@link Calculation}
@@ -53,6 +53,18 @@ export class Calculation implements PlanOperator {
         res.push(arg);
       }
     }
+    return res;
+  }
+  clone(): Calculation {
+    const res = new Calculation(
+      this.lang,
+      this.impl,
+      this.args.map(cloneIfPossible),
+      _clone(this.argMeta),
+      this.original?.clone(),
+      this.aggregates.map(clone),
+      this.literal,
+    );
     return res;
   }
 }

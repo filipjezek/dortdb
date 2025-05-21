@@ -19,7 +19,10 @@ import {
 import { EqualityChecker } from '../../visitors/equality-checker.js';
 
 export type MergeProjectionsBindings = plan.Projection[];
-export type ProjMap = Trie<string | symbol, ASTIdentifier | plan.Calculation>;
+export type ProjMap = Trie<
+  string | symbol | number,
+  ASTIdentifier | plan.Calculation
+>;
 
 export class MergeProjections
   implements PatternRule<plan.Projection, MergeProjectionsBindings>

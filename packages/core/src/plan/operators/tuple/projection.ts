@@ -8,10 +8,18 @@ import {
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
-import { isCalc, retI0, retI1 } from '../../../internal-fns/index.js';
+import {
+  cloneIfPossible,
+  isCalc,
+  retI0,
+  retI1,
+} from '../../../internal-fns/index.js';
 import { Trie } from '../../../data-structures/trie.js';
 
-export type RenameMap = Trie<string | symbol, (string | symbol)[]>;
+export type RenameMap = Trie<
+  string | symbol | number,
+  (string | symbol | number)[]
+>;
 
 export class Projection extends PlanTupleOperator {
   public renames: RenameMap = new Trie();
@@ -56,6 +64,14 @@ export class Projection extends PlanTupleOperator {
     res.push(this.source);
     return res;
   }
+
+  clone(): Projection {
+    return new Projection(
+      this.lang,
+      this.attrs.map(cloneIfPossible),
+      this.source.clone(),
+    );
+  }
 }
 
 /**
@@ -65,7 +81,7 @@ export class ProjectionConcat extends PlanTupleOperator {
   /**
    * empty value for the outer join (default is null)
    */
-  public emptyVal = new Trie<symbol | string, unknown>();
+  public emptyVal = new Trie<symbol | string | number, unknown>();
   /**
    * if true, the `mapping` is not allowed to return multiple values per one `source` value
    */
@@ -112,6 +128,17 @@ export class ProjectionConcat extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [this.source, this.mapping];
   }
+  clone(): ProjectionConcat {
+    const res = new ProjectionConcat(
+      this.lang,
+      this.mapping.clone(),
+      this.outer,
+      this.source.clone(),
+    );
+    res.emptyVal = this.emptyVal.clone();
+    res.validateSingleValue = this.validateSingleValue;
+    return res;
+  }
 }
 
 export class ProjectionIndex extends PlanTupleOperator {
@@ -150,5 +177,8 @@ export class ProjectionIndex extends PlanTupleOperator {
   }
   getChildren(): PlanOperator[] {
     return [this.source];
+  }
+  clone(): ProjectionIndex {
+    return new ProjectionIndex(this.lang, this.indexCol, this.source.clone());
   }
 }

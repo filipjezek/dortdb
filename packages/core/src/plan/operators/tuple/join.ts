@@ -2,6 +2,7 @@ import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { clone } from '../../../internal-fns/index.js';
 
 export class CartesianProduct extends PlanTupleOperator {
   /**
@@ -48,6 +49,13 @@ export class CartesianProduct extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [this.left, this.right];
   }
+  clone(): CartesianProduct {
+    return new CartesianProduct(
+      this.lang,
+      this.left.clone(),
+      this.right.clone(),
+    );
+  }
 }
 
 export class Join extends CartesianProduct {
@@ -88,5 +96,13 @@ export class Join extends CartesianProduct {
   }
   override getChildren(): PlanOperator[] {
     return [this.left, this.right, ...this.conditions];
+  }
+  override clone(): Join {
+    return new Join(
+      this.lang,
+      this.left.clone(),
+      this.right.clone(),
+      this.conditions.map(clone),
+    );
   }
 }

@@ -11,6 +11,7 @@ import { XQueryTransitiveDependencies } from '../visitors/transitive-deps.js';
 import { XQueryAttributeRenameChecker } from '../visitors/attr-rename-checker.js';
 import { XQueryAttributeRenamer } from '../visitors/attr-renamer.js';
 import { XQueryEqualityChecker } from '../visitors/equality-checker.js';
+import { XQueryVariableMapper } from '../visitors/variable-mapper.js';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
@@ -34,6 +35,7 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
       attributeRenameChecker: XQueryAttributeRenameChecker,
       attributeRenamer: XQueryAttributeRenamer,
       equalityChecker: XQueryEqualityChecker,
+      variableMapper: XQueryVariableMapper,
     },
     dataAdapter: config?.adapter ?? new DomDataAdapter(document),
   };

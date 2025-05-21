@@ -1,5 +1,6 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { Trie } from '../../../data-structures/trie.js';
+import { cloneIfPossible } from '../../../internal-fns/index.js';
 import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate } from './calculation.js';
 
@@ -58,5 +59,17 @@ export class Conditional implements PlanOperator {
     return [this.condition, ...this.whenThens.flat(), this.defaultCase].filter(
       (ch) => ch && !(ch instanceof ASTIdentifier),
     ) as PlanOperator[];
+  }
+  clone(): Conditional {
+    const res = new Conditional(
+      this.lang,
+      cloneIfPossible(this.condition),
+      this.whenThens.map((wt) => [
+        cloneIfPossible(wt[0]),
+        cloneIfPossible(wt[1]),
+      ]),
+      cloneIfPossible(this.defaultCase),
+    );
+    return res;
   }
 }

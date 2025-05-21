@@ -10,7 +10,7 @@ import {
 import { TupleSource } from '../tuple/tuple-source.js';
 import { Calculation } from './calculation.js';
 import { GroupBy } from '../tuple/groupby.js';
-import { isCalc, isId } from '../../../internal-fns/index.js';
+import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 
 /**
@@ -62,5 +62,11 @@ export class AggregateCall implements PlanOperator {
   }
   getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
+  }
+  clone(): AggregateCall {
+    const args = this.args.map(cloneIfPossible);
+    const clone = new AggregateCall(this.lang, args, this.impl, this.fieldName);
+    clone.postGroupOp = this.postGroupOp.clone();
+    return clone;
   }
 }

@@ -358,7 +358,7 @@ export class CypherLogicalPlanBuilder
       let res: PlanTupleOperator =
         args.src ??
         new plan.TupleFnSource('cypher', refVars, (...args) => {
-          const res = new Trie<string | symbol, unknown>();
+          const res = new Trie<string | symbol | number, unknown>();
           for (let i = 0; i < refVars.length; i++) {
             res.set(refVars[i].parts, args[i]);
           }

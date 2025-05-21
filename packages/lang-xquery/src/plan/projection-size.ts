@@ -34,4 +34,7 @@ export class ProjectionSize extends PlanTupleOperator {
   override getChildren(): PlanOperator[] {
     return [this.source];
   }
+  clone(): ProjectionSize {
+    return new ProjectionSize(this.lang, this.sizeCol, this.source.clone());
+  }
 }

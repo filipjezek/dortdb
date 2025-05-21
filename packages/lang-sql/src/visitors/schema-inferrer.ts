@@ -23,7 +23,7 @@ import { LangSwitch } from '../plan/langswitch.js';
 import { SQLPlanVisitor } from '../plan/index.js';
 import { DEFAULT_COLUMN } from './builder.js';
 
-const EMPTY = new Trie<string | symbol>();
+const EMPTY = new Trie<string | symbol | number>();
 function zip<T, U>(a: T[], b: U[]): [T, U][] {
   const res: [T, U][] = [];
   for (let i = 0; i < a.length; i++) {
@@ -123,7 +123,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   }
 
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
-    const external = new Trie<string | symbol>();
+    const external = new Trie<string | symbol | number>();
     const name =
       operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
     let hasRenamedAttrs = false;
@@ -167,7 +167,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     operator: plan.Calculation | plan.ItemFnSource | plan.TupleFnSource,
     ctx: IdSet,
   ): IdSet {
-    const external = new Trie<string | symbol>();
+    const external = new Trie<string | symbol | number>();
     for (const arg of operator.args) {
       if (arg instanceof ASTIdentifier) {
         external.add(arg.parts);
@@ -216,7 +216,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       return res;
     }
 
-    const res = new Trie<string | symbol>();
+    const res = new Trie<string | symbol | number>();
     if (operator instanceof LangSwitch) {
       res.add([operator.alias]);
       return res;
@@ -225,7 +225,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return res;
   }
   visitCartesianProduct(operator: plan.CartesianProduct, ctx: IdSet): IdSet {
-    const external = new Trie<string | symbol>();
+    const external = new Trie<string | symbol | number>();
     const leftNames = this.getRelNames(operator.left);
     const rightNames = this.getRelNames(operator.right);
     for (const item of leftNames) {

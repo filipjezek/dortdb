@@ -84,8 +84,8 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     return `${node.quantifier}(${node.query.accept(this)})`;
   }
 
-  private visitSchemaPart(node: string | symbol): string {
-    return typeof node === 'symbol'
+  private visitSchemaPart(node: string | symbol | number): string {
+    return typeof node === 'symbol' || typeof node === 'number'
       ? node === allAttrs
         ? '*'
         : node.toString()

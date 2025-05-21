@@ -59,4 +59,18 @@ export class FnCall implements PlanOperator {
     }
     return res;
   }
+
+  clone(): FnCall {
+    return new FnCall(
+      this.lang,
+      this.args.map((arg) => {
+        if ('op' in arg) {
+          return { ...arg, op: arg.op.clone() };
+        }
+        return arg;
+      }),
+      this.impl,
+      this.pure,
+    );
+  }
 }

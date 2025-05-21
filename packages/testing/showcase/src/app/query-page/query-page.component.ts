@@ -6,7 +6,13 @@ import {
   trigger,
 } from '@angular/animations';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  inject,
+  Injector,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormControl,
@@ -50,6 +56,7 @@ import {
   OptimizerListComponent,
   OptimizerListItem,
 } from './optimizer-list/optimizer-list.component';
+import { UnibenchData, UnibenchService } from '../services/unibench.service';
 
 @Component({
   selector: 'dort-query-page',
@@ -99,6 +106,8 @@ export class QueryPageComponent {
   });
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
+  private destroyRef = inject(DestroyRef);
+  private unibenchS = inject(UnibenchService);
   private allOptimizations = [
     UnnestSubqueries,
     mergeToFromItems,
@@ -147,6 +156,7 @@ export class QueryPageComponent {
     optimizerSettings: new FormControl(false),
     optimizerOptions: this.optimizerOptions,
   });
+  unibenchData: UnibenchData;
   plan: PlanOperator;
   output: QueryResult;
   error: Error;
@@ -175,6 +185,8 @@ export class QueryPageComponent {
 
     this.db.createIndex(['t2'], ['id'], MapIndex);
     this.db.createIndex(['t2'], ['a + b / 2'], MapIndex);
+
+    this.registerDataSources();
   }
 
   parse() {
@@ -206,10 +218,16 @@ export class QueryPageComponent {
     this.queryHistory.push(formVal.query);
     try {
       this.output = this.db.query(formVal.query, { mainLang: formVal.lang });
+      console.log(this.output);
     } catch (err) {
       this.error = err as Error;
       console.error(err);
     }
+  }
+
+  registerDataSources() {
+    if (this.unibenchData) return;
+    this.unibenchS.getDataIfAvailable();
   }
 
   openHistory() {
@@ -247,5 +265,6 @@ export class QueryPageComponent {
       width: '80vw',
       minWidth: '60vw',
     });
+    ref.afterClosed().subscribe(() => this.registerDataSources());
   }
 }

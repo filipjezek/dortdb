@@ -21,4 +21,8 @@ export class NullSource extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [];
   }
+  clone(): NullSource {
+    const clone = new NullSource(this.lang);
+    return clone;
+  }
 }

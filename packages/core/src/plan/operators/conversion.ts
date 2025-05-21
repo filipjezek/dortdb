@@ -5,7 +5,7 @@ import { Trie } from '../../data-structures/trie.js';
 
 export class MapToItem implements PlanOperator {
   public parent: PlanOperator;
-  public dependencies = new Trie<string | symbol>();
+  public dependencies = new Trie<string | symbol | number>();
 
   constructor(
     public lang: Lowercase<string>,
@@ -38,6 +38,10 @@ export class MapToItem implements PlanOperator {
   getChildren(): PlanOperator[] {
     return [this.source];
   }
+  clone(): MapToItem {
+    const clone = new MapToItem(this.lang, this.key, this.source.clone());
+    return clone;
+  }
 }
 
 export class MapFromItem extends PlanTupleOperator {
@@ -65,5 +69,9 @@ export class MapFromItem extends PlanTupleOperator {
   }
   getChildren(): PlanOperator[] {
     return [this.source];
+  }
+  clone(): MapFromItem {
+    const clone = new MapFromItem(this.lang, this.key, this.source.clone());
+    return clone;
   }
 }

@@ -4,9 +4,10 @@ import {
   LogicalPlanBuilder,
   PlanVisitors,
 } from './visitors/index.js';
-import { ASTNode } from './ast.js';
-import { DortDBAsFriend } from './db.js';
+import { ASTIdentifier, ASTNode } from './ast.js';
+import { DortDBAsFriend, QueryResult } from './db.js';
 import { Trie } from './data-structures/trie.js';
+import { ExecutionContext } from './execution-context.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -19,6 +20,14 @@ export interface ParseResult {
   value: ASTNode[];
   remainingInput: string;
 }
+
+export type SerializeFn = (
+  /** iterable of either sparse arrays of mapped variables or opaque objects */
+  items: Iterable<unknown> | Iterable<unknown[]>,
+  ctx: ExecutionContext,
+  schema: ASTIdentifier[],
+) => QueryResult;
+
 export interface Language<Name extends string = string> {
   readonly name: Lowercase<Name>;
   operators: Operator[];
@@ -31,16 +40,17 @@ export interface Language<Name extends string = string> {
       new (db: DortDBAsFriend): LogicalPlanBuilder;
     };
   };
+  serialize: SerializeFn;
 }
 
 export class LanguageManager {
   private langs: Record<string, Language> = {};
   private static readonly allLangs = Symbol('allLangs');
 
-  private operators = new Trie<string | symbol, Operator>();
-  private functions = new Trie<string | symbol, Fn>();
-  private aggregates = new Trie<string | symbol, AggregateFn>();
-  private castables = new Trie<string | symbol, Castable>();
+  private operators = new Trie<string | symbol | number, Operator>();
+  private functions = new Trie<string | symbol | number, Fn>();
+  private aggregates = new Trie<string | symbol | number, AggregateFn>();
+  private castables = new Trie<string | symbol | number, Castable>();
 
   constructor(private db: DortDBAsFriend) {}
 

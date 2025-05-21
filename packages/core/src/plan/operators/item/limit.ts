@@ -27,4 +27,7 @@ export class Limit extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [this.source];
   }
+  clone(): Limit {
+    return new Limit(this.lang, this.skip, this.limit, this.source.clone());
+  }
 }

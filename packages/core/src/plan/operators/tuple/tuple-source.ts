@@ -8,13 +8,11 @@ import {
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
-import { isCalc, isId } from '../../../internal-fns/index.js';
+import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { Index } from '../../../indices/index.js';
 
 export class TupleSource extends PlanTupleOperator {
-  public knownSchema = false;
-
   /**
    * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
    */
@@ -40,11 +38,15 @@ export class TupleSource extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [];
   }
+  clone(): TupleSource {
+    const res = new TupleSource(this.lang, this.name);
+    res.schema = this.schema.slice();
+    res.schemaSet = this.schemaSet.clone();
+    return res;
+  }
 }
 
 export class TupleFnSource extends PlanTupleOperator {
-  public knownSchema = false;
-
   /**
    * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
    */
@@ -76,6 +78,17 @@ export class TupleFnSource extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
   }
+  clone(): TupleFnSource {
+    const res = new TupleFnSource(
+      this.lang,
+      this.args.map(cloneIfPossible),
+      this.impl,
+      this.name,
+    );
+    res.schema = this.schema.slice();
+    res.schemaSet = this.schemaSet.clone();
+    return res;
+  }
 }
 
 export class IndexScan extends TupleSource {
@@ -106,5 +119,16 @@ export class IndexScan extends TupleSource {
 
   override getChildren(): PlanOperator[] {
     return [this.access];
+  }
+  override clone(): IndexScan {
+    const res = new IndexScan(
+      this.lang,
+      this.name as ASTIdentifier,
+      this.index,
+      this.access.clone(),
+    );
+    res.schema = this.schema.slice();
+    res.schemaSet = this.schemaSet.clone();
+    return res;
   }
 }

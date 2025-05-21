@@ -8,7 +8,9 @@ import {
   CalculationParams,
 } from './calculation-builder.js';
 import { EqualityChecker } from './equality-checker.js';
+import { Executor } from './executor.js';
 import { TransitiveDependencies } from './transitive-deps.js';
+import { VariableMapper } from './variable-mapper.js';
 
 type VisitorConstr<T extends PlanVisitor<any>> = {
   new (visitors: Record<string, T>, db: DortDBAsFriend): T;
@@ -23,6 +25,8 @@ export interface PlanVisitors {
   attributeRenamer: VisitorConstr<AttributeRenamer>;
   attributeRenameChecker: VisitorConstr<AttributeRenameChecker>;
   equalityChecker: VisitorConstr<EqualityChecker>;
+  variableMapper: VisitorConstr<VariableMapper>;
+  executor: VisitorConstr<Executor>;
 }
 
 /**
@@ -66,6 +70,8 @@ export const coreVisitors = {
     attributeRenamer: AttributeRenamer,
     attributeRenameChecker: AttributeRenameChecker,
     equalityChecker: EqualityChecker,
+    variableMapper: VariableMapper,
+    executor: Executor,
   } satisfies PlanVisitors,
 };
 
@@ -74,3 +80,5 @@ export * from './transitive-deps.js';
 export * from './attribute-rename-checker.js';
 export * from './attribute-renamer.js';
 export * from './equality-checker.js';
+export * from './variable-mapper.js';
+export * from './executor.js';

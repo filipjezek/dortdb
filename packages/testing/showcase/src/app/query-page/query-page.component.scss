@@ -78,3 +78,8 @@ mat-card {
     }
   }
 }
+
+mat-card-content:has(> dort-tree-visualizer) {
+  flex-grow: 1;
+  display: flex;
+}

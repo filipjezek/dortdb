@@ -31,4 +31,11 @@ export class LangSwitch extends PlanTupleOperator {
   override getChildren(): PlanOperator[] {
     return [];
   }
+  clone(): LangSwitch {
+    const res = new LangSwitch(this.lang, this.node);
+    res.alias = this.alias;
+    res.schema = this.schema.slice();
+    res.schemaSet = this.schemaSet.clone();
+    return res;
+  }
 }

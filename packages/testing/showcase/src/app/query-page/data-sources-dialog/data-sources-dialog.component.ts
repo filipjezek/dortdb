@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import Prism from 'prismjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { UnibenchService } from '../../services/unibench.service';
+import { MatProgressSpinner } from '@angular/material/progress-spinner';
 
 interface Source {
   name: string;
@@ -16,7 +18,13 @@ interface Source {
 
 @Component({
   selector: 'dort-data-sources-dialog',
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatExpansionModule],
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatExpansionModule,
+    MatProgressSpinner,
+  ],
   templateUrl: './data-sources-dialog.component.html',
   styleUrl: './data-sources-dialog.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -137,6 +145,8 @@ defaultGraph.addEdge('2', '4', { type: 'hasFriend' });
     markup: Prism.languages['markup'],
     javascript: Prism.languages['javascript'],
   };
+
+  unibenchS = inject(UnibenchService);
 
   constructor(sanitizer: DomSanitizer) {
     for (const src of this.sources) {

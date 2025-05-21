@@ -65,4 +65,15 @@ export class Using extends PlanTupleOperator {
     );
     this.addToSchema(this.columns);
   }
+
+  clone(): Using {
+    const res = new Using(
+      this.lang,
+      this.columns.slice(),
+      this.leftName,
+      this.rightName,
+      this.source.clone(),
+    );
+    return res;
+  }
 }

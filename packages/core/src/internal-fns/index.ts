@@ -1,5 +1,6 @@
 import { ASTIdentifier } from '../ast.js';
 import { Calculation } from '../plan/operators/index.js';
+import { Aliased, OpOrId, PlanOperator } from '../plan/visitor.js';
 
 export function ret1<T>(a: T): T {
   return a;
@@ -24,4 +25,17 @@ export function isId(x: unknown): x is ASTIdentifier {
 }
 export function isNotNull<T>(x: T): x is NonNullable<T> {
   return x !== null;
+}
+export function clone<T extends PlanOperator>(x: T): T {
+  return x.clone() as T;
+}
+export function cloneIfPossible<T extends OpOrId | Aliased<OpOrId>>(x: T): T {
+  if (!x) return x;
+  if (Array.isArray(x)) {
+    return [cloneIfPossible(x[0]), x[1]] as T;
+  }
+  if (x instanceof ASTIdentifier) {
+    return x;
+  }
+  return x.clone() as T;
 }

@@ -1,5 +1,5 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
-import { isCalc, isId } from '../../../internal-fns/index.js';
+import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
@@ -45,5 +45,12 @@ export class Distinct extends PlanTupleOperator {
       res.push(...this.attrs.filter(isCalc));
     }
     return res;
+  }
+  clone(): Distinct {
+    return new Distinct(
+      this.lang,
+      this.attrs === allAttrs ? this.attrs : this.attrs.map(cloneIfPossible),
+      this.source.clone(),
+    );
   }
 }

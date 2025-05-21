@@ -41,4 +41,11 @@ export class Selection extends PlanTupleOperator {
     const res: PlanOperator[] = [this.source, this.condition];
     return res;
   }
+  clone(): Selection {
+    return new Selection(
+      this.lang,
+      this.condition.clone(),
+      this.source.clone(),
+    );
+  }
 }

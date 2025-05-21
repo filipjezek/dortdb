@@ -23,4 +23,7 @@ export class Literal<T = unknown> implements PlanOperator {
   getChildren(): PlanOperator[] {
     return [];
   }
+  clone(): Literal<T> {
+    return new Literal(this.lang, this.value);
+  }
 }

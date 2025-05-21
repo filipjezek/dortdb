@@ -1,6 +1,6 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { Trie } from '../../../data-structures/trie.js';
-import { isCalc, isId } from '../../../internal-fns/index.js';
+import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { Aliased, IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
@@ -29,6 +29,9 @@ export class ItemSource implements PlanOperator {
   }
   getChildren(): PlanOperator[] {
     return [];
+  }
+  clone(): ItemSource {
+    return new ItemSource(this.lang, this.name);
   }
 }
 
@@ -61,5 +64,13 @@ export class ItemFnSource implements PlanOperator {
   }
   getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
+  }
+  clone(): ItemFnSource {
+    return new ItemFnSource(
+      this.lang,
+      this.args.map(cloneIfPossible),
+      this.impl,
+      this.name,
+    );
   }
 }

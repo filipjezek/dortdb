@@ -9,7 +9,6 @@ import {
 } from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
 import { DortDBAsFriend } from '../db.js';
-import { isEqual } from 'lodash-es';
 import { or } from '../operators/logical.js';
 import { EqualityChecker } from './equality-checker.js';
 

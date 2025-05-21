@@ -9,7 +9,13 @@ import { AggregateCall } from '../item/aggregate-call.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
-import { isId, retI0, retI1 } from '../../../internal-fns/index.js';
+import {
+  clone,
+  cloneIfPossible,
+  isId,
+  retI0,
+  retI1,
+} from '../../../internal-fns/index.js';
 
 export class GroupBy extends PlanTupleOperator {
   constructor(
@@ -55,5 +61,14 @@ export class GroupBy extends PlanTupleOperator {
     }
     res.push(...this.aggs);
     return res;
+  }
+
+  clone(): GroupBy {
+    return new GroupBy(
+      this.lang,
+      this.keys.map(cloneIfPossible),
+      this.aggs.map(clone),
+      this.source.clone(),
+    );
   }
 }

@@ -54,16 +54,27 @@ export interface CypherDataAdaper<
 export class GraphologyDataAdapter
   implements
     CypherDataAdaper<
-      MultiDirectedGraph<Attributes, Attributes, Attributes & { type: string }>
+      MultiDirectedGraph<
+        Attributes & { labels: string[] },
+        Attributes & { type: string },
+        Attributes
+      >
     >
 {
-  getNodesByLabels(
-    graph: MultiDirectedGraph,
+  *getNodesByLabels(
+    graph: MultiDirectedGraph<
+      Attributes & { labels: string[] },
+      Attributes & { type: string },
+      Attributes
+    >,
     ...labels: string[]
   ): Iterable<unknown> {
-    throw new UnsupportedError(
-      'GraphologyDataAdapter does not support node labels',
-    );
+    for (const node of graph.nodes()) {
+      const nodeLabels = graph.getNodeAttribute(node, 'labels') ?? [];
+      if (labels.every((label) => nodeLabels.includes(label))) {
+        yield node;
+      }
+    }
   }
   *filterNodes(
     graph: MultiDirectedGraph,
@@ -82,8 +93,8 @@ export class GraphologyDataAdapter
   *getEdgesByType(
     graph: MultiDirectedGraph<
       Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { type: string },
+      Attributes
     >,
     type: string,
   ): Iterable<unknown> {
@@ -110,8 +121,8 @@ export class GraphologyDataAdapter
   *getNodeEdgesByType(
     graph: MultiDirectedGraph<
       Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { type: string },
+      Attributes
     >,
     node: unknown,
     type: string,
@@ -165,8 +176,8 @@ export class GraphologyDataAdapter
   getNodeProperties(
     graph: MultiDirectedGraph<
       Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { type: string },
+      Attributes
     >,
     node: any,
   ): Record<string, unknown> {
@@ -175,8 +186,8 @@ export class GraphologyDataAdapter
   getEdgeProperties(
     graph: MultiDirectedGraph<
       Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { type: string },
+      Attributes
     >,
     edge: any,
   ): Record<string, unknown> {
@@ -199,22 +210,20 @@ export class GraphologyDataAdapter
   }
   hasLabel(
     graph: MultiDirectedGraph<
-      Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { labels: string[] },
+      Attributes & { type: string },
+      Attributes
     >,
     node: unknown,
     label: string,
   ): boolean {
-    throw new UnsupportedError(
-      'GraphologyDataAdapter does not support node labels',
-    );
+    return graph.getNodeAttribute(node, 'labels')?.includes(label) ?? false;
   }
   hasType(
     graph: MultiDirectedGraph<
       Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { type: string },
+      Attributes
     >,
     edge: unknown,
     type: string,
@@ -224,8 +233,8 @@ export class GraphologyDataAdapter
   getEdgeNode(
     graph: MultiDirectedGraph<
       Attributes,
-      Attributes,
-      Attributes & { type: string }
+      Attributes & { type: string },
+      Attributes
     >,
     edge: unknown,
     type: 'source' | 'target',

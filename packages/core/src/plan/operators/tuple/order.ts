@@ -1,5 +1,5 @@
 import { ASTIdentifier } from '../../../ast.js';
-import { isCalc, isId } from '../../../internal-fns/index.js';
+import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
@@ -48,5 +48,16 @@ export class OrderBy extends PlanTupleOperator {
     const res: PlanOperator[] = this.orders.map(getKey).filter(isCalc);
     res.push(this.source);
     return res;
+  }
+  clone(): OrderBy {
+    return new OrderBy(
+      this.lang,
+      this.orders.map((o) => ({
+        key: cloneIfPossible(o.key),
+        ascending: o.ascending,
+        nullsFirst: o.nullsFirst,
+      })),
+      this.source.clone(),
+    );
   }
 }

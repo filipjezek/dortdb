@@ -37,4 +37,13 @@ export class Recursion extends PlanTupleOperator {
   getChildren(): PlanOperator[] {
     return [this.source, this.condition];
   }
+  clone(): Recursion {
+    return new Recursion(
+      this.lang,
+      this.min,
+      this.max,
+      this.condition.clone(),
+      this.source.clone(),
+    );
+  }
 }

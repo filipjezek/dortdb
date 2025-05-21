@@ -45,6 +45,9 @@ export class Union extends SetOperator {
   ): Ret {
     return visitors[this.lang].visitUnion(this, arg);
   }
+  clone(): Union {
+    return new Union(this.lang, this.left.clone(), this.right.clone());
+  }
 }
 
 export class Intersection extends SetOperator {
@@ -54,6 +57,9 @@ export class Intersection extends SetOperator {
   ): Ret {
     return visitors[this.lang].visitIntersection(this, arg);
   }
+  clone(): Intersection {
+    return new Intersection(this.lang, this.left.clone(), this.right.clone());
+  }
 }
 
 export class Difference extends SetOperator {
@@ -62,5 +68,8 @@ export class Difference extends SetOperator {
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitDifference(this, arg);
+  }
+  clone(): Difference {
+    return new Difference(this.lang, this.left.clone(), this.right.clone());
   }
 }

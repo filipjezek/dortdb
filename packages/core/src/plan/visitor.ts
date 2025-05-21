@@ -13,13 +13,14 @@ export interface PlanOperator {
   ): Ret;
   replaceChild(current: PlanOperator, replacement: PlanOperator): void;
   getChildren(): PlanOperator[];
+  clone(): PlanOperator;
 }
 export abstract class PlanTupleOperator implements PlanOperator {
   public schema: ASTIdentifier[];
   public schemaSet: IdSet;
   public lang: Lowercase<string>;
   public parent?: PlanOperator;
-  public dependencies = new Trie<string | symbol>();
+  public dependencies = new Trie<string | symbol | number>();
 
   abstract accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
@@ -80,13 +81,15 @@ export abstract class PlanTupleOperator implements PlanOperator {
     this.schema.length = 0;
     this.schemaSet.clear();
   }
+
+  abstract clone(): PlanTupleOperator;
 }
 
 export type OpOrId = PlanOperator | ASTIdentifier;
 
 export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
-export type IdSet = Trie<string | symbol, any>;
+export type IdSet = Trie<string | symbol | number, any>;
 
 export interface PlanVisitor<Ret, Arg = never> {
   visitRecursion(operator: operators.Recursion, arg?: Arg): Ret;

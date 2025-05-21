@@ -29,4 +29,7 @@ export class Quantifier implements PlanOperator {
   getChildren(): PlanOperator[] {
     return [this.query];
   }
+  clone(): Quantifier {
+    return new Quantifier(this.lang, this.type, this.query.clone());
+  }
 }

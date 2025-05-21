@@ -6,12 +6,13 @@ import { Optimizer, OptimizerConfig } from './optimizer/optimizer.js';
 import { Index } from './indices/index.js';
 import { Calculation, Projection } from './plan/operators/index.js';
 import { idToCalculation } from './utils/calculation.js';
+import { PlanTupleOperator } from './plan/visitor.js';
 
 export class DortDB<LangNames extends string> {
   private langMgr: LanguageManager = null;
-  private registeredSources = new Trie<symbol | string, unknown>();
+  private registeredSources = new Trie<symbol | string | number, unknown>();
   public readonly optimizer: Optimizer;
-  public indices = new Trie<symbol | string, Index[]>();
+  public indices = new Trie<symbol | string | number, Index[]>();
   private friendInterface: DortDBAsFriend = {
     langMgr: null,
     optimizer: null,
@@ -57,18 +58,29 @@ export class DortDB<LangNames extends string> {
     query: string,
     options?: QueryOptions<LangNames>,
   ): QueryResult<T> {
-    return {
-      data: [] as any,
-      schema: [],
-    };
+    const parsed = this.parse(query, options);
+    const plan = this.buildPlan(parsed.value[0], options);
+    const varMappers = this.langMgr.getVisitorMap('variableMapper');
+    const executors = this.langMgr.getVisitorMap('executor');
+    const serialize = this.langMgr.getLang(
+      options?.mainLang ?? this.config.mainLang.name,
+    ).serialize;
+
+    const varMapCtx = varMappers[plan.lang].mapVariables(plan);
+    const { result, ctx } = executors[plan.lang].execute(plan, varMapCtx);
+    return serialize(
+      result,
+      ctx,
+      plan instanceof PlanTupleOperator ? plan.schema : undefined,
+    ) as QueryResult<T>;
   }
 
-  public registerSource(source: (symbol | string)[], data: unknown) {
+  public registerSource(source: (symbol | string | number)[], data: unknown) {
     this.registeredSources.set(source, data);
   }
 
   public createIndex(
-    source: (symbol | string)[],
+    source: (symbol | string | number)[],
     expressions: [string],
     indexCls: { new (expressions: Calculation[], db: DortDBAsFriend): Index },
     options?: QueryOptions<LangNames>,
@@ -122,7 +134,7 @@ export interface DortDBConfig<LangNames extends string> {
 
 export interface DortDBAsFriend {
   langMgr: LanguageManager;
-  getSource(source: (symbol | string)[]): unknown;
+  getSource(source: (symbol | string | number)[]): unknown;
   optimizer: Optimizer;
-  indices: Trie<symbol | string, Index[]>;
+  indices: Trie<symbol | string | number, Index[]>;
 }

@@ -3,7 +3,7 @@ import { ASTIdentifier } from '../ast.js';
 import { IdSet } from '../plan/visitor.js';
 
 export function schemaToTrie(schema: ASTIdentifier[]) {
-  const res = new Trie<string | symbol>();
+  const res = new Trie<string | symbol | number>();
   for (const id of schema) {
     res.add(id.parts);
   }
@@ -11,7 +11,7 @@ export function schemaToTrie(schema: ASTIdentifier[]) {
 }
 
 export function union(...parts: (IdSet | ASTIdentifier[])[]): IdSet {
-  const result = new Trie<string | symbol>();
+  const result = new Trie<string | symbol | number>();
   for (const part of parts) {
     if (Array.isArray(part)) {
       for (const id of part) {
@@ -27,7 +27,7 @@ export function union(...parts: (IdSet | ASTIdentifier[])[]): IdSet {
 }
 
 export function difference(a: IdSet, ...others: IdSet[]): IdSet {
-  const result = new Trie<string | symbol>();
+  const result = new Trie<string | symbol | number>();
   for (const id of a) {
     result.add(id);
   }
@@ -40,7 +40,7 @@ export function difference(a: IdSet, ...others: IdSet[]): IdSet {
 }
 
 export function restriction(a: IdSet, b: IdSet | ASTIdentifier[]): IdSet {
-  const result = new Trie<string | symbol>();
+  const result = new Trie<string | symbol | number>();
   if (Array.isArray(b)) {
     for (const id of b) {
       if (a.has(id.parts)) {
