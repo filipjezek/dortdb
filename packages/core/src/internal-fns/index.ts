@@ -39,3 +39,6 @@ export function cloneIfPossible<T extends OpOrId | Aliased<OpOrId>>(x: T): T {
   }
   return x.clone() as T;
 }
+export function toArray<T>(x: Iterable<T>): T[] {
+  return Array.isArray(x) ? x : Array.from(x);
+}

@@ -152,9 +152,7 @@ export class SQLLogicalPlanBuilder
       [{ op: node.expr.accept(this) }],
       node.isArray
         ? (x) =>
-            Array.isArray(x)
-              ? x.map(impl.convert)
-              : Array.from(x).map(impl.convert)
+            Array.isArray(x) ? x.map(impl.convert) : Array.from(x, impl.convert)
         : impl.convert,
       !node.isArray && impl.pure,
     );

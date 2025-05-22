@@ -6,6 +6,7 @@ import {
   PlanTupleOperator,
   PlanVisitor,
 } from '@dortdb/core';
+import { retI1 } from '@dortdb/core/internal-fns';
 import * as plan from '@dortdb/core/plan';
 import {
   ProjectionSize,
@@ -140,8 +141,9 @@ export class GraphBuilder
       <g id="drawing-container"></g>
     `;
     this.cssVariables = new Set(
-      Array.from(this.container.innerHTML.matchAll(/var\((--[^),]+)\)/g)).map(
-        (m) => m[1],
+      Array.from(
+        this.container.innerHTML.matchAll(/var\((--[^),]+)\)/g),
+        retI1 as any,
       ),
     );
     this.drawingContainer = this.container.querySelector('#drawing-container');

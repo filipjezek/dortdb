@@ -13,6 +13,7 @@ import { XQueryAttributeRenamer } from '../visitors/attr-renamer.js';
 import { XQueryEqualityChecker } from '../visitors/equality-checker.js';
 import { XQueryVariableMapper } from '../visitors/variable-mapper.js';
 import { XQueryExecutor } from '../visitors/executor.js';
+import { toArray } from '@dortdb/core/internal-fns';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
@@ -42,7 +43,6 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
     },
     dataAdapter: config?.adapter ?? new DomDataAdapter(document),
     serialize:
-      config?.serialize ??
-      ((items): QueryResult => ({ data: Array.from(items) })),
+      config?.serialize ?? ((items): QueryResult => ({ data: toArray(items) })),
   };
 }

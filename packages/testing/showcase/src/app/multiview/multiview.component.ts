@@ -96,7 +96,7 @@ export class MultiviewComponent implements AfterViewInit {
     const xOrder = this.mainAxisOrder() ?? returnZero;
     const yOrder = this.secondaryAxisOrder() ?? returnZero;
     const yGroup = this.secondaryAxisGroup() ?? returnIndex;
-    return Object.values(Object.groupBy(Array.from(partitions), yGroup))
+    return Object.values(Object.groupBy(partitions, yGroup))
       .map((p) => p.sort(yOrder))
       .sort((a, b) => xOrder(a[0], b[0]));
   }

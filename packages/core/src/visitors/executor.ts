@@ -4,6 +4,7 @@ import { ExecutionContext } from '../execution-context.js';
 import { DortDBAsFriend } from '../db.js';
 import { ASTIdentifier } from '../ast.js';
 import { VariableMapperCtx } from './variable-mapper.js';
+import { toArray } from '../internal-fns/index.js';
 
 export class Executor
   implements PlanVisitor<Iterable<unknown>, ExecutionContext>
@@ -99,7 +100,7 @@ export class Executor
         ...operator.args.map((arg) =>
           arg instanceof ASTIdentifier
             ? ctx.get(arg)
-            : Array.from(arg.accept(this.vmap, ctx)),
+            : toArray(arg.accept(this.vmap, ctx)),
         ),
       ),
     ];
@@ -110,11 +111,35 @@ export class Executor
   ): Iterable<unknown> {
     throw new Error('Method not implemented.');
   }
-  visitCartesianProduct(
+  *visitCartesianProduct(
     operator: plan.CartesianProduct,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    throw new Error('Method not implemented.');
+    const right = toArray(operator.right.accept(this.vmap, ctx)) as unknown[][];
+    if (right.length === 0) return [];
+    const rightKeys = Object.keys(right[0]).map(Number);
+
+    const left = operator.left.accept(this.vmap, ctx)[Symbol.iterator]();
+    let leftItem = left.next();
+    if (leftItem.done) return [];
+    const leftKeys = Object.keys(leftItem.value)
+      .map(Number)
+      .filter((key) => !rightKeys.includes(key));
+
+    do {
+      for (const rightValue of right) {
+        const result: unknown[] = [];
+        const leftValue = leftItem.value;
+        for (const key of leftKeys) {
+          result[key] = leftValue[key];
+        }
+        for (const key of rightKeys) {
+          result[key] = rightValue[key];
+        }
+        yield result;
+      }
+      leftItem = left.next();
+    } while (leftItem.done === false);
   }
   visitJoin(operator: plan.Join, ctx: ExecutionContext): Iterable<unknown> {
     throw new Error('Method not implemented.');
