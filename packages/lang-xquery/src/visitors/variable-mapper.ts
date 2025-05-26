@@ -31,11 +31,13 @@ export class XQueryVariableMapper
   }
   visitTreeJoin(operator: TreeJoin, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     operator.step.accept(this.vmap, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitProjectionSize(operator: ProjectionSize, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     operator.sizeCol = this.translate(operator.sizeCol, ctx, 1);
   }
 }

@@ -60,12 +60,19 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     return result;
   }
 
+  protected setTranslations(operator: PlanOperator, ctx: VariableMapperCtx) {
+    const scope = ctx.scopeStack[ctx.scopeStack.length - 1];
+    ctx.translations.set(operator, scope);
+  }
+
   visitRecursion(operator: plan.Recursion, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     this.visitCalculation(operator.condition, ctx);
   }
   visitProjection(operator: plan.Projection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     for (const attr of operator.attrs) {
       const tgtTranslated = this.translate(attr[1], ctx, 1);
       if (attr[0] instanceof ASTIdentifier) {
@@ -83,6 +90,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitSelection(operator: plan.Selection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     this.visitCalculation(operator.condition, ctx);
   }
   visitTupleSource(operator: plan.TupleSource, ctx: VariableMapperCtx): void {
@@ -126,6 +134,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     const left = ctx.scopeStack.pop();
     const sum = this.union(left, right);
     ctx.scopeStack.push(sum);
+    ctx.translations.set(operator, sum);
     ctx.currentIndex = ctx.currentIndex - right.size - left.size + sum.size;
   }
   visitJoin(operator: plan.Join, ctx: VariableMapperCtx): void {
@@ -144,10 +153,12 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     const source = ctx.scopeStack.pop();
     const sum = this.union(source, mapping);
     ctx.scopeStack.push(sum);
+    ctx.translations.set(operator, sum);
     ctx.currentIndex = ctx.currentIndex - mapping.size - source.size + sum.size;
   }
   visitMapToItem(operator: plan.MapToItem, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     operator.key = this.translate(operator.key, ctx, 1);
   }
   visitMapFromItem(operator: plan.MapFromItem, ctx: VariableMapperCtx): void {
@@ -155,6 +166,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     const prevScope = ctx.scopeStack.pop();
     const newScope: VariableMap = new Trie();
     ctx.scopeStack.push(newScope);
+    ctx.translations.set(operator, newScope);
     ctx.currentIndex -= prevScope.size;
     operator.key = this.translate(operator.key, ctx, 1);
   }
@@ -163,10 +175,12 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     ctx: VariableMapperCtx,
   ): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     operator.indexCol = this.translate(operator.indexCol, ctx, 1);
   }
   visitOrderBy(operator: plan.OrderBy, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     for (const order of operator.orders) {
       if (order.key instanceof ASTIdentifier) {
         order.key = this.translate(order.key, ctx);
@@ -177,6 +191,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitGroupBy(operator: plan.GroupBy, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     for (const key of operator.keys) {
       key[1] = this.translate(key[1], ctx, 1);
       if (key[0] instanceof ASTIdentifier) {
@@ -191,6 +206,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitLimit(operator: plan.Limit, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
   }
   protected visitSetOp(
     operator: plan.SetOperator,
@@ -198,6 +214,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   ): void {
     operator.left.accept(this.vmap, ctx);
     operator.right.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitUnion(operator: plan.Union, ctx: VariableMapperCtx): void {
@@ -211,6 +228,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitDistinct(operator: plan.Distinct, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     if (operator.attrs !== allAttrs) {
       for (let i = 0; i < operator.attrs.length; i++) {
         const attr = operator.attrs[i];
@@ -224,13 +242,16 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitNullSource(operator: plan.NullSource, ctx: VariableMapperCtx): void {
     ctx.scopeStack.push(new Trie());
+    this.setTranslations(operator, ctx);
   }
   visitAggregate(operator: plan.AggregateCall, ctx: VariableMapperCtx): void {
     operator.postGroupOp.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitItemFnSource(operator: plan.ItemFnSource, ctx: VariableMapperCtx): void {
     ctx.scopeStack.push(new Trie());
+    this.setTranslations(operator, ctx);
     for (let i = 0; i < operator.args.length; i++) {
       const arg = operator.args[i];
       if (arg instanceof ASTIdentifier) {
