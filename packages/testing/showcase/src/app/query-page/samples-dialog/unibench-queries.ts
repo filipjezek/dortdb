@@ -30,7 +30,7 @@ WHERE EXISTS (
 SELECT customers.id, feedback.feedback
 FROM customers
 JOIN feedback ON customers.id = feedback.personId
-WHERE (feedback.feedback[0])::number < 4
+WHERE (feedback.feedback[1])::number < 4
 AND EXISTS (
   LANG cypher
   MATCH ({id: customers.id})-[:hasCreated]->(post)-[:hasTag]->({id: $product})
@@ -84,7 +84,7 @@ LIMIT 3`,
 
 SELECT feedback FROM feedback
 JOIN products ON products.id = feedback.productId
-WHERE brand = :brand AND feedback[0]::number < 4 AND (
+WHERE brand = :brand AND feedback[1]::number < 4 AND (
   LANG xquery
   for $orderline in $Invoices//*[
     date(OrderDate) gt now() - interval('3 months')

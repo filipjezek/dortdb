@@ -7,7 +7,7 @@ import {
   simplifyCalcParams,
 } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
-import { EqIndexAccessor, Index, IndexMatchInput } from './index.js';
+import { Index, IndexMatchInput } from './index.js';
 
 export class MapIndex implements Index {
   protected map: Map<unknown, unknown[]> = new Map();
@@ -26,10 +26,6 @@ export class MapIndex implements Index {
   }
 
   reindex(values: Iterable<unknown>): void {}
-
-  query({ value }: { value: unknown }): Iterable<unknown> {
-    return this.map.get(value) ?? [];
-  }
 
   match(
     expressions: IndexMatchInput[],
@@ -59,9 +55,11 @@ export class MapIndex implements Index {
           ? expressions[0].expr.op
           : expressions[0].expr),
     );
-    const accessorFnCall = new FnCall(eqFn.lang, [otherArg], (value) => ({
-      value,
-    }));
+    const accessorFnCall = new FnCall(
+      eqFn.lang,
+      [otherArg],
+      (value) => this.map.get(value) ?? [],
+    );
     let calcParams = accessorFnCall.accept(this.calcBuilders);
     calcParams = simplifyCalcParams(calcParams, this.eqCheckers, eqFn.lang);
     return new Calculation(

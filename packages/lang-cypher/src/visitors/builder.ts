@@ -38,10 +38,7 @@ import {
 } from '@dortdb/core/utils';
 
 function idToPair(id: ASTIdentifier): [string, string] {
-  return [
-    id.parts[id.parts.length - 1] as string,
-    id.parts[id.parts.length - 2] as string,
-  ];
+  return [id.parts.at(-1) as string, id.parts.at(-2) as string];
 }
 function toId(name: string | symbol): ASTIdentifier {
   return ASTIdentifier.fromParts([name]);
@@ -500,7 +497,7 @@ export class CypherLogicalPlanBuilder
         (n, e) =>
           this.dataAdapter.isConnected(
             this.db.getSource(graphName.parts),
-            Array.isArray(e) ? (pickFirstEdge ? e[0] : e[e.length - 1]) : e,
+            Array.isArray(e) ? (pickFirstEdge ? e[0] : e.at(-1)) : e,
             n,
             dir,
           ),
@@ -527,7 +524,7 @@ export class CypherLogicalPlanBuilder
         item.variable.parts[0] === boundParam ||
         args.ctx.has(item.variable.parts) ||
         args.src?.schemaSet.has(item.variable.parts) ||
-        item.variable.parts[item.variable.parts.length - 1] === toInfer
+        item.variable.parts.at(-1) === toInfer
       );
     });
     const ctx = args.src ? union(args.ctx, args.src.schema) : args.ctx;

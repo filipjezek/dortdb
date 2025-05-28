@@ -27,9 +27,7 @@ export function serializeToObjects(schemaSeparator = '.'): SerializeFn {
           .join(schemaSeparator),
       );
       const allAttrsKeys = keys.map(
-        (x) =>
-          ctx.variableNames[x].parts[ctx.variableNames[x].parts.length - 1] ===
-          allAttrs,
+        (x) => ctx.variableNames[x].parts.at(-1) === allAttrs,
       );
       const data: Record<string | symbol, unknown>[] = [];
 

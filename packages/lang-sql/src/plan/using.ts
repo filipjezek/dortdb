@@ -4,7 +4,7 @@ import {
   PlanOperator,
   PlanTupleOperator,
 } from '@dortdb/core';
-import { Projection, Selection } from '@dortdb/core/plan';
+import { Join, Projection, Selection } from '@dortdb/core/plan';
 import { SchemaInferrer } from '../visitors/schema-inferrer.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { CartesianProduct } from '@dortdb/core/plan';
@@ -24,7 +24,7 @@ export class Using extends PlanTupleOperator {
     public columns: ASTIdentifier[],
     public leftName: ASTIdentifier,
     public rightName: ASTIdentifier,
-    public source: CartesianProduct,
+    public source: CartesianProduct | Join,
   ) {
     super();
     this.lang = lang;

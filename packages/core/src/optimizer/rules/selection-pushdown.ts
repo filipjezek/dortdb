@@ -137,7 +137,7 @@ export class PushdownSelections
     bindings: PushdownSelectionsBindings,
   ): PlanOperator {
     const { selections, source } = bindings;
-    const last = selections[selections.length - 1];
+    const last = selections.at(-1);
     if (this.alwaysSwap.includes(source.constructor as any)) {
       return this.transformBasic(source as any, node, last);
     }
@@ -186,7 +186,7 @@ export class PushdownSelections
     source.left = first;
     first.parent = source;
 
-    const cloneLast = clones[clones.length - 1];
+    const cloneLast = clones.at(-1);
     const cloneFirst = clones[0];
     cloneLast.source = source.right;
     source.right.parent = cloneLast;
@@ -226,7 +226,7 @@ export class PushdownSelections
       s.schemaSet = source.source.schemaSet.clone();
     }
 
-    const lastCP = canPushdown[canPushdown.length - 1];
+    const lastCP = canPushdown.at(-1);
     lastCP.source = source.source;
     source.source.parent = lastCP;
     source.source = canPushdown[0];
@@ -236,8 +236,8 @@ export class PushdownSelections
     }
 
     if (mustStay.length) {
-      mustStay[mustStay.length - 1].source = source;
-      source.parent = mustStay[mustStay.length - 1];
+      mustStay.at(-1).source = source;
+      source.parent = mustStay.at(-1);
       return mustStay[0];
     } else {
       return source;
@@ -276,8 +276,8 @@ export class PushdownSelections
     this.pushSelectionsUnder(lefts, 'left', source);
     this.pushSelectionsUnder(rights, 'right', source);
     if (stays.length) {
-      stays[stays.length - 1].source = source;
-      source.parent = stays[stays.length - 1];
+      stays.at(-1).source = source;
+      source.parent = stays.at(-1);
       return stays[0];
     } else {
       return source;
@@ -319,8 +319,8 @@ export class PushdownSelections
     this.pushSelectionsUnder(horizs, 'mapping', source);
     this.pushSelectionsUnder(verts, 'source', source);
     if (stays.length) {
-      stays[stays.length - 1].source = source;
-      source.parent = stays[stays.length - 1];
+      stays.at(-1).source = source;
+      source.parent = stays.at(-1);
       return stays[0];
     } else {
       return source;
@@ -364,8 +364,8 @@ export class PushdownSelections
         s.schema = source[key].schema.slice();
         s.schemaSet = source[key].schemaSet.clone();
       }
-      selections[selections.length - 1].source = source[key];
-      source[key].parent = selections[selections.length - 1];
+      selections.at(-1).source = source[key];
+      source[key].parent = selections.at(-1);
       source[key] = selections[0] as any;
       selections[0].parent = source;
     }

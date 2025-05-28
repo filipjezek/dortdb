@@ -44,6 +44,7 @@ export class DortDB<LangNames extends string> {
   }
 
   public buildPlan(query: ASTNode, options?: QueryOptions<LangNames>) {
+    const varMappers = this.langMgr.getVisitorMap('variableMapper');
     const Visitor = this.langMgr.getLang(
       options?.mainLang ?? this.config.mainLang.name,
     ).visitors.logicalPlanBuilder;
@@ -51,7 +52,9 @@ export class DortDB<LangNames extends string> {
       query,
       new Trie<symbol | string>(),
     );
-    return this.optimizer.optimize(plan.plan);
+    const optimized = this.optimizer.optimize(plan.plan);
+    // varMappers[optimized.lang].mapVariables(optimized);
+    return optimized;
   }
 
   public query<T = unknown>(

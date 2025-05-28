@@ -12,7 +12,7 @@ export class CypherExecutor extends Executor {
   ): Iterable<unknown> {
     const name = operator.name as ASTIdentifier;
     const source = this.db.getSource(name.parts.slice(0, -1));
-    const type = name.parts[name.parts.length - 1];
+    const type = name.parts.at(-1);
 
     if (type === 'nodes') return this.adapter.filterNodes(source);
     return this.adapter.filterEdges(source);

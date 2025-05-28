@@ -45,10 +45,7 @@ import { XQueryDataAdapter } from '../language/data-adapter.js';
 import { XQueryLanguage } from '../language/language.js';
 
 function idToPair(id: ASTIdentifier): [string, string] {
-  return [
-    id.parts[id.parts.length - 1] as string,
-    id.parts[id.parts.length - 2] as string,
-  ];
+  return [id.parts.at(-1) as string, id.parts.at(-2) as string];
 }
 function toId(id: string | symbol): ASTIdentifier {
   return AST.XQueryIdentifier.fromParts([id]);
@@ -594,7 +591,7 @@ export class XQueryLogicalPlanBuilder
     const calc = new plan.Calculation(
       'xquery',
       (...args) => {
-        const pos = args[args.length - 1];
+        const pos = args.at(-1);
         const res = resolveArgs(args, calcParams).flat();
         return typeof res === 'number' ? res === pos : toBool.convert(res);
       },
@@ -649,8 +646,8 @@ export class XQueryLogicalPlanBuilder
 
   /** returns [ns uri, prefixed:name] */
   private idToQName(id: ASTIdentifier, source?: unknown): [string, string] {
-    const local = id.parts[id.parts.length - 1] as string;
-    const schema = id.parts[id.parts.length - 2] as string;
+    const local = id.parts.at(-1) as string;
+    const schema = id.parts.at(-2) as string;
     if (schema && URL.canParse(schema)) {
       const prefix =
         (source && this.dataAdapter.lookupPrefix(source, schema)) ??

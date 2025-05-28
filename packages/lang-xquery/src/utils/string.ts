@@ -55,8 +55,8 @@ export function parseName(original: string): string[] {
 export function idToStr(id: ASTIdentifier): string {
   let res = '';
   if (id.parts.length > 1) {
-    res += id.parts[id.parts.length - 2].toString() + ':';
+    res += id.parts.at(-2).toString() + ':';
   }
-  res += id.parts[id.parts.length - 1].toString();
+  res += id.parts.at(-1).toString();
   return res;
 }

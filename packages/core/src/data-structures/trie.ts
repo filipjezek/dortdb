@@ -109,7 +109,7 @@ export class Trie<T, U = true> {
     for (let i = 0; i < prefix.length - 1; i++) {
       lvl.set(prefix[i], (lvl = new Map()));
     }
-    lvl.set(prefix[prefix.length - 1], oldRoot);
+    lvl.set(prefix.at(-1), oldRoot);
   }
 
   public [Symbol.iterator](): IterableIterator<T[]> {

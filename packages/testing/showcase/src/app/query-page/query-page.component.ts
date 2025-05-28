@@ -225,9 +225,19 @@ export class QueryPageComponent {
     }
   }
 
-  registerDataSources() {
+  async registerDataSources() {
     if (this.unibenchData) return;
-    this.unibenchS.getDataIfAvailable();
+    this.unibenchData = await this.unibenchS.getDataIfAvailable();
+    if (!this.unibenchData) return;
+    this.db.registerSource(['customers'], this.unibenchData.customers);
+    this.db.registerSource(['products'], this.unibenchData.products);
+    this.db.registerSource(['feedback'], this.unibenchData.feedback);
+    this.db.registerSource(['orders'], this.unibenchData.orders);
+    this.db.registerSource(['Invoices'], this.unibenchData.invoices);
+    this.db.registerSource(['defaultGraph'], this.unibenchData.socialNetwork);
+    this.db.registerSource(['brandProducts'], this.unibenchData.brandProducts);
+    this.db.registerSource(['posts'], this.unibenchData.posts);
+    this.db.registerSource(['vendors'], this.unibenchData.vendors);
   }
 
   openHistory() {

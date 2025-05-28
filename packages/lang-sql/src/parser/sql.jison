@@ -297,10 +297,10 @@ orderby-clause:
 	} ;
 
 limit-clause:
-	LIMIT expression { $$ = [undefined, $2]; }
-	| LIMIT ALL OFFSET expression { $$ = [$4, undefined]; }
-	| OFFSET expression { $$ = [$2, undefined]; }
-	| LIMIT expression OFFSET expression { $$ = [$4, $2]; } ;
+	LIMIT expression { $$ = [$2]; }
+	| LIMIT ALL OFFSET expression { $$ = [undefined, $4]; }
+	| OFFSET expression { $$ = [undefined, $2]; }
+	| LIMIT expression OFFSET expression { $$ = [$2, $4]; } ;
 
 
 // expressions

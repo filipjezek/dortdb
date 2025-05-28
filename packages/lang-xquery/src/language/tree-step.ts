@@ -73,8 +73,8 @@ export const treeStep = (
 };
 
 function checkNodeName(node: Element | Attr, name: ASTIdentifier): boolean {
-  const id = (name.parts[name.parts.length - 1] as string).toLowerCase();
-  const schema = (name.parts[name.parts.length - 2] as string)?.toLowerCase();
+  const id = (name.parts.at(-1) as string).toLowerCase();
+  const schema = (name.parts.at(-2) as string)?.toLowerCase();
 
   const nodeId = node.localName.toLowerCase();
   const nodePrefix = node.prefix?.toLowerCase();

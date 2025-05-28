@@ -131,10 +131,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
         operator.removeFromSchema(attr);
         external.add(attr.parts);
-      } else if (
-        attr.parts[attr.parts.length - 1] === toInfer ||
-        attr.parts[0] === allAttrs
-      ) {
+      } else if (attr.parts.at(-1) === toInfer || attr.parts[0] === allAttrs) {
         operator.removeFromSchema(attr);
       } else if (attr.parts.length > 1) {
         hasRenamedAttrs = true;
@@ -238,13 +235,13 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         throw new Error(`Ambiguous column name: ${item.parts[0]?.toString()}`);
       }
       if (isTableAttr(item, leftNames)) {
-        if (item.parts[item.parts.length - 1] === toInfer) {
+        if (item.parts.at(-1) === toInfer) {
           operator.removeFromSchema(item);
         } else {
           operator.left.addToSchema(item);
         }
       } else if (isTableAttr(item, rightNames)) {
-        if (item.parts[item.parts.length - 1] === toInfer) {
+        if (item.parts.at(-1) === toInfer) {
           operator.removeFromSchema(item);
         } else {
           operator.right.addToSchema(item);
@@ -315,7 +312,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     operator.removeFromSchema(external);
 
     const index = operator.schema.indexOf(operator.indexCol);
-    const temp = operator.schema[operator.schema.length - 1];
+    const temp = operator.schema.at(-1);
     operator.schema[index] = temp;
     operator.schema[operator.schema.length - 1] = operator.indexCol;
 
@@ -339,7 +336,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       const parent = operator.parent;
       const parentProj = new plan.Projection(
         'sql',
-        proj.attrs.slice(),
+        proj.attrs.map((attr) => [attr[0], attr[1]]),
         operator,
       );
       for (const oitem of operator.orders) {
@@ -365,12 +362,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return external;
   }
   visitGroupBy(operator: plan.GroupBy, ctx: IdSet): IdSet {
-    // additional appended attrs through upper operators
-    const external = schemaToTrie(
-      operator.schema.slice(operator.keys.length + operator.aggs.length),
-    );
-    operator.removeFromSchema(external);
-
     const keyCtx = union(ctx, operator.source.schema);
     for (const attr of operator.keys) {
       this.processArg(operator.source, attr[0], keyCtx);
@@ -378,15 +369,13 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     for (const agg of operator.aggs) {
       for (const arg of agg.args) {
         this.processArg(operator.source, arg, ctx);
-      }
-      for (const item of agg.postGroupOp.accept(this.vmap, ctx)) {
-        external.add(item);
+        this.processArg(operator.source, agg.postGroupOp, ctx);
       }
     }
-    for (const item of operator.source.accept(this.vmap, ctx)) {
-      external.add(item);
-    }
-
+    const external = operator.source.accept(this.vmap, ctx);
+    operator.clearSchema();
+    operator.addToSchema(operator.source.schema);
+    operator.addToSchema(operator.aggs.map((x) => x.fieldName));
     return external;
   }
 
@@ -443,7 +432,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
           operator.removeFromSchema(attr);
           external.add(attr.parts);
         } else if (
-          attr.parts[attr.parts.length - 1] === toInfer ||
+          attr.parts.at(-1) === toInfer ||
           attr.parts[0] === allAttrs
         ) {
           operator.removeFromSchema(attr);
@@ -481,26 +470,26 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       conditionCols,
       conditionCols.map(getUnd),
     );
-    let replacement: PlanTupleOperator = new plan.Selection(
-      'sql',
-      condition,
-      operator.source,
-    );
+    let replacement: PlanTupleOperator;
+    if (operator.source instanceof plan.Join) {
+      replacement = operator.source;
+      operator.source.conditions.push(condition);
+    } else {
+      replacement = new plan.Selection('sql', condition, operator.source);
+    }
 
     const projectedCols = zip(operator.overriddenCols, operator.columns);
     projectedCols.push(
       ...replacement.schema
         .filter(
-          (x) =>
-            !operator.toRemove.has(x.parts) &&
-            x.parts[x.parts.length - 1] !== toInfer,
+          (x) => !operator.toRemove.has(x.parts) && x.parts.at(-1) !== toInfer,
         )
         .map(toPair),
     );
     // some columns might have been inferred from above, so we will get them this way
     operator.removeFromSchema(projectedCols.map(retI1));
     for (const item of operator.schema) {
-      if (item.parts[item.parts.length - 1] !== toInfer) {
+      if (item.parts.at(-1) !== toInfer) {
         projectedCols.push([item, item]);
       }
     }

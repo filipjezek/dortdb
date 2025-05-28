@@ -1,4 +1,9 @@
-import { ASTIdentifier, ExecutionContext, Executor } from '@dortdb/core';
+import {
+  ASTIdentifier,
+  ExecutionContext,
+  Executor,
+  PlanTupleOperator,
+} from '@dortdb/core';
 import { LangSwitch, SQLPlanVisitor, Using } from '../plan/index.js';
 import { TupleSource } from '@dortdb/core/plan';
 import { SQLLanguage } from '../language/language.js';
@@ -20,27 +25,25 @@ export class SQLExecutor
     throw new Error('Method not implemented.');
   }
 
-  override *visitTupleSource(
-    operator: TupleSource,
+  protected override *generateTuplesFromValues(
+    values: Iterable<unknown>,
+    operator: PlanTupleOperator,
     ctx: ExecutionContext,
-  ): Iterable<unknown> {
-    const source = this.db.getSource((operator.name as ASTIdentifier).parts);
+  ) {
     const varmap = ctx.translations.get(operator);
-    const addresses = operator.schema.map(
+    const keys = operator.schema.map(
       (attr) => varmap.get(attr.parts).parts[0] as number,
     );
     const accessors = [];
-    for (let i = 0; i < addresses.length; i++) {
+    for (let i = 0; i < keys.length; i++) {
       const ps = operator.schema[i].parts;
-      accessors[addresses[i]] = this.adapter.createColumnAccessor(
-        ps[ps.length - 1],
-      );
+      accessors[keys[i]] = this.adapter.createColumnAccessor(ps.at(-1));
     }
 
-    for (const item of source as Iterable<unknown>) {
+    for (const item of values) {
       const result: unknown[] = [];
-      for (const addr of addresses) {
-        result[addr] = ctx.variableValues[addr] = accessors[addr](item);
+      for (const key of keys) {
+        result[key] = ctx.variableValues[key] = accessors[key](item);
       }
       yield result;
     }

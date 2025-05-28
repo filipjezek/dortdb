@@ -3,12 +3,12 @@
   <section class="download">
     <ul>
       <li>
-        <span class="title">Unibench data</span>
-        @switch (unibenchS.dataLocation) {
+        <span class="title">Unibench data sample</span>
+        @switch (unibenchS.dataLocation()) {
           @case ('remote') {
             @if (unibenchS.downloadProgress() === undefined) {
               <button mat-button (click)="unibenchS.downloadData()">
-                Download (95 MB)
+                Download (8 MB)
               </button>
             } @else {
               <mat-progress-spinner
@@ -24,7 +24,7 @@
           }
           @case ('memory') {
             <button mat-button (click)="unibenchS.saveToIndexedDB()">
-              Save to browser
+              Save to browser (82 MB)
             </button>
           }
           @case ('indexeddb') {

@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, Signal, signal } from '@angular/core';
 import {
   asapScheduler,
   from,
@@ -31,6 +31,12 @@ function promisify(req: IDBTransaction | IDBRequest): Promise<any> {
   });
 }
 
+interface SerializedUnibenchData
+  extends Omit<UnibenchData, 'socialNetwork' | 'invoices'> {
+  invoices: string; // XML serialized as string
+  socialNetwork: unknown; // Serialized MultiDirectedGraph
+}
+
 export interface UnibenchData {
   customers: Record<string, any>[];
   invoices: Document;
@@ -61,14 +67,14 @@ export type DataLocation = 'indexeddb' | 'memory' | 'remote';
 
 @Injectable({ providedIn: 'root' })
 export class UnibenchService {
-  private data: UnibenchData;
+  private data = signal<UnibenchData>(null);
   private rawData: ArrayBuffer;
   private rawDataView: Uint8Array;
   /**
    * we do this because access to indexedDB requires user confirmation
    * and we don't want to ask the user for confirmation if we don't need it
    */
-  private dbPopulated = !!localStorage.getItem(LS_KEY);
+  private dbPopulated = signal<boolean>(!!localStorage.getItem(LS_KEY));
 
   private static readonly csvTables: Record<string, CSVParseOptions> = {
     'Dataset/Customer/person_0_0.csv': {
@@ -86,7 +92,7 @@ export class UnibenchService {
       cast: {
         personId: Number,
       },
-      columns: ['productAsin', 'personId', 'rating'],
+      columns: ['productAsin', 'personId', 'feedback'],
       separator: '|',
     },
     'Dataset/Product/BrandByProduct.csv': {
@@ -113,21 +119,21 @@ export class UnibenchService {
   };
 
   public downloadProgress = signal<number>(undefined);
-  public get dataLocation(): DataLocation {
-    if (this.dbPopulated) {
+  public dataLocation = computed<DataLocation>(() => {
+    if (this.dbPopulated()) {
       return 'indexeddb';
     }
-    if (this.data) {
+    if (this.data()) {
       return 'memory';
     }
     return 'remote';
-  }
+  });
 
   constructor() {}
 
   public async getDataIfAvailable(): Promise<UnibenchData> {
-    if (this.data) {
-      return this.data;
+    if (this.data()) {
+      return this.data();
     }
 
     return this.checkIndexedDB();
@@ -138,7 +144,7 @@ export class UnibenchService {
     let bytesRead = 0;
     const stream = from(
       fetch(
-        'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.zip',
+        'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.sample.zip',
       ),
     ).pipe(
       switchMap((resp) => {
@@ -156,56 +162,72 @@ export class UnibenchService {
   }
 
   private async checkIndexedDB(): Promise<UnibenchData> {
-    if (!this.dbPopulated) return null;
-    let ab: ArrayBuffer;
+    if (!this.dbPopulated()) return null;
+    let serialized: SerializedUnibenchData;
     try {
-      const db = await promisify(indexedDB.open(DB_NAME, 1));
+      const db = await promisify(indexedDB.open(DB_NAME, 2));
       const tx = db.transaction(OBJ_STORE_NAME, 'readonly');
       const store = tx.objectStore(OBJ_STORE_NAME);
-      ab = await promisify(store.get(DB_KEY));
+      serialized = await promisify(store.get(DB_KEY));
     } catch (e) {
       console.error('Error accessing IndexedDB:', e);
       return null;
     }
 
-    const windowSize = 10000;
-    const stream = generate({
-      initialState: 0,
-      condition: (i) => i < ab.byteLength,
-      iterate: (i) => i + windowSize,
-      scheduler: asapScheduler,
-    }).pipe(
-      map(
-        (i) => new Uint8Array(ab, i, Math.min(windowSize, ab.byteLength - i)),
-      ),
-    );
-    return this.processArchive(stream);
+    if (!serialized) {
+      console.warn('No data found in IndexedDB');
+      return null;
+    }
+    this.data.set(this.deserializeData(serialized));
+    return this.data();
   }
 
   public async saveToIndexedDB(): Promise<void> {
-    const dbReq = indexedDB.open(DB_NAME, 1);
+    const dbReq = indexedDB.open(DB_NAME, 2);
     dbReq.onupgradeneeded = (e) => {
       const db = (e.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(OBJ_STORE_NAME)) {
-        db.createObjectStore(OBJ_STORE_NAME);
+      if (db.objectStoreNames.contains(OBJ_STORE_NAME)) {
+        db.deleteObjectStore(OBJ_STORE_NAME);
       }
+      db.createObjectStore(OBJ_STORE_NAME);
     };
     const db = await promisify(dbReq);
     const tx = db.transaction(OBJ_STORE_NAME, 'readwrite');
     const store = tx.objectStore(OBJ_STORE_NAME);
-    store.put(this.rawData, DB_KEY);
+    store.put(this.serializeData(), DB_KEY);
     await promisify(tx);
     localStorage.setItem(LS_KEY, 'true');
-    this.dbPopulated = true;
+    this.dbPopulated.set(true);
+  }
+
+  private serializeData(): SerializedUnibenchData {
+    const d = this.data();
+    return {
+      ...d,
+      socialNetwork: d.socialNetwork.export(),
+      invoices: new XMLSerializer().serializeToString(d.invoices),
+    };
+  }
+
+  private deserializeData(serialized: SerializedUnibenchData): UnibenchData {
+    return {
+      ...serialized,
+      socialNetwork: new MultiDirectedGraph().import(serialized.socialNetwork),
+      invoices: new DOMParser().parseFromString(
+        serialized.invoices,
+        'text/xml',
+      ),
+    };
   }
 
   public async clear(): Promise<void> {
-    const db = await promisify(indexedDB.open(DB_NAME, 1));
+    const db = await promisify(indexedDB.open(DB_NAME, 2));
     const tx = db.transaction(OBJ_STORE_NAME, 'readwrite');
     const store = tx.objectStore(OBJ_STORE_NAME);
     store.clear();
     await promisify(tx);
     localStorage.removeItem(LS_KEY);
+    this.dbPopulated.set(false);
   }
 
   private async processArchive(
@@ -237,6 +259,7 @@ export class UnibenchService {
     }
     await Promise.all(promises);
     console.log('Unibench data loaded');
+    this.data.set(result);
     return result;
   }
 
@@ -272,6 +295,7 @@ export class UnibenchService {
   }
 
   private async parseCSVTable(entry: StreamedEntry, result: UnibenchData) {
+    const now = Date.now();
     const opts = UnibenchService.csvTables[entry.filename];
     const stream = entry.readable
       .pipeThrough(new TextDecoderStream())
@@ -290,27 +314,30 @@ export class UnibenchService {
         }),
       );
     result[opts.key] = await this.toArray(this.iterStream(stream));
-    console.log(`${opts.key} parsed`);
+    console.log(`${opts.key} parsed in ${(Date.now() - now) / 1000} s`);
   }
 
   private async parseInvoices(entry: StreamedEntry, result: UnibenchData) {
+    const now = Date.now();
     const stream = entry.readable.pipeThrough(new TextDecoderStream());
     const text = await this.streamToString(stream);
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, 'text/xml');
     result.invoices = xml;
-    console.log('Invoices parsed');
+    console.log('Invoices parsed in', (Date.now() - now) / 1000, 's');
   }
 
   private async parseOrders(entry: StreamedEntry, result: UnibenchData) {
+    const now = Date.now();
     const stream = entry.readable
       .pipeThrough(new TextDecoderStream())
       .pipeThrough(new NDJSONParser());
     result.orders = await this.toArray(this.iterStream(stream));
-    console.log('Orders parsed');
+    console.log('Orders parsed in', (Date.now() - now) / 1000, 's');
   }
 
   private async csvToGraph(entry: StreamedEntry, graph: MultiDirectedGraph) {
+    const now = Date.now();
     const [from, edgeType, to] = entry.filename.split('/').pop().split('_');
     const stream = entry.readable
       .pipeThrough(new TextDecoderStream())
@@ -326,7 +353,6 @@ export class UnibenchService {
       Symbol.asyncIterator
     ]() as any as AsyncIterableIterator<any[]>;
     const currentState = await iter.next();
-    console.log(entry.filename, currentState);
     const edgeProps = currentState.value.slice(2) as string[];
     for await (const row of iter) {
       const fromNode = from + row[0];
@@ -338,6 +364,6 @@ export class UnibenchService {
         ...Object.fromEntries(edgeProps.map((key, i) => [key, row[2 + i]])),
       });
     }
-    console.log(entry.filename, 'parsed');
+    console.log(entry.filename, 'parsed in', (Date.now() - now) / 1000, 's');
   }
 }

@@ -46,10 +46,7 @@ function getAggrs([item]: Aliased<
   return item instanceof plan.Calculation ? (item.aggregates ?? []) : [];
 }
 function idToPair(id: ASTIdentifier): [string, string] {
-  return [
-    id.parts[id.parts.length - 1] as string,
-    id.parts[id.parts.length - 2] as string,
-  ];
+  return [id.parts.at(-1) as string, id.parts.at(-2) as string];
 }
 function attrToOpArg(
   x: [OpOrId, ASTIdentifier],
@@ -263,7 +260,7 @@ export class SQLLogicalPlanBuilder
     if (src instanceof plan.TupleFnSource) {
       const n = ASTIdentifier.fromParts([node.name]);
       src.removeFromSchema(
-        src.schema.filter((x) => x.parts[x.parts.length - 1] === toInfer),
+        src.schema.filter((x) => x.parts.at(-1) === toInfer),
       );
       src.addToSchema(ASTIdentifier.fromParts([...n.parts, toInfer]));
       src.name = src.name ? [src.name as ASTIdentifier, n] : n;
@@ -275,7 +272,7 @@ export class SQLLogicalPlanBuilder
         ASTIdentifier.fromParts([node.name]),
       ];
       src.removeFromSchema(
-        src.schema.filter((x) => x.parts[x.parts.length - 1] === toInfer),
+        src.schema.filter((x) => x.parts.at(-1) === toInfer),
       );
       src.addToSchema(ASTIdentifier.fromParts([node.name, toInfer]));
       return src;
@@ -473,20 +470,38 @@ export class SQLLogicalPlanBuilder
     const [left, leftName] = this.getTableName(node.tableLeft);
     const [right, rightName] = this.getTableName(node.tableRight);
 
-    // TODO: implement outer join types
-    let op = node.lateral
-      ? right
-      : new plan.CartesianProduct('sql', left, right);
-
-    if (node.condition) {
-      op = exprToSelection(
-        this.processNode(node.condition),
-        op,
-        this.calcBuilders,
-        this.eqCheckers,
+    let op: PlanTupleOperator;
+    if (
+      [AST.JoinType.LEFT, AST.JoinType.RIGHT, AST.JoinType.FULL].includes(
+        node.joinType,
+      )
+    ) {
+      op = new plan.Join(
         'sql',
+        left,
+        right,
+        node.condition ? [this.toCalc(node.condition) as plan.Calculation] : [],
       );
-    } else if (node.using) {
+      (op as plan.Join).leftOuter =
+        node.joinType === AST.JoinType.LEFT ||
+        node.joinType === AST.JoinType.FULL;
+      (op as plan.Join).rightOuter =
+        node.joinType === AST.JoinType.RIGHT ||
+        node.joinType === AST.JoinType.FULL;
+    } else {
+      op = node.lateral ? right : new plan.CartesianProduct('sql', left, right);
+      if (node.condition) {
+        op = exprToSelection(
+          this.processNode(node.condition),
+          op,
+          this.calcBuilders,
+          this.eqCheckers,
+          'sql',
+        );
+      }
+    }
+
+    if (node.using) {
       if (!leftName)
         throw new Error('Using can be only used with two named relations');
 
@@ -495,7 +510,7 @@ export class SQLLogicalPlanBuilder
         node.using,
         leftName,
         rightName,
-        op as plan.CartesianProduct,
+        op as plan.CartesianProduct | plan.Join,
       );
     }
 
@@ -613,6 +628,7 @@ export class SQLLogicalPlanBuilder
     const impl = this.db.langMgr.getFnOrAggr('sql', id, schema);
 
     if ('init' in impl) {
+      // refers to an aggregate function result, which will be computed by the groupby operator
       return new plan.AggregateCall(
         node.lang,
         node.args.map(this.toCalc),
