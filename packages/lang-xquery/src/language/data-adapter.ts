@@ -3,6 +3,7 @@ import { AxisType } from '../ast/path.js';
 import { treeStep } from './tree-step.js';
 
 export interface XQueryDataAdapter<NodeType = any> {
+  isNode(node: unknown): node is NodeType;
   treeStep(test: ASTItemType, axis: AxisType): (node: NodeType) => NodeType[];
   createElement(ns: string, qname: string, content: unknown[]): NodeType;
   createAttribute(ns: string, qname: string, content: string): NodeType;
@@ -18,6 +19,10 @@ export interface XQueryDataAdapter<NodeType = any> {
 
 export class DomDataAdapter implements XQueryDataAdapter<Node> {
   constructor(private doc: Document) {}
+
+  public isNode(node: unknown): node is Node {
+    return node instanceof Node;
+  }
 
   public treeStep = treeStep;
 

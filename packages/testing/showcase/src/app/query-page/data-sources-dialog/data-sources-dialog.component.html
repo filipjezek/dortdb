@@ -8,7 +8,7 @@
           @case ('remote') {
             @if (unibenchS.downloadProgress() === undefined) {
               <button mat-button (click)="unibenchS.downloadData()">
-                Download (8 MB)
+                Download (6.4 MB)
               </button>
             } @else {
               <mat-progress-spinner
@@ -24,7 +24,7 @@
           }
           @case ('memory') {
             <button mat-button (click)="unibenchS.saveToIndexedDB()">
-              Save to browser (82 MB)
+              Save to browser (6.3 MB)
             </button>
           }
           @case ('indexeddb') {

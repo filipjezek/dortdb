@@ -26,6 +26,7 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MultiviewComponent } from '../../multiview/multiview.component';
 import { MultiviewPartitionComponent } from '../../multiview/multiview-partition/multiview-partition.component';
 import { MatPaginator } from '@angular/material/paginator';
+import { CellNodeComponent } from './cell-node/cell-node.component';
 
 export enum ColType {
   string,
@@ -34,6 +35,7 @@ export enum ColType {
   array,
   boolean,
   keyvalue,
+  node,
 }
 
 @Component({
@@ -67,6 +69,7 @@ export class DsTableComponent implements OnChanges {
     [ColType.number]: CellGenericComponent,
     [ColType.object]: CellObjectComponent,
     [ColType.string]: CellGenericComponent,
+    [ColType.node]: CellNodeComponent,
   };
 
   readonly clampRowsControl = new FormControl<boolean>(true);
@@ -135,6 +138,9 @@ export class DsTableComponent implements OnChanges {
     }
     if (value instanceof Array) {
       return ColType.array;
+    }
+    if (value instanceof Node) {
+      return ColType.node;
     }
     if (value === null) {
       return ColType.object;

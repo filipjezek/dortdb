@@ -111,7 +111,10 @@ export class XQueryLogicalPlanBuilder
 
   buildPlan(node: ASTNode, ctx: IdSet) {
     const inferred = new Trie<string | symbol>();
-    const res = node.accept(this, { ctx, inferred });
+    let res = node.accept(this, { ctx, inferred });
+    if (res instanceof PlanTupleOperator) {
+      res = new plan.MapToItem('xquery', DOT, res);
+    }
     return { plan: res, inferred };
   }
 
@@ -592,7 +595,8 @@ export class XQueryLogicalPlanBuilder
       'xquery',
       (...args) => {
         const pos = args.at(-1);
-        const res = resolveArgs(args, calcParams).flat();
+        // TODO: handle sequences
+        const res = resolveArgs(args, calcParams).flat()[0];
         return typeof res === 'number' ? res === pos : toBool.convert(res);
       },
       args,

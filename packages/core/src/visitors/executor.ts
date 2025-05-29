@@ -44,24 +44,6 @@ export class Executor
     return this.visitCalculation(item, ctx)[0];
   }
 
-  /**
-   * Sets the values of the item to the context variableValues.
-   * @param item The item to set.
-   * @param keys The keys to set.
-   * @param ctx The execution context.
-   * @returns The unchanged item.
-   */
-  protected setToCtx(
-    item: unknown[],
-    keys: number[],
-    ctx: ExecutionContext,
-  ): unknown[] {
-    for (const key of keys) {
-      ctx.variableValues[key] = item[key];
-    }
-    return item;
-  }
-
   /** Rename the `item` to use another scope addressing */
   protected renameKeys(
     item: unknown[],
@@ -73,31 +55,6 @@ export class Executor
       result[newKeys[i]] = item[oldKeys[i]];
     }
     return result;
-  }
-
-  /** Get numeric keys for the schema of `operator` */
-  protected getKeys(
-    operator: PlanTupleOperator,
-    ctx: ExecutionContext,
-  ): number[] {
-    const ts = ctx.translations.get(operator);
-    return operator.schema.map((x) => ts.get(x.parts).parts[0] as number);
-  }
-
-  /**
-   * Compute `newKeys` for {@link renameKeys} so that sourceOp can be renamed to targetOp.
-   */
-  protected getRenames(
-    sourceOp: PlanTupleOperator,
-    targetOp: PlanTupleOperator,
-    ctx: ExecutionContext,
-  ): number[] {
-    const sourceTs = ctx.translations.get(sourceOp);
-    const targetTs = ctx.translations.get(targetOp);
-    return sourceOp.schema.map(
-      (x) =>
-        (targetTs.get(x.parts) ?? sourceTs.get(x.parts)).parts[0] as number,
-    );
   }
 
   visitRecursion(
@@ -118,7 +75,7 @@ export class Executor
       for (const attr of operator.attrs) {
         result[attr[1].parts[0] as number] = this.processItem(attr[0], ctx);
       }
-      yield this.setToCtx(result, keys, ctx);
+      yield ctx.setTuple(result, keys);
     }
   }
   *visitSelection(
@@ -182,12 +139,12 @@ export class Executor
   ): Iterable<unknown> {
     const right = toArray(operator.right.accept(this.vmap, ctx)) as unknown[][];
     if (right.length === 0) return [];
-    const rightKeys = this.getKeys(operator.right, ctx);
+    const rightKeys = ctx.getKeys(operator.right);
 
     const left = operator.left.accept(this.vmap, ctx) as Iterable<unknown[]>;
-    const leftKeys = this.getKeys(operator.left, ctx);
-    const resultKeys = this.getKeys(operator, ctx);
-    const renameRightKeys = this.getRenames(operator.right, operator, ctx);
+    const leftKeys = ctx.getKeys(operator.left);
+    const resultKeys = ctx.getKeys(operator);
+    const renameRightKeys = ctx.getRenames(operator.right, operator);
 
     for (const leftItem of left) {
       for (const rightItem of right) {
@@ -198,7 +155,7 @@ export class Executor
         for (let i = 0; i < rightKeys.length; i++) {
           result[renameRightKeys[i]] = rightItem[rightKeys[i]];
         }
-        yield this.setToCtx(result, resultKeys, ctx);
+        yield ctx.setTuple(result, resultKeys);
       }
     }
   }
@@ -238,11 +195,11 @@ export class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     const rightItems = toArray(right.accept(this.vmap, ctx)) as unknown[][];
-    const rightKeys = this.getKeys(right, ctx);
+    const rightKeys = ctx.getKeys(right);
     const leftItems = left.accept(this.vmap, ctx) as Iterable<unknown[]>;
-    const leftKeys = this.getKeys(left, ctx);
-    const renameRightKeys = this.getRenames(right, op, ctx);
-    const resultKeys = this.getKeys(op, ctx);
+    const leftKeys = ctx.getKeys(left);
+    const renameRightKeys = ctx.getRenames(right, op);
+    const resultKeys = ctx.getKeys(op);
 
     for (const leftItem of leftItems) {
       let joined = false;
@@ -254,7 +211,7 @@ export class Executor
         for (let i = 0; i < rightKeys.length; i++) {
           result[renameRightKeys[i]] = rightItem[rightKeys[i]];
         }
-        this.setToCtx(result, resultKeys, ctx);
+        ctx.setTuple(result, resultKeys);
         if (conditions.every((c) => this.visitCalculation(c, ctx)[0])) {
           joined = true;
           yield result;
@@ -269,7 +226,7 @@ export class Executor
         for (const key of renameRightKeys) {
           result[key] = null;
         }
-        yield this.setToCtx(result, resultKeys, ctx);
+        yield ctx.setTuple(result, resultKeys);
       }
     }
   }
@@ -278,11 +235,11 @@ export class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     const right = toArray(operator.right.accept(this.vmap, ctx)) as unknown[][];
-    const rightKeys = this.getKeys(operator.right, ctx);
+    const rightKeys = ctx.getKeys(operator.right);
     const left = operator.left.accept(this.vmap, ctx) as unknown[][];
-    const leftKeys = this.getKeys(operator.left, ctx);
-    const renameRightKeys = this.getRenames(operator.right, operator, ctx);
-    const resultKeys = this.getKeys(operator, ctx);
+    const leftKeys = ctx.getKeys(operator.left);
+    const renameRightKeys = ctx.getRenames(operator.right, operator);
+    const resultKeys = ctx.getKeys(operator);
     const rightSet = new Set(right);
 
     for (const leftItem of left) {
@@ -295,7 +252,7 @@ export class Executor
         for (let i = 0; i < rightKeys.length; i++) {
           result[renameRightKeys[i]] = rightItem[rightKeys[i]];
         }
-        this.setToCtx(result, resultKeys, ctx);
+        ctx.setTuple(result, resultKeys);
         if (
           operator.conditions.every((c) => this.visitCalculation(c, ctx)[0])
         ) {
@@ -313,7 +270,7 @@ export class Executor
         for (const key of renameRightKeys) {
           result[key] = null;
         }
-        yield this.setToCtx(result, resultKeys, ctx);
+        yield ctx.setTuple(result, resultKeys);
       }
     }
     for (const rightItem of rightSet) {
@@ -324,7 +281,7 @@ export class Executor
       for (let i = 0; i < rightKeys.length; i++) {
         result[renameRightKeys[i]] = rightItem[rightKeys[i]];
       }
-      yield this.setToCtx(result, resultKeys, ctx);
+      yield ctx.setTuple(result, resultKeys);
     }
   }
 
@@ -332,7 +289,7 @@ export class Executor
     operator: plan.ProjectionConcat,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    const mappedKeys = this.getKeys(operator.mapping, ctx);
+    const mappedKeys = ctx.getKeys(operator.mapping);
     const emptyVal = [];
     for (const key of mappedKeys) {
       emptyVal[key] = operator.emptyVal.get([key]);
@@ -340,9 +297,9 @@ export class Executor
     const source = operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
     >;
-    const sourceKeys = this.getKeys(operator.source, ctx);
-    const resultKeys = this.getKeys(operator, ctx);
-    const renameMappedKeys = this.getRenames(operator.mapping, operator, ctx);
+    const sourceKeys = ctx.getKeys(operator.source);
+    const resultKeys = ctx.getKeys(operator);
+    const renameMappedKeys = ctx.getRenames(operator.mapping, operator);
 
     const yieldRow = (sourceItem: unknown[], mappedItem: unknown[]) => {
       const result: unknown[] = [];
@@ -352,7 +309,7 @@ export class Executor
       for (let i = 0; i < mappedKeys.length; i++) {
         result[renameMappedKeys[i]] = mappedItem[mappedKeys[i]];
       }
-      return this.setToCtx(result, resultKeys, ctx);
+      return ctx.setTuple(result, resultKeys);
     };
     for (const sourceItem of source) {
       const mapped = operator.mapping.accept(this.vmap, ctx)[Symbol.iterator]();
@@ -408,7 +365,7 @@ export class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     let index = 1;
-    const keys = this.getKeys(operator.source, ctx);
+    const keys = ctx.getKeys(operator.source);
     const indexKey = operator.indexCol.parts[0] as number;
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
@@ -429,7 +386,7 @@ export class Executor
     const source: unknown[][] = [];
     const indexCol = Symbol('indexCol');
     const precomputed: (unknown[] & { [indexCol]: number })[] = [];
-    const keys = this.getKeys(operator, ctx);
+    const keys = ctx.getKeys(operator);
     let i = 0;
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
@@ -455,7 +412,7 @@ export class Executor
       return 0;
     });
     for (const item of precomputed) {
-      yield this.setToCtx(source[item[indexCol]], keys, ctx);
+      yield ctx.setTuple(source[item[indexCol]], keys);
     }
   }
   *visitGroupBy(
@@ -464,10 +421,10 @@ export class Executor
   ): Iterable<unknown> {
     const groups = new Trie<unknown, unknown[][]>();
     const aggKeys = operator.aggs.map((agg) =>
-      this.getKeys(agg.postGroupSource, ctx),
+      ctx.getKeys(agg.postGroupSource),
     );
-    const srcKeys = this.getKeys(operator.source, ctx);
-    const resultKeys = this.getKeys(operator, ctx);
+    const srcKeys = ctx.getKeys(operator.source);
+    const resultKeys = ctx.getKeys(operator);
 
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
@@ -492,10 +449,9 @@ export class Executor
         const agg = operator.aggs[i];
         agg.postGroupSource.accept = function* (this: Executor) {
           for (const item of group) {
-            yield this.setToCtx(
+            yield ctx.setTuple(
               this.renameKeys(item, srcKeys, aggKeys[i]),
               aggKeys[i],
-              ctx,
             );
           }
         }.bind(this) as any;
@@ -511,7 +467,7 @@ export class Executor
       for (const key of srcKeys) {
         result[key] = group[0][key];
       }
-      yield this.setToCtx(result, resultKeys, ctx);
+      yield ctx.setTuple(result, resultKeys);
     }
     for (let i = 0; i < operator.aggs.length; i++) {
       operator.aggs[i].postGroupSource.accept = originalAggAcepts[i];
@@ -532,12 +488,12 @@ export class Executor
       yield* operator.right.accept(this.vmap, ctx);
       return;
     }
-    const keys = this.getKeys(operator, ctx);
-    const rightKeys = this.getKeys(operator.right, ctx);
+    const keys = ctx.getKeys(operator);
+    const rightKeys = ctx.getKeys(operator.right);
     for (const item of operator.right.accept(this.vmap, ctx) as Iterable<
       number[]
     >) {
-      yield this.setToCtx(this.renameKeys(item, rightKeys, keys), keys, ctx);
+      yield ctx.setTuple(this.renameKeys(item, rightKeys, keys), keys);
     }
   }
   *visitIntersection(
@@ -549,8 +505,8 @@ export class Executor
         operator.left.accept(this.vmap, ctx),
         operator.right.accept(this.vmap, ctx),
       );
-    const keys = this.getKeys(operator.left, ctx);
-    const rightKeys = this.getKeys(operator.right as PlanTupleOperator, ctx);
+    const keys = ctx.getKeys(operator.left);
+    const rightKeys = ctx.getKeys(operator.right as PlanTupleOperator);
     const left = operator.left.accept(this.vmap, ctx) as Iterable<unknown[]>;
     const leftSet = new Trie<unknown>();
     for (const item of left) {
@@ -562,7 +518,7 @@ export class Executor
     >) {
       const values = rightKeys.map((key) => item[key]);
       if (leftSet.has(values)) {
-        yield this.setToCtx(this.renameKeys(item, rightKeys, keys), keys, ctx);
+        yield ctx.setTuple(this.renameKeys(item, rightKeys, keys), keys);
       }
     }
   }
@@ -586,8 +542,8 @@ export class Executor
         operator.left.accept(this.vmap, ctx),
         operator.right.accept(this.vmap, ctx),
       );
-    const keys = this.getKeys(operator.left, ctx);
-    const rightKeys = this.getKeys(operator.right as PlanTupleOperator, ctx);
+    const keys = ctx.getKeys(operator.left);
+    const rightKeys = ctx.getKeys(operator.right as PlanTupleOperator);
     const right = operator.right.accept(this.vmap, ctx) as Iterable<unknown[]>;
     const rightSet = new Trie<unknown>();
     for (const item of right) {
@@ -619,7 +575,7 @@ export class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     const seen = new Trie<unknown>();
-    const keys = this.getKeys(operator, ctx);
+    const keys = ctx.getKeys(operator);
     const getValues =
       operator.attrs === allAttrs
         ? (item: unknown[]) => keys.map((key) => item[key])

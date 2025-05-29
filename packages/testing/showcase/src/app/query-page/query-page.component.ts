@@ -219,6 +219,12 @@ export class QueryPageComponent {
     try {
       this.output = this.db.query(formVal.query, { mainLang: formVal.lang });
       console.log(this.output);
+      if (!this.output.schema) {
+        this.output = {
+          schema: ['value'],
+          data: this.output.data.map((x) => ({ value: x })),
+        };
+      }
     } catch (err) {
       this.error = err as Error;
       console.error(err);

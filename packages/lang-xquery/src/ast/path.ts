@@ -1,6 +1,6 @@
 import { ASTNode } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
-import { ASTItemType } from './item-type.js';
+import { ASTItemType, ItemKind } from './item-type.js';
 import { ASTVariable } from './expression.js';
 
 export class PathExpr implements ASTNode {
@@ -43,7 +43,15 @@ export class PathAxis implements ASTNode {
   constructor(
     public axis: AxisType,
     public nodeTest: ASTItemType,
-  ) {}
+  ) {
+    if (
+      axis !== AxisType.ATTRIBUTE &&
+      nodeTest.name !== '*' &&
+      !nodeTest.kind
+    ) {
+      nodeTest.kind = ItemKind.ELEMENT;
+    }
+  }
 
   accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitPathAxis(this, arg);

@@ -25,30 +25,13 @@ export const treeStep = (
   test: ASTItemType,
   axis: AxisType,
 ): ((node: Node) => Node[]) => {
-  let filter: (node: Node) => number;
-  if (!test.kind || test.kind === ItemKind.NODE) filter = null;
-  else if (!(test.kind in typeMap))
+  if (test.kind && test.kind !== ItemKind.NODE && !(test.kind in typeMap)) {
     throw new UnsupportedError(`item kind "${test.kind}" not supported`);
-  else {
-    filter = (n) =>
-      n.nodeType === typeMap[test.kind] &&
-      (test.name === '*' || checkNodeName(n as Element | Attr, test.name))
-        ? NodeFilter.FILTER_ACCEPT
-        : NodeFilter.FILTER_REJECT;
   }
-
+  const filter = getTWFilter(test);
   const filterBool = (x: Node) => filter(x) === NodeFilter.FILTER_ACCEPT;
 
   return (n) => {
-    const doc = n.nodeType === 9 ? (n as Document) : n.ownerDocument;
-    const tw = doc.createTreeWalker(
-      axis === AxisType.DESCENDANT || axis === AxisType.DESCENDANT_OR_SELF
-        ? n
-        : doc,
-      NodeFilter.SHOW_ALL,
-      filter,
-    );
-    tw.currentNode = n;
     const res: Node[] = [];
     if (
       axis === AxisType.SELF ||
@@ -58,13 +41,23 @@ export const treeStep = (
       res.push(n);
       if (axis === AxisType.SELF) return res;
     } else if (axis === AxisType.ATTRIBUTE) return getAttrs(n, test.name);
-    else if (axis === AxisType.CHILD)
-      return Array.from(n.childNodes).filter(filterBool);
-    else if (axis === AxisType.PARENT) {
-      return filterBool(n.parentNode) ? [n.parentNode] : [];
+    else if (axis === AxisType.CHILD) {
+      const children = Array.from(n.childNodes);
+      return filter ? children.filter(filterBool) : children;
+    } else if (axis === AxisType.PARENT) {
+      return !filter || filterBool(n.parentNode) ? [n.parentNode] : [];
     }
 
     const method = axisMap[axis];
+    const doc = n.nodeType === 9 ? (n as Document) : n.ownerDocument;
+    const tw = doc.createTreeWalker(
+      axis === AxisType.DESCENDANT || axis === AxisType.DESCENDANT_OR_SELF
+        ? n
+        : doc,
+      NodeFilter.SHOW_ALL,
+      filter,
+    );
+    tw.currentNode = n;
     while (tw[method]()) {
       res.push(tw.currentNode);
     }
@@ -72,10 +65,39 @@ export const treeStep = (
   };
 };
 
-function checkNodeName(node: Element | Attr, name: ASTIdentifier): boolean {
-  const id = (name.parts.at(-1) as string).toLowerCase();
-  const schema = (name.parts.at(-2) as string)?.toLowerCase();
+function getTWFilter(test: ASTItemType): (n: Node) => number {
+  if (test.name === '*') {
+    if (!test.kind || test.kind === ItemKind.NODE) {
+      return null;
+    } else {
+      return (n) =>
+        n.nodeType === typeMap[test.kind]
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_REJECT;
+    }
+  } else {
+    const id = (test.name.parts.at(-1) as string).toLowerCase();
+    const schema = (test.name.parts.at(-2) as string)?.toLowerCase();
+    if (!test.kind || test.kind === ItemKind.NODE) {
+      return (n) =>
+        checkNodeName(n as Element | Attr, id, schema)
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_REJECT;
+    } else {
+      return (n) =>
+        n.nodeType === typeMap[test.kind] &&
+        checkNodeName(n as Element | Attr, id, schema)
+          ? NodeFilter.FILTER_ACCEPT
+          : NodeFilter.FILTER_REJECT;
+    }
+  }
+}
 
+function checkNodeName(
+  node: Element | Attr,
+  id: string,
+  schema: string,
+): boolean {
   const nodeId = node.localName.toLowerCase();
   const nodePrefix = node.prefix?.toLowerCase();
 
@@ -90,7 +112,9 @@ function getAttrs(node: Node | object, name: ASTIdentifier | '*'): unknown[] {
   if ('attributes' in node) {
     const res = Array.from((node as Element).attributes);
     if (name === '*') return res;
-    return res.filter((a) => checkNodeName(a, name as ASTIdentifier));
+    const id = (name.parts.at(-1) as string).toLowerCase();
+    const schema = (name.parts.at(-2) as string)?.toLowerCase();
+    return res.filter((a) => checkNodeName(a, id, schema));
   } else if (name === '*') {
     return Object.values(node);
   } else if (name.parts.length === 1) {
