@@ -2,6 +2,7 @@ import { CalculationBuilder, CalculationParams } from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { FnCall } from '@dortdb/core/plan';
 import { XQueryLanguage } from '../language/language.js';
+import { assertMaxOne } from '@dortdb/core/internal-fns';
 
 export class XQueryCalculationBuilder
   extends CalculationBuilder
@@ -13,14 +14,14 @@ export class XQueryCalculationBuilder
   visitTreeJoin(operator: TreeJoin): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitProjectionSize(operator: ProjectionSize): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }

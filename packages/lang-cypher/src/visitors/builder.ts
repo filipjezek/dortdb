@@ -327,7 +327,8 @@ export class CypherLogicalPlanBuilder
       if (cond instanceof ASTIdentifier) {
         cond = new plan.Calculation('cypher', (x) => !x, [cond], [undefined]);
       } else {
-        cond.impl = (...args) => !(cond as plan.Calculation).impl(...args);
+        const oldImpl = cond.impl;
+        cond.impl = (...args) => !oldImpl(...args);
       }
     }
     res = new plan.Selection('cypher', cond, res);

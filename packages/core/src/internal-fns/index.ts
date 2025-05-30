@@ -42,3 +42,9 @@ export function cloneIfPossible<T extends OpOrId | Aliased<OpOrId>>(x: T): T {
 export function toArray<T>(x: Iterable<T>): T[] {
   return Array.isArray(x) ? x : Array.from(x);
 }
+
+export function assertMaxOne<T>(vals: T[]): T {
+  if (vals.length === 0) return null;
+  if (vals.length > 1) throw new Error('More than one element in sequence');
+  return vals[0];
+}

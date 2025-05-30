@@ -117,7 +117,6 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
         operator.args[i] = this.translate(arg, ctx);
       } else {
         arg.accept(this.vmap, ctx);
-        ctx.currentIndex -= ctx.scopeStack.pop().size;
       }
     }
   }

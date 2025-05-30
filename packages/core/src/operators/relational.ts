@@ -2,12 +2,12 @@ import { Operator } from '../extension.js';
 
 export const eq: Operator = {
   name: '=',
-  impl: (a, b) => a === b,
+  impl: (a, b) => a == b,
 };
 
 export const neq: Operator = {
   name: '!=',
-  impl: (a, b) => a !== b,
+  impl: (a, b) => a != b,
 };
 
 export const neq2: Operator = {

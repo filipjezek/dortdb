@@ -38,7 +38,13 @@ import {
   union,
 } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
-import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
+import {
+  assertMaxOne,
+  ret1,
+  retI0,
+  retI1,
+  toPair,
+} from '@dortdb/core/internal-fns';
 import { FnContext } from '../functions/fn-context.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { XQueryDataAdapter } from '../language/data-adapter.js';
@@ -88,15 +94,15 @@ interface DescentArgs {
   inferred: IdSet;
 }
 
+export const xhtml = 'http://www.w3.org/1999/xhtml';
+
 export class XQueryLogicalPlanBuilder
   implements XQueryVisitor<PlanOperator, DescentArgs>, LogicalPlanBuilder
 {
   private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
   private eqCheckers: Record<string, EqualityChecker>;
   private prologOptions = {
-    namespaces: new Map<string, string>([
-      [undefined, 'http://www.w3.org/1999/xhtml'],
-    ]),
+    namespaces: new Map<string, string>([[undefined, xhtml]]),
   };
   private prefixCounter = 0;
   private dataAdapter: XQueryDataAdapter<unknown>;
@@ -342,8 +348,9 @@ export class XQueryLogicalPlanBuilder
         false,
       );
       if (calc instanceof plan.Calculation) {
+        const oldImpl = calc.impl;
         calc.impl = (...args) => {
-          const res = calc.impl(...args);
+          const res = oldImpl === assertMaxOne ? args : oldImpl(...args);
           return Array.isArray(res) ? res.flat(Infinity) : res;
         };
       }
@@ -686,7 +693,7 @@ export class XQueryLogicalPlanBuilder
         .map((x) => this.processDirConstrContent(x, dargs));
       content.push({
         op: new plan.FnCall('xquery', args, (...vals) => {
-          vals.join('');
+          return vals.join('');
         }),
       });
     }
@@ -906,7 +913,8 @@ export class XQueryLogicalPlanBuilder
         const ret = coalesceSeq(calcParams.impl());
         calcParams.impl = () => ret;
       } else {
-        calcParams.impl = (...args) => coalesceSeq(calcParams.impl(...args));
+        const oldImpl = calcParams.impl;
+        calcParams.impl = (...args) => coalesceSeq(oldImpl(...args));
       }
 
       arg = new plan.Calculation(

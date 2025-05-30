@@ -1,5 +1,6 @@
 import { ASTItemType } from '../ast/item-type.js';
 import { AxisType } from '../ast/path.js';
+import { xhtml } from '../visitors/builder.js';
 import { treeStep } from './tree-step.js';
 
 export interface XQueryDataAdapter<NodeType = any> {
@@ -38,6 +39,7 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
   public treeStep = treeStep;
 
   public createElement(ns: string, qname: string, content: unknown[]): Element {
+    if (ns === xhtml) ns = null;
     const el = this.doc.createElementNS(ns, qname);
     for (const item of content) {
       this.appendItem(el, item);
@@ -46,6 +48,7 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
   }
 
   public createAttribute(ns: string, qname: string, content: string): Attr {
+    if (ns === xhtml) ns = null;
     const attr = this.doc.createAttributeNS(ns, qname);
     attr.value = content;
     return attr;
@@ -102,6 +105,7 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
   }
 
   public addAttribute(el: Element, attr: Attr): void {
+    console.log('Adding attribute', attr);
     el.setAttributeNodeNS(attr);
   }
 }

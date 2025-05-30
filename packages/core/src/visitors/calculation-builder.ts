@@ -1,4 +1,4 @@
-import { ret1, ret2 } from '../internal-fns/index.js';
+import { assertMaxOne, ret1, ret2 } from '../internal-fns/index.js';
 import { ASTIdentifier } from '../ast.js';
 import * as operators from '../plan/operators/index.js';
 import {
@@ -166,35 +166,29 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return new operators.MapToItem(op.lang, null, op);
   }
 
-  protected assertMaxOne<T>(vals: T[]): T {
-    if (vals.length === 0) return null;
-    if (vals.length > 1) throw new Error('More than one element in sequence');
-    return vals[0];
-  }
-
   visitProjection(operator: operators.Projection): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitSelection(operator: operators.Selection): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitTupleSource(operator: operators.TupleSource): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitItemSource(operator: operators.ItemSource): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
+    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
   }
 
   private processItem(item: OpOrId) {
@@ -237,7 +231,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   private processFnArg(arg: operators.PlanOpAsArg | ASTIdentifier) {
     if (arg instanceof ASTIdentifier) return arg;
     const params = arg.op.accept(this.vmap);
-    if (arg.acceptSequence && params.impl === this.assertMaxOne) {
+    if (arg.acceptSequence && params.impl === assertMaxOne) {
       params.impl = ret1;
     }
     return params;
@@ -418,14 +412,14 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   ): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitJoin(operator: operators.Join): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
@@ -434,38 +428,38 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   ): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitMapToItem(operator: operators.MapToItem): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
+    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
   }
   visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitOrderBy(operator: operators.OrderBy): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
@@ -476,7 +470,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
@@ -487,7 +481,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
@@ -498,7 +492,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
@@ -509,19 +503,19 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           ? this.toItem(operator)
           : operator,
       ],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitDistinct(operator: operators.Distinct): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitNullSource(operator: operators.NullSource): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
+    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
   }
   visitAggregate(operator: operators.AggregateCall): CalculationParams {
     return {
@@ -532,12 +526,12 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
   visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
-    return { args: [operator], impl: this.assertMaxOne, argMeta: [{}] };
+    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
   }
   visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
@@ -547,14 +541,14 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   visitRecursion(operator: operators.Recursion): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }
   visitIndexScan(operator: operators.IndexScan): CalculationParams {
     return {
       args: [this.toItem(operator)],
-      impl: this.assertMaxOne,
+      impl: assertMaxOne,
       argMeta: [{}],
     };
   }

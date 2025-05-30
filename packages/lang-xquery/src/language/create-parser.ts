@@ -47,7 +47,7 @@ export function createParser(mgr: LanguageManager): ParserInterface {
       ASTOperator,
       ASTFunction,
       LangSwitch,
-      DOT,
+      DOT: new ast.ASTVariable(DOT as ast.XQueryIdentifier),
       argPlaceholder: Symbol('argPlaceholder'),
     },
   };
