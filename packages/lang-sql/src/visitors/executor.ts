@@ -1,11 +1,11 @@
 import {
-  ASTIdentifier,
+  DortDBAsFriend,
   ExecutionContext,
   Executor,
   PlanTupleOperator,
+  PlanVisitor,
 } from '@dortdb/core';
 import { LangSwitch, SQLPlanVisitor, Using } from '../plan/index.js';
-import { TupleSource } from '@dortdb/core/plan';
 import { SQLLanguage } from '../language/language.js';
 
 export class SQLExecutor
@@ -14,6 +14,13 @@ export class SQLExecutor
 {
   protected adapter = (this.db.langMgr.getLang('sql') as SQLLanguage)
     .dataAdapter;
+
+  constructor(
+    vmap: Record<string, PlanVisitor<Iterable<unknown>, ExecutionContext>>,
+    db: DortDBAsFriend,
+  ) {
+    super('sql', vmap, db);
+  }
 
   visitLangSwitch(
     operator: LangSwitch,

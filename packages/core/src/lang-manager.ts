@@ -4,10 +4,11 @@ import {
   LogicalPlanBuilder,
   PlanVisitors,
 } from './visitors/index.js';
-import { ASTIdentifier, ASTNode } from './ast.js';
-import { DortDBAsFriend, QueryResult } from './db.js';
+import { ASTNode } from './ast.js';
+import { DortDBAsFriend } from './db.js';
 import { Trie } from './data-structures/trie.js';
 import { ExecutionContext } from './execution-context.js';
+import { PlanOperator } from './plan/visitor.js';
 
 export interface Parser {
   parse: (input: string) => ParseResult;
@@ -21,12 +22,16 @@ export interface ParseResult {
   remainingInput: string;
 }
 
+/** This will be used by the query executor, so it should be efficient */
 export type SerializeFn = (
   /** iterable of either sparse arrays of mapped variables or opaque objects */
   items: Iterable<unknown> | Iterable<unknown[]>,
   ctx: ExecutionContext,
-  schema: ASTIdentifier[],
-) => QueryResult;
+  plan: PlanOperator,
+) => {
+  data: Iterable<unknown>;
+  schema?: string[];
+};
 
 export interface Language<Name extends string = string> {
   readonly name: Lowercase<Name>;
@@ -35,11 +40,12 @@ export interface Language<Name extends string = string> {
   aggregates: AggregateFn[];
   castables: Castable[];
   createParser: (mgr: LanguageManager) => Parser;
-  visitors: Partial<PlanVisitors> & {
-    logicalPlanBuilder: {
-      new (db: DortDBAsFriend): LogicalPlanBuilder;
+  visitors: Partial<PlanVisitors> &
+    Pick<PlanVisitors, 'executor'> & {
+      logicalPlanBuilder: {
+        new (db: DortDBAsFriend): LogicalPlanBuilder;
+      };
     };
-  };
   serialize: SerializeFn;
 }
 

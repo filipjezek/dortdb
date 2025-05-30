@@ -1,10 +1,23 @@
-import { ASTIdentifier, ExecutionContext, Executor } from '@dortdb/core';
+import {
+  ASTIdentifier,
+  DortDBAsFriend,
+  ExecutionContext,
+  Executor,
+  PlanVisitor,
+} from '@dortdb/core';
 import { ItemSource } from '@dortdb/core/plan';
 import { CypherLanguage } from '../language/language.js';
 
 export class CypherExecutor extends Executor {
   protected adapter = (this.db.langMgr.getLang('cypher') as CypherLanguage)
     .dataAdapter;
+
+  constructor(
+    vmap: Record<string, PlanVisitor<Iterable<unknown>, ExecutionContext>>,
+    db: DortDBAsFriend,
+  ) {
+    super('cypher', vmap, db);
+  }
 
   override visitItemSource(
     operator: ItemSource,

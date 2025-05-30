@@ -165,12 +165,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitMapToItem(operator: plan.MapToItem, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
-    const prevScope = ctx.scopeStack.pop();
-    const newScope: VariableMap = new Trie();
-    ctx.scopeStack.push(newScope);
-    ctx.translations.set(operator, newScope);
-    ctx.currentIndex -= prevScope.size;
-    operator.key = this.translate(operator.key, ctx, 1);
+    this.setTranslations(operator, ctx);
+    operator.key = this.translate(operator.key, ctx);
+    ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitMapFromItem(operator: plan.MapFromItem, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);

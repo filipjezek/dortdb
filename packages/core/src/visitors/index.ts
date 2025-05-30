@@ -71,7 +71,7 @@ export const coreVisitors = {
     attributeRenameChecker: AttributeRenameChecker,
     equalityChecker: EqualityChecker,
     variableMapper: VariableMapper,
-    executor: Executor,
+    executor: null as VisitorConstr<Executor>,
   } satisfies PlanVisitors,
 };
 

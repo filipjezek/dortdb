@@ -1,62 +1,34 @@
-import { allAttrs, ASTIdentifier } from '../ast.js';
-import { QueryResult } from '../db.js';
-import { ExecutionContext } from '../execution-context.js';
+import { allAttrs } from '../ast.js';
 import { SerializeFn } from '../lang-manager.js';
+import { PlanTupleOperator } from '../plan/visitor.js';
 
 export function serializeToObjects(schemaSeparator = '.'): SerializeFn {
-  return function (
-    items: Iterable<unknown> | Iterable<unknown[]>,
-    ctx: ExecutionContext,
-    schema: ASTIdentifier[] | undefined,
-  ): QueryResult {
-    const serializedSchema = schema?.map((attr) =>
+  return function (items, ctx, operator) {
+    if (!(operator instanceof PlanTupleOperator)) {
+      return { data: items };
+    }
+    const serializedSchema = operator.schema.map((attr) =>
       attr.parts.map((x) => x.toString()).join(schemaSeparator),
     );
-    const iter = items[Symbol.iterator]();
-    let iterItem = iter.next();
-    if (iterItem.done) {
-      return { data: [], schema: serializedSchema };
-    }
-    const firstItem = iterItem.value;
+    const allAttrsKeys = operator.schema.map(
+      (x) => x.parts.at(-1) === allAttrs,
+    );
+    const keys = ctx.getKeys(operator);
 
-    if (Array.isArray(firstItem)) {
-      const keys = Object.keys(firstItem).map((x) => +x);
-      const resKeys = keys.map((x) =>
-        ctx.variableNames[x].parts
-          .map((x) => x.toString())
-          .join(schemaSeparator),
-      );
-      const allAttrsKeys = keys.map(
-        (x) => ctx.variableNames[x].parts.at(-1) === allAttrs,
-      );
-      const data: Record<string | symbol, unknown>[] = [];
-
-      do {
+    return {
+      schema: serializedSchema,
+      data: Iterator.from(items as Iterable<unknown[]>).map((item) => {
         const result: Record<string, unknown> = {};
         for (let i = 0; i < keys.length; i++) {
-          const val = iterItem.value[keys[i]];
+          const val = item[keys[i]];
           if (allAttrsKeys[i]) {
             Object.assign(result, val);
           } else {
-            result[resKeys[i]] = val;
+            result[serializedSchema[i]] = val;
           }
         }
-        data.push(result);
-      } while (!(iterItem = iter.next()).done);
-
-      return {
-        data,
-        schema: serializedSchema,
-      };
-    } else {
-      const data = [firstItem];
-      while (!(iterItem = iter.next()).done) {
-        data.push(iterItem.value);
-      }
-      return {
-        data,
-        schema: serializedSchema,
-      };
-    }
+        return result;
+      }),
+    };
   };
 }

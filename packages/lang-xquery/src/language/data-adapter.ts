@@ -15,13 +15,24 @@ export interface XQueryDataAdapter<NodeType = any> {
   addAttribute(el: NodeType, attr: NodeType): void;
   lookupPrefix(el: NodeType, ns: string): string;
   lookupNSUri(el: NodeType, prefix: string): string;
+  atomize(value: unknown): unknown;
 }
 
 export class DomDataAdapter implements XQueryDataAdapter<Node> {
-  constructor(private doc: Document) {}
+  constructor(private doc: Document) {
+    this.atomize = this.atomize.bind(this);
+  }
 
   public isNode(node: unknown): node is Node {
     return node instanceof Node;
+  }
+
+  public atomize(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(this.atomize);
+    if (!(value instanceof Node)) return value;
+    return value instanceof Element || value instanceof Document
+      ? value.textContent
+      : value.nodeValue;
   }
 
   public treeStep = treeStep;

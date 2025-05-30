@@ -7,6 +7,7 @@ import { Index } from './indices/index.js';
 import { Calculation, Projection } from './plan/operators/index.js';
 import { idToCalculation } from './utils/calculation.js';
 import { PlanTupleOperator } from './plan/visitor.js';
+import { toArray } from './internal-fns/index.js';
 
 export class DortDB<LangNames extends string> {
   private langMgr: LanguageManager = null;
@@ -71,11 +72,9 @@ export class DortDB<LangNames extends string> {
 
     const varMapCtx = varMappers[plan.lang].mapVariables(plan);
     const { result, ctx } = executors[plan.lang].execute(plan, varMapCtx);
-    return serialize(
-      result,
-      ctx,
-      plan instanceof PlanTupleOperator ? plan.schema : undefined,
-    ) as QueryResult<T>;
+    const serialized = serialize(result, ctx, plan);
+    serialized.data = toArray(serialized.data);
+    return serialized as QueryResult<T>;
   }
 
   public registerSource(source: (symbol | string | number)[], data: unknown) {

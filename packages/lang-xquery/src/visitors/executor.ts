@@ -1,4 +1,10 @@
-import { ASTIdentifier, ExecutionContext, Executor } from '@dortdb/core';
+import {
+  ASTIdentifier,
+  DortDBAsFriend,
+  ExecutionContext,
+  Executor,
+  PlanVisitor,
+} from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { XQueryLanguage } from '../language/language.js';
 import { ItemSource } from '@dortdb/core/plan';
@@ -13,6 +19,13 @@ export class XQueryExecutor
 {
   protected adapter = (this.db.langMgr.getLang('xquery') as XQueryLanguage)
     .dataAdapter;
+
+  constructor(
+    vmap: Record<string, PlanVisitor<Iterable<unknown>, ExecutionContext>>,
+    db: DortDBAsFriend,
+  ) {
+    super('xquery', vmap, db);
+  }
 
   *visitTreeJoin(operator: TreeJoin, ctx: ExecutionContext): Iterable<unknown> {
     const ts = ctx.translations.get(operator);

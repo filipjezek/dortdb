@@ -13,7 +13,7 @@ import { XQueryAttributeRenamer } from '../visitors/attr-renamer.js';
 import { XQueryEqualityChecker } from '../visitors/equality-checker.js';
 import { XQueryVariableMapper } from '../visitors/variable-mapper.js';
 import { XQueryExecutor } from '../visitors/executor.js';
-import { toArray } from '@dortdb/core/internal-fns';
+import { serializeToObjects } from '@dortdb/core/utils';
 
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
@@ -24,11 +24,24 @@ export interface XQueryLanguage extends Language<'xquery'> {
   dataAdapter: XQueryDataAdapter;
 }
 export function XQuery(config?: XQueryConfig): XQueryLanguage {
+  const dataAdapter = config?.adapter ?? new DomDataAdapter(document);
   return {
     name: 'xquery',
     operators: [...Object.values(operators)],
     aggregates: [{ ...count, schema: 'fn' }],
-    functions: [...Object.values(fns)],
+    functions: [
+      ...Object.values(fns),
+      {
+        name: 'data',
+        schema: 'fn',
+        impl: (...vals) => {
+          console.log('data', vals);
+          if (vals.length === 1)
+            return dataAdapter.atomize((vals[0] as fns.FnContext).item);
+          return dataAdapter.atomize(vals[0]);
+        },
+      },
+    ],
     castables,
     createParser,
     visitors: {
@@ -41,8 +54,7 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
       variableMapper: XQueryVariableMapper,
       executor: XQueryExecutor,
     },
-    dataAdapter: config?.adapter ?? new DomDataAdapter(document),
-    serialize:
-      config?.serialize ?? ((items): QueryResult => ({ data: toArray(items) })),
+    dataAdapter,
+    serialize: config?.serialize ?? serializeToObjects('.'),
   };
 }

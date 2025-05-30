@@ -11,17 +11,23 @@ import { allAttrs, ASTIdentifier } from '../ast.js';
 import { VariableMapperCtx } from './variable-mapper.js';
 import { retI1, toArray } from '../internal-fns/index.js';
 import { Trie } from '../data-structures/trie.js';
+import { SerializeFn } from '../lang-manager.js';
 
-export class Executor
+export abstract class Executor
   implements PlanVisitor<Iterable<unknown>, ExecutionContext>
 {
+  protected serialize: SerializeFn;
+
   constructor(
+    protected lang: Lowercase<string>,
     protected vmap: Record<
       string,
       PlanVisitor<Iterable<unknown>, ExecutionContext>
     >,
     protected db: DortDBAsFriend,
-  ) {}
+  ) {
+    this.serialize = this.db.langMgr.getLang(this.lang).serialize;
+  }
 
   public execute(
     plan: PlanOperator,
@@ -138,7 +144,7 @@ export class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     const right = toArray(operator.right.accept(this.vmap, ctx)) as unknown[][];
-    if (right.length === 0) return [];
+    if (right.length === 0) return;
     const rightKeys = ctx.getKeys(operator.right);
 
     const left = operator.left.accept(this.vmap, ctx) as Iterable<unknown[]>;
@@ -168,7 +174,7 @@ export class Executor
         if (passes) yield item;
       }
     } else if (operator.leftOuter && !operator.rightOuter) {
-      return this.visitLeftJoin(
+      yield* this.visitLeftJoin(
         operator.conditions,
         operator.left,
         operator.right,
@@ -176,7 +182,7 @@ export class Executor
         ctx,
       );
     } else if (!operator.leftOuter && operator.rightOuter) {
-      return this.visitLeftJoin(
+      yield* this.visitLeftJoin(
         operator.conditions,
         operator.right,
         operator.left,
@@ -184,7 +190,7 @@ export class Executor
         ctx,
       );
     } else {
-      return this.visitFullJoin(operator, ctx);
+      yield* this.visitFullJoin(operator, ctx);
     }
   }
   protected *visitLeftJoin(
@@ -339,7 +345,8 @@ export class Executor
     >;
     const key = operator.key.parts[0] as number;
     if (ctx.translations.get(operator).get([allAttrs])?.parts[0] === key) {
-      return source;
+      yield* this.serialize(source, ctx, operator.source).data;
+      return;
     }
     for (const item of source) {
       yield item[key];
@@ -355,8 +362,7 @@ export class Executor
     const key = operator.key.parts[0] as number;
     for (const item of source) {
       const res = [];
-      res[key] = item;
-      ctx.variableValues[key] = item;
+      res[key] = ctx.variableValues[key] = item;
       yield res;
     }
   }
@@ -443,18 +449,20 @@ export class Executor
     const originalAggAcepts = operator.aggs.map(
       (agg) => agg.postGroupSource.accept,
     );
-    for (const [groupValues, group] of groups.entries()) {
+    for (const [, group] of groups.entries()) {
       const result: unknown[] = [];
+      for (const key of srcKeys) {
+        result[key] = group[0][key];
+      }
       for (let i = 0; i < operator.aggs.length; i++) {
         const agg = operator.aggs[i];
-        agg.postGroupSource.accept = function* (this: Executor) {
-          for (const item of group) {
-            yield ctx.setTuple(
+        agg.postGroupSource.accept = () =>
+          Iterator.from(group).map((item) =>
+            ctx.setTuple(
               this.renameKeys(item, srcKeys, aggKeys[i]),
               aggKeys[i],
-            );
-          }
-        }.bind(this) as any;
+            ),
+          ) as any;
         let state = agg.impl.init();
         for (const item of agg.postGroupOp.accept(this.vmap, ctx)) {
           state = agg.impl.step(
@@ -463,9 +471,6 @@ export class Executor
           );
         }
         result[agg.fieldName.parts[0] as number] = agg.impl.result(state);
-      }
-      for (const key of srcKeys) {
-        result[key] = group[0][key];
       }
       yield ctx.setTuple(result, resultKeys);
     }
@@ -500,11 +505,13 @@ export class Executor
     operator: plan.Intersection,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    if (!(operator.left instanceof PlanTupleOperator))
-      return this.visitIntersectionItems(
+    if (!(operator.left instanceof PlanTupleOperator)) {
+      yield* this.visitIntersectionItems(
         operator.left.accept(this.vmap, ctx),
         operator.right.accept(this.vmap, ctx),
       );
+      return;
+    }
     const keys = ctx.getKeys(operator.left);
     const rightKeys = ctx.getKeys(operator.right as PlanTupleOperator);
     const left = operator.left.accept(this.vmap, ctx) as Iterable<unknown[]>;
@@ -537,11 +544,13 @@ export class Executor
     operator: plan.Difference,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    if (!(operator.left instanceof PlanTupleOperator))
-      return this.visitDifferenceItems(
+    if (!(operator.left instanceof PlanTupleOperator)) {
+      yield* this.visitDifferenceItems(
         operator.left.accept(this.vmap, ctx),
         operator.right.accept(this.vmap, ctx),
       );
+      return;
+    }
     const keys = ctx.getKeys(operator.left);
     const rightKeys = ctx.getKeys(operator.right as PlanTupleOperator);
     const right = operator.right.accept(this.vmap, ctx) as Iterable<unknown[]>;
