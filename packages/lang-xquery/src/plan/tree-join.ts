@@ -16,6 +16,7 @@ export class TreeJoin extends PlanTupleOperator {
     lang: Lowercase<string>,
     public step: Calculation,
     public source: PlanTupleOperator,
+    public removeDuplicates = true,
   ) {
     super();
     this.lang = lang;

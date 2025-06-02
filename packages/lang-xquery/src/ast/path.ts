@@ -1,7 +1,6 @@
 import { ASTNode } from '@dortdb/core';
 import { XQueryVisitor } from './visitor.js';
 import { ASTItemType, ItemKind } from './item-type.js';
-import { ASTVariable } from './expression.js';
 
 export class PathExpr implements ASTNode {
   constructor(
@@ -11,6 +10,17 @@ export class PathExpr implements ASTNode {
 
   accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitPathExpr(this, arg);
+  }
+}
+
+export class SimpleMapExpr implements ASTNode {
+  constructor(
+    public source: ASTNode,
+    public mapping: ASTNode,
+  ) {}
+
+  accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitSimpleMapExpr(this, arg);
   }
 }
 

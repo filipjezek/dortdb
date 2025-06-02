@@ -46,7 +46,7 @@ export class XQueryExecutor
       for (let i = 0; i < rightItems.length; i++) {
         const result: unknown[] = [];
         const rightItem = rightItems[i];
-        if (this.adapter.isNode(rightItem)) {
+        if (operator.removeDuplicates && this.adapter.isNode(rightItem)) {
           if (nodeSet.has(rightItem)) continue;
           nodeSet.add(rightItem);
         }

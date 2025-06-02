@@ -36,7 +36,7 @@ import {
   Prolog,
 } from './prolog.js';
 import { ASTItemType } from './item-type.js';
-import { PathAxis, PathExpr, PathPredicate } from './path.js';
+import { PathAxis, PathExpr, PathPredicate, SimpleMapExpr } from './path.js';
 import {
   ComputedConstructor,
   DirConstrContent,
@@ -93,4 +93,5 @@ export interface XQueryVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitComputedConstructor(node: ComputedConstructor, arg?: Arg): Ret;
   visitInlineFn(node: InlineFunction, arg?: Arg): Ret;
   visitBoundFunction(node: BoundFunction, arg?: Arg): Ret;
+  visitSimpleMapExpr(node: SimpleMapExpr, arg?: Arg): Ret;
 }

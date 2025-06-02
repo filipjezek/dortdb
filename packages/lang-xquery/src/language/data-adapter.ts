@@ -105,7 +105,6 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
   }
 
   public addAttribute(el: Element, attr: Attr): void {
-    console.log('Adding attribute', attr);
     el.setAttributeNodeNS(attr);
   }
 }

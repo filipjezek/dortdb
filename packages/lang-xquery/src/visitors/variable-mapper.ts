@@ -8,10 +8,11 @@ export class XQueryVariableMapper
 {
   visitTreeJoin(operator: TreeJoin, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
-    this.setTranslations(operator, ctx);
-    this.translate(DOT, ctx);
-    this.translate(POS, ctx);
-    this.translate(LEN, ctx);
+    const scope = ctx.scopeStack.at(-1);
+    ctx.translations.set(operator, scope);
+    scope.set(DOT.parts, this.translate(DOT, ctx));
+    scope.set(POS.parts, this.translate(POS, ctx));
+    scope.set(LEN.parts, this.translate(LEN, ctx));
     operator.step.accept(this.vmap, ctx);
   }
   visitProjectionSize(operator: ProjectionSize, ctx: VariableMapperCtx): void {

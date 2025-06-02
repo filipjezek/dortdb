@@ -38,7 +38,9 @@ export const treeStep = (
       axis === AxisType.DESCENDANT_OR_SELF ||
       axis === AxisType.ANCESTOR_OR_SELF
     ) {
-      res.push(n);
+      if (!filter || filterBool(n)) {
+        res.push(n);
+      }
       if (axis === AxisType.SELF) return res;
     } else if (axis === AxisType.ATTRIBUTE) return getAttrs(n, test.name);
     else if (axis === AxisType.CHILD) {

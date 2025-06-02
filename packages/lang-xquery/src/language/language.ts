@@ -29,19 +29,7 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
     name: 'xquery',
     operators: [...Object.values(operators)],
     aggregates: [{ ...count, schema: 'fn' }],
-    functions: [
-      ...Object.values(fns),
-      {
-        name: 'data',
-        schema: 'fn',
-        impl: (...vals) => {
-          console.log('data', vals);
-          if (vals.length === 1)
-            return dataAdapter.atomize((vals[0] as fns.FnContext).item);
-          return dataAdapter.atomize(vals[0]);
-        },
-      },
-    ],
+    functions: [...Object.values(fns)],
     castables,
     createParser,
     visitors: {

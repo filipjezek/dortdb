@@ -113,6 +113,7 @@ export class XQueryLogicalPlanBuilder
     this.dataAdapter = db.langMgr.getLang<'xquery', XQueryLanguage>(
       'xquery',
     ).dataAdapter;
+    this.atomize = this.atomize.bind(this);
   }
 
   buildPlan(node: ASTNode, ctx: IdSet) {
@@ -156,6 +157,10 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
+  private atomize(item: unknown) {
+    return this.dataAdapter.atomize(item);
+  }
+
   private maybeToCalc(item: ASTNode, args: DescentArgs) {
     const res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
@@ -188,7 +193,7 @@ export class XQueryLogicalPlanBuilder
       infer(item, args);
       return item;
     }
-    return { op: item.accept(this, args) };
+    return { op: item.accept(this, args), acceptSequence: true };
   }
   private toCalcParams(node: ASTNode, args: DescentArgs) {
     return node.accept(this, args).accept(this.calcBuilders);
@@ -456,7 +461,10 @@ export class XQueryLogicalPlanBuilder
       { ctx: union(args.ctx, subq.schemaSet), inferred: args.inferred },
       false,
     );
-    if (invert) calc.impl = (...args) => !calc.impl(...args);
+    if (invert) {
+      const oldImpl = calc.impl;
+      calc.impl = (...args) => !oldImpl(...args);
+    }
     subq = new plan.Selection('xquery', calc, subq);
     subq = new plan.Limit('xquery', 0, 1, subq);
     subq = new plan.Projection(
@@ -519,7 +527,7 @@ export class XQueryLogicalPlanBuilder
     return new plan.FnCall(
       'sql',
       [{ op: node.expr.accept(this, args) }],
-      impl.convert,
+      (arg) => impl.convert(this.atomize(arg)),
       impl.pure,
     );
   }
@@ -549,10 +557,45 @@ export class XQueryLogicalPlanBuilder
         ),
       });
     }
-    const res = toTuples(first.accept(this, args));
-    return res;
+    let res = first.accept(this, args);
+    if (plan.CalcIntermediate in res) {
+      let calcParams = res.accept(this.calcBuilders);
+      calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
+      res = new plan.Calculation(
+        'xquery',
+        calcParams.impl,
+        calcParams.args,
+        calcParams.argMeta,
+        res,
+        calcParams.aggregates,
+        calcParams.literal,
+      );
+      return new TreeJoin(
+        'xquery',
+        res as plan.Calculation,
+        args.src ?? new plan.NullSource('xquery'),
+        false,
+      );
+    } else if (
+      !(res instanceof PlanTupleOperator) ||
+      [DOT, POS, LEN].some(
+        (x) => !(res as PlanTupleOperator).schemaSet.has(x.parts),
+      )
+    ) {
+      return new TreeJoin(
+        'xquery',
+        new plan.Calculation('xquery', ret1, [res], [{ acceptSequence: true }]),
+        args.src ?? new plan.NullSource('xquery'),
+        false,
+      );
+    }
+    return res as PlanTupleOperator;
   }
-  private processPathStep(step: ASTNode, args: DescentArgs) {
+  private processPathStep(
+    step: ASTNode,
+    removeDuplicates: boolean,
+    args: DescentArgs,
+  ) {
     if (step === DOT) {
       return args.src;
     }
@@ -572,7 +615,8 @@ export class XQueryLogicalPlanBuilder
         { ctx: union(args.ctx, args.src.schemaSet), inferred: args.inferred },
         false,
       );
-      return new TreeJoin('xquery', calc, args.src);
+      if (calc.impl === assertMaxOne) calc.impl = ret1;
+      return new TreeJoin('xquery', calc, args.src, removeDuplicates);
     }
   }
   visitPathExpr(node: AST.PathExpr, args: DescentArgs): PlanOperator {
@@ -581,9 +625,14 @@ export class XQueryLogicalPlanBuilder
     }
     let res = this.processPathStart(node.steps[0], args);
     for (let i = 1; i < node.steps.length; i++) {
-      res = this.processPathStep(node.steps[i], { ...args, src: res });
+      res = this.processPathStep(node.steps[i], true, { ...args, src: res });
     }
     return new plan.MapToItem('xquery', DOT, res);
+  }
+  visitSimpleMapExpr(node: AST.SimpleMapExpr, args: DescentArgs): PlanOperator {
+    let res = this.processPathStart(node.source, args);
+    res = this.processPathStep(node.mapping, false, { ...args, src: res });
+    return res;
   }
 
   visitPathPredicate(
@@ -602,9 +651,10 @@ export class XQueryLogicalPlanBuilder
       'xquery',
       (...args) => {
         const pos = args.at(-1);
-        // TODO: handle sequences
-        const res = resolveArgs(args, calcParams).flat()[0];
-        return typeof res === 'number' ? res === pos : toBool.convert(res);
+        const res = resolveArgs(args, calcParams).flat();
+        return res.length === 1 && typeof res[0] === 'number'
+          ? res[0] === pos
+          : toBool.convert(res);
       },
       args,
       metas,
@@ -639,7 +689,9 @@ export class XQueryLogicalPlanBuilder
   ): PlanOperator {
     const args = node.args.map((x) => this.processFnArg(x, dargs));
     args.push({ op: node.nameOrExpr.accept(this, dargs) });
-    return new plan.FnCall('xquery', args, (...as) => as.pop()(...as));
+    return new plan.FnCall('xquery', args, (...as) =>
+      as.pop()(...as.map(this.atomize)),
+    );
   }
   visitSequenceConstructor(
     node: AST.SequenceConstructor,
@@ -693,7 +745,7 @@ export class XQueryLogicalPlanBuilder
         .map((x) => this.processDirConstrContent(x, dargs));
       content.push({
         op: new plan.FnCall('xquery', args, (...vals) => {
-          return vals.join('');
+          return vals.map(this.atomize).join('');
         }),
       });
     }
@@ -711,7 +763,9 @@ export class XQueryLogicalPlanBuilder
           this.dataAdapter.createAttribute(
             ans,
             aqname,
-            args[args.length - node.attributes.length + i],
+            this.atomize(
+              args[args.length - node.attributes.length + i],
+            ).toString(),
           ),
         );
       }
@@ -768,11 +822,17 @@ export class XQueryLogicalPlanBuilder
           if (!qname) {
             [ns, qname] = this.idToQName(args.pop());
           }
-          return this.dataAdapter.createAttribute(ns, qname, args.join(''));
+          return this.dataAdapter.createAttribute(
+            ns,
+            qname,
+            args.map(this.atomize).join(''),
+          );
         });
       case AST.ConstructorType.COMMENT:
         return new plan.FnCall('xquery', content, (...args) => {
-          return this.dataAdapter.createComment(args.join(''));
+          return this.dataAdapter.createComment(
+            args.map(this.atomize).join(''),
+          );
         });
       case AST.ConstructorType.DOCUMENT:
       case AST.ConstructorType.ELEMENT:
@@ -789,16 +849,22 @@ export class XQueryLogicalPlanBuilder
       case AST.ConstructorType.NAMESPACE:
         return new plan.FnCall('xquery', content, (...args) => {
           if (!qname) qname = args.pop();
-          return this.dataAdapter.createNS(qname, args.join(''));
+          return this.dataAdapter.createNS(
+            qname,
+            args.map(this.atomize).join(''),
+          );
         });
       case AST.ConstructorType.PROCESSING_INSTRUCTION:
         return new plan.FnCall('xquery', content, (...args) => {
           if (!qname) qname = args.pop();
-          return this.dataAdapter.createProcInstr(qname, args.join(''));
+          return this.dataAdapter.createProcInstr(
+            qname,
+            args.map(this.atomize).join(''),
+          );
         });
       case AST.ConstructorType.TEXT:
         return new plan.FnCall('xquery', content, (...args) => {
-          return this.dataAdapter.createText(args.join(''));
+          return this.dataAdapter.createText(args.map(this.atomize).join(''));
         });
     }
   }
@@ -830,7 +896,7 @@ export class XQueryLogicalPlanBuilder
         for (let i = 0; i < fullSize; i++) {
           allArgs[i] = boundIndices.has(i) ? bound[bi++] : unbound[ui++];
         }
-        return fn(...allArgs);
+        return fn(...allArgs.map(this.atomize));
       };
     });
   }
@@ -845,10 +911,11 @@ export class XQueryLogicalPlanBuilder
     return { op: item.accept(this, args) };
   }
   visitOperator(node: ASTOperator, args: DescentArgs): PlanOperator {
+    const impl = this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl;
     return new plan.FnCall(
       'xquery',
       node.operands.map((x) => this.processOpArg(x, args)),
-      this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
+      (...args) => impl(...args.map(this.atomize)),
       true,
     );
   }
@@ -964,8 +1031,8 @@ export class XQueryLogicalPlanBuilder
         node.lang,
         args,
         (dot, len, pos, ...args) =>
-          impl.impl(...args, {
-            item: dot,
+          impl.impl(...args.map(this.atomize), {
+            item: this.atomize(dot),
             position: pos,
             size: len,
           } as FnContext),
@@ -992,7 +1059,11 @@ export class XQueryLogicalPlanBuilder
           new plan.AggregateCall(
             'xquery',
             args.map((_, i) => toId(i + '')),
-            impl,
+            {
+              ...impl,
+              step: (state, ...vals) =>
+                impl.step(state, ...vals.map(this.atomize)),
+            },
             DOT,
           ),
         ],

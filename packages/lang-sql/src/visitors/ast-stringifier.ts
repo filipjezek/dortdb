@@ -110,7 +110,6 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     return alias;
   }
   visitExpressionAlias(node: ASTExpressionAlias): string {
-    // TODO: aliases could have different names but same contents, check for duplicates
     return `${node.expression.accept(this)} AS ${this.addQuotes(
       node.alias,
       '"',

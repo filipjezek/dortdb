@@ -691,7 +691,7 @@ predicate:
 
 simple-map-expr:
 	path-expr
-	| simple-map-expr EMPH path-expr { $$ = yy.makeOp($2, [$1, $3]); } ;
+	| simple-map-expr EMPH path-expr { $$ = new yy.ast.SimpleMapExpr($1, $3); } ;
 
 value-expr:
 	simple-map-expr ;

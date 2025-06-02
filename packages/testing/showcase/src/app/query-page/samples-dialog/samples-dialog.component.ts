@@ -115,6 +115,19 @@ where x + (select count(y) from bar) > (select cat from dog)`,
       query: `select t1.foo, t2.bar from t1 join t2 on t1.id = t2.id and t1.foo = t2.a
 -- select t1.foo, t2.bar from t1 join t2 on t1.id = t2.a + t2.b / 2 and t1.foo = t2.a`,
     },
+    {
+      lang: 'xquery',
+      name: 'Complex XQuery example',
+      tags: [],
+      query: `for $p in (LANG SQL SELECT id, firstName AS name FROM customers)
+let $invoices :=
+  for $i in $Invoices//Invoice.xml
+  where $i/PersonId = $p/@id
+  return $i
+return <item person="{ $p/@name }">
+  { fn:count($i) }
+</item>`,
+    },
   ];
   private preparedQueries = this.queries.map((query) => ({
     original: query,
