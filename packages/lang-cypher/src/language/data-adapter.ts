@@ -79,7 +79,6 @@ export class GraphologyDataAdapter
     graph: GraphologyGraph,
     ...labels: string[]
   ): Iterable<GraphologyNode> {
-    console.log('getNodesByLabels', labels);
     for (const { node, attributes } of graph.nodeEntries()) {
       const nodeLabels = attributes.labels ?? [];
       if (labels.every((label) => nodeLabels.includes(label))) {
@@ -153,7 +152,6 @@ export class GraphologyDataAdapter
     direction: EdgeDirection,
     predicate?: (node: GraphologyNode, edge: GraphologyEdge) => boolean,
   ): Iterable<GraphologyEdge> {
-    console.log(graph, node, direction, predicate);
     for (const { edge, attributes } of graph[
       direction === 'in'
         ? 'inEdgeEntries'

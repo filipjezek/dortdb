@@ -198,7 +198,7 @@ export class CypherLogicalPlanBuilder
     return new plan.FnCall('cypher', values, (...vals) => {
       const res: Record<string | symbol, unknown> = {};
       for (let i = 0; i < vals.length; i++) {
-        res[names[i]] = vals[i + 1];
+        res[names[i]] = vals[i];
       }
       return res;
     });
@@ -639,27 +639,36 @@ export class CypherLogicalPlanBuilder
   ) {
     const min = edge.range[0]?.value ?? 1;
     const max = edge.range[1]?.value ?? Infinity;
+    const mapping = source.clone();
     const graph = this.db.getSource(graphName.parts);
-    const calc = new plan.Calculation(
+    const edgeDir: EdgeDirection = edge.pointsLeft
+      ? 'in'
+      : edge.pointsRight
+        ? 'out'
+        : 'any';
+    const mappingSrc = new plan.ItemFnSource(
       'cypher',
-      ([e1, e2]) => {
-        let res = true;
+      [variable],
+      (e) => {
+        const nodes: unknown[] = [];
         if (!edge.pointsLeft) {
-          res &&=
-            this.dataAdapter.getEdgeNode(graph, e1, 'target') ===
-            this.dataAdapter.getEdgeNode(graph, e2, 'source');
+          nodes.push(this.dataAdapter.getEdgeNode(graph, e, 'target'));
         }
         if (!edge.pointsRight) {
-          res &&=
-            this.dataAdapter.getEdgeNode(graph, e1, 'source') ===
-            this.dataAdapter.getEdgeNode(graph, e2, 'target');
+          nodes.push(this.dataAdapter.getEdgeNode(graph, e, 'source'));
         }
-        return res;
+        return Iterator.from(nodes).flatMap((n) =>
+          this.dataAdapter.filterNodeEdges(graph, n, edgeDir),
+        );
       },
-      [variable],
-      [undefined],
+      toId('connectedEdges'),
     );
-    return new plan.Recursion('cypher', min, max, calc, source);
+    let oldMappingSrc: any = (mapping as any).source;
+    while (!(oldMappingSrc instanceof plan.ItemSource)) {
+      oldMappingSrc = (oldMappingSrc as plan.Projection).source;
+    }
+    oldMappingSrc.parent.replaceChild(oldMappingSrc, mappingSrc);
+    return new plan.IndexedRecursion('cypher', min, max, mapping, source);
   }
 
   visitPatternComprehension(

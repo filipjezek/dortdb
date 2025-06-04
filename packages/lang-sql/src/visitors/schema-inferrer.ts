@@ -546,4 +546,18 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     }
     return external;
   }
+  visitIndexedRecursion(operator: plan.IndexedRecursion, ctx: IdSet): IdSet {
+    const extra = difference(operator.schemaSet, operator.mapping.schemaSet);
+    extra.delete([allAttrs]);
+    operator.mapping.addToSchema(extra);
+    // this might modify operator.schema if the mapping is a langswitch
+    const horizontal = operator.mapping.accept(
+      this.vmap,
+      union(ctx, operator.source.schema, extra),
+    );
+    operator.addToSchema(horizontal);
+    operator.addToSchema(extra);
+    const vertical = operator.source.accept(this.vmap, ctx);
+    return vertical;
+  }
 }

@@ -34,7 +34,7 @@ export class JoinIndices
   }
 
   match(node: plan.Join): PatternRuleMatchResult<JoinIndicesBindings> {
-    for (const side of ['left', 'right'] as const) {
+    for (const side of ['right', 'left'] as const) {
       if (
         (side === 'left' && node.rightOuter) ||
         (side === 'right' && node.leftOuter)
@@ -180,8 +180,6 @@ export class JoinIndices
     );
     for (const cond of node.conditions) {
       this.renamerVmap[cond.lang].rename(cond, proj.renames);
-      if (cond.original)
-        this.renamerVmap[cond.lang].rename(cond.original, proj.renames);
     }
 
     const source =
@@ -192,10 +190,6 @@ export class JoinIndices
       const cond = node.conditions[i];
       if (bindings.renameMap) {
         this.renamerVmap[cond.lang].rename(cond, bindings.renameMap);
-        this.renamerVmap[cond.original.lang].rename(
-          cond.original,
-          bindings.renameMap,
-        );
       }
       source.parent.replaceChild(
         source,

@@ -552,4 +552,13 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{}],
     };
   }
+  visitIndexedRecursion(
+    operator: operators.IndexedRecursion,
+  ): CalculationParams {
+    return {
+      args: [this.toItem(operator)],
+      impl: assertMaxOne,
+      argMeta: [{}],
+    };
+  }
 }

@@ -693,4 +693,16 @@ export class GraphBuilder
       src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
     });
   }
+
+  visitIndexedRecursion(operator: plan.IndexedRecursion): SVGGElement {
+    const parent = this.drawNode(
+      `&phi;&#x0362;(${operator.min}, ${operator.max})`,
+      operator,
+    );
+    return this.drawBranches(
+      parent,
+      { el: operator.source.accept(this.vmap) },
+      { el: operator.mapping.accept(this.vmap), edgeType: 'djoin' },
+    );
+  }
 }

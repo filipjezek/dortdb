@@ -110,6 +110,9 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   }
   visitCalculation(operator: plan.Calculation, renames: plan.RenameMap): void {
     this.processArray(operator.args, operator.dependencies, renames);
+    if (operator.original) {
+      operator.original.accept(this.vmap, renames);
+    }
   }
   visitConditional(operator: plan.Conditional, renames: plan.RenameMap): void {
     for (const key of ['condition', 'defaultCase'] as const) {
@@ -229,5 +232,12 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   }
   visitIndexScan(operator: plan.IndexScan, renames: plan.RenameMap): void {
     operator.access.accept(this.vmap, renames);
+  }
+  visitIndexedRecursion(
+    operator: plan.IndexedRecursion,
+    renames: plan.RenameMap,
+  ): void {
+    operator.source.accept(this.vmap, renames);
+    this.processItem(operator, 'mapping', operator.dependencies, renames);
   }
 }

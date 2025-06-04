@@ -268,6 +268,16 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     tdepsCache.set(operator, res);
     return res;
   }
+  visitIndexedRecursion(operator: plan.IndexedRecursion): IdSet {
+    if (tdepsCache.has(operator)) return tdepsCache.get(operator);
+    const horizontal = this.onlyExternal(
+      operator.mapping.accept(this.vmap),
+      operator,
+    );
+    const result = union(horizontal, operator.source.accept(this.vmap));
+    tdepsCache.set(operator, result);
+    return result;
+  }
   public clearCache() {
     tdepsCache = new WeakMap();
   }

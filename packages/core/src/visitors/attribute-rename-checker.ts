@@ -288,4 +288,16 @@ export class AttributeRenameChecker
       renamesInv,
     );
   }
+  visitIndexedRecursion(
+    operator: plan.IndexedRecursion,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return (
+      this.checkHorizontal(
+        operator.mapping,
+        operator.source.schemaSet,
+        renamesInv,
+      ) && operator.source.accept(this.vmap, renamesInv)
+    );
+  }
 }

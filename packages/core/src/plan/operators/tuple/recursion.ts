@@ -47,3 +47,48 @@ export class Recursion extends PlanTupleOperator {
     );
   }
 }
+
+export class IndexedRecursion extends PlanTupleOperator {
+  constructor(
+    lang: Lowercase<string>,
+    public min: number,
+    public max: number,
+    public mapping: PlanTupleOperator,
+    public source: PlanTupleOperator,
+  ) {
+    super();
+    this.lang = lang;
+    this.schema = source.schema;
+    this.schemaSet = source.schemaSet;
+    mapping.parent = this;
+    source.parent = this;
+  }
+
+  accept<Ret, Arg>(
+    visitors: Record<string, PlanVisitor<Ret, Arg>>,
+    arg?: Arg,
+  ): Ret {
+    return visitors[this.lang].visitIndexedRecursion(this, arg);
+  }
+
+  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
+    replacement.parent = this;
+    if (current === this.mapping) {
+      this.mapping = replacement as PlanTupleOperator;
+    } else {
+      this.source = replacement as PlanTupleOperator;
+    }
+  }
+  getChildren(): PlanOperator[] {
+    return [this.source, this.mapping];
+  }
+  clone(): IndexedRecursion {
+    return new IndexedRecursion(
+      this.lang,
+      this.min,
+      this.max,
+      this.mapping.clone(),
+      this.source.clone(),
+    );
+  }
+}

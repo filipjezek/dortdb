@@ -68,6 +68,7 @@ export abstract class Executor
     operator: plan.Recursion,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
+    if (operator.min > operator.max || operator.max === 0) return;
     const queue = new Queue<unknown[][]>();
     const items: unknown[][] = [];
     const keys = ctx.getKeys(operator);
@@ -79,7 +80,12 @@ export abstract class Executor
       for (const key of keys) {
         toQueue[key] = [item[key]];
       }
-      queue.enqueue(toQueue);
+      if (operator.min <= 1) {
+        yield ctx.setTuple(toQueue, keys);
+      }
+      if (operator.max > 1) {
+        queue.enqueue(toQueue);
+      }
     }
 
     while (queue.size > 0) {
@@ -104,6 +110,52 @@ export abstract class Executor
       }
     }
   }
+  *visitIndexedRecursion(
+    operator: plan.IndexedRecursion,
+    ctx: ExecutionContext,
+  ): Iterable<unknown> {
+    if (operator.min > operator.max || operator.max === 0) return;
+    const queue = new Queue<unknown[][]>();
+    const keys = ctx.getKeys(operator);
+    const renameMappedKeys = ctx.getRenames(operator, operator.mapping);
+    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
+      unknown[]
+    >) {
+      const toQueue = [];
+      for (const key of keys) {
+        toQueue[key] = [item[key]];
+      }
+      if (operator.min <= 1) {
+        yield ctx.setTuple(toQueue, keys);
+      }
+      if (operator.max > 1) {
+        queue.enqueue(toQueue);
+      }
+    }
+
+    while (queue.size > 0) {
+      const item = queue.dequeue();
+      for (const key of keys) {
+        ctx.variableValues[key] = item[key].at(-1);
+      }
+      for (const next of operator.mapping.accept(this.vmap, ctx) as Iterable<
+        unknown[]
+      >) {
+        const result: unknown[][] = [];
+        for (let i = 0; i < keys.length; i++) {
+          result[keys[i]] = item[keys[i]].concat([next[renameMappedKeys[i]]]);
+        }
+        const size = result[keys[0]].length;
+        if (size >= operator.min) {
+          yield ctx.setTuple(result, keys);
+        }
+        if (size < operator.max) {
+          queue.enqueue(result);
+        }
+      }
+    }
+  }
+
   *visitProjection(
     operator: plan.Projection,
     ctx: ExecutionContext,

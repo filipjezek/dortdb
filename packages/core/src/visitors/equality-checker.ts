@@ -334,4 +334,13 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.access, { ...args, other: b.access })
     );
   }
+  visitIndexedRecursion(a: plan.IndexedRecursion, args: DescentArgs): boolean {
+    const b = args.other as plan.IndexedRecursion;
+    return (
+      a.min === b.min &&
+      a.max === b.max &&
+      this.processItem(a.mapping, { ...args, other: b.mapping }) &&
+      this.processItem(a.source, { ...args, other: b.source })
+    );
+  }
 }

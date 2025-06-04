@@ -298,4 +298,13 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     }
     this.visitCalculation(operator.access, ctx);
   }
+  visitIndexedRecursion(
+    operator: plan.IndexedRecursion,
+    ctx: VariableMapperCtx,
+  ): void {
+    operator.source.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
+    operator.mapping.accept(this.vmap, ctx);
+    ctx.currentIndex -= ctx.scopeStack.pop().size;
+  }
 }

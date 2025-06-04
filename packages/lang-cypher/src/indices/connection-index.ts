@@ -3,9 +3,11 @@ import {
   CalculationParams,
   DortDBAsFriend,
   EqualityChecker,
+  fromItemIndexKey,
   Index,
   IndexFillInput,
   IndexMatchInput,
+  PlanOperator,
   PlanVisitor,
   simplifyCalcParams,
 } from '@dortdb/core';
@@ -34,22 +36,32 @@ export class ConnectionIndex implements Index {
     for (let i = 0; i < exprs.length; i++) {
       if (exprs[i].containingFn.impl === this.adapter.isConnected) {
         const expr = exprs[i].expr;
-        const matchesArg = (j: number) =>
-          expr instanceof ASTIdentifier
-            ? expr === exprs[i].containingFn.args[j]
-            : expr === (exprs[i].containingFn.args[j] as PlanOpAsArg).op;
-        if (matchesArg(1) || matchesArg(2)) {
+        if (this.matchesFromItemKey(expr, renameMap)) {
           return [i];
         }
       }
     }
     return null;
   }
+
+  protected matchesFromItemKey(
+    expr: ASTIdentifier | PlanOperator,
+    renames?: RenameMap,
+  ): boolean {
+    for (const dep of expr instanceof ASTIdentifier
+      ? [expr.parts]
+      : expr.dependencies) {
+      if (renames?.get(dep)?.[0] === fromItemIndexKey) return true;
+    }
+    return false;
+  }
+
   createAccessor(expressions: IndexMatchInput[]): Calculation {
     const e = expressions[0];
     const selectEdges =
       e.expr instanceof ASTIdentifier
-        ? e.expr === e.containingFn.args[2]
+        ? e.containingFn.args[2] instanceof ASTIdentifier &&
+          e.expr.equals(e.containingFn.args[2])
         : e.expr === (e.containingFn.args[2] as PlanOpAsArg).op;
     const fnCall = new FnCall(
       e.containingFn.lang,
