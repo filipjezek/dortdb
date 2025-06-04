@@ -1,4 +1,3 @@
-import { ASTIdentifier } from '../ast.js';
 import { Calculation, FnCall, RenameMap } from '../plan/operators/index.js';
 import { OpOrId } from '../plan/visitor.js';
 
@@ -6,11 +5,19 @@ export interface IndexMatchInput {
   expr: OpOrId;
   containingFn: FnCall;
 }
+export interface IndexFillInput {
+  /** the source item */
+  value: unknown;
+  /** results of the index expressions */
+  keys: unknown[];
+}
+
+export const fromItemIndexKey = Symbol('fromItemIndexKey');
 
 export interface Index {
-  expressions: (Calculation | ASTIdentifier)[];
+  expressions: Calculation[];
 
-  reindex(values: Iterable<unknown>): void;
+  reindex(values: Iterable<IndexFillInput>): void;
   /**
    * Can the index be used to match the given expressions?
    * @param expressions - expressions to match against the index

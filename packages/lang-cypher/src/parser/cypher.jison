@@ -354,7 +354,7 @@ node-label-list:
   | node-label-list COLON schema-name { $$ = $1; $$.push($3); } ;
 
 range-literal:
-  STAR int-literal_opt { $$ = [$2]; }
+  STAR int-literal_opt { $$ = [$2, $2]; }
   | STAR int-literal_opt DBLDOT int-literal_opt { $$ = [$2, $4]; } ;
 
 arrow-right:

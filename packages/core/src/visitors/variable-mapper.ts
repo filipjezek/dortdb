@@ -293,6 +293,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   }
   visitIndexScan(operator: plan.IndexScan, ctx: VariableMapperCtx): void {
     this.visitTupleSource(operator, ctx);
+    if (operator.fromItemKey) {
+      operator.fromItemKey = this.translate(operator.fromItemKey, ctx, 1);
+    }
     this.visitCalculation(operator.access, ctx);
   }
 }

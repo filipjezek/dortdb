@@ -12,6 +12,7 @@ import { VariableMapperCtx } from './variable-mapper.js';
 import { retI1, toArray } from '../internal-fns/index.js';
 import { Trie } from '../data-structures/trie.js';
 import { SerializeFn } from '../lang-manager.js';
+import { Queue } from 'mnemonist';
 
 export abstract class Executor
   implements PlanVisitor<Iterable<unknown>, ExecutionContext>
@@ -63,11 +64,45 @@ export abstract class Executor
     return result;
   }
 
-  visitRecursion(
+  *visitRecursion(
     operator: plan.Recursion,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    throw new Error('Method not implemented.');
+    const queue = new Queue<unknown[][]>();
+    const items: unknown[][] = [];
+    const keys = ctx.getKeys(operator);
+    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
+      unknown[]
+    >) {
+      items.push(item);
+      const toQueue = [];
+      for (const key of keys) {
+        toQueue[key] = [item[key]];
+      }
+      queue.enqueue(toQueue);
+    }
+
+    while (queue.size > 0) {
+      const item = queue.dequeue();
+      for (const next of items) {
+        for (const key of keys) {
+          ctx.variableValues[key] = [item[key].at(-1), next[key]];
+        }
+        if (!this.visitCalculation(operator.condition, ctx)[0]) continue;
+
+        const result: unknown[][] = [];
+        for (const key of keys) {
+          result[key] = item[key].concat([next[key]]);
+        }
+        const size = result[keys[0]].length;
+        if (size >= operator.min) {
+          yield ctx.setTuple(result, keys);
+        }
+        if (size < operator.max) {
+          queue.enqueue(result);
+        }
+      }
+    }
   }
   *visitProjection(
     operator: plan.Projection,
@@ -637,14 +672,23 @@ export abstract class Executor
   ): Iterable<unknown> {
     throw new Error('Method not implemented.');
   }
-  visitIndexScan(
+  *visitIndexScan(
     operator: plan.IndexScan,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     const source = this.visitCalculation(operator.access, ctx)[0] as Iterable<
       unknown[]
     >;
-    return this.generateTuplesFromValues(source, operator, ctx);
+    if (operator.fromItemKey) {
+      const key = operator.fromItemKey.parts[0] as number;
+      for (const item of source) {
+        const result: unknown[] = [];
+        result[key] = ctx.variableValues[key] = item;
+        yield result;
+      }
+    } else {
+      yield* this.generateTuplesFromValues(source, operator, ctx);
+    }
   }
 
   protected generateTuplesFromValues(

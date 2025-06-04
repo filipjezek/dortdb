@@ -97,6 +97,7 @@ export class IndexScan extends TupleSource {
     name: ASTIdentifier,
     public index: Index,
     public access: Calculation,
+    public fromItemKey?: ASTIdentifier,
   ) {
     super(lang, name);
     this.access.parent = this;
@@ -126,6 +127,7 @@ export class IndexScan extends TupleSource {
       this.name as ASTIdentifier,
       this.index,
       this.access.clone(),
+      this.fromItemKey,
     );
     res.schema = this.schema.slice();
     res.schemaSet = this.schemaSet.clone();

@@ -7,7 +7,7 @@ import {
   simplifyCalcParams,
 } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
-import { Index, IndexMatchInput } from './index.js';
+import { Index, IndexFillInput, IndexMatchInput } from './index.js';
 
 export class MapIndex implements Index {
   protected map: Map<unknown, unknown[]> = new Map();
@@ -25,7 +25,19 @@ export class MapIndex implements Index {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
   }
 
-  reindex(values: Iterable<unknown>): void {}
+  reindex(values: Iterable<IndexFillInput>): void {
+    for (const {
+      keys: [key],
+      value,
+    } of values) {
+      let keyVals = this.map.get(key);
+      if (!keyVals) {
+        keyVals = [];
+        this.map.set(key, keyVals);
+      }
+      keyVals.push(value);
+    }
+  }
 
   match(
     expressions: IndexMatchInput[],

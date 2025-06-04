@@ -1,4 +1,5 @@
 import {
+  allAttrs,
   DortDBAsFriend,
   ExecutionContext,
   Executor,
@@ -38,9 +39,10 @@ export class SQLExecutor
     ctx: ExecutionContext,
   ) {
     const varmap = ctx.translations.get(operator);
-    const keys = operator.schema.map(
-      (attr) => varmap.get(attr.parts).parts[0] as number,
-    );
+    const keys = operator.schema
+      .filter((x) => x.parts[0] !== allAttrs)
+      .map((attr) => varmap.get(attr.parts).parts[0] as number);
+    const allAttrsKey = varmap.get([allAttrs]).parts[0] as number;
     const accessors = [];
     for (let i = 0; i < keys.length; i++) {
       const ps = operator.schema[i].parts;
@@ -51,6 +53,9 @@ export class SQLExecutor
       const result: unknown[] = [];
       for (const key of keys) {
         result[key] = ctx.variableValues[key] = accessors[key](item);
+      }
+      if (allAttrsKey !== undefined) {
+        result[allAttrsKey] = ctx.variableValues[allAttrsKey] = item;
       }
       yield result;
     }

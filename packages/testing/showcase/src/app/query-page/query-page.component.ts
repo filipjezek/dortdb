@@ -27,7 +27,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
 import { DortDB, MapIndex, PlanOperator, QueryResult } from '@dortdb/core';
-import { Cypher } from '@dortdb/lang-cypher';
+import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
 import { startWith } from 'rxjs';
@@ -199,7 +199,7 @@ export class QueryPageComponent {
         mainLang: formVal.lang,
       });
       console.log(ast);
-      this.plan = this.db.buildPlan(ast.value[0], {
+      this.plan = this.db.buildPlan(ast.at(-1), {
         mainLang: formVal.lang,
       });
       console.log(this.plan);
@@ -244,6 +244,9 @@ export class QueryPageComponent {
     this.db.registerSource(['brandProducts'], this.unibenchData.brandProducts);
     this.db.registerSource(['posts'], this.unibenchData.posts);
     this.db.registerSource(['vendors'], this.unibenchData.vendors);
+
+    this.db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);
+    this.db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);
   }
 
   openHistory() {

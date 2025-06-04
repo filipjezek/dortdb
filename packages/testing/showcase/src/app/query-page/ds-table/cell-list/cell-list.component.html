@@ -1,5 +1,7 @@
 @for (item of value; track item) {
-  <div class="item" [class.object]="isObject(item)">
-    {{ isObject(item) ? (item | json) : item }}
-  </div>
+  @if (isObject(item)) {
+    <pre class="item object">{{ item | json }}</pre>
+  } @else {
+    <div class="item">{{ item }}</div>
+  }
 }

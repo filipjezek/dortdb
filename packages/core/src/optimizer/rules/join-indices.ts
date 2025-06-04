@@ -1,5 +1,7 @@
 import { ASTIdentifier } from '../../ast.js';
+import { Trie } from '../../data-structures/trie.js';
 import { DortDBAsFriend } from '../../db.js';
+import { fromItemIndexKey } from '../../indices/index.js';
 import * as plan from '../../plan/operators/index.js';
 import { IdSet, PlanOperator } from '../../plan/visitor.js';
 import { containsAll } from '../../utils/trie.js';
@@ -12,7 +14,7 @@ export interface JoinIndicesBindings {
   side: 'left' | 'right';
   renameMap?: plan.RenameMap;
   indexMatch: number[];
-  source: plan.TupleSource;
+  source: plan.TupleSource | plan.ItemSource;
 }
 
 export class JoinIndices
@@ -53,6 +55,15 @@ export class JoinIndices
           ).parts,
         ) ?? [];
       const renameMap = this.prepareRenameMap(tRes.projections);
+      let matchingRMap: plan.RenameMap;
+      if (tRes.source instanceof plan.ItemSource) {
+        matchingRMap = renameMap ? renameMap.clone() : new Trie();
+        matchingRMap.set((tRes.source.parent as plan.MapFromItem).key.parts, [
+          fromItemIndexKey,
+        ]);
+      } else {
+        matchingRMap = renameMap;
+      }
 
       for (const index of indices) {
         const match = index.match(
@@ -66,7 +77,7 @@ export class JoinIndices
                   : containingFn.args[j].op,
             };
           }),
-          renameMap,
+          matchingRMap,
         );
         if (match) {
           return {
@@ -123,7 +134,6 @@ export class JoinIndices
             );
             if (containsAll(schema, tdeps)) {
               candidates.push([i, j]);
-              break;
             }
           }
         }
@@ -134,7 +144,7 @@ export class JoinIndices
 
   protected traverseSide(node: PlanOperator): {
     projections: plan.Projection[];
-    source: plan.TupleSource;
+    source: plan.TupleSource | plan.ItemSource;
   } | null {
     const projections: plan.Projection[] = [];
     while (
@@ -142,12 +152,16 @@ export class JoinIndices
         node.constructor as any,
       )
     ) {
-      if (node instanceof plan.Projection) {
+      if (node.constructor === plan.Projection) {
         projections.push(node);
       }
       node = (node as plan.Projection | plan.Selection | plan.OrderBy).source;
     }
-    if (node instanceof plan.TupleSource) {
+    if (node.constructor === plan.MapFromItem) {
+      if ((node as any).source.constructor === plan.ItemSource) {
+        return { projections, source: (node as any).source };
+      }
+    } else if (node.constructor === plan.TupleSource) {
       return { projections, source: node };
     }
     return null;
@@ -166,9 +180,14 @@ export class JoinIndices
     );
     for (const cond of node.conditions) {
       this.renamerVmap[cond.lang].rename(cond, proj.renames);
+      if (cond.original)
+        this.renamerVmap[cond.lang].rename(cond.original, proj.renames);
     }
 
-    const source = bindings.source;
+    const source =
+      bindings.source instanceof plan.TupleSource
+        ? bindings.source
+        : (bindings.source.parent as plan.MapFromItem);
     for (const i of bindings.indexMatch) {
       const cond = node.conditions[i];
       if (bindings.renameMap) {
