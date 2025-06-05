@@ -1,6 +1,11 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { idToCalculation } from '../../../utils/calculation.js';
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
+import {
+  OpOrId,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Selection extends PlanTupleOperator {
@@ -29,7 +34,10 @@ export class Selection extends PlanTupleOperator {
   ): Ret {
     return visitors[this.lang].visitSelection(this, arg);
   }
-  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
+  replaceChild(current: PlanOperator, replacement: OpOrId): void {
+    if (replacement instanceof ASTIdentifier) {
+      replacement = idToCalculation(replacement, this.lang);
+    }
     replacement.parent = this;
     if (current === this.condition) {
       this.condition = replacement as Calculation;

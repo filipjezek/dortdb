@@ -9,7 +9,7 @@ const swcJestConfig = JSON.parse(
 swcJestConfig.swcrc = false;
 
 export default {
-  displayName: '@dortdb/unibench',
+  displayName: '@dortdb/benchmarks',
   preset: '../../../jest.preset.cjs',
   testEnvironment: 'node',
   transform: {

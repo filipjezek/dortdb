@@ -11,7 +11,7 @@ import { ASTIdentifier } from '../../ast.js';
 import { DortDBAsFriend } from '../../db.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { union } from '../../utils/trie.js';
-import { isCalc } from '../../internal-fns/index.js';
+import { isCalc, isId } from '../../internal-fns/index.js';
 import {
   CalculationParams,
   simplifyCalcParams,
@@ -208,7 +208,9 @@ export class MergeProjections
 
   protected getCalcInputDeps(calc: plan.Calculation): IdSet {
     return union(
-      ...calc.args.filter(isCalc).map((inp) => inp.accept(this.tdepsVmap)),
+      ...calc.args
+        .filter((x) => !isId(x))
+        .map((inp) => (inp as PlanOperator).accept(this.tdepsVmap)),
     );
   }
 }

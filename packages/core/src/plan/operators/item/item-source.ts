@@ -59,6 +59,7 @@ export class ItemFnSource implements PlanOperator {
     return visitors[this.lang].visitItemFnSource(this, arg);
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
+    replacement.parent = this;
     const i = this.args.indexOf(current as Calculation);
     this.args[i] = replacement as Calculation;
   }

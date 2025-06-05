@@ -17,7 +17,8 @@
   "nx": {
     "targets": {
       "build": {}
-    }
+    },
+    "name": "@dortdb/benchmarks"
   },
   "devDependencies": {
     "@types/unzipper": "^0.10.10"

@@ -1,7 +1,12 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
+import {
+  OpOrId,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Distinct extends PlanTupleOperator {
@@ -28,15 +33,21 @@ export class Distinct extends PlanTupleOperator {
   ): Ret {
     return visitors[this.lang].visitDistinct(this, arg);
   }
-  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
-    replacement.parent = this;
+  replaceChild(current: PlanOperator, replacement: OpOrId): void {
+    const isId = replacement instanceof ASTIdentifier;
+    if (!isId) {
+      replacement.parent = this;
+    }
     if (this.source === current) {
+      if (isId) throw new Error('Cannot replace source with an identifier');
       this.source = replacement as PlanTupleOperator;
     } else {
-      const index = (this.attrs as Calculation[]).indexOf(
-        current as Calculation,
+      const index = (this.attrs as (Calculation | ASTIdentifier)[]).indexOf(
+        current as Calculation | ASTIdentifier,
       );
-      (this.attrs as Calculation[])[index] = replacement as Calculation;
+      (this.attrs as (Calculation | ASTIdentifier)[])[index] = replacement as
+        | Calculation
+        | ASTIdentifier;
     }
   }
   getChildren(): PlanOperator[] {

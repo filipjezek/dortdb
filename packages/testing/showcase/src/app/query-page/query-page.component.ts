@@ -26,7 +26,13 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
-import { DortDB, MapIndex, PlanOperator, QueryResult } from '@dortdb/core';
+import {
+  datetime,
+  DortDB,
+  MapIndex,
+  PlanOperator,
+  QueryResult,
+} from '@dortdb/core';
 import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
@@ -103,10 +109,10 @@ export class QueryPageComponent {
     optimizer: {
       rules: [],
     },
+    extensions: [datetime],
   });
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
-  private destroyRef = inject(DestroyRef);
   private unibenchS = inject(UnibenchService);
   private allOptimizations = [
     UnnestSubqueries,

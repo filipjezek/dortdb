@@ -18,6 +18,8 @@ export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
   match(node: ProjectionConcat): PatternRuleMatchResult<unknown> {
+    // TODO: why?
+    this.tdepsVmap[node.lang].clearCache();
     const tdeps = node.mapping.accept(this.tdepsVmap);
     if (!containsAny(tdeps, node.source.schema)) {
       return { bindings: {} };

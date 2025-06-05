@@ -4,7 +4,7 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { Extract } from 'unzipper';
 
-export const DATA_DIR = resolve(import.meta.dirname, '../dist/unibench/data');
+export const DATA_DIR = resolve(import.meta.dirname, '../dist/data');
 
 export async function prepareData() {
   if (!(await fs.stat(resolve(DATA_DIR, 'Dataset')).catch(() => {}))) {
@@ -23,7 +23,7 @@ async function downloadData() {
 
   await pipeline(
     Readable.fromWeb(response.body as any),
-    Extract({ path: DATA_DIR })
+    Extract({ path: DATA_DIR }),
   );
   console.log('Unibench data downloaded.');
 }

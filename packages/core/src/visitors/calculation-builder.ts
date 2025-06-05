@@ -15,7 +15,7 @@ import { EqualityChecker } from './equality-checker.js';
 export interface ArgMeta {
   maybeSkipped?: boolean;
   aggregate?: operators.AggregateCall;
-  originalLocations?: [any, number | string][];
+  originalLocations: [any, number | string][];
   usedMultipleTimes?: boolean;
   acceptSequence?: boolean;
 }
@@ -46,9 +46,15 @@ function getMetas(
   obj: any,
   key: string | number,
 ): ArgMeta[] {
-  return a instanceof ASTIdentifier
-    ? [{ originalLocations: [[obj, key]] }]
-    : a.argMeta;
+  if (a instanceof ASTIdentifier) return [{ originalLocations: [[obj, key]] }];
+  for (const m of a.argMeta) {
+    if (m.originalLocations.length === 0) {
+      m.originalLocations.push(
+        'op' in obj[key] ? [obj[key], 'op'] : [obj, key],
+      );
+    }
+  }
+  return a.argMeta;
 }
 function getWhenThenArgs(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
@@ -119,7 +125,7 @@ export function simplifyCalcParams(
         indexes.push(j);
         argMeta[j].usedMultipleTimes = true;
         // original locations set always when the arg is an identifier
-        argMeta[j].originalLocations?.push(
+        argMeta[j].originalLocations.push(
           ...params.argMeta[i].originalLocations,
         );
         argMeta[j].maybeSkipped &&= params.argMeta[i]?.maybeSkipped;
@@ -163,32 +169,41 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   }
 
   protected toItem(op: PlanTupleOperator): operators.MapToItem {
-    return new operators.MapToItem(op.lang, null, op);
+    const oldParent = op.parent;
+    const toItem = new operators.MapToItem(op.lang, null, op);
+    if (oldParent) {
+      oldParent.replaceChild(op, toItem);
+    }
+    return toItem;
   }
 
   visitProjection(operator: operators.Projection): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitSelection(operator: operators.Selection): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitTupleSource(operator: operators.TupleSource): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitItemSource(operator: operators.ItemSource): CalculationParams {
-    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
+    return {
+      args: [operator],
+      impl: assertMaxOne,
+      argMeta: [{ originalLocations: [] }],
+    };
   }
 
   private processItem(item: OpOrId) {
@@ -288,7 +303,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
   visitCalculation(operator: operators.Calculation): CalculationParams {
-    return { args: [operator], impl: ret1, argMeta: [{}] };
+    return {
+      args: [operator],
+      impl: ret1,
+      argMeta: [{ originalLocations: [] }],
+    };
   }
 
   private processWhenThen(item: [OpOrId, OpOrId]) {
@@ -413,14 +432,14 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitJoin(operator: operators.Join): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitProjectionConcat(
@@ -429,38 +448,42 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitMapToItem(operator: operators.MapToItem): CalculationParams {
-    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
+    return {
+      args: [operator],
+      impl: assertMaxOne,
+      argMeta: [{ originalLocations: [] }],
+    };
   }
   visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitOrderBy(operator: operators.OrderBy): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitGroupBy(operator: operators.GroupBy): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitLimit(operator: operators.Limit): CalculationParams {
@@ -471,7 +494,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           : operator,
       ],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitUnion(operator: operators.Union): CalculationParams {
@@ -482,7 +505,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           : operator,
       ],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitIntersection(operator: operators.Intersection): CalculationParams {
@@ -493,7 +516,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           : operator,
       ],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitDifference(operator: operators.Difference): CalculationParams {
@@ -504,35 +527,43 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
           : operator,
       ],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitDistinct(operator: operators.Distinct): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitNullSource(operator: operators.NullSource): CalculationParams {
-    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
+    return {
+      args: [operator],
+      impl: assertMaxOne,
+      argMeta: [{ originalLocations: [] }],
+    };
   }
   visitAggregate(operator: operators.AggregateCall): CalculationParams {
     return {
       args: [operator.fieldName],
       impl: ret1,
       aggregates: [operator],
-      argMeta: [{ aggregate: operator }],
+      argMeta: [{ aggregate: operator, originalLocations: [] }],
     };
   }
   visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
-    return { args: [operator], impl: assertMaxOne, argMeta: [{}] };
+    return {
+      args: [operator],
+      impl: assertMaxOne,
+      argMeta: [{ originalLocations: [] }],
+    };
   }
   visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitQuantifier(operator: operators.Quantifier): CalculationParams {
@@ -542,14 +573,14 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitIndexScan(operator: operators.IndexScan): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitIndexedRecursion(
@@ -558,7 +589,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
 }

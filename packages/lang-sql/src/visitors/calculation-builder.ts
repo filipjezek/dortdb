@@ -10,14 +10,14 @@ export class SQLCalculationBuilder
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitUsing(operator: Using): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
 }

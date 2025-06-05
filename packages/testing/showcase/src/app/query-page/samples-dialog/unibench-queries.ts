@@ -2,12 +2,12 @@ export const unibenchQueries = [
   `-- all data about CUSTOMER
 
 SELECT
-  ROW(customers.*) profile,
-  ARRAY(SELECT ROW(*) FROM orders WHERE personId = customers.id) orders,
-  ARRAY(SELECT ROW(productId, feedback) FROM feedback WHERE customerId = customers.id) feedback,
+  ROW(customers.id AS id, customers.firstName AS firstName, customers.lastName AS lastName) profile,
+  ARRAY(SELECT ROW(orders.OrderId as orderId, orders.Orderline AS orderline, orders.TotalPrice AS totalPrice) FROM orders WHERE PersonId = customers.id) orders,
+  ARRAY(SELECT ROW(feedback.productAsin AS asin, feedback.feedback AS feedback) FROM feedback WHERE personId = customers.id) feedback,
   ARRAY(
     LANG cypher
-    MATCH ({id: customers.id})-[:hasCreated]->(post)
+    MATCH ({id: customers.id})<-[:hasCreator]-(post)
     RETURN post
   ) posts
 FROM customers

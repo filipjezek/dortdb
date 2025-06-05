@@ -42,9 +42,21 @@ export class Calculation implements PlanOperator {
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
-    const arr = current instanceof AggregateCall ? this.aggregates : this.args;
-    const idx = arr.indexOf(current);
-    arr[idx] = replacement;
+    let idx: number;
+    if (current instanceof AggregateCall) {
+      idx = this.aggregates.indexOf(current);
+      this.aggregates[idx] = replacement as AggregateCall;
+      idx = this.argMeta.findIndex((m) => m.aggregate === current);
+      this.argMeta[idx].aggregate = replacement as AggregateCall;
+    } else {
+      idx = this.args.indexOf(current);
+      this.args[idx] = replacement;
+    }
+    const locs = this.argMeta[idx].originalLocations;
+    locs[0][0][locs[0][1]] = replacement;
+    for (let i = 1; i < locs.length; i++) {
+      locs[i][0][locs[i][1]] = replacement.clone();
+    }
   }
   getChildren(): PlanOperator[] {
     const res: PlanOperator[] = [];

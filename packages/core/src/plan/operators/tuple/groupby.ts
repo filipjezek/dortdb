@@ -1,6 +1,7 @@
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
+  OpOrId,
   PlanOperator,
   PlanTupleOperator,
   PlanVisitor,
@@ -45,15 +46,22 @@ export class GroupBy extends PlanTupleOperator {
   ): Ret {
     return visitors[this.lang].visitGroupBy(this, arg);
   }
-  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
-    replacement.parent = this;
+  replaceChild(current: PlanOperator, replacement: OpOrId): void {
+    const isId = replacement instanceof ASTIdentifier;
+    if (!isId) {
+      replacement.parent = this;
+    }
     if (current === this.source) {
+      if (isId) throw new Error('Cannot replace source with an identifier');
       this.source = replacement as PlanTupleOperator;
     } else if (current instanceof AggregateCall) {
+      if (isId) throw new Error('Cannot replace aggregate with an identifier');
       const idx = this.aggs.indexOf(current);
       this.aggs[idx] = replacement as AggregateCall;
     } else {
-      this.keys.find((k) => k[0] === current)[0] = replacement as Calculation;
+      this.keys.find((k) => k[0] === current)[0] = replacement as
+        | Calculation
+        | ASTIdentifier;
     }
   }
   getChildren(): PlanOperator[] {

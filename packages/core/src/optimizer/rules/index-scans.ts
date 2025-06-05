@@ -37,8 +37,11 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
       index: null,
       accessor: null,
     };
+    if (node.condition.original instanceof FnCall) {
+      bindings.selections.push(node as Selection);
+    }
     while (node.source.constructor === Selection) {
-      if (node.condition.original instanceof FnCall) {
+      if ((node.source as Selection).condition.original instanceof FnCall) {
         bindings.selections.push(node.source as Selection);
       }
       node = node.source as Selection;

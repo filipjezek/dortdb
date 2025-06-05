@@ -142,6 +142,9 @@ export class DsTableComponent implements OnChanges {
     if (value instanceof Node) {
       return ColType.node;
     }
+    if (value instanceof Date) {
+      return ColType.string;
+    }
     if (value === null) {
       return ColType.object;
     }

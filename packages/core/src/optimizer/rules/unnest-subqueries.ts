@@ -1,10 +1,24 @@
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 import * as plan from '../../plan/operators/index.js';
-import { PlanOperator, PlanTupleOperator } from '../../plan/visitor.js';
+import {
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../plan/visitor.js';
 import { ASTIdentifier } from '../../ast.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { DortDBAsFriend } from '../../db.js';
-import { isNotNull, toPair } from '../../internal-fns/index.js';
+import {
+  assertMaxOne,
+  isNotNull,
+  ret1,
+  toPair,
+} from '../../internal-fns/index.js';
+import {
+  CalculationParams,
+  simplifyCalcParams,
+} from '../../visitors/calculation-builder.js';
+import { EqualityChecker } from '../../visitors/equality-checker.js';
 
 export interface UnnestSubqueriesBindings {
   subqueries: [plan.Calculation, number[]][];
@@ -28,9 +42,13 @@ export class UnnestSubqueries
   ];
 
   protected tdepsVmap: Record<string, TransitiveDependencies>;
+  protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  protected eqCheckers: Record<string, EqualityChecker>;
 
   constructor(protected db: DortDBAsFriend) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
+    this.calcBuilders = this.db.langMgr.getVisitorMap('calculationBuilder');
+    this.eqCheckers = this.db.langMgr.getVisitorMap('equalityChecker');
   }
 
   match(
@@ -71,9 +89,7 @@ export class UnnestSubqueries
           newAttrCounter++ + '',
         ]);
         const subq = calc.args[i] as PlanOperator;
-        calc.args[i] = newAttr;
-        calc.argMeta[i] = undefined;
-        calc.dependencies.add(newAttr.parts);
+        this.removeSubq(calc, i, newAttr);
 
         const projConcat = new plan.ProjectionConcat(
           node.lang,
@@ -88,6 +104,37 @@ export class UnnestSubqueries
       }
     }
     return new plan.Projection(node.lang, restrictedAttrs, node);
+  }
+
+  protected removeSubq(
+    calc: plan.Calculation,
+    argI: number,
+    newAttr: ASTIdentifier,
+  ): void {
+    if (calc.impl === assertMaxOne) {
+      (
+        calc.parent as
+          | plan.Projection
+          | plan.Selection
+          | plan.GroupBy
+          | plan.Distinct
+          | plan.OrderBy
+      ).replaceChild(calc, newAttr);
+    } else {
+      const toArr = (val: any) => [val];
+      calc.replaceChild(
+        calc.args[argI] as plan.Calculation,
+        new plan.FnCall(calc.lang, [newAttr], toArr),
+      );
+      let newParams = calc.original.accept(this.calcBuilders);
+      newParams = simplifyCalcParams(newParams, this.eqCheckers, calc.lang);
+      calc.impl = newParams.impl;
+      calc.aggregates = newParams.aggregates;
+      calc.argMeta = newParams.argMeta;
+      calc.dependencies.add(newAttr.parts);
+      calc.literal = newParams.literal;
+      calc.args = newParams.args;
+    }
   }
 
   protected isGuaranteedValue(node: PlanOperator): boolean {

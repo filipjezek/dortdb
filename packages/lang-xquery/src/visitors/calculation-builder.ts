@@ -10,14 +10,14 @@ export class XQueryCalculationBuilder
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
   visitProjectionSize(operator: ProjectionSize): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
-      argMeta: [{}],
+      argMeta: [{ originalLocations: [] }],
     };
   }
 }

@@ -53,6 +53,7 @@ export class AggregateCall implements PlanOperator {
     return visitors[this.lang].visitAggregate(this, arg);
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
+    replacement.parent = this;
     for (let i = 0; i < this.args.length; i++) {
       if (this.args[i] === current) {
         this.args[i] = replacement as Calculation;

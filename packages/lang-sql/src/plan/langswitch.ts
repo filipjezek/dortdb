@@ -27,7 +27,9 @@ export class LangSwitch extends PlanTupleOperator {
   replaceChild(
     current: PlanTupleOperator,
     replacement: PlanTupleOperator,
-  ): void {}
+  ): void {
+    throw new Error('Method not implemented.');
+  }
   override getChildren(): PlanOperator[] {
     return [];
   }

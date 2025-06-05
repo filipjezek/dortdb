@@ -7,3 +7,4 @@ export * from './visitors/index.js';
 export * from './errors.js';
 export * from './indices/index.js';
 export * from './execution-context.js';
+export { datetime } from './extensions/datetime/extension.js';

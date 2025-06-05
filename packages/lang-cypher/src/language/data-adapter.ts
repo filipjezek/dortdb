@@ -39,8 +39,8 @@ export interface CypherDataAdaper<
 
   isConnected(
     graph: GraphType,
-    edge: EdgeType,
     node: NodeType,
+    edge: EdgeType,
     direction: EdgeDirection,
   ): boolean;
   hasLabels(graph: GraphType, node: NodeType, labels: string[]): boolean;
@@ -168,8 +168,8 @@ export class GraphologyDataAdapter
 
   isConnected(
     graph: GraphologyGraph,
-    edge: GraphologyEdge,
     node: GraphologyNode,
+    edge: GraphologyEdge,
     direction: EdgeDirection,
   ): boolean {
     const edgeId = edge[nodeOrEdgeId];

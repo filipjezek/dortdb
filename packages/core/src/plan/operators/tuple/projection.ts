@@ -1,6 +1,7 @@
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
+  OpOrId,
   PlanOperator,
   PlanTupleOperator,
   PlanVisitor,
@@ -51,12 +52,20 @@ export class Projection extends PlanTupleOperator {
   ): Ret {
     return visitors[this.lang].visitProjection(this, arg);
   }
-  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
-    replacement.parent = this;
+  replaceChild(current: PlanOperator, replacement: OpOrId): void {
+    const isId = replacement instanceof ASTIdentifier;
+    if (!isId) {
+      replacement.parent = this;
+    }
     if (current === this.source) {
+      if (isId) {
+        throw new Error('cannot replace source with identifier');
+      }
       this.source = replacement as PlanTupleOperator;
     } else {
-      this.attrs.find((x) => x[0] === current)[0] = replacement as Calculation;
+      this.attrs.find((x) => x[0] === current)[0] = replacement as
+        | Calculation
+        | ASTIdentifier;
     }
   }
   getChildren(): PlanOperator[] {

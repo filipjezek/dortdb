@@ -2,7 +2,12 @@ import { ASTIdentifier } from '../../../ast.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
+import {
+  OpOrId,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export function getKey(o: Order) {
@@ -35,13 +40,20 @@ export class OrderBy extends PlanTupleOperator {
   ): Ret {
     return visitors[this.lang].visitOrderBy(this, arg);
   }
-  replaceChild(current: PlanOperator, replacement: PlanOperator): void {
-    replacement.parent = this;
+  replaceChild(current: PlanOperator, replacement: OpOrId): void {
+    const isId = replacement instanceof ASTIdentifier;
+    if (!isId) {
+      replacement.parent = this;
+    }
     if (current === this.source) {
+      if (isId) {
+        throw new Error('cannot replace source with an identifier');
+      }
       this.source = replacement as PlanTupleOperator;
     } else {
-      this.orders.find((o) => o.key === current).key =
-        replacement as Calculation;
+      this.orders.find((o) => o.key === current).key = replacement as
+        | Calculation
+        | ASTIdentifier;
     }
   }
   getChildren(): PlanOperator[] {
