@@ -584,7 +584,7 @@ export class XQueryLogicalPlanBuilder
     ) {
       return new TreeJoin(
         'xquery',
-        new plan.Calculation('xquery', ret1, [res], [{ acceptSequence: true }]),
+        new plan.Calculation('xquery', ret1, [res], [{ acceptSequence: true, originalLocations: [] }]),
         args.src ?? new plan.NullSource('xquery'),
         false,
       );
