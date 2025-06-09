@@ -8,17 +8,10 @@ import {
 import { ASTIdentifier } from '../../ast.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { DortDBAsFriend } from '../../db.js';
-import {
-  assertMaxOne,
-  isNotNull,
-  ret1,
-  toPair,
-} from '../../internal-fns/index.js';
-import {
-  CalculationParams,
-  simplifyCalcParams,
-} from '../../visitors/calculation-builder.js';
+import { assertMaxOne, isNotNull, toPair } from '../../internal-fns/index.js';
+import { simplifyCalcParams } from '../../utils/calculation.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
+import { CalculationParams } from '../../visitors/calculation-builder.js';
 
 export interface UnnestSubqueriesBindings {
   subqueries: [plan.Calculation, number[]][];
@@ -57,7 +50,7 @@ export class UnnestSubqueries
     const calcs = node
       .getChildren()
       .map((child) => {
-        if (!(child instanceof plan.Calculation)) return null;
+        if (!(child instanceof plan.Calculation && child.original)) return null;
         const subqs = child.args
           .map((arg, i) => {
             if (arg instanceof ASTIdentifier) return null;

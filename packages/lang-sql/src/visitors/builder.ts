@@ -17,7 +17,6 @@ import {
   IdSet,
   toInfer,
   DortDBAsFriend,
-  simplifyCalcParams,
   EqualityChecker,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
@@ -30,6 +29,7 @@ import { LangSwitch as PlanLangSwitch } from '../plan/langswitch.js';
 import {
   assertCalcLiteral,
   exprToSelection,
+  intermediateToCalc,
   overrideSource,
 } from '@dortdb/core/utils';
 import { ret1 } from '@dortdb/core/internal-fns';
@@ -96,17 +96,7 @@ export class SQLLogicalPlanBuilder
   private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
     const intermediate = node.accept(this);
-    let calcParams = intermediate.accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'sql');
-    return new plan.Calculation(
-      'sql',
-      calcParams.impl,
-      calcParams.args,
-      calcParams.argMeta,
-      intermediate,
-      calcParams.aggregates,
-      calcParams.literal,
-    );
+    return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
 
   visitStringLiteral(node: AST.ASTStringLiteral): PlanOperator {

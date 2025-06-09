@@ -2,10 +2,8 @@ import { DortDBAsFriend } from '../db.js';
 import { eq } from '../operators/relational.js';
 import { Calculation, FnCall, RenameMap } from '../plan/operators/index.js';
 import { PlanVisitor } from '../plan/visitor.js';
-import {
-  CalculationParams,
-  simplifyCalcParams,
-} from '../visitors/calculation-builder.js';
+import { intermediateToCalc } from '../utils/calculation.js';
+import { CalculationParams } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
 import { Index, IndexFillInput, IndexMatchInput } from './index.js';
 
@@ -72,16 +70,10 @@ export class MapIndex implements Index {
       [otherArg],
       (value) => this.map.get(value) ?? [],
     );
-    let calcParams = accessorFnCall.accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, eqFn.lang);
-    return new Calculation(
-      eqFn.lang,
-      calcParams.impl,
-      calcParams.args,
-      calcParams.argMeta,
+    return intermediateToCalc(
       accessorFnCall,
-      calcParams.aggregates,
-      calcParams.literal,
+      this.calcBuilders,
+      this.eqCheckers,
     );
   }
 }

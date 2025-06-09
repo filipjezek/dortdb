@@ -11,12 +11,10 @@ import { ASTIdentifier } from '../../ast.js';
 import { DortDBAsFriend } from '../../db.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { union } from '../../utils/trie.js';
-import { isCalc, isId } from '../../internal-fns/index.js';
-import {
-  CalculationParams,
-  simplifyCalcParams,
-} from '../../visitors/calculation-builder.js';
+import { isId } from '../../internal-fns/index.js';
+import { CalculationParams } from '../../visitors/calculation-builder.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
+import { simplifyCalcParams } from '../../utils/calculation.js';
 
 export type MergeProjectionsBindings = plan.Projection[];
 export type ProjMap = Trie<

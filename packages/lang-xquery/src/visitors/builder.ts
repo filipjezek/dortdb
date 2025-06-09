@@ -19,7 +19,6 @@ import {
   DortDBAsFriend,
   Fn,
   AggregateFn,
-  simplifyCalcParams,
   EqualityChecker,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
@@ -33,8 +32,10 @@ import { ProjectionSize } from '../plan/projection-size.js';
 import { collect } from '@dortdb/core/aggregates';
 import {
   exprToSelection,
+  intermediateToCalc,
   resolveArgs,
   schemaToTrie,
+  simplifyCalcParams,
   union,
 } from '@dortdb/core/utils';
 import { unwind } from '@dortdb/core/fns';
@@ -144,17 +145,7 @@ export class XQueryLogicalPlanBuilder
       if (skipVars) return node;
     }
     const intermediate = node.accept(this, args);
-    let calcParams = intermediate.accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
-    return new plan.Calculation(
-      'xquery',
-      calcParams.impl,
-      calcParams.args,
-      calcParams.argMeta,
-      intermediate,
-      calcParams.aggregates,
-      calcParams.literal,
-    );
+    return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
 
   private atomize(item: unknown) {
@@ -164,17 +155,7 @@ export class XQueryLogicalPlanBuilder
   private maybeToCalc(item: ASTNode, args: DescentArgs) {
     const res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
-      let params = res.accept(this.calcBuilders);
-      params = simplifyCalcParams(params, this.eqCheckers, 'xquery');
-      return new plan.Calculation(
-        'xquery',
-        params.impl,
-        params.args,
-        params.argMeta,
-        res,
-        params.aggregates,
-        params.literal,
-      );
+      return intermediateToCalc(res, this.calcBuilders, this.eqCheckers);
     }
     return res;
   }
@@ -559,17 +540,7 @@ export class XQueryLogicalPlanBuilder
     }
     let res = first.accept(this, args);
     if (plan.CalcIntermediate in res) {
-      let calcParams = res.accept(this.calcBuilders);
-      calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
-      res = new plan.Calculation(
-        'xquery',
-        calcParams.impl,
-        calcParams.args,
-        calcParams.argMeta,
-        res,
-        calcParams.aggregates,
-        calcParams.literal,
-      );
+      res = intermediateToCalc(res, this.calcBuilders, this.eqCheckers);
       return new TreeJoin(
         'xquery',
         res as plan.Calculation,
@@ -584,7 +555,12 @@ export class XQueryLogicalPlanBuilder
     ) {
       return new TreeJoin(
         'xquery',
-        new plan.Calculation('xquery', ret1, [res], [{ acceptSequence: true, originalLocations: [] }]),
+        new plan.Calculation(
+          'xquery',
+          ret1,
+          [res],
+          [{ acceptSequence: true, originalLocations: [] }],
+        ),
         args.src ?? new plan.NullSource('xquery'),
         false,
       );
@@ -640,24 +616,20 @@ export class XQueryLogicalPlanBuilder
     dargs: DescentArgs,
   ): PlanTupleOperator {
     const calcCtx = union(dargs.ctx, dargs.src.schemaSet);
-    const calcParams = node.exprs.map((x) =>
-      this.toCalcParams(x, { ctx: calcCtx, inferred: dargs.inferred }),
+    const args = node.exprs.map((x) =>
+      this.processFnArg(x, { ctx: calcCtx, inferred: dargs.inferred }),
     );
-    const args = calcParams.flatMap(getArgs);
     args.push(POS);
-    const metas = calcParams.flatMap(getMeta);
-    metas.push(undefined);
-    const calc = new plan.Calculation(
-      'xquery',
-      (...args) => {
+    const calc = intermediateToCalc(
+      new plan.FnCall('xquery', args, (...args) => {
         const pos = args.at(-1);
-        const res = resolveArgs(args, calcParams).flat();
-        return res.length === 1 && typeof res[0] === 'number'
-          ? res[0] === pos
-          : toBool.convert(res);
-      },
-      args,
-      metas,
+        const actualArgs = args.slice(0, -1);
+        return actualArgs.length === 1 && typeof actualArgs[0] === 'number'
+          ? actualArgs[0] === pos
+          : toBool.convert(actualArgs);
+      }),
+      this.calcBuilders,
+      this.eqCheckers,
     );
     return new plan.Selection('xquery', calc, dargs.src);
   }

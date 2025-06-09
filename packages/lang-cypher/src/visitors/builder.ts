@@ -16,7 +16,6 @@ import {
   PlanOperator,
   PlanTupleOperator,
   PlanVisitor,
-  simplifyCalcParams,
   toInfer,
   UnsupportedError,
 } from '@dortdb/core';
@@ -33,6 +32,7 @@ import { ret1, toPair } from '@dortdb/core/internal-fns';
 import {
   assertCalcLiteral,
   exprToSelection,
+  intermediateToCalc,
   schemaToTrie,
   union,
 } from '@dortdb/core/utils';
@@ -112,20 +112,7 @@ export class CypherLogicalPlanBuilder
     node = this.maybeId(node, args);
     if (node instanceof ASTIdentifier) return infer(node, args);
     const intermediate = node.accept(this, args);
-    return this.intermediateToCalc(intermediate);
-  }
-  private intermediateToCalc(op: PlanOperator) {
-    let calcParams = op.accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, op.lang);
-    return new plan.Calculation(
-      'cypher',
-      calcParams.impl,
-      calcParams.args,
-      calcParams.argMeta,
-      op,
-      calcParams.aggregates,
-      calcParams.literal,
-    );
+    return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
   private processFnArg(
     item: ASTNode,
@@ -272,6 +259,9 @@ export class CypherLogicalPlanBuilder
     args: DescentArgs,
   ): PlanOperator {
     let res = node.query.accept(this, args) as PlanOperator;
+    if (!(res instanceof PlanTupleOperator)) {
+      res = new plan.MapFromItem('cypher', toId('exists'), res);
+    }
     res = new plan.Limit('cypher', 0, 1, res);
     const col = toId('count');
     res = new plan.GroupBy(
@@ -395,7 +385,7 @@ export class CypherLogicalPlanBuilder
         return isMatch(v, p);
       },
     );
-    const calc = this.intermediateToCalc(fn);
+    const calc = intermediateToCalc(fn, this.calcBuilders, this.eqCheckers);
     return new plan.Selection('cypher', calc, src);
   }
 
@@ -483,7 +473,11 @@ export class CypherLogicalPlanBuilder
       ],
       this.dataAdapter.isConnected,
     );
-    return new plan.Selection('cypher', this.intermediateToCalc(fnCall), res);
+    return new plan.Selection(
+      'cypher',
+      intermediateToCalc(fnCall, this.calcBuilders, this.eqCheckers),
+      res,
+    );
   }
 
   visitPatternElChain(
@@ -587,7 +581,11 @@ export class CypherLogicalPlanBuilder
         ],
         this.dataAdapter.hasLabels,
       );
-      res = new plan.Selection('cypher', this.intermediateToCalc(fncall), res);
+      res = new plan.Selection(
+        'cypher',
+        intermediateToCalc(fncall, this.calcBuilders, this.eqCheckers),
+        res,
+      );
     }
     if (node.props) {
       res = this.patternToSelection(res, args.variable, node, args);
@@ -621,7 +619,11 @@ export class CypherLogicalPlanBuilder
         ],
         this.dataAdapter.hasAnyType,
       );
-      res = new plan.Selection('cypher', this.intermediateToCalc(fncall), res);
+      res = new plan.Selection(
+        'cypher',
+        intermediateToCalc(fncall, this.calcBuilders, this.eqCheckers),
+        res,
+      );
     }
     if (node.props) {
       res = this.patternToSelection(res, args.variable, node, args);

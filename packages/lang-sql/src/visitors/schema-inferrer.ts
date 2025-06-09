@@ -60,10 +60,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   visitProjection(operator: plan.Projection, ctx: IdSet): IdSet {
     // additional appended attrs through upper operators
     const external = schemaToTrie(operator.schema.slice(operator.attrs.length));
-    console.log(
-      'external for projection',
-      operator.schema.slice(operator.attrs.length).map((x) => x.parts),
-    );
     operator.removeFromSchema(external);
 
     ctx = union(ctx, operator.source.schema);
@@ -125,13 +121,17 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     );
     parent.replaceChild(operator, proj);
     if (keepSchemaRef) {
+      operator.schema = operator.schema.filter(
+        (x) => !toRemove.find((y) => x.equals(y)),
+      );
+      operator.schemaSet = schemaToTrie(operator.schema);
       const newSchema = proj.schema;
-      console.log(Array.from(newSchema, (x) => x.parts));
       proj.schema = parent.schema;
       proj.clearSchema();
       proj.addToSchema(newSchema);
+    } else {
+      operator.removeFromSchema(toRemove);
     }
-    operator.removeFromSchema(toRemove);
   }
 
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
@@ -141,7 +141,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     let hasRenamedAttrs = false;
     for (const attr of operator.schema.slice()) {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
-        console.log('Removing attr', attr.parts);
         operator.removeFromSchema(attr);
         external.add(attr.parts);
       } else if (attr.parts.at(-1) === toInfer || attr.parts[0] === allAttrs) {
@@ -158,10 +157,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       operator.name = operator.name[0];
     }
 
-    console.log(
-      'external',
-      Array.from(external, (x) => x.join('.')),
-    );
     return external;
   }
   visitIndexScan(operator: plan.IndexScan, ctx: IdSet): IdSet {

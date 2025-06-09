@@ -48,3 +48,8 @@ export function assertMaxOne<T>(vals: T[]): T {
   if (vals.length > 1) throw new Error('More than one element in sequence');
   return vals[0];
 }
+
+type RecursiveArray<T> = T[] | RecursiveArray<T>[];
+export function flat<T>(input: RecursiveArray<T>): T[] {
+  return (input as T[]).flat(Infinity) as T[];
+}

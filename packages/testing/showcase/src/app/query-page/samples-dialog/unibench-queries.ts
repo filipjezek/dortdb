@@ -22,7 +22,7 @@ WHERE EXISTS (
 ) AND EXISTS (
   SELECT 1 FROM orders
   WHERE PersonId = customers.id AND EXISTS (
-    SELECT 1 FROM unwind(orders.Orderline) orderline WHERE ProductId = :product
+    SELECT 1 FROM unwind(orders.Orderline) orderline WHERE productId = :product
   )
 )`,
   `-- customers which posted about PRODUCT and left negative feedback

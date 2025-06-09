@@ -7,11 +7,9 @@ import {
   PlanTupleOperator,
   PlanVisitor,
 } from '../plan/visitor.js';
-import {
-  CalculationParams,
-  simplifyCalcParams,
-} from '../visitors/calculation-builder.js';
+import { CalculationParams } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
+import { simplifyCalcParams } from './calculation.js';
 
 /**
  * Converts a calculation intermediate expression into possibly multiple chained selections.

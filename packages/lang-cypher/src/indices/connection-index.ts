@@ -9,11 +9,11 @@ import {
   IndexMatchInput,
   PlanOperator,
   PlanVisitor,
-  simplifyCalcParams,
 } from '@dortdb/core';
 import { Calculation, FnCall, PlanOpAsArg, RenameMap } from '@dortdb/core/plan';
 import { CypherDataAdaper, EdgeDirection } from '../language/data-adapter.js';
 import { CypherLanguage } from '../language/language.js';
+import { intermediateToCalc } from '@dortdb/core/utils';
 
 export class ConnectionIndex implements Index {
   protected eqCheckers: Record<string, EqualityChecker>;
@@ -83,14 +83,6 @@ export class ConnectionIndex implements Index {
             return results;
           },
     );
-    let calcParams = fnCall.accept(this.calcBuilders);
-    calcParams = simplifyCalcParams(calcParams, this.eqCheckers, fnCall.lang);
-    return new Calculation(
-      fnCall.lang,
-      calcParams.impl,
-      calcParams.args,
-      calcParams.argMeta,
-      fnCall,
-    );
+    return intermediateToCalc(fnCall, this.calcBuilders, this.eqCheckers);
   }
 }
