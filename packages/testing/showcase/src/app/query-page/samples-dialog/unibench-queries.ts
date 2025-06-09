@@ -14,15 +14,15 @@ FROM customers
 WHERE id = :customer`,
   `-- customers which bought PRODUCT and posted about it
 
-SELECT * FROM customers
+SELECT id, firstName FROM customers
 WHERE EXISTS (
   LANG cypher
-  MATCH ({id: customers.id})-[:hasCreated]->(post)-[:hasTag]->({id: $product})
+  MATCH (:person {id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: $product})
   RETURN 1
 ) AND EXISTS (
   SELECT 1 FROM orders
-  WHERE personId = customers.id AND EXISTS (
-    SELECT 1 FROM unwind(orders.orderLine) orderline WHERE productId = :product
+  WHERE PersonId = customers.id AND EXISTS (
+    SELECT 1 FROM unwind(orders.Orderline) orderline WHERE ProductId = :product
   )
 )`,
   `-- customers which posted about PRODUCT and left negative feedback

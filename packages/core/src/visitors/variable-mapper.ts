@@ -128,9 +128,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     ctx: VariableMapperCtx,
   ): void {
     operator.left.accept(this.vmap, ctx);
+    const left = ctx.scopeStack.pop();
     operator.right.accept(this.vmap, ctx);
     const right = ctx.scopeStack.pop();
-    const left = ctx.scopeStack.pop();
     const sum = this.union(right, left);
     ctx.scopeStack.push(sum);
     ctx.translations.set(operator, sum);
@@ -255,15 +255,12 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     this.setTranslations(operator, ctx);
   }
   visitItemFnSource(operator: plan.ItemFnSource, ctx: VariableMapperCtx): void {
-    ctx.scopeStack.push(new Trie());
-    this.setTranslations(operator, ctx);
     for (let i = 0; i < operator.args.length; i++) {
       const arg = operator.args[i];
       if (arg instanceof ASTIdentifier) {
         operator.args[i] = this.translate(arg, ctx);
       } else {
         this.visitCalculation(arg, ctx);
-        ctx.currentIndex -= ctx.scopeStack.pop().size;
       }
     }
   }
@@ -280,7 +277,6 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
         operator.args[i] = this.translate(arg, ctx);
       } else {
         this.visitCalculation(arg, ctx);
-        ctx.currentIndex -= ctx.scopeStack.pop().size;
       }
     }
     for (const attr of operator.schema) {

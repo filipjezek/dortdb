@@ -7,8 +7,7 @@ import {
 import * as plan from '../plan/operators/index.js';
 import { union } from '../utils/trie.js';
 import { isCalc, isId, retI0 } from '../internal-fns/index.js';
-import { allAttrs, ASTIdentifier } from '../ast.js';
-import { Trie } from '../data-structures/trie.js';
+import { allAttrs } from '../ast.js';
 
 let tdepsCache = new WeakMap<PlanOperator, IdSet>();
 
@@ -18,10 +17,11 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
   }
 
   protected onlyExternal(deps: IdSet, op: PlanTupleOperator) {
+    const clone = deps.clone();
     for (const id of op.schema) {
-      deps.delete(id.parts);
+      clone.delete(id.parts);
     }
-    return deps;
+    return clone;
   }
   protected processNode(node: PlanOperator) {
     return node.accept(this.vmap);

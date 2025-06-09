@@ -103,6 +103,7 @@ export class UnnestSubqueries
         node.addToSchema(newAttr);
       }
     }
+    tdeps.clearCache();
     return new plan.Projection(node.lang, restrictedAttrs, node);
   }
 
@@ -111,6 +112,9 @@ export class UnnestSubqueries
     argI: number,
     newAttr: ASTIdentifier,
   ): void {
+    this.tdepsVmap[calc.lang].invalidateCacheUpstream(
+      calc.args[argI] as PlanOperator,
+    );
     if (calc.impl === assertMaxOne) {
       (
         calc.parent as

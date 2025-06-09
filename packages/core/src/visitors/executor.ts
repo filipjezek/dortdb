@@ -240,7 +240,7 @@ export abstract class Executor
     const renameRightKeys = ctx.getRenames(operator.right, operator);
 
     for (const leftItem of left) {
-      for (const rightItem of right) {
+      for (const rightItem of this.validateSingleValue(operator, right)) {
         const result: unknown[] = [];
         for (const key of leftKeys) {
           result[key] = leftItem[key];
@@ -254,11 +254,41 @@ export abstract class Executor
   }
   *visitJoin(operator: plan.Join, ctx: ExecutionContext): Iterable<unknown> {
     if (!operator.leftOuter && !operator.rightOuter) {
-      for (const item of this.visitCartesianProduct(operator, ctx)) {
-        const passes = operator.conditions.every(
-          (c) => this.visitCalculation(c, ctx)[0],
+      const rightItems = toArray(
+        operator.right.accept(this.vmap, ctx),
+      ) as unknown[][];
+      const rightKeys = ctx.getKeys(operator.right);
+      const leftItems = operator.left.accept(this.vmap, ctx) as Iterable<
+        unknown[]
+      >;
+      const leftKeys = ctx.getKeys(operator.left);
+      const renameRightKeys = ctx.getRenames(operator.right, operator);
+      const resultKeys = ctx.getKeys(operator);
+
+      for (const leftItem of leftItems) {
+        yield* this.validateSingleValue(
+          operator,
+          Iterator.from(rightItems)
+            .map((rightItem) => {
+              const result: unknown[] = [];
+              for (const key of leftKeys) {
+                result[key] = leftItem[key];
+              }
+              for (let i = 0; i < rightKeys.length; i++) {
+                result[renameRightKeys[i]] = rightItem[rightKeys[i]];
+              }
+              ctx.setTuple(result, resultKeys);
+              if (
+                operator.conditions.every(
+                  (c) => this.visitCalculation(c, ctx)[0],
+                )
+              ) {
+                return result;
+              }
+              return undefined;
+            })
+            .filter((x) => x),
         );
-        if (passes) yield item;
       }
     } else if (operator.leftOuter && !operator.rightOuter) {
       yield* this.visitLeftJoin(
@@ -296,20 +326,26 @@ export abstract class Executor
 
     for (const leftItem of leftItems) {
       let joined = false;
-      for (const rightItem of rightItems) {
-        const result: unknown[] = [];
-        for (const key of leftKeys) {
-          result[key] = leftItem[key];
-        }
-        for (let i = 0; i < rightKeys.length; i++) {
-          result[renameRightKeys[i]] = rightItem[rightKeys[i]];
-        }
-        ctx.setTuple(result, resultKeys);
-        if (conditions.every((c) => this.visitCalculation(c, ctx)[0])) {
-          joined = true;
-          yield result;
-        }
-      }
+      yield* this.validateSingleValue(
+        op,
+        Iterator.from(rightItems)
+          .map((rightItem) => {
+            const result: unknown[] = [];
+            for (const key of leftKeys) {
+              result[key] = leftItem[key];
+            }
+            for (let i = 0; i < rightKeys.length; i++) {
+              result[renameRightKeys[i]] = rightItem[rightKeys[i]];
+            }
+            ctx.setTuple(result, resultKeys);
+            if (conditions.every((c) => this.visitCalculation(c, ctx)[0])) {
+              joined = true;
+              return result;
+            }
+            return undefined;
+          })
+          .filter((x) => x),
+      );
 
       if (!joined) {
         const result: unknown[] = [];
@@ -337,23 +373,29 @@ export abstract class Executor
 
     for (const leftItem of left) {
       let joined = false;
-      for (const rightItem of right) {
-        const result: unknown[] = [];
-        for (const key of leftKeys) {
-          result[key] = leftItem[key];
-        }
-        for (let i = 0; i < rightKeys.length; i++) {
-          result[renameRightKeys[i]] = rightItem[rightKeys[i]];
-        }
-        ctx.setTuple(result, resultKeys);
-        if (
-          operator.conditions.every((c) => this.visitCalculation(c, ctx)[0])
-        ) {
-          joined = true;
-          rightSet.delete(rightItem);
-          yield result;
-        }
-      }
+      yield* this.validateSingleValue(
+        operator,
+        Iterator.from(right)
+          .map((rightItem) => {
+            const result: unknown[] = [];
+            for (const key of leftKeys) {
+              result[key] = leftItem[key];
+            }
+            for (let i = 0; i < rightKeys.length; i++) {
+              result[renameRightKeys[i]] = rightItem[rightKeys[i]];
+            }
+            ctx.setTuple(result, resultKeys);
+            if (
+              operator.conditions.every((c) => this.visitCalculation(c, ctx)[0])
+            ) {
+              joined = true;
+              rightSet.delete(rightItem);
+              return result;
+            }
+            return undefined;
+          })
+          .filter((x) => x),
+      );
 
       if (!joined) {
         const result: unknown[] = [];
@@ -423,6 +465,22 @@ export abstract class Executor
       } while (!(mappedItem = mapped.next()).done);
     }
   }
+
+  protected validateSingleValue<T>(
+    operator: { validateSingleValue: boolean },
+    items: Iterable<T>,
+  ): Iterable<T> {
+    if (operator.validateSingleValue) {
+      const iter = items[Symbol.iterator]();
+      const value = iter.next().value;
+      if (!iter.next().done) {
+        throw new Error('Operator returned more than one value');
+      }
+      return [value];
+    }
+    return items;
+  }
+
   *visitMapToItem(
     operator: plan.MapToItem,
     ctx: ExecutionContext,
