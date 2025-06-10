@@ -33,6 +33,7 @@ import {
   GroupByType,
   SQLIdentifier,
   OrderByItem,
+  ASTTuple,
 } from '../ast/index.js';
 import { SQLVisitor } from '../ast/visitor.js';
 import { WindowSpec } from '../ast/window.js';
@@ -308,5 +309,8 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
   visitFunction(node: ASTFunction): string {
     return `${node.id.accept(this)}(${node.args.map(this.processNode)})`;
+  }
+  visitTuple(node: ASTTuple): string {
+    return `(${node.items.map(this.processNode).join(',')})`;
   }
 }

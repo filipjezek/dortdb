@@ -2,7 +2,7 @@
 
 ## Differences due to a lack of lookahead
 
-We use a LALR(1) parser, so in the original grammar there are some constructs that would be ambiguous
+We use a LALR(1) parser and the original grammar contains some constructs that would be ambiguous
 during parsing.
 
 ### Node patterns vs parenthesized expressions

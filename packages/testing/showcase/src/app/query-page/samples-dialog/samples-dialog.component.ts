@@ -54,8 +54,8 @@ WHERE addresses.city = 'Prague'
 GROUP BY products.value
 HAVING productCount > 2`,
     },
-    ...unibenchQueries.map<Sample>((query, i) => ({
-      lang: 'sql',
+    ...unibenchQueries.map<Sample>(({ query, lang }, i) => ({
+      lang,
       name: `Query ${i + 1}`,
       tags: ['unibench'],
       query,

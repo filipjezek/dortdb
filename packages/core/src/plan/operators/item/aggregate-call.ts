@@ -12,6 +12,7 @@ import { Calculation } from './calculation.js';
 import { GroupBy } from '../tuple/groupby.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
+import { arrSetParent } from '../../../utils/arr-set-parent.js';
 
 /**
  * Container for aggregate calls used in {@link GroupBy}
@@ -36,6 +37,7 @@ export class AggregateCall implements PlanOperator {
     /** name of this aggregate in its {@link GroupBy} operator */
     public fieldName: ASTIdentifier,
   ) {
+    arrSetParent(this.args, this);
     this._postGSource = new TupleSource(
       lang,
       ASTIdentifier.fromParts(['<partition>']),
@@ -44,6 +46,7 @@ export class AggregateCall implements PlanOperator {
     this._postGSource.schemaSet = new Trie<string | symbol>();
     this.postGroupOp = this._postGSource;
     this.dependencies = schemaToTrie(args.filter(isId));
+    this.fieldName.aggregate = this;
   }
 
   accept<Ret, Arg>(
@@ -68,6 +71,13 @@ export class AggregateCall implements PlanOperator {
     const args = this.args.map(cloneIfPossible);
     const clone = new AggregateCall(this.lang, args, this.impl, this.fieldName);
     clone.postGroupOp = this.postGroupOp.clone();
+    let origIter = this.postGroupOp;
+    let cloneIter = clone.postGroupOp;
+    while (origIter !== this._postGSource) {
+      origIter = origIter.parent as PlanTupleOperator;
+      cloneIter = cloneIter.parent as PlanTupleOperator;
+    }
+    clone._postGSource = cloneIter;
     return clone;
   }
 }

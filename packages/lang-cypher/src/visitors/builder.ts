@@ -28,14 +28,16 @@ import { CypherDataAdaper, EdgeDirection } from '../language/data-adapter.js';
 import { CypherLanguage } from '../language/language.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { isMatch } from 'lodash-es';
-import { ret1, toPair } from '@dortdb/core/internal-fns';
+import { ret1, retI0, toPair } from '@dortdb/core/internal-fns';
 import {
   assertCalcLiteral,
   exprToSelection,
+  getAggregates,
   intermediateToCalc,
   schemaToTrie,
   union,
 } from '@dortdb/core/utils';
+import { collect } from '@dortdb/core/aggregates';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [id.parts.at(-1) as string, id.parts.at(-2) as string];
@@ -50,11 +52,6 @@ function infer(item: ASTIdentifier, args: DescentArgs) {
     }
   }
   return item;
-}
-function getAggrs([item]: Aliased<
-  plan.Calculation | ASTIdentifier
->): plan.AggregateCall[] {
-  return item instanceof plan.Calculation ? (item.aggregates ?? []) : [];
 }
 function getUnd(): undefined {
   return undefined;
@@ -112,6 +109,9 @@ export class CypherLogicalPlanBuilder
     node = this.maybeId(node, args);
     if (node instanceof ASTIdentifier) return infer(node, args);
     const intermediate = node.accept(this, args);
+    if (intermediate instanceof plan.AggregateCall) {
+      return intermediate.fieldName;
+    }
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
   private processFnArg(
@@ -167,10 +167,10 @@ export class CypherLogicalPlanBuilder
     return this.visitIdentifier(node, args);
   }
   visitStringLiteral(node: AST.ASTStringLiteral): PlanOperator {
-    return new plan.Literal('xquery', node.value);
+    return new plan.Literal('cypher', node.value);
   }
   visitNumberLiteral(node: AST.ASTNumberLiteral): PlanOperator {
-    return new plan.Literal('xquery', node.value);
+    return new plan.Literal('cypher', node.value);
   }
   visitListLiteral(node: AST.ASTListLiteral, args: DescentArgs): PlanOperator {
     return new plan.FnCall(
@@ -191,7 +191,7 @@ export class CypherLogicalPlanBuilder
     });
   }
   visitBooleanLiteral(node: AST.ASTBooleanLiteral): PlanOperator {
-    return new plan.Literal('xquery', node.value);
+    return new plan.Literal('cypher', node.value);
   }
   visitFnCallWrapper(node: AST.FnCallWrapper, args: DescentArgs): PlanOperator {
     if (node.procedure) return this.visitProcedure(node, args);
@@ -354,13 +354,11 @@ export class CypherLogicalPlanBuilder
     if (refVars.length) {
       let res: PlanTupleOperator =
         args.src ??
-        new plan.TupleFnSource('cypher', refVars, (...args) => {
-          const res = new Trie<string | symbol | number, unknown>();
-          for (let i = 0; i < refVars.length; i++) {
-            res.set(refVars[i].parts, args[i]);
-          }
-          return [res];
-        });
+        new plan.Projection(
+          'cypher',
+          refVars.map(toPair),
+          new plan.NullSource('cypher'),
+        );
       for (let i = 0, j = 0; i < chain.length; i++) {
         if (isRef[i]) {
           res = this.patternToSelection(res, refVars[j++], chain[i], args);
@@ -677,13 +675,97 @@ export class CypherLogicalPlanBuilder
     node: AST.PatternComprehension,
     args: DescentArgs,
   ): PlanOperator {
-    throw new Error('Method not implemented.');
+    let op = node.pattern.accept(this, {
+      ...args,
+      src: undefined,
+    }) as PlanTupleOperator;
+    const variable = toId('pattern');
+
+    if (node.where) {
+      op = exprToSelection(
+        this.processNode(node.where, {
+          ...args,
+          ctx: union(args.ctx, op.schema),
+        }),
+        op as PlanTupleOperator,
+        this.calcBuilders,
+        this.eqCheckers,
+        'cypher',
+      );
+    }
+    op = new plan.Projection(
+      'cypher',
+      [
+        [
+          this.toCalc(node.expr, {
+            ...args,
+            ctx: union(args.ctx, op.schema),
+          }),
+          variable,
+        ],
+      ],
+      op,
+    );
+    op = new plan.GroupBy(
+      'cypher',
+      [],
+      [new plan.AggregateCall('cypher', [variable], collect, variable)],
+      op,
+    );
+    return new plan.MapToItem('cypher', variable, op);
   }
   visitListComprehension(
     node: AST.ListComprehension,
     args: DescentArgs,
   ): PlanOperator {
-    throw new Error('Method not implemented.');
+    let op = node.source.accept(this, args);
+    if (op instanceof PlanTupleOperator) {
+      op = new plan.Projection('cypher', [[op.schema[0], node.variable]], op);
+    } else {
+      op = new plan.MapFromItem('cypher', node.variable, op);
+    }
+
+    if (node.where) {
+      op = exprToSelection(
+        this.processNode(node.where, {
+          ...args,
+          ctx: union(args.ctx, [node.variable]),
+        }),
+        op as PlanTupleOperator,
+        this.calcBuilders,
+        this.eqCheckers,
+        'cypher',
+      );
+    }
+    if (node.expr) {
+      op = new plan.Projection(
+        'cypher',
+        [
+          [
+            this.toCalc(node.expr, {
+              ...args,
+              ctx: union(args.ctx, [node.variable]),
+            }),
+            node.variable,
+          ],
+        ],
+        op as PlanTupleOperator,
+      );
+    }
+    op = new plan.GroupBy(
+      'cypher',
+      [],
+      [
+        new plan.AggregateCall(
+          'cypher',
+          [node.variable],
+          collect,
+          node.variable,
+        ),
+      ],
+      op as PlanTupleOperator,
+    );
+    return new plan.MapToItem('cypher', node.variable, op as plan.GroupBy);
   }
   visitCaseExpr(node: AST.CaseExpr, args: DescentArgs): PlanOperator {
     return new plan.Conditional(
@@ -848,7 +930,7 @@ export class CypherLogicalPlanBuilder
       const cols: Aliased<plan.Calculation | ASTIdentifier>[] = node.items.map(
         (item) => this.processAttr(item, { ...args, ctx: attrCtx }),
       );
-      const aggrs = cols.flatMap(getAggrs);
+      const aggrs = getAggregates(cols.map(retI0));
       if (!node.order?.length && aggrs.length) {
         res = this.processGroupBy(res, aggrs, cols);
       }
@@ -899,7 +981,7 @@ export class CypherLogicalPlanBuilder
         orders.push({ ascending: item.ascending, key: col, nullsFirst: false });
       }
     }
-    const aggrs = preSortCols.flatMap(getAggrs);
+    const aggrs = getAggregates(preSortCols.map(retI0));
     if (aggrs.length) {
       res = this.processGroupBy(res, aggrs, preSortCols);
     } else {
@@ -915,8 +997,14 @@ export class CypherLogicalPlanBuilder
     const aggrSet = schemaToTrie(aggrs.map((x) => x.fieldName));
     const groupByCols: Aliased<plan.Calculation | ASTIdentifier>[] = [];
     for (const col of allCols) {
-      if (!aggrSet.has(col[1].parts)) {
-        groupByCols.push(col);
+      if (col[0] instanceof ASTIdentifier) {
+        if (!aggrSet.has(col[0].parts)) {
+          groupByCols.push(col);
+        }
+      } else {
+        if (!col[0].aggregates.length) {
+          groupByCols.push(col);
+        }
       }
     }
     for (const aggr of aggrs) {
@@ -937,7 +1025,7 @@ export class CypherLogicalPlanBuilder
     if (offset && !assertCalcLiteral(offset, 'number'))
       throw new Error('Offset must be a number constant');
     return new plan.Limit(
-      'sql',
+      'cypher',
       offset ? (offset as plan.Calculation).impl() : 0,
       limit ? (limit as plan.Calculation).impl() : Infinity,
       res,

@@ -4,6 +4,7 @@ import {
   ASTIdentifier,
   ASTFunction,
   allAttrs,
+  ASTVisitor,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { SQLVisitor } from './visitor.js';
@@ -70,6 +71,17 @@ export class ASTArray implements ASTNode {
   static fromString(str: string): ASTArray {
     // TODO
     return new ASTArray([]);
+  }
+}
+
+/**
+ * Immutable array, used for example in `IN` expressions.
+ */
+export class ASTTuple implements ASTNode {
+  constructor(public items: ASTNode[]) {}
+
+  accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
+    return visitor.visitTuple(this, arg);
   }
 }
 

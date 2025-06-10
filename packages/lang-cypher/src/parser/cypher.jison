@@ -1,15 +1,3 @@
-/*
-
-There is one expected reduce/reduce conflict in this grammar:
-Conflict in grammar: multiple actions possible when lookahead token is RPAR in state 135 (number can change in future)
-- reduce by rule: node-label-list_opt ->
-- reduce by rule: atom -> variable
-
-This is because of our limited lookahead and cannot be resolved using precedence rules, because
-it is not shift/reduce. It is solved in lexer by using PARENVAR token, but the parser is not aware of that.
-
-*/
-
 %start root
 
 %token YIELD
@@ -113,6 +101,7 @@ it is not shift/reduce. It is solved in lexer by using PARENVAR token, but the p
 %token LANGSWITCH
 %token LANGEXIT
 %token PARENVAR
+%token PARENVARLABELS
 
 %nonassoc COMPR_PRIORITY
 %nonassoc PARAM LCUR COLON RPAR  // need to specify some precedence for the other priorities to work
@@ -325,8 +314,15 @@ pattern-el-chain:
 
 node-pattern:
   PARENVAR { $$ = new yy.ast.NodePattern(new yy.ast.CypherIdentifier($1.slice(1, -1).trim())); }
-  | LPAR variable node-label-list_opt properties_opt RPAR {
+  | PARENVARLABELS {
+    const [variable, ...labels] = $1.slice(1, -1).trim().split(':').map(t => new yy.ast.CypherIdentifier(t.trim()));
+    $$ = new yy.ast.NodePattern(variable, labels);
+  }
+  | LPAR variable node-label-list properties RPAR {
     $$ = new yy.ast.NodePattern($2, $3, $4);
+  }
+  | LPAR variable properties RPAR {
+    $$ = new yy.ast.NodePattern($2, undefined, $3);
   }
   | LPAR node-label-list_opt properties_opt RPAR { $$ = new yy.ast.NodePattern(undefined, $2, $3); } ;
 

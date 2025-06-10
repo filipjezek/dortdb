@@ -1,14 +1,23 @@
-import { ASTNode, DortDB } from '@dortdb/core';
+import { ASTNode, boundParam, DortDB } from '@dortdb/core';
 import { Cypher } from '../../src/index.js';
 import * as astCypher from '../../src/ast/index.js';
 
+function makeParam(name: string): astCypher.CypherIdentifier {
+  const id = new astCypher.CypherIdentifier(name);
+  id.parts.unshift(boundParam);
+  return id;
+}
+
 describe('AST patterns', () => {
   const db = new DortDB({
-    mainLang: Cypher(),
+    mainLang: Cypher({ defaultGraph: 'defaultGraph' }),
+    optimizer: {
+      rules: [],
+    },
   });
   const getRet = (input: string): ASTNode =>
     (
-      (db.parse(input).value[0] as astCypher.Query)
+      (db.parse(input)[0] as astCypher.Query)
         .statements[0] as astCypher.ReturnClause
     ).body.items[0] as ASTNode;
 
@@ -37,14 +46,20 @@ describe('AST patterns', () => {
     expect(result).toEqual(expected);
   });
 
+  it('should parse parenthesized label check as a pattern', () => {
+    const result = getRet('RETURN (a:foo)');
+    const expected = new astCypher.PatternElChain([
+      new astCypher.NodePattern(new astCypher.CypherIdentifier('a'), [
+        new astCypher.CypherIdentifier('foo'),
+      ]),
+    ]);
+    expect(result).toEqual(expected);
+  });
+
   it('should parse parenthesized parameter as a pattern', () => {
     const result = getRet('RETURN ($1)');
     const expected = new astCypher.PatternElChain([
-      new astCypher.NodePattern(
-        undefined,
-        [],
-        new astCypher.ASTParameter('$1'),
-      ),
+      new astCypher.NodePattern(undefined, [], makeParam('1')),
     ]);
     expect(result).toEqual(expected);
   });
@@ -93,7 +108,7 @@ describe('AST patterns', () => {
       new astCypher.NodePattern(
         new astCypher.CypherIdentifier('c'),
         [new astCypher.CypherIdentifier('qux')],
-        new astCypher.ASTParameter('$1'),
+        makeParam('1'),
       ),
       new astCypher.RelPattern(true, false),
       new astCypher.NodePattern(new astCypher.CypherIdentifier('d')),
@@ -121,7 +136,10 @@ describe('AST patterns', () => {
         false,
         undefined,
         [new astCypher.CypherIdentifier('z')],
-        [new astCypher.ASTNumberLiteral('2')],
+        [
+          new astCypher.ASTNumberLiteral('2'),
+          new astCypher.ASTNumberLiteral('2'),
+        ],
       ),
       new astCypher.NodePattern(new astCypher.CypherIdentifier('g')),
       new astCypher.RelPattern(
@@ -129,7 +147,7 @@ describe('AST patterns', () => {
         true,
         undefined,
         [new astCypher.CypherIdentifier('z')],
-        [undefined],
+        [undefined, undefined],
         new astCypher.ASTMapLiteral([
           [
             new astCypher.ASTNumberLiteral('4'),

@@ -36,12 +36,13 @@ export class Projection extends PlanTupleOperator {
     this.schema = attrs.map(retI1);
     this.schemaSet = schemaToTrie(this.schema);
     source.parent = this;
-    arrSetParent(this.attrs.map(retI0), this);
     for (const [attr, alias] of this.attrs) {
       if (attr instanceof ASTIdentifier) {
         this.renames.set(attr.parts, alias.parts);
         this.renamesInv.set(alias.parts, attr.parts);
         this.dependencies.add(attr.parts);
+      } else {
+        attr.parent = this;
       }
     }
   }

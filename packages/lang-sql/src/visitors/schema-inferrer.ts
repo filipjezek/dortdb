@@ -14,6 +14,7 @@ import { isTableAttr } from '../utils/is-table-attr.js';
 import { Using } from '../plan/using.js';
 import {
   difference,
+  linkSchemaToParent,
   overrideSource,
   schemaToTrie,
   union,
@@ -125,10 +126,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         (x) => !toRemove.find((y) => x.equals(y)),
       );
       operator.schemaSet = schemaToTrie(operator.schema);
-      const newSchema = proj.schema;
-      proj.schema = parent.schema;
-      proj.clearSchema();
-      proj.addToSchema(newSchema);
+      linkSchemaToParent(proj);
     } else {
       operator.removeFromSchema(toRemove);
     }
@@ -193,6 +191,12 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   }
 
   private getRelNames(operator: PlanTupleOperator): IdSet {
+    while (
+      'source' in operator &&
+      operator.source instanceof PlanTupleOperator
+    ) {
+      operator = operator.source;
+    }
     // joins are made of either TupleSources or Projections based on table aliases or other joins or langswitches
     if (
       operator instanceof plan.TupleSource ||
@@ -332,12 +336,11 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   }
   visitOrderBy(operator: plan.OrderBy, ctx: IdSet): IdSet {
     const tempSchema = new plan.NullSource('sql');
+    const external = operator.source.accept(this.vmap, ctx);
     const attrCtx = union(ctx, operator.source.schema);
     for (const item of operator.orders) {
       this.processArg(tempSchema, item.key, attrCtx);
     }
-    operator.source.addToSchema(tempSchema.schema);
-    const external = operator.source.accept(this.vmap, ctx);
     const proj =
       operator.source instanceof plan.Distinct
         ? operator.source.source
@@ -348,27 +351,28 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       const parent = operator.parent;
       const parentProj = new plan.Projection(
         'sql',
-        proj.attrs.map((attr) => [attr[0], attr[1]]),
+        proj.attrs.map((attr) => [attr[1], attr[1]]),
         operator,
       );
-      for (const oitem of operator.orders) {
-        if (
-          oitem.key instanceof ASTIdentifier &&
-          !proj.schemaSet.has(oitem.key.parts)
-        ) {
-          proj.addToSchema(oitem.key);
-          proj.attrs.push([oitem.key, oitem.key]);
-        } else if (oitem.key instanceof plan.Calculation) {
-          for (const attr of difference(tempSchema.schemaSet, external)) {
-            if (!proj.schemaSet.has(attr)) {
-              const id = ASTIdentifier.fromParts(attr);
-              proj.addToSchema(id);
-              proj.attrs.push([id, id]);
-            }
-          }
+
+      for (const attr of difference(tempSchema.schemaSet, external)) {
+        if (!proj.schemaSet.has(attr)) {
+          const id = ASTIdentifier.fromParts(attr);
+          proj.addToSchema(id);
+          proj.attrs.push([id, id]);
         }
       }
+
       parent.replaceChild(operator, parentProj);
+      if (
+        parent instanceof PlanTupleOperator &&
+        parent.schema === operator.schema
+      ) {
+        linkSchemaToParent(parentProj);
+      }
+
+      // reconstruct external
+      return operator.source.accept(this.vmap, ctx);
     }
 
     return external;
@@ -508,10 +512,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     replacement = new plan.Projection('sql', projectedCols, replacement);
 
     if ((operator.parent as PlanTupleOperator).schema === operator.schema) {
-      // need to preserve references
-      operator.clearSchema();
-      operator.addToSchema(replacement.schema);
-      replacement.schema = operator.schema;
+      linkSchemaToParent(replacement);
     }
     operator.parent.replaceChild(operator, replacement);
     return replacement.accept(this.vmap, ctx);

@@ -249,10 +249,18 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     this.setTranslations(operator, ctx);
   }
   visitAggregate(operator: plan.AggregateCall, ctx: VariableMapperCtx): void {
+    this.setTranslations(operator, ctx);
+    operator.fieldName = this.translate(operator.fieldName, ctx, 1);
+    for (let i = 0; i < operator.args.length; i++) {
+      const arg = operator.args[i];
+      if (arg instanceof ASTIdentifier) {
+        operator.args[i] = this.translate(arg, ctx);
+      } else {
+        this.visitCalculation(arg, ctx);
+      }
+    }
     operator.postGroupOp.accept(this.vmap, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
-    operator.fieldName = this.translate(operator.fieldName, ctx, 1);
-    this.setTranslations(operator, ctx);
   }
   visitItemFnSource(operator: plan.ItemFnSource, ctx: VariableMapperCtx): void {
     for (let i = 0; i < operator.args.length; i++) {

@@ -47,7 +47,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
         ...operator.attrs.map(retI0).filter(isCalc).map(this.processNode),
         operator.dependencies,
       ),
-      operator,
+      operator.source,
     );
     const result = union(horizontal, operator.source.accept(this.vmap));
     tdepsCache.set(operator, result);

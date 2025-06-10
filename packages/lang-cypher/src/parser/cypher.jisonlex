@@ -101,6 +101,7 @@ RARR      [⟩〉﹥＞]
 "]"           this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RBRA;
 "("\s*{ID1}{ID}*\s*")"       return this.yy.AdditionalTokens.PARENVAR;
 "("\s*"`"([^`]|``)*"`"\s*")" return this.yy.AdditionalTokens.PARENVAR;
+"("\s*(("`"([^`]|``)*"`")|{ID1}{ID}*)\s*(":"(("`"([^`]|``)*"`")|{ID1}{ID}*))+\s*")" return this.yy.AdditionalTokens.PARENVARLABELS;
 "("           return this.yy.AdditionalTokens.LPAR;
 ")"           this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RPAR;
 "{"           return this.yy.AdditionalTokens.LCUR;

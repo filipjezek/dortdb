@@ -61,7 +61,7 @@ export class Optimizer {
     }
     for (const child of operator.getChildren()) {
       if (child.parent !== operator) {
-        console.log('Parent mismatch', operator, child);
+        console.log('Parent mismatch (op, child)', operator, child);
         throw new Error('Parent mismatch');
       }
       this.visitOperator(child, rule);

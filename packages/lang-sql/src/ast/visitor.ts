@@ -22,6 +22,7 @@ import {
   ASTRow,
   ASTAggregate,
   ASTWindowFn,
+  ASTTuple,
 } from './expression.js';
 import { ASTExpressionAlias, ASTTableAlias } from './alias.js';
 import { WindowSpec } from './window.js';
@@ -31,6 +32,7 @@ export interface SQLVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitStringLiteral(node: ASTStringLiteral, arg?: Arg): Ret;
   visitNumberLiteral(node: ASTNumberLiteral, arg?: Arg): Ret;
   visitArray(node: ASTArray, arg?: Arg): Ret;
+  visitTuple(node: ASTTuple, arg?: Arg): Ret;
   visitRow(node: ASTRow, arg?: Arg): Ret;
   visitCast(node: ASTCast, arg?: Arg): Ret;
   visitSubscript(node: ASTSubscript, arg?: Arg): Ret;

@@ -29,21 +29,18 @@ import { LangSwitch as PlanLangSwitch } from '../plan/langswitch.js';
 import {
   assertCalcLiteral,
   exprToSelection,
+  getAggregates,
   intermediateToCalc,
   overrideSource,
+  schemaToTrie,
 } from '@dortdb/core/utils';
-import { ret1 } from '@dortdb/core/internal-fns';
+import { clone, ret1, retI0 } from '@dortdb/core/internal-fns';
 import { inOp } from '../operators/basic.js';
 
 export const DEFAULT_COLUMN = toId('value');
 
 function toId(id: string | symbol): ASTIdentifier {
   return AST.SQLIdentifier.fromParts([id]);
-}
-function getAggrs([item]: Aliased<
-  plan.Calculation | ASTIdentifier
->): plan.AggregateCall[] {
-  return item instanceof plan.Calculation ? (item.aggregates ?? []) : [];
 }
 function idToPair(id: ASTIdentifier): [string, string] {
   return [id.parts.at(-1) as string, id.parts.at(-2) as string];
@@ -96,6 +93,8 @@ export class SQLLogicalPlanBuilder
   private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
     const intermediate = node.accept(this);
+    if (intermediate instanceof plan.AggregateCall)
+      return intermediate.fieldName;
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
 
@@ -117,6 +116,14 @@ export class SQLLogicalPlanBuilder
       'sql',
       [{ op: node.items.accept(this), acceptSequence: true }],
       ret1,
+    );
+  }
+  visitTuple(node: AST.ASTTuple): PlanOperator {
+    return new plan.FnCall(
+      'sql',
+      node.items.map(this.processFnArg),
+      Array.of,
+      true,
     );
   }
   visitRow(node: AST.ASTRow): PlanOperator {
@@ -281,27 +288,27 @@ export class SQLLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
 
-  private processOrderItem(x: AST.OrderByItem): plan.Order {
+  private processOrderItem(item: AST.OrderByItem): plan.Order {
     return {
-      ascending: x.ascending,
-      key: this.toCalc(x.expression),
-      nullsFirst: x.nullsFirst,
+      ascending: item.ascending,
+      key: this.toCalc(item.expression),
+      nullsFirst: item.nullsFirst,
     };
-  }
-  private processOrderBy(
-    op: PlanTupleOperator,
-    node: AST.SelectStatement,
-  ): PlanTupleOperator {
-    const orderItems = node.orderBy.map(this.processOrderItem);
-    op = new plan.OrderBy('sql', orderItems, op);
-    return op;
   }
   visitSelectStatement(node: AST.SelectStatement) {
     if (node.withQueries?.length)
       throw new UnsupportedError('With queries not supported');
-    let op = node.selectSet.accept(this) as PlanTupleOperator;
-    if (node.orderBy?.length) {
-      op = this.processOrderBy(op, node);
+
+    const orders = node.orderBy ? node.orderBy.map(this.processOrderItem) : [];
+    const aggs = getAggregates(orders.map(plan.getKey));
+    let op: PlanTupleOperator;
+    if (node.selectSet instanceof AST.SelectSet && !node.selectSet.setOp) {
+      op = this.visitSelectSet(node.selectSet, null, aggs);
+    } else {
+      op = node.selectSet.accept(this) as PlanTupleOperator;
+    }
+    if (orders.length) {
+      op = new plan.OrderBy('sql', orders, op);
     }
     if (node.limit || node.offset) {
       op = this.buildLimit(node, op);
@@ -349,12 +356,20 @@ export class SQLLogicalPlanBuilder
     return next;
   }
 
-  visitSelectSet(node: AST.SelectSet): PlanTupleOperator {
+  /**
+   * @param _ only for compliance with {@link PlanVisitor}
+   */
+  visitSelectSet(
+    node: AST.SelectSet,
+    _?: unknown,
+    orderByAggs?: plan.AggregateCall[],
+  ): PlanTupleOperator {
     let op = node.from
       ? this.getTableName(node.from)[0]
       : new plan.NullSource('sql');
     const items = node.items.map(this.processAttr);
-    const aggregates = items.flatMap(getAggrs);
+    const aggregates = getAggregates(items.map(retI0));
+    const aggFields = schemaToTrie(aggregates.map((x) => x.fieldName));
     if (node.windows) {
       throw new UnsupportedError('Window functions not supported');
     }
@@ -367,12 +382,30 @@ export class SQLLogicalPlanBuilder
         'sql',
       );
     }
+
+    const havingCond = node.having ? this.processNode(node.having) : null;
+    if (havingCond && !(havingCond instanceof ASTIdentifier)) {
+      const tempParams = havingCond.accept(this.calcBuilders);
+      for (const agg of tempParams.aggregates) {
+        if (!aggFields.has(agg.fieldName.parts)) {
+          aggregates.push(agg);
+          aggFields.add(agg.fieldName.parts);
+        }
+      }
+    }
+    for (const agg of orderByAggs || []) {
+      if (!aggFields.has(agg.fieldName.parts)) {
+        aggregates.push(agg);
+        aggFields.add(agg.fieldName.parts);
+      }
+    }
+
     if (aggregates.length) {
       op = this.visitGroupByClause(node.groupBy, op, aggregates);
     }
     if (node.having) {
       op = exprToSelection(
-        this.processNode(node.having),
+        havingCond,
         op,
         this.calcBuilders,
         this.eqCheckers,
@@ -564,7 +597,11 @@ export class SQLLogicalPlanBuilder
     if (node.orderBy) {
       res.postGroupOp = new plan.OrderBy(
         'sql',
-        node.orderBy.map(this.processOrderItem),
+        node.orderBy.map((x) => ({
+          ascending: x.ascending,
+          nullsFirst: x.nullsFirst,
+          key: this.toCalc(x.expression),
+        })),
         res.postGroupOp,
       );
     }

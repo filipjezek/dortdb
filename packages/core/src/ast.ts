@@ -1,3 +1,5 @@
+import { AggregateCall } from './plan/operators/index.js';
+
 export interface ASTNode {
   accept<Ret, Arg>(visitor: ASTVisitor<Ret, Arg>, arg?: Arg): Ret;
 }
@@ -41,6 +43,8 @@ export const allAttrs = Symbol('all attrs');
 export const boundParam = Symbol('bound param');
 
 export class ASTIdentifier implements ASTNode {
+  public aggregate?: AggregateCall;
+
   public parts: (string | symbol | number)[] = [];
   [Symbol.iterator]() {
     return this.parts[Symbol.iterator]();

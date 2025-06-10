@@ -1,5 +1,11 @@
-export const unibenchQueries = [
-  `-- all data about CUSTOMER
+export const unibenchQueries: {
+  query: string;
+  lang: 'sql' | 'cypher' | 'xquery';
+}[] = [
+  {
+    query: `-- all data about CUSTOMER
+--
+-- one such customer id is 4145
 
 SELECT
   ROW(customers.id AS id, customers.firstName AS firstName, customers.lastName AS lastName) profile,
@@ -12,7 +18,12 @@ SELECT
   ) posts
 FROM customers
 WHERE id = :customer`,
-  `-- customers which bought PRODUCT and posted about it
+    lang: 'sql',
+  },
+  {
+    query: `-- customers which bought PRODUCT and posted about it
+--
+-- one such product id is 52
 
 SELECT id, firstName FROM customers
 WHERE EXISTS (
@@ -25,33 +36,44 @@ WHERE EXISTS (
     SELECT 1 FROM unwind(orders.Orderline) orderline WHERE productId = :product
   )
 )`,
-  `-- customers which posted about PRODUCT and left negative feedback
+    lang: 'sql',
+  },
+  {
+    query: `-- customers which posted about PRODUCT and left negative feedback
+--
+-- the only such product in the dataset is 202
 
-SELECT customers.id, feedback.feedback
+SELECT customers.id, feedback.feedback, products.productId
 FROM customers
 JOIN feedback ON customers.id = feedback.personId
-WHERE (feedback.feedback[1])::number < 4
+JOIN products ON feedback.productAsin = products.asin
+WHERE products.productId = :product AND (feedback.feedback[1])::number < 3
 AND EXISTS (
   LANG cypher
-  MATCH ({id: customers.id})-[:hasCreated]->(post)-[:hasTag]->({id: $product})
+  MATCH ({id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: products.productId})
   RETURN 1
 )`,
-  `-- three-hop common friends of the two top spenders
+    lang: 'sql',
+  },
+  {
+    query: `// three-hop common friends of the two top spenders
+//
+// these two are actually not connected in the sample data
 
-SELECT cypher.p FROM (
-  LANG cypher
-  WITH (
-    LANG sql
-    SELECT personId
+WITH [x IN (
+  LANG sql
+    SELECT PersonId::number
     FROM orders
-    GROUP BY personId
-    ORDER BY sum(totalPrice) DESC
-    LIMIT 2 
-  ) AS toptwo
-  MATCH ({id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
-  RETURN foaf.id AS p
-) cypher`,
-  `-- what did the friends of CUSTOMER which bought BRAND products post about?
+    GROUP BY PersonId
+    ORDER BY sum(TotalPrice) DESC
+    LIMIT 2
+) | x] AS toptwo
+MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
+RETURN foaf`,
+    lang: 'cypher',
+  },
+  {
+    query: `-- what did the friends of CUSTOMER which bought BRAND products post about?
 
 SELECT c.person, c.tag
 FROM (
@@ -63,7 +85,10 @@ FROM (
   }
   RETURN person, tag
 ) c`,
-  `-- find persons in the shortest path between CUSTOMERS and return their top 3 bestsellers
+    lang: 'sql',
+  },
+  {
+    query: `-- find persons in the shortest path between CUSTOMERS and return their top 3 bestsellers
 
 SELECT x.num as productId FROM (
   LANG xquery
@@ -80,20 +105,23 @@ SELECT x.num as productId FROM (
   return $num
 ) x
 LIMIT 3`,
-  `-- find negative feedback on BRAND products with decreasing sales
+    lang: 'sql',
+  },
+  {
+    query: `-- find negative feedback on BRAND products with decreasing sales
 
 SELECT feedback FROM feedback
 JOIN products ON products.id = feedback.productId
 WHERE brand = :brand AND feedback[1]::number < 4 AND (
   LANG xquery
-  for $orderline in $Invoices//*[
+  for $orderline in $Invoices//*[ 
     date(OrderDate) gt now() - interval('3 months')
   ]
     /Orderline[productId = $products:id]
   return sum($orderline)
 ) < (
   LANG xquery
-  for $orderline in $Invoices//*[
+  for $orderline in $Invoices//*[ 
     date(OrderDate) le now() - interval('3 months') and
     date(OrderDate) gt now() - interval('6 months')
   ]
@@ -102,7 +130,10 @@ WHERE brand = :brand AND feedback[1]::number < 4 AND (
 )
 
 -- join SQL * XML * XML`,
-  `-- compute this year's total sales amount and social media popularity of
+    lang: 'sql',
+  },
+  {
+    query: `-- compute this year's total sales amount and social media popularity of
 -- products in CATEGORY 
 
 WITH totalPosts AS (
@@ -119,7 +150,7 @@ SELECT
   products.id,
   (
     LANG xquery
-    for $product in $Invoices//*[
+    for $product in $Invoices//*[ 
       date(OrderDate) gt now() - interval('1 year')
     ]
       /Orderline[productId = $products:id]
@@ -133,7 +164,10 @@ SELECT
   ) / (SELECT total FROM totalPosts) relativePopulatity
 FROM products
 WHERE products.category = :category`,
-  `-- compare top 3 vendors' male and female customer ratio and find latest posts about them
+    lang: 'sql',
+  },
+  {
+    query: `-- compare top 3 vendors' male and female customer ratio and find latest posts about them
 
 WITH topVendors AS (
   SELECT
@@ -164,7 +198,10 @@ SELECT
     RETURN post.content ORDER BY post.creationDate DESC LIMIT 10
   ) latestPosts
 FROM topVendors`,
-  `-- find this year's top posters and get their recency/frequency/monetary statistics,
+    lang: 'sql',
+  },
+  {
+    query: `-- find this year's top posters and get their recency/frequency/monetary statistics,
 -- their interests and their latest feedback
 
 SELECT
@@ -188,4 +225,6 @@ FROM orders JOIN (
 ) topPosters
 ON orders.personId = topPosters.custId
 GROUP BY orders.personId, topPosters.interests`,
+    lang: 'sql',
+  },
 ];

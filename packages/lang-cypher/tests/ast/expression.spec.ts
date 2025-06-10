@@ -5,11 +5,14 @@ import { ASTOperator } from '@dortdb/core';
 
 describe('AST Expressions', () => {
   const db = new DortDB({
-    mainLang: Cypher(),
+    mainLang: Cypher({ defaultGraph: 'defaultGraph' }),
+    optimizer: {
+      rules: [],
+    },
   });
   const getRet = (input: string): ASTNode =>
     (
-      (db.parse(input).value[0] as astCypher.Query)
+      (db.parse(input)[0] as astCypher.Query)
         .statements[0] as astCypher.ReturnClause
     ).body.items[0] as ASTNode;
 
