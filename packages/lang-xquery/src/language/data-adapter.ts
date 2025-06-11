@@ -29,7 +29,10 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
   }
 
   public atomize(value: unknown): unknown {
-    if (Array.isArray(value)) return value.map(this.atomize);
+    if (Array.isArray(value)) {
+      if (value.length === 1) return this.atomize(value[0]);
+      return value.map(this.atomize);
+    }
     if (!(value instanceof Node)) return value;
     return value instanceof Element || value instanceof Document
       ? value.textContent

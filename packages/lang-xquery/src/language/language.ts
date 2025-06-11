@@ -1,4 +1,12 @@
-import { Language, QueryResult, SerializeFn } from '@dortdb/core';
+import {
+  AggregateFn,
+  Castable,
+  Fn,
+  Language,
+  Operator,
+  QueryResult,
+  SerializeFn,
+} from '@dortdb/core';
 import { count } from '@dortdb/core/aggregates';
 import { XQueryLogicalPlanBuilder } from '../visitors/builder.js';
 import { castables } from '../castables/index.js';
@@ -45,4 +53,17 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
     dataAdapter,
     serialize: config?.serialize ?? serializeToObjects('.'),
   };
+}
+
+export interface XQueryFn extends Fn {
+  skipAtomization?: boolean;
+}
+export interface XQueryOp extends Operator {
+  skipAtomization?: boolean;
+}
+export interface XQueryAggregate extends AggregateFn {
+  skipAtomization?: boolean;
+}
+export interface XQueryCastable extends Castable {
+  skipAtomization?: boolean;
 }

@@ -73,19 +73,19 @@ RETURN foaf`,
     lang: 'cypher',
   },
   {
-    query: `-- what did the friends of CUSTOMER which bought BRAND products post about?
+    query: `// what did the friends of CUSTOMER which bought BRAND products post about?
+//
+// example customer id: 4659
+// example brand: Reebok
 
-SELECT c.person, c.tag
-FROM (
-  LANG cypher
-  MATCH ({id: $customer})-[:knows]->(person)-[:hasCreated]->()-[:hasTag]->(tag)
-  WHERE EXISTS {
-    LANG xquery
-    $Invoices/Invoice.xml[PersonId=$person]/Orderline[brand=$brand]
-  }
-  RETURN person, tag
-) c`,
-    lang: 'sql',
+
+MATCH (:person {id: 4659})-[:knows]->(person)<-[:hasCreator]-()-[:hasTag]->(tag)
+WHERE EXISTS {
+  LANG xquery
+  $Invoices/Invoices/Invoice.xml[PersonId=$person/@id]/Orderline[brand="Reebok"]
+}
+RETURN DISTINCT person`,
+    lang: 'cypher',
   },
   {
     query: `-- find persons in the shortest path between CUSTOMERS and return their top 3 bestsellers

@@ -886,12 +886,7 @@ export class CypherLogicalPlanBuilder
     );
     const renamed = new plan.MapFromItem('cypher', node.variable, unwound);
     if (!args.src) return renamed;
-    return new plan.ProjectionConcat(
-      'cypher',
-      new plan.MapFromItem('cypher', node.variable, renamed),
-      false,
-      args.src,
-    );
+    return new plan.ProjectionConcat('cypher', renamed, false, args.src);
   }
   visitCreateClause(node: AST.CreateClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');

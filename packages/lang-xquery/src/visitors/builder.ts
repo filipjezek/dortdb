@@ -33,7 +33,6 @@ import { collect } from '@dortdb/core/aggregates';
 import {
   exprToSelection,
   intermediateToCalc,
-  resolveArgs,
   schemaToTrie,
   simplifyCalcParams,
   union,
@@ -49,7 +48,15 @@ import {
 import { FnContext } from '../functions/fn-context.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { XQueryDataAdapter } from '../language/data-adapter.js';
-import { XQueryLanguage } from '../language/language.js';
+import {
+  XQueryAggregate,
+  XQueryCastable,
+  XQueryFn,
+  XQueryLanguage,
+  XQueryOp,
+} from '../language/language.js';
+
+export const skipAtomization = Symbol('skipAtomization');
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [id.parts.at(-1) as string, id.parts.at(-2) as string];
@@ -175,9 +182,6 @@ export class XQueryLogicalPlanBuilder
       return item;
     }
     return { op: item.accept(this, args), acceptSequence: true };
-  }
-  private toCalcParams(node: ASTNode, args: DescentArgs) {
-    return node.accept(this, args).accept(this.calcBuilders);
   }
 
   visitProlog(node: AST.Prolog, args: DescentArgs): PlanOperator {
@@ -504,11 +508,16 @@ export class XQueryLogicalPlanBuilder
     throw new UnsupportedError('Instanceof not supported.');
   }
   visitCastExpr(node: AST.CastExpr, args: DescentArgs): PlanOperator {
-    const impl = this.db.langMgr.getCast('xquery', ...idToPair(node.type));
+    const impl = this.db.langMgr.getCast(
+      'xquery',
+      ...idToPair(node.type),
+    ) as XQueryCastable;
     return new plan.FnCall(
       'sql',
       [{ op: node.expr.accept(this, args) }],
-      (arg) => impl.convert(this.atomize(arg)),
+      impl.skipAtomization
+        ? impl.convert
+        : (arg) => impl.convert(this.atomize(arg)),
       impl.pure,
     );
   }
@@ -661,9 +670,11 @@ export class XQueryLogicalPlanBuilder
   ): PlanOperator {
     const args = node.args.map((x) => this.processFnArg(x, dargs));
     args.push({ op: node.nameOrExpr.accept(this, dargs) });
-    return new plan.FnCall('xquery', args, (...as) =>
-      as.pop()(...as.map(this.atomize)),
-    );
+    return new plan.FnCall('xquery', args, (...as) => {
+      const fn = as.pop();
+      if (!fn[skipAtomization]) return fn(...as.map(this.atomize));
+      return fn(...as);
+    });
   }
   visitSequenceConstructor(
     node: AST.SequenceConstructor,
@@ -853,13 +864,16 @@ export class XQueryLogicalPlanBuilder
     const impl =
       node.nameOrExpr instanceof ASTIdentifier &&
       !(node.nameOrExpr instanceof AST.ASTVariable)
-        ? this.db.langMgr.getFn('xquery', ...idToPair(node.nameOrExpr)).impl
+        ? this.db.langMgr.getFn('xquery', ...idToPair(node.nameOrExpr))
         : null;
     if (!impl) args.push({ op: node.nameOrExpr.accept(this, dargs) });
+    else {
+      (impl.impl as any)[skipAtomization] = (impl as XQueryFn).skipAtomization;
+    }
     const boundIndices = new Set(node.boundArgs.map(retI0));
 
     return new plan.FnCall('xquery', args, (...bound) => {
-      const fn = impl ?? bound.pop();
+      const fn = impl?.impl ?? bound.pop();
       return (...unbound: unknown[]) => {
         const fullSize = unbound.length + bound.length;
         const allArgs = Array(fullSize);
@@ -867,6 +881,9 @@ export class XQueryLogicalPlanBuilder
         let ui = 0;
         for (let i = 0; i < fullSize; i++) {
           allArgs[i] = boundIndices.has(i) ? bound[bi++] : unbound[ui++];
+        }
+        if (fn[skipAtomization]) {
+          return fn(...allArgs);
         }
         return fn(...allArgs.map(this.atomize));
       };
@@ -883,11 +900,16 @@ export class XQueryLogicalPlanBuilder
     return { op: item.accept(this, args) };
   }
   visitOperator(node: ASTOperator, args: DescentArgs): PlanOperator {
-    const impl = this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl;
+    const op = this.db.langMgr.getOp(
+      node.lang,
+      ...idToPair(node.id),
+    ) as XQueryOp;
     return new plan.FnCall(
       'xquery',
       node.operands.map((x) => this.processOpArg(x, args)),
-      (...args) => impl(...args.map(this.atomize)),
+      op.skipAtomization
+        ? op.impl
+        : (...args) => op.impl(...args.map(this.atomize)),
       true,
     );
   }
@@ -976,7 +998,7 @@ export class XQueryLogicalPlanBuilder
   }
   visitFunction(node: ASTFunction, dargs: DescentArgs): PlanOperator {
     const [id, schema] = idToPair(node.id);
-    let impl: Fn | AggregateFn;
+    let impl: XQueryFn | XQueryAggregate;
     try {
       impl = this.db.langMgr.getFnOrAggr(node.lang, id, schema);
     } catch (e) {
@@ -1002,12 +1024,19 @@ export class XQueryLogicalPlanBuilder
       return new plan.FnCall(
         node.lang,
         args,
-        (dot, len, pos, ...args) =>
-          impl.impl(...args.map(this.atomize), {
-            item: this.atomize(dot),
-            position: pos,
-            size: len,
-          } as FnContext),
+        impl.skipAtomization
+          ? (dot, len, pos, ...args) =>
+              impl.impl(...args, {
+                item: dot,
+                position: pos,
+                size: len,
+              } as FnContext)
+          : (dot, len, pos, ...args) =>
+              impl.impl(...args.map(this.atomize), {
+                item: this.atomize(dot),
+                position: pos,
+                size: len,
+              } as FnContext),
         impl.pure,
       );
     }
@@ -1033,8 +1062,10 @@ export class XQueryLogicalPlanBuilder
             args.map((_, i) => toId(i + '')),
             {
               ...impl,
-              step: (state, ...vals) =>
-                impl.step(state, ...vals.map(this.atomize)),
+              step: impl.skipAtomization
+                ? impl.step
+                : (state, ...vals) =>
+                    impl.step(state, ...vals.map(this.atomize)),
             },
             DOT,
           ),
