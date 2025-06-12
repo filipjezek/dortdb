@@ -17,7 +17,7 @@ export interface CypherDataAdaper<
   getEdgesByType(graph: GraphType, type: string): Iterable<NodeType>;
   filterEdges(
     graph: GraphType,
-    predicate?: (edge: NodeType) => boolean,
+    predicate?: (src: NodeType, tgt: NodeType, edge: NodeType) => boolean,
   ): Iterable<NodeType>;
   getNodeEdgesByType(
     graph: GraphType,
@@ -29,7 +29,7 @@ export interface CypherDataAdaper<
     graph: GraphType,
     node: NodeType,
     direction: EdgeDirection,
-    predicate?: (node: NodeType, edge: EdgeType) => boolean,
+    predicate?: (src: NodeType, tgt: NodeType, edge: EdgeType) => boolean,
   ): Iterable<EdgeType>;
   getEdgeNode(
     graph: GraphType,
@@ -113,16 +113,22 @@ export class GraphologyDataAdapter
   }
   *filterEdges(
     graph: GraphologyGraph,
-    predicate?: (edge: GraphologyEdge) => boolean,
+    predicate?: (
+      src: GraphologyNode,
+      tgt: GraphologyNode,
+      edge: GraphologyEdge,
+    ) => boolean,
   ): Iterable<GraphologyEdge> {
     if (!predicate) {
       for (const { edge, attributes } of graph.edgeEntries()) {
         yield this.convertEdge(edge, attributes);
       }
     } else {
-      for (const { edge, attributes } of graph.edgeEntries()) {
-        const converted = this.convertEdge(edge, attributes);
-        if (predicate(converted)) {
+      for (const edge of graph.edgeEntries()) {
+        const converted = this.convertEdge(edge.edge, edge.attributes);
+        const source = this.convertNode(edge.source, edge.sourceAttributes);
+        const target = this.convertNode(edge.target, edge.targetAttributes);
+        if (predicate(source, target, converted)) {
           yield converted;
         }
       }
@@ -150,18 +156,28 @@ export class GraphologyDataAdapter
     graph: GraphologyGraph,
     node: GraphologyNode,
     direction: EdgeDirection,
-    predicate?: (node: GraphologyNode, edge: GraphologyEdge) => boolean,
+    predicate?: (
+      src: GraphologyNode,
+      tgt: GraphologyNode,
+      edge: GraphologyEdge,
+    ) => boolean,
   ): Iterable<GraphologyEdge> {
-    for (const { edge, attributes } of graph[
+    for (const edge of graph[
       direction === 'in'
         ? 'inEdgeEntries'
         : direction === 'out'
           ? 'outEdgeEntries'
           : 'edgeEntries'
     ](node[nodeOrEdgeId])) {
-      const converted = this.convertEdge(edge, attributes);
-      if (!predicate || predicate(node, converted)) {
+      const converted = this.convertEdge(edge.edge, edge.attributes);
+      if (!predicate) {
         yield converted;
+      } else {
+        const source = this.convertNode(edge.source, edge.sourceAttributes);
+        const target = this.convertNode(edge.target, edge.targetAttributes);
+        if (predicate(source, target, converted)) {
+          yield converted;
+        }
       }
     }
   }

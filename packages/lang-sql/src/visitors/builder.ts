@@ -386,7 +386,7 @@ export class SQLLogicalPlanBuilder
     const havingCond = node.having ? this.processNode(node.having) : null;
     if (havingCond && !(havingCond instanceof ASTIdentifier)) {
       const tempParams = havingCond.accept(this.calcBuilders);
-      for (const agg of tempParams.aggregates) {
+      for (const agg of tempParams.aggregates ?? []) {
         if (!aggFields.has(agg.fieldName.parts)) {
           aggregates.push(agg);
           aggFields.add(agg.fieldName.parts);

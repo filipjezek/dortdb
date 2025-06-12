@@ -5,7 +5,6 @@ import {
   ASTMapLiteral,
   ASTNumberLiteral,
 } from './literal.js';
-import { PropLookup } from './expression.js';
 
 export class PatternElChain implements ASTNode {
   public chain: (NodePattern | RelPattern)[];
@@ -38,9 +37,7 @@ export class RelPattern implements ASTNode {
     public pointsRight: boolean,
     public variable?: CypherIdentifier,
     public types: CypherIdentifier[] = [],
-    public range?:
-      | [ASTNumberLiteral | undefined]
-      | [ASTNumberLiteral | undefined, ASTNumberLiteral | undefined],
+    public range?: [ASTNumberLiteral | undefined, ASTNumberLiteral | undefined],
     public props?: ASTMapLiteral | ASTIdentifier,
   ) {}
 

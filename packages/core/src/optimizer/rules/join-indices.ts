@@ -148,14 +148,25 @@ export class JoinIndices
   } | null {
     const projections: plan.Projection[] = [];
     while (
-      [plan.Projection, plan.Selection, plan.OrderBy].includes(
-        node.constructor as any,
-      )
+      [
+        plan.Projection,
+        plan.Selection,
+        plan.OrderBy,
+        plan.Recursion,
+        plan.IndexedRecursion,
+      ].includes(node.constructor as any)
     ) {
       if (node.constructor === plan.Projection) {
         projections.push(node);
       }
-      node = (node as plan.Projection | plan.Selection | plan.OrderBy).source;
+      node = (
+        node as
+          | plan.Projection
+          | plan.Selection
+          | plan.OrderBy
+          | plan.Recursion
+          | plan.IndexedRecursion
+      ).source;
     }
     if (node.constructor === plan.MapFromItem) {
       if ((node as any).source.constructor === plan.ItemSource) {

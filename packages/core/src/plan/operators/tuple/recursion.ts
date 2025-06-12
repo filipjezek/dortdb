@@ -6,7 +6,7 @@ export class Recursion extends PlanTupleOperator {
     lang: Lowercase<string>,
     public min: number,
     public max: number,
-    /** any referenced attributes of the input tuples will be resolved as `[first, second]` */
+    /** any referenced attributes of the input tuples will be resolved as `[[collected,...], next]` */
     public condition: Calculation,
     public source: PlanTupleOperator,
   ) {

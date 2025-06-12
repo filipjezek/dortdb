@@ -29,7 +29,9 @@ export class GroupBy extends PlanTupleOperator {
     super();
     this.lang = lang;
     this.schemaSet = schemaToTrie(
-      source.schema.concat(aggs.map((a) => a.fieldName)),
+      source.schema
+        .concat(aggs.map((a) => a.fieldName))
+        .concat(keys.map(retI1)),
     );
     this.schema = Array.from(this.schemaSet.keys(), (k) =>
       ASTIdentifier.fromParts(k),
@@ -38,6 +40,13 @@ export class GroupBy extends PlanTupleOperator {
     this.dependencies = schemaToTrie(this.keys.map(retI0).filter(isId));
     arrSetParent(keys.map(retI0), this);
     arrSetParent(aggs, this);
+
+    for (const a of this.aggs) {
+      a.postGroupSource.schema = this.source.schema.concat(
+        this.keys.map(retI1),
+      );
+      a.postGroupSource.schemaSet = schemaToTrie(a.postGroupSource.schema);
+    }
   }
 
   accept<Ret, Arg>(

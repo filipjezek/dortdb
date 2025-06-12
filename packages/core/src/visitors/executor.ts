@@ -92,7 +92,7 @@ export abstract class Executor
       const item = queue.dequeue();
       for (const next of items) {
         for (const key of keys) {
-          ctx.variableValues[key] = [item[key].at(-1), next[key]];
+          ctx.variableValues[key] = [item[key], next[key]];
         }
         if (!this.visitCalculation(operator.condition, ctx)[0]) continue;
 
@@ -136,7 +136,7 @@ export abstract class Executor
     while (queue.size > 0) {
       const item = queue.dequeue();
       for (const key of keys) {
-        ctx.variableValues[key] = item[key].at(-1);
+        ctx.variableValues[key] = item[key];
       }
       for (const next of operator.mapping.accept(this.vmap, ctx) as Iterable<
         unknown[]
@@ -576,6 +576,7 @@ export abstract class Executor
     );
     const srcKeys = ctx.getKeys(operator.source);
     const resultKeys = ctx.getKeys(operator);
+    const keyKeys = operator.keys.map((x) => x[1].parts[0] as number);
 
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
@@ -594,20 +595,23 @@ export abstract class Executor
     const originalAggAcepts = operator.aggs.map(
       (agg) => agg.postGroupSource.accept,
     );
-    for (const [, group] of groups.entries()) {
+    for (const [groupKey, group] of groups.entries()) {
       const result: unknown[] = [];
+      for (let i = 0; i < keyKeys.length; i++) {
+        result[keyKeys[i]] = groupKey[i];
+      }
       for (const key of srcKeys) {
         result[key] = group[0][key];
       }
       for (let i = 0; i < operator.aggs.length; i++) {
         const agg = operator.aggs[i];
         agg.postGroupSource.accept = () =>
-          Iterator.from(group).map((item) =>
-            ctx.setTuple(
+          Iterator.from(group).map((item) => {
+            return ctx.setTuple(
               this.renameKeys(item, srcKeys, aggKeys[i]),
               aggKeys[i],
-            ),
-          ) as any;
+            );
+          }) as any;
         let state = agg.impl.init();
         for (const item of agg.postGroupOp.accept(this.vmap, ctx)) {
           state = agg.impl.step(
@@ -627,9 +631,9 @@ export abstract class Executor
     const source = operator.source.accept(this.vmap, ctx);
     let count = 0;
     for (const item of source) {
-      if (count >= operator.limit + operator.skip) break;
-      if (count >= operator.skip) yield item;
       count++;
+      if (count > operator.skip) yield item;
+      if (count === operator.limit + operator.skip) break;
     }
   }
   *visitUnion(operator: plan.Union, ctx: ExecutionContext): Iterable<unknown> {

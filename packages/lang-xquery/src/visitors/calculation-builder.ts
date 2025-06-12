@@ -1,6 +1,6 @@
 import { CalculationBuilder, CalculationParams } from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
-import { assertMaxOne, flat } from '@dortdb/core/internal-fns';
+import { flat } from '@dortdb/core/internal-fns';
 import * as plan from '@dortdb/core/plan';
 
 export class XQueryCalculationBuilder

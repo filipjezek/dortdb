@@ -134,7 +134,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     const sum = this.union(right, left);
     ctx.scopeStack.push(sum);
     ctx.translations.set(operator, sum);
-    ctx.currentIndex = ctx.currentIndex - right.size - left.size + sum.size;
+    ctx.currentIndex =
+      Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
+      1;
   }
   visitJoin(operator: plan.Join, ctx: VariableMapperCtx): void {
     this.visitCartesianProduct(operator, ctx);
@@ -160,7 +162,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     }
     ctx.scopeStack.push(sum);
     ctx.translations.set(operator, sum);
-    ctx.currentIndex = ctx.currentIndex - mapping.size - source.size + sum.size;
+    ctx.currentIndex =
+      Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
+      1;
   }
   visitMapToItem(operator: plan.MapToItem, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
@@ -251,6 +255,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitAggregate(operator: plan.AggregateCall, ctx: VariableMapperCtx): void {
     this.setTranslations(operator, ctx);
     operator.fieldName = this.translate(operator.fieldName, ctx, 1);
+    operator.postGroupOp.accept(this.vmap, ctx);
     for (let i = 0; i < operator.args.length; i++) {
       const arg = operator.args[i];
       if (arg instanceof ASTIdentifier) {
@@ -259,7 +264,6 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
         this.visitCalculation(arg, ctx);
       }
     }
-    operator.postGroupOp.accept(this.vmap, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitItemFnSource(operator: plan.ItemFnSource, ctx: VariableMapperCtx): void {

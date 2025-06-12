@@ -69,7 +69,10 @@ function toTuples(op: PlanOperator) {
     ? op
     : new plan.MapFromItem('xquery', DOT, op);
 }
-function collectArg(name: ASTIdentifier): plan.AggregateCall {
+function collectArg(
+  name: ASTIdentifier,
+  src: PlanTupleOperator,
+): plan.AggregateCall {
   return new plan.AggregateCall('xquery', [name], collect, name);
 }
 function coalesceSeq(seq: unknown) {
@@ -88,12 +91,6 @@ function infer(item: AST.ASTVariable, args: DescentArgs) {
       args.inferred.add(item.parts);
     }
   }
-}
-function getArgs(p: CalculationParams) {
-  return p.args;
-}
-function getMeta(p: CalculationParams) {
-  return p.argMeta;
 }
 
 interface DescentArgs {
@@ -159,10 +156,16 @@ export class XQueryLogicalPlanBuilder
     return this.dataAdapter.atomize(item);
   }
 
-  private maybeToCalc(item: ASTNode, args: DescentArgs) {
-    const res = item.accept(this, args);
+  private maybeUnwind(item: ASTNode, args: DescentArgs) {
+    let res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
-      return intermediateToCalc(res, this.calcBuilders, this.eqCheckers);
+      res = intermediateToCalc(res, this.calcBuilders, this.eqCheckers);
+      return new plan.ItemFnSource(
+        'xquery',
+        [res as plan.Calculation],
+        unwind.impl,
+        toId(unwind.name),
+      );
     }
     return res;
   }
@@ -300,7 +303,7 @@ export class XQueryLogicalPlanBuilder
     let res: PlanTupleOperator = new plan.MapFromItem(
       'xquery',
       node.variable,
-      this.maybeToCalc(node.expr, {
+      this.maybeUnwind(node.expr, {
         ctx: args.src ? union(args.ctx, args.src.schemaSet) : args.ctx,
         inferred: args.inferred,
       }),
@@ -368,15 +371,25 @@ export class XQueryLogicalPlanBuilder
     item: [AST.ASTVariable, ASTNode],
     args: DescentArgs,
   ): Aliased<ASTIdentifier | plan.Calculation> {
-    return [this.toCalc(item[1], args), item[0]];
+    const keyExpr = this.processFnArg(item[1], args);
+    const fn = new plan.FnCall('xquery', [keyExpr], this.atomize, true);
+    return [
+      intermediateToCalc(fn, this.calcBuilders, this.eqCheckers),
+      item[0],
+    ];
   }
   visitFLWORGroupBy(node: AST.FLWORGroupBy, args: DescentArgs): PlanOperator {
     const keySet = schemaToTrie(node.bindings.map(retI0));
-    const keys = node.bindings.map((x) => this.processGroupByItem(x, args));
+    const keyCtx = union(args.ctx, args.src.schemaSet);
+    const keys = node.bindings.map((x) =>
+      this.processGroupByItem(x, { ...args, ctx: keyCtx, src: null }),
+    );
     return new plan.GroupBy(
       'xquery',
       keys,
-      args.src.schema.filter((x) => !keySet.has(x.parts)).map(collectArg),
+      args.src.schema
+        .filter((x) => !keySet.has(x.parts))
+        .map((x) => collectArg(x, args.src)),
       args.src,
     );
   }
@@ -763,9 +776,9 @@ export class XQueryLogicalPlanBuilder
   }
   visitModule(node: AST.Module, args: DescentArgs): PlanOperator {
     node.prolog.accept(this, args);
-    let res = this.maybeToCalc(node.body[0], args);
+    let res = this.maybeUnwind(node.body[0], args);
     for (let i = 1; i < node.body.length; i++) {
-      res = new plan.Union('xquery', res, this.maybeToCalc(node.body[i], args));
+      res = new plan.Union('xquery', res, this.maybeUnwind(node.body[i], args));
     }
     return res;
   }

@@ -512,8 +512,8 @@ export class GraphBuilder
     parent = this.drawBranches(
       parent,
       ...operator.keys
-        .filter((k) => k instanceof plan.Calculation)
-        .map((k) => (k as PlanOperator).accept(this.vmap))
+        .filter((k) => k[0] instanceof plan.Calculation)
+        .map((k) => (k[0] as PlanOperator).accept(this.vmap))
         .map((el, i) => ({
           el,
           src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),

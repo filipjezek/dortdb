@@ -8,11 +8,11 @@
     padding: 3px;
     border-left: 6px solid;
     border-radius: 4px;
-    font-family: "Courier New", Courier, monospace;
+    font-family: 'Courier New', Courier, monospace;
     white-space: pre;
-    box-shadow: 0 0 2px #00000078;
-    background-color: var(--bg, white);
-    color: var(--text, black);
+    box-shadow: var(--mat-sys-level1);
+    background-color: var(--mat-sys-surface-bright);
+    color: var(--mat-sys-on-surface);
 
     .key {
       font-size: 0.75em;

@@ -26,7 +26,7 @@ export function simplifyCalcParams(
   if (params.args.length === 0) return params;
   const uniqueArgs: OpOrId[] = [params.args[0]];
   const argMeta: (ArgMeta | undefined)[] = [params.argMeta[0]];
-  const indexes: number[] = [0];
+  const indices: number[] = [0];
   outer: for (let i = 1; i < params.args.length; i++) {
     const eqChecker =
       eqCheckers[
@@ -35,8 +35,8 @@ export function simplifyCalcParams(
           : (params.args[i] as PlanOperator).lang
       ];
     for (let j = 0; j < i; j++) {
-      if (eqChecker.areEqual(params.args[i], uniqueArgs[j])) {
-        indexes.push(j);
+      if (uniqueArgs[j] && eqChecker.areEqual(params.args[i], uniqueArgs[j])) {
+        indices.push(j);
         argMeta[j].usedMultipleTimes = true;
         // original locations set always when the arg is an identifier
         argMeta[j].originalLocations.push(
@@ -47,7 +47,7 @@ export function simplifyCalcParams(
       }
     }
     uniqueArgs.push(params.args[i]);
-    indexes.push(uniqueArgs.length - 1);
+    indices.push(uniqueArgs.length - 1);
     argMeta.push(params.argMeta[i]);
   }
 
@@ -56,7 +56,7 @@ export function simplifyCalcParams(
     args: uniqueArgs,
     impl: (...args: unknown[]) => {
       const mapped: unknown[] = [];
-      for (const i of indexes) {
+      for (const i of indices) {
         mapped.push(args[i]);
       }
       return params.impl.apply(null, mapped);

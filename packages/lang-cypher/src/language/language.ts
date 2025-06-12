@@ -1,9 +1,10 @@
-import { ASTIdentifier, Language, SerializeFn } from '@dortdb/core';
+import { ASTIdentifier, Fn, Language, SerializeFn } from '@dortdb/core';
 import { CypherLogicalPlanBuilder } from '../visitors/builder.js';
 import { createParser } from './create-parser.js';
 import { CypherDataAdaper, GraphologyDataAdapter } from './data-adapter.js';
 import { CypherExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
+import * as fns from '../functions/index.js';
 
 export interface CypherConfig {
   adapter?: CypherDataAdaper;
@@ -21,7 +22,7 @@ export function Cypher(config?: CypherConfig): CypherLanguage {
     name: 'cypher',
     operators: [],
     aggregates: [],
-    functions: [],
+    functions: [...Object.values(fns)],
     castables: [],
     visitors: {
       logicalPlanBuilder: CypherLogicalPlanBuilder,
@@ -33,4 +34,12 @@ export function Cypher(config?: CypherConfig): CypherLanguage {
       config?.defaultGraph && ASTIdentifier.fromParts([config.defaultGraph]),
     serialize: config?.serialize ?? serializeToObjects(),
   };
+}
+
+export interface CypherFn extends Fn {
+  addAdapterCtx?: boolean;
+}
+export interface AdapterCtxArg {
+  adapter: CypherDataAdaper;
+  graph: unknown;
 }

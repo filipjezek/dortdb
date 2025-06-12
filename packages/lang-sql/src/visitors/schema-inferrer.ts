@@ -42,8 +42,8 @@ function getUnd(): undefined {
  */
 export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   constructor(
-    private vmap: Record<string, SQLPlanVisitor<IdSet, IdSet>>,
-    private db: DortDBAsFriend,
+    protected vmap: Record<string, SQLPlanVisitor<IdSet, IdSet>>,
+    protected db: DortDBAsFriend,
   ) {}
 
   public inferSchema(
@@ -63,6 +63,9 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     const external = schemaToTrie(operator.schema.slice(operator.attrs.length));
     operator.removeFromSchema(external);
 
+    // created by langswitch
+    if (operator.source.lang !== 'sql') return external;
+
     ctx = union(ctx, operator.source.schema);
     for (const attr of operator.attrs) {
       this.processArg(operator.source, attr[0], ctx);
@@ -74,7 +77,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return external;
   }
 
-  private processArg(
+  protected processArg(
     operator: PlanTupleOperator,
     arg: ASTIdentifier | PlanOperator,
     ctx: IdSet,
@@ -100,7 +103,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
 
-  private renameTupleSourceAttrs(
+  protected renameTupleSourceAttrs(
     operator: plan.TupleSource | plan.TupleFnSource,
   ) {
     const toRemove: ASTIdentifier[] = [];
@@ -190,7 +193,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     throw new Error('Method not implemented.');
   }
 
-  private getRelNames(operator: PlanTupleOperator): IdSet {
+  protected getRelNames(operator: PlanTupleOperator): IdSet {
     while (
       'source' in operator &&
       operator.source instanceof PlanTupleOperator
@@ -316,7 +319,10 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return res;
   }
   visitMapFromItem(operator: plan.MapFromItem, ctx: IdSet): IdSet {
-    const external = operator.source.accept(this.vmap, ctx);
+    const external: IdSet =
+      operator.source.lang === 'sql'
+        ? operator.source.accept(this.vmap, ctx)
+        : new Trie();
     while (operator.schema.length > 1) {
       external.add(operator.schema[1].parts);
       operator.removeFromSchema(operator.schema[1]);
@@ -399,7 +405,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
 
-  private processSetOp(operator: plan.SetOperator, ctx: IdSet) {
+  protected processSetOp(operator: plan.SetOperator, ctx: IdSet) {
     const left = operator.left.accept(this.vmap, ctx);
     const right = operator.right.accept(this.vmap, ctx);
     for (const item of right) {
