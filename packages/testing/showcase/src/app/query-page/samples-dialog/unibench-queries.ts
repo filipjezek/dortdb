@@ -111,27 +111,23 @@ LIMIT 3`,
   },
   {
     query: `-- find negative feedback on BRAND products with decreasing sales
+--
+-- example brand id: 19
 
-SELECT feedback FROM feedback
-JOIN products ON products.id = feedback.productId
-WHERE brand = :brand AND feedback[1]::number < 4 AND (
+SELECT feedback.feedback FROM feedback
+JOIN products ON feedback.productAsin = products.asin
+WHERE products.brand = 19 AND feedback.feedback[1]::number < 4 AND (
   LANG xquery
-  for $orderline in $Invoices//*[ 
-    date(OrderDate) gt now() - interval('3 months')
-  ]
-    /Orderline[productId = $products:id]
-  return sum($orderline)
-) < (
-  LANG xquery
-  for $orderline in $Invoices//*[ 
-    date(OrderDate) le now() - interval('3 months') and
-    date(OrderDate) gt now() - interval('6 months')
-  ]
-    /Orderline[productId = $products:id]
-  return sum($orderline)
-)
-
--- join SQL * XML * XML`,
+  let $now := date('2024-12-31') (: the data is static :)
+  let $recent := $Invoices/Invoices/Invoice.xml[ 
+    date(OrderDate) gt date:sub($now, interval('6 months'))
+  ][Orderline/productId = $products:productId]
+  let $old := $Invoices/Invoices/Invoice.xml[ 
+    date(OrderDate) le date:sub($now, interval('6 months')) and
+    date(OrderDate) gt date:sub($now, interval('12 months'))
+  ][Orderline/productId = $products:productId]
+  return fn:count($recent) lt fn:count($old)
+)`,
     lang: 'sql',
   },
   {

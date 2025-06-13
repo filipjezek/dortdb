@@ -595,13 +595,18 @@ export abstract class Executor
     const originalAggAcepts = operator.aggs.map(
       (agg) => agg.postGroupSource.accept,
     );
-    for (const [groupKey, group] of groups.entries()) {
+    for (const [groupKey, group] of groups.size === 0 &&
+    operator.keys.length === 0
+      ? ([[[], []]] as [unknown[], unknown[][]][])
+      : groups.entries()) {
       const result: unknown[] = [];
       for (let i = 0; i < keyKeys.length; i++) {
         result[keyKeys[i]] = groupKey[i];
       }
-      for (const key of srcKeys) {
-        result[key] = group[0][key];
+      if (group.length > 0) {
+        for (const key of srcKeys) {
+          result[key] = group[0][key];
+        }
       }
       for (let i = 0; i < operator.aggs.length; i++) {
         const agg = operator.aggs[i];

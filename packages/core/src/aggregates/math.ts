@@ -34,14 +34,22 @@ export const avg: AggregateFn = {
 
 export const min: AggregateFn = {
   name: 'min',
-  init: () => Infinity,
-  step: (state: number, val: number) => Math.min(state, val),
-  result: (state: number) => state,
+  init: () => null,
+  step: (state: any, val: any) => {
+    if (state === null) return val;
+    if (val < state) return val;
+    return state;
+  },
+  result: (state: any) => state,
 };
 
 export const max: AggregateFn = {
   name: 'max',
-  init: () => -Infinity,
-  step: (state: number, val: number) => Math.max(state, val),
-  result: (state: number) => state,
+  init: () => null,
+  step: (state: any, val: any) => {
+    if (state === null) return val;
+    if (val > state) return val;
+    return state;
+  },
+  result: (state: any) => state,
 };

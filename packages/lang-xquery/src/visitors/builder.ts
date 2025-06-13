@@ -17,8 +17,6 @@ import {
   boundParam,
   toInfer,
   DortDBAsFriend,
-  Fn,
-  AggregateFn,
   EqualityChecker,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
@@ -162,7 +160,7 @@ export class XQueryLogicalPlanBuilder
       res = intermediateToCalc(res, this.calcBuilders, this.eqCheckers);
       return new plan.ItemFnSource(
         'xquery',
-        [res as plan.Calculation],
+        [res as plan.Calculation | ASTIdentifier],
         unwind.impl,
         toId(unwind.name),
       );
@@ -270,6 +268,7 @@ export class XQueryLogicalPlanBuilder
     for (let i = 1; i < node.clauses.length; i++) {
       res = node.clauses[i].accept(this, {
         ...args,
+        ctx: union(args.ctx, res.schemaSet),
         src: res,
       }) as PlanTupleOperator;
     }
@@ -340,13 +339,6 @@ export class XQueryLogicalPlanBuilder
         { ctx: attrCtx, inferred: dargs.inferred },
         false,
       );
-      if (calc instanceof plan.Calculation) {
-        const oldImpl = calc.impl;
-        calc.impl = (...args) => {
-          const res = oldImpl === assertMaxOne ? args : oldImpl(...args);
-          return Array.isArray(res) ? res.flat(Infinity) : res;
-        };
-      }
       attrs.push([calc, varName]);
     }
     return new plan.Projection('xquery', attrs, res);
@@ -417,25 +409,22 @@ export class XQueryLogicalPlanBuilder
   visitFLWORCount(node: AST.FLWORCount, args: DescentArgs): PlanOperator {
     return new plan.ProjectionIndex('xquery', node.variable, args.src);
   }
+
   visitFLWORReturn(node: AST.FLWORReturn, args: DescentArgs): PlanOperator {
+    let expr: PlanOperator | ASTIdentifier;
     if (node.expr instanceof AST.ASTVariable) {
       infer(node.expr, args);
-      return new plan.MapToItem('xquery', node.expr, args.src);
+      expr = node.expr.accept(this, { ...args, src: null });
+    } else {
+      expr = this.toCalc(node.expr, { ...args, src: null }, false);
     }
     return new plan.MapToItem(
       'xquery',
       DOT,
-      new plan.Projection(
+      new plan.ProjectionConcat(
         'xquery',
-        [
-          [
-            this.toCalc(node.expr, {
-              ctx: union(args.ctx, args.src.schemaSet),
-              inferred: args.inferred,
-            }),
-            DOT,
-          ],
-        ],
+        new plan.MapFromItem('xquery', DOT, expr),
+        false,
         args.src,
       ),
     );
@@ -908,9 +897,12 @@ export class XQueryLogicalPlanBuilder
   private processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
-      return { op: new plan.FnCall('xquery', [item], ret1) };
+      return {
+        op: new plan.FnCall('xquery', [item], ret1),
+        acceptSequence: true,
+      };
     }
-    return { op: item.accept(this, args) };
+    return { op: item.accept(this, args), acceptSequence: true };
   }
   visitOperator(node: ASTOperator, args: DescentArgs): PlanOperator {
     const op = this.db.langMgr.getOp(
@@ -1009,51 +1001,12 @@ export class XQueryLogicalPlanBuilder
     }
     return toTuples(arg);
   }
-  visitFunction(node: ASTFunction, dargs: DescentArgs): PlanOperator {
-    const [id, schema] = idToPair(node.id);
-    let impl: XQueryFn | XQueryAggregate;
-    try {
-      impl = this.db.langMgr.getFnOrAggr(node.lang, id, schema);
-    } catch (e) {
-      const cast = this.db.langMgr.getCast(node.lang, id, schema);
-      if (cast) {
-        impl = {
-          name: cast.name,
-          impl: cast.convert,
-          pure: cast.pure,
-        };
-      } else {
-        throw e;
-      }
-    }
 
-    if ('impl' in impl) {
-      const args = [
-        DOT,
-        LEN,
-        POS,
-        ...node.args.map((a) => this.processFnArg(a, dargs)),
-      ];
-      return new plan.FnCall(
-        node.lang,
-        args,
-        impl.skipAtomization
-          ? (dot, len, pos, ...args) =>
-              impl.impl(...args, {
-                item: dot,
-                position: pos,
-                size: len,
-              } as FnContext)
-          : (dot, len, pos, ...args) =>
-              impl.impl(...args.map(this.atomize), {
-                item: this.atomize(dot),
-                position: pos,
-                size: len,
-              } as FnContext),
-        impl.pure,
-      );
-    }
-
+  private processAggregateFn(
+    node: ASTFunction,
+    dargs: DescentArgs,
+    impl: XQueryAggregate,
+  ): PlanOperator {
     const args = node.args.map((x) =>
       this.prepareAggArg(x.accept(this, dargs)),
     );
@@ -1090,6 +1043,54 @@ export class XQueryLogicalPlanBuilder
     gb.aggs[0].postGroupOp.schemaSet = gb.source.schemaSet;
 
     return new plan.MapToItem('xquery', DOT, gb);
+  }
+
+  visitFunction(node: ASTFunction, dargs: DescentArgs): PlanOperator {
+    const [id, schema] = idToPair(node.id);
+    let impl: XQueryFn | XQueryAggregate;
+    try {
+      impl = this.db.langMgr.getFnOrAggr(node.lang, id, schema);
+    } catch (e) {
+      const cast = this.db.langMgr.getCast(node.lang, id, schema);
+      if (cast) {
+        impl = {
+          name: cast.name,
+          impl: cast.convert,
+          pure: cast.pure,
+        };
+      } else {
+        throw e;
+      }
+    }
+
+    if ('impl' in impl) {
+      const args = [
+        DOT,
+        LEN,
+        POS,
+        ...node.args.map((a) => this.processFnArg(a, dargs)),
+      ];
+      return new plan.FnCall(
+        node.lang,
+        args,
+        impl.skipAtomization
+          ? (dot, len, pos, ...args) =>
+              impl.impl(...(args.length ? args : [dot]), {
+                item: dot,
+                position: pos,
+                size: len,
+              } as FnContext)
+          : (dot, len, pos, ...args) =>
+              impl.impl(...(args.length ? args : [dot]).map(this.atomize), {
+                item: this.atomize(dot),
+                position: pos,
+                size: len,
+              } as FnContext),
+        impl.pure,
+      );
+    }
+
+    return this.processAggregateFn(node, dargs, impl);
   }
   visitLangSwitch(node: LangSwitch, args: DescentArgs): PlanOperator {
     const nested = new (this.db.langMgr.getLang(
