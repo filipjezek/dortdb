@@ -15,7 +15,12 @@ import { EqualityChecker } from './equality-checker.js';
 export interface ArgMeta {
   maybeSkipped?: boolean;
   aggregate?: operators.AggregateCall;
-  originalLocations: [any, number | string][];
+  originalLocations: {
+    obj: any;
+    key: string | number;
+    /** the location was for an identifier, operators should be passed as `PlanOpAsArg` */
+    fnArg?: boolean;
+  }[];
   usedMultipleTimes?: boolean;
   acceptSequence?: boolean;
 }
@@ -45,12 +50,14 @@ function getMetas(
   a: CalculationParams | ASTIdentifier,
   obj: any,
   key: string | number,
+  fnArg?: boolean,
 ): ArgMeta[] {
-  if (a instanceof ASTIdentifier) return [{ originalLocations: [[obj, key]] }];
+  if (a instanceof ASTIdentifier)
+    return [{ originalLocations: [{ obj, key, fnArg }] }];
   for (const m of a.argMeta) {
     if (m.originalLocations.length === 0) {
       m.originalLocations.push(
-        'op' in obj[key] ? [obj[key], 'op'] : [obj, key],
+        'op' in obj[key] ? { obj: obj[key], key: 'op' } : { obj, key },
       );
     }
   }
@@ -208,7 +215,9 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
         argMeta: [],
       };
     }
-    const nestedMetas = children.map((ch, i) => getMetas(ch, operator.args, i));
+    const nestedMetas = children.map((ch, i) =>
+      getMetas(ch, operator.args, i, ch instanceof ASTIdentifier),
+    );
     for (let i = 0; i < nestedMetas.length; i++) {
       if (
         !(operator.args[i] instanceof ASTIdentifier) &&

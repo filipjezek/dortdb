@@ -122,7 +122,7 @@ export class XQueryLogicalPlanBuilder
   buildPlan(node: ASTNode, ctx: IdSet) {
     const inferred = new Trie<string | symbol>();
     let res = node.accept(this, { ctx, inferred });
-    if (res instanceof PlanTupleOperator) {
+    if (res instanceof PlanTupleOperator && res.schema) {
       res = new plan.MapToItem('xquery', DOT, res);
     }
     return { plan: res, inferred };
@@ -155,6 +155,9 @@ export class XQueryLogicalPlanBuilder
   }
 
   private maybeUnwind(item: ASTNode, args: DescentArgs) {
+    if (item instanceof AST.ASTVariable) {
+      infer(item, args);
+    }
     let res = item.accept(this, args);
     if (plan.CalcIntermediate in res) {
       res = intermediateToCalc(res, this.calcBuilders, this.eqCheckers);
@@ -268,7 +271,7 @@ export class XQueryLogicalPlanBuilder
     for (let i = 1; i < node.clauses.length; i++) {
       res = node.clauses[i].accept(this, {
         ...args,
-        ctx: union(args.ctx, res.schemaSet),
+        ctx: union(args.ctx, res.schema),
         src: res,
       }) as PlanTupleOperator;
     }
@@ -303,7 +306,7 @@ export class XQueryLogicalPlanBuilder
       'xquery',
       node.variable,
       this.maybeUnwind(node.expr, {
-        ctx: args.src ? union(args.ctx, args.src.schemaSet) : args.ctx,
+        ctx: args.src ? union(args.ctx, args.src.schema) : args.ctx,
         inferred: args.inferred,
       }),
     );
@@ -330,15 +333,8 @@ export class XQueryLogicalPlanBuilder
     const res = dargs.src ?? new plan.NullSource('xquery');
     const attrs: Aliased<ASTIdentifier | plan.Calculation>[] =
       res.schema.map(toPair);
-    const attrCtx = dargs.src
-      ? union(dargs.ctx, dargs.src.schemaSet)
-      : dargs.ctx;
     for (const [varName, expr] of node.bindings) {
-      const calc = this.toCalc(
-        expr,
-        { ctx: attrCtx, inferred: dargs.inferred },
-        false,
-      );
+      const calc = this.toCalc(expr, { ...dargs, src: null }, false);
       attrs.push([calc, varName]);
     }
     return new plan.Projection('xquery', attrs, res);
@@ -349,8 +345,8 @@ export class XQueryLogicalPlanBuilder
   visitFLWORWhere(node: AST.FLWORWhere, args: DescentArgs): PlanOperator {
     return exprToSelection(
       this.processNode(node.expr, {
-        ctx: union(args.ctx, args.src.schemaSet),
-        inferred: args.inferred,
+        ...args,
+        src: null,
       }),
       args.src,
       this.calcBuilders,
@@ -372,9 +368,8 @@ export class XQueryLogicalPlanBuilder
   }
   visitFLWORGroupBy(node: AST.FLWORGroupBy, args: DescentArgs): PlanOperator {
     const keySet = schemaToTrie(node.bindings.map(retI0));
-    const keyCtx = union(args.ctx, args.src.schemaSet);
     const keys = node.bindings.map((x) =>
-      this.processGroupByItem(x, { ...args, ctx: keyCtx, src: null }),
+      this.processGroupByItem(x, { ...args, src: null }),
     );
     return new plan.GroupBy(
       'xquery',
@@ -397,12 +392,9 @@ export class XQueryLogicalPlanBuilder
     };
   }
   visitFLWOROrderBy(node: AST.FLWOROrderBy, args: DescentArgs): PlanOperator {
-    const attrCtx = union(args.ctx, args.src.schemaSet);
     return new plan.OrderBy(
       'xquery',
-      node.items.map((i) =>
-        this.processOrderItem(i, { ctx: attrCtx, inferred: args.inferred }),
-      ),
+      node.items.map((i) => this.processOrderItem(i, { ...args, src: null })),
       args.src,
     );
   }
@@ -415,17 +407,36 @@ export class XQueryLogicalPlanBuilder
     if (node.expr instanceof AST.ASTVariable) {
       infer(node.expr, args);
       expr = node.expr.accept(this, { ...args, src: null });
-    } else {
-      expr = this.toCalc(node.expr, { ...args, src: null }, false);
+      expr = new plan.MapFromItem('xquery', DOT, expr);
+      expr = new plan.ProjectionConcat(
+        'xquery',
+        expr as PlanTupleOperator,
+        false,
+        args.src,
+      );
+      return new plan.MapToItem('xquery', DOT, expr as PlanTupleOperator);
     }
     return new plan.MapToItem(
       'xquery',
       DOT,
       new plan.ProjectionConcat(
         'xquery',
-        new plan.MapFromItem('xquery', DOT, expr),
+        new plan.MapFromItem(
+          'xquery',
+          DOT,
+          new plan.ItemFnSource(
+            'xquery',
+            [DOT],
+            unwind.impl,
+            ASTIdentifier.fromParts([unwind.name]),
+          ),
+        ),
         false,
-        args.src,
+        new plan.Projection(
+          'xquery',
+          [[this.toCalc(node.expr, { ...args, src: null }, false), DOT]],
+          args.src,
+        ),
       ),
     );
   }
@@ -445,7 +456,7 @@ export class XQueryLogicalPlanBuilder
 
     const calc = this.toCalc(
       node.expr,
-      { ctx: union(args.ctx, subq.schemaSet), inferred: args.inferred },
+      { ctx: union(args.ctx, subq.schema), inferred: args.inferred },
       false,
     );
     if (invert) {
@@ -589,7 +600,7 @@ export class XQueryLogicalPlanBuilder
     if (step instanceof AST.FilterExpr) {
       return this.maybeProjectConcat(
         this.visitFilterExpr(step, {
-          ctx: union(args.ctx, args.src.schemaSet),
+          ctx: union(args.ctx, args.src.schema),
           inferred: args.inferred,
         }),
         args.src,
@@ -599,7 +610,7 @@ export class XQueryLogicalPlanBuilder
     } else {
       const calc = this.toCalc(
         step,
-        { ctx: union(args.ctx, args.src.schemaSet), inferred: args.inferred },
+        { ctx: union(args.ctx, args.src.schema), inferred: args.inferred },
         false,
       );
       if (calc.impl === assertMaxOne) calc.impl = ret1;
@@ -626,7 +637,7 @@ export class XQueryLogicalPlanBuilder
     node: AST.PathPredicate,
     dargs: DescentArgs,
   ): PlanTupleOperator {
-    const calcCtx = union(dargs.ctx, dargs.src.schemaSet);
+    const calcCtx = union(dargs.ctx, dargs.src.schema);
     const args = node.exprs.map((x) =>
       this.processFnArg(x, { ctx: calcCtx, inferred: dargs.inferred }),
     );

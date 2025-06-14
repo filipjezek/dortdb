@@ -50,6 +50,10 @@ export function assertMaxOne<T>(vals: T[]): T {
 }
 
 type RecursiveArray<T> = T[] | RecursiveArray<T>[];
-export function flat<T>(input: RecursiveArray<T>): T[] {
-  return (input as T[]).flat(Infinity) as T[];
+export function flat<T>(input: RecursiveArray<T>): T[] | T {
+  const flattened = (input as T[]).flat(Infinity) as T[];
+  if (flattened.length === 1) {
+    return flattened[0];
+  }
+  return flattened;
 }

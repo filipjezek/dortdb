@@ -8,7 +8,12 @@ import {
 import { ASTIdentifier } from '../../ast.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { DortDBAsFriend } from '../../db.js';
-import { assertMaxOne, isNotNull, toPair } from '../../internal-fns/index.js';
+import {
+  assertMaxOne,
+  isNotNull,
+  ret1,
+  toPair,
+} from '../../internal-fns/index.js';
 import { simplifyCalcParams } from '../../utils/calculation.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
 import { CalculationParams } from '../../visitors/calculation-builder.js';
@@ -118,10 +123,9 @@ export class UnnestSubqueries
           | plan.OrderBy
       ).replaceChild(calc, newAttr);
     } else {
-      const toArr = (val: any) => [val];
       calc.replaceChild(
         calc.args[argI] as plan.Calculation,
-        new plan.FnCall(calc.lang, [newAttr], toArr),
+        new plan.FnCall(calc.lang, [newAttr], ret1),
       );
       let newParams = calc.original.accept(this.calcBuilders);
       newParams = simplifyCalcParams(newParams, this.eqCheckers, calc.lang);

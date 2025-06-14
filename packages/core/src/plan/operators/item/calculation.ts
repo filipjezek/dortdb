@@ -56,9 +56,9 @@ export class Calculation implements PlanOperator {
       this.original = replacement;
     } else {
       const locs = this.argMeta[idx].originalLocations;
-      locs[0][0][locs[0][1]] = replacement;
+      locs[0].obj[locs[0].key] = replacement;
       for (let i = 1; i < locs.length; i++) {
-        locs[i][0][locs[i][1]] = replacement.clone();
+        locs[i].obj[locs[i].key] = replacement.clone();
       }
     }
   }

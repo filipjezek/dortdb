@@ -14,7 +14,10 @@ import { union } from '../../utils/trie.js';
 import { isId } from '../../internal-fns/index.js';
 import { CalculationParams } from '../../visitors/calculation-builder.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
-import { simplifyCalcParams } from '../../utils/calculation.js';
+import {
+  intermediateToCalc,
+  simplifyCalcParams,
+} from '../../utils/calculation.js';
 
 export type MergeProjectionsBindings = plan.Projection[];
 export type ProjMap = Trie<
@@ -129,9 +132,9 @@ export class MergeProjections
       if (arg instanceof ASTIdentifier) {
         const mapped = projMap.get(arg.parts);
         if (mapped) {
-          for (const [obj, key] of calc.argMeta[i].originalLocations) {
+          for (const { obj, key, fnArg } of calc.argMeta[i].originalLocations) {
             if (mapped instanceof plan.Calculation) {
-              obj[key] = mapped.original;
+              obj[key] = fnArg ? { op: mapped.original } : mapped.original;
             } else {
               obj[key] = mapped;
             }
@@ -140,21 +143,12 @@ export class MergeProjections
       }
     }
 
-    const newCalcParams = simplifyCalcParams(
-      calc.original.accept(this.calcBuilderVmap),
-      this.eqCheckersVmap,
-      calc.lang,
-    );
-    const newCalc = new plan.Calculation(
-      calc.lang,
-      newCalcParams.impl,
-      newCalcParams.args,
-      newCalcParams.argMeta,
+    console.log(calc.original.clone());
+    return intermediateToCalc(
       calc.original,
-      newCalcParams.aggregates,
-      newCalcParams.literal,
+      this.calcBuilderVmap,
+      this.eqCheckersVmap,
     );
-    return newCalc;
   }
 
   protected canMergeIntoOne(

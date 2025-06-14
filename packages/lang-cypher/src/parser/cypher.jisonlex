@@ -107,12 +107,12 @@ RARR      [⟩〉﹥＞]
 "{"           return this.yy.AdditionalTokens.LCUR;
 "}"           this.yy.saveRemainingInput(this._input); return this.yy.AdditionalTokens.RCUR;
 {RARR}        return this.yy.AdditionalTokens.RARROW;
-">"           return this.yy.AdditionalTokens.GT;
-"<"           return this.yy.AdditionalTokens.LT;
 "="           return this.yy.AdditionalTokens.EQ;
 "<>"          return this.yy.AdditionalTokens.NEQ;
 ">="          return this.yy.AdditionalTokens.GTE;
 "<="          return this.yy.AdditionalTokens.LTE;
+">"           return this.yy.AdditionalTokens.GT;
+"<"           return this.yy.AdditionalTokens.LT;
 "+="          return this.yy.AdditionalTokens.PLUSEQ;
 "+"           return this.yy.AdditionalTokens.PLUS;
 "-"           return this.yy.AdditionalTokens.MINUS;

@@ -42,8 +42,6 @@ export class AggregateCall implements PlanOperator {
       lang,
       ASTIdentifier.fromParts(['<partition>']),
     );
-    this._postGSource.schema = [];
-    this._postGSource.schemaSet = new Trie<string | symbol>();
     this.postGroupOp = this._postGSource;
     this.dependencies = schemaToTrie(args.filter(isId));
     this.fieldName.aggregate = this;
@@ -70,14 +68,20 @@ export class AggregateCall implements PlanOperator {
   clone(): AggregateCall {
     const args = this.args.map(cloneIfPossible);
     const clone = new AggregateCall(this.lang, args, this.impl, this.fieldName);
-    clone.postGroupOp = this.postGroupOp.clone();
-    let origIter = this.postGroupOp;
-    let cloneIter = clone.postGroupOp;
-    while (origIter !== this._postGSource) {
-      origIter = origIter.parent as PlanTupleOperator;
-      cloneIter = cloneIter.parent as PlanTupleOperator;
+    const childIndices: number[] = [];
+    let origIter = this._postGSource as PlanOperator;
+    while (origIter !== this.postGroupOp) {
+      const children = origIter.parent.getChildren();
+      childIndices.push(children.indexOf(origIter));
+      origIter = origIter.parent;
     }
-    clone._postGSource = cloneIter;
+
+    clone.postGroupOp = this.postGroupOp.clone();
+    let cloneIter: PlanOperator = clone.postGroupOp;
+    for (let i = childIndices.length - 1; i >= 0; i--) {
+      cloneIter = cloneIter.getChildren()[childIndices[i]];
+    }
+    clone._postGSource = cloneIter as TupleSource;
     return clone;
   }
 }

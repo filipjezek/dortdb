@@ -1,5 +1,9 @@
 import { Trie } from '../data-structures/trie.js';
-import { PlanOperator, PlanVisitor } from '../plan/visitor.js';
+import {
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
 import { allAttrs, ASTIdentifier } from '../ast.js';
 
@@ -223,7 +227,8 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     operator.left.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
     operator.right.accept(this.vmap, ctx);
-    ctx.currentIndex -= ctx.scopeStack.pop().size;
+    if (operator.right instanceof PlanTupleOperator && operator.right.schema)
+      ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitUnion(operator: plan.Union, ctx: VariableMapperCtx): void {
     this.visitSetOp(operator, ctx);

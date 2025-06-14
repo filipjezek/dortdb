@@ -1,13 +1,5 @@
-import { computed, Injectable, Signal, signal } from '@angular/core';
-import {
-  asapScheduler,
-  from,
-  generate,
-  map,
-  Observable,
-  switchMap,
-  tap,
-} from 'rxjs';
+import { computed, Injectable, signal } from '@angular/core';
+import { from, Observable, switchMap, tap } from 'rxjs';
 import * as zip from '@zip.js/zip.js';
 import { MultiDirectedGraph } from 'graphology';
 import { CSVParser } from '../utils/csv-parser';
@@ -97,10 +89,7 @@ export class UnibenchService {
     },
     'Dataset/Product/BrandByProduct.csv': {
       key: 'brandProducts',
-      columns: ['brandName', 'productId'],
-      cast: {
-        productId: Number,
-      },
+      columns: ['brandName', 'productAsin'],
     },
     'Dataset/Product/Product.csv': {
       key: 'products',

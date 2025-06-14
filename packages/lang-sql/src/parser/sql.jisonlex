@@ -149,6 +149,8 @@ DEC       [0-9]
 <blockc>.|\n       this.yy.comment += yytext;
 <blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
+([+*/<>=-])+[*/<>=] return this.yy.AdditionalTokens.USEROP;
+[+*/<>=~!@#%^&|`?-]*[~!@#%^&|`?][+*/<>=~!@#%^&|`?-]* return this.yy.AdditionalTokens.USEROP;
 "," 			return this.yy.AdditionalTokens.COMMA;
 ".*"      return this.yy.AdditionalTokens.DOTSTAR;
 "."				return this.yy.AdditionalTokens.DOT;
@@ -191,8 +193,4 @@ DEC       [0-9]
 %}
 
 
-
-
-([+*/<>=-])+[*/<>=] return this.yy.AdditionalTokens.USEROP;
-[+*/<>=~!@#%^&|`?-]*[~!@#%^&|`?][+*/<>=~!@#%^&|`?-]* return this.yy.AdditionalTokens.USEROP;
 \s+                 /* skip whitespace */

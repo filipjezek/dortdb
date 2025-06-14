@@ -132,70 +132,94 @@ WHERE products.brand = 19 AND feedback.feedback[1]::number < 4 AND (
   },
   {
     query: `-- compute this year's total sales amount and social media popularity of
--- products in CATEGORY 
+-- products in CATEGORY
+--
+-- the only category in the dataset is Sports
 
-WITH totalPosts AS (
-  LANG cypher
-  UNWIND (
+SELECT x.value->'id' AS productId, x.value->'sales' AS sales, x.value->'popularity' || '%' AS popularity
+FROM (
+  LANG xquery
+  let $categoryProducts := (
     LANG sql
-    SELECT id FROM products WHERE category = :category
-  ) AS productId
-  MATCH (post)-[:hasTag]->({id: productId})
-  WHERE post.creationDate > now() - interval('1 year')
-  RETURN count(post) AS total
-)
-SELECT
-  products.id,
-  (
-    LANG xquery
-    for $product in $Invoices//*[ 
-      date(OrderDate) gt now() - interval('1 year')
-    ]
-      /Orderline[productId = $products:id]
-    return fn:count($product)
-  ) amountSold,
-  (
+    SELECT products.productId
+    FROM products
+    JOIN brandProducts ON products.asin = brandProducts.productAsin
+    JOIN vendors ON brandProducts.brandName = vendors.id
+    WHERE vendors.Industry = 'Sports'
+  ),
+  $yrAgo := date:sub(date('2024-12-31'), interval('1y')),
+  $postsYrAgo := date('2011-12-31') (: there are no posts newer than 2012 in the dataset :)
+  let $totalPosts := (
     LANG cypher
-    MATCH (post)-[:hasTag]->({id: products.id})
-    WHERE post.creationDate > now() - interval('1 year')
-    RETURN count(post)
-  ) / (SELECT total FROM totalPosts) relativePopulatity
-FROM products
-WHERE products.category = :category`,
+    UNWIND categoryProducts AS pid
+    MATCH ({id: pid})<-[:hasTag]-(p)
+    WHERE (LANG SQL SELECT creationDate FROM posts WHERE id = nonlocal.p->'id') > postsYrAgo
+    RETURN count(p)
+  )
+
+  for $pid in $categoryProducts
+  let $soldProducts := $Invoices/Invoices/Invoice.xml[
+    date(OrderDate) gt $yrAgo
+  ]/Orderline[productId eq $pid],
+  $relatedPosts := (
+    LANG cypher
+    MATCH ({id: pid})<-[:hasTag]-(p)
+    WHERE (LANG SQL SELECT creationDate FROM posts WHERE id = nonlocal.p->'id') > postsYrAgo
+    RETURN count(p)
+  )
+  return <product
+    id="{ $pid }"
+    sales="{ sum($soldProducts/price/number()) }"
+    popularity="{ $relatedPosts div $totalPosts * 100 }"
+  />
+) x`,
     lang: 'sql',
   },
   {
     query: `-- compare top 3 vendors' male and female customer ratio and find latest posts about them
 
-WITH topVendors AS (
-  SELECT
-    vendors.id,
-    (
-      LANG xquery
-      for $sale in $Invoices//*[brand = $vendors:id]
-      return fn:count($sale)
-    ) sales
-  FROM vendors
-  ORDER BY sales DESC
-  LIMIT 3
-)
 SELECT
-  id,
+  topVendors.id,
   (
     SELECT
       count(*) FILTER (WHERE gender = 'male') / count(*) FILTER (WHERE gender = 'female')
     FROM customers
     WHERE EXISTS (
-      SELECT 1 FROM orders WHERE personId = customers.id
-      AND orderlines @> ARRAY[ROW(topVendors.id AS brand)]
+      SELECT 1 FROM orders WHERE PersonId = customers.id
+      AND Orderline @> ARRAY[ROW(topVendors.id AS brand)]
     )
-  ),
+  ) mfRatio,
   ARRAY(
-    LANG cypher
-    MATCH (post)-[:hasTag]->({id: topVendors.id})
-    RETURN post.content ORDER BY post.creationDate DESC LIMIT 10
+    SELECT posts.content
+    FROM posts
+    JOIN (
+      LANG cypher
+      UNWIND (
+        LANG sql
+        SELECT products.productId
+        FROM products
+        JOIN brandProducts ON products.asin = brandProducts.productAsin
+        WHERE brandProducts.brandName = topVendors.id
+      ) AS productId
+      MATCH ({id: productId})<-[:hasTag]-(post)
+      RETURN post.id AS id
+    ) postIds
+    ON posts.id = postIds.id
+    ORDER BY posts.creationDate DESC
+    LIMIT 5
   ) latestPosts
-FROM topVendors`,
+FROM (
+  SELECT
+    vendors.id,
+    (
+      LANG xquery
+      let $sales := $Invoices/Invoices/Invoice.xml/Orderline[brand = $vendors:id]
+      return fn:count($sales)
+    ) sales
+  FROM vendors
+  ORDER BY sales DESC
+  LIMIT 3
+) topVendors`,
     lang: 'sql',
   },
   {

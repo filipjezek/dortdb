@@ -11,10 +11,10 @@ export class CypherIdentifier extends ASTIdentifier {
     if (!schemaOriginal) {
       [this.idOriginal, this.schemaOriginal] = this.splitId(idOriginal);
     }
+    this.parts.push(this.parseId(this.idOriginal));
     if (this.schemaOriginal) {
       this.parts.push(this.parseId(this.schemaOriginal));
     }
-    this.parts.push(this.parseId(this.idOriginal));
   }
 
   override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {

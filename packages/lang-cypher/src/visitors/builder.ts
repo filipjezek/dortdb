@@ -201,9 +201,21 @@ export class CypherLogicalPlanBuilder
   visitFnCallWrapper(node: AST.FnCallWrapper, args: DescentArgs): PlanOperator {
     if (node.procedure) return this.visitProcedure(node, args);
     const [id, schema] = idToPair(node.fn.id);
-    const impl = this.db.langMgr.getFnOrAggr('cypher', id, schema) as
-      | AggregateFn
-      | CypherFn;
+    let impl: CypherFn | AggregateFn;
+    try {
+      impl = this.db.langMgr.getFnOrAggr('cypher', id, schema);
+    } catch (e) {
+      const cast = this.db.langMgr.getCast('cypher', id, schema);
+      if (cast) {
+        impl = {
+          name: cast.name,
+          impl: cast.convert,
+          pure: cast.pure,
+        };
+      } else {
+        throw e;
+      }
+    }
 
     if ('init' in impl) {
       const res = new plan.AggregateCall(
@@ -575,7 +587,7 @@ export class CypherLogicalPlanBuilder
 
   visitPatternElChain(
     node: AST.PatternElChain,
-    args: DescentArgs,
+    args: DescentArgs & { optional?: boolean },
   ): PlanTupleOperator {
     const varPrefix = Symbol('unnamed');
     const variables = node.chain.map(
@@ -600,6 +612,7 @@ export class CypherLogicalPlanBuilder
       {
         ...args,
         ctx,
+        src: args.optional ? null : args.src,
       },
     );
     let firstUnknown = isRef.findIndex((x) => !x);
@@ -624,7 +637,7 @@ export class CypherLogicalPlanBuilder
         } as DescentArgs & {
           variable: ASTIdentifier;
         }) as PlanTupleOperator;
-        res = new plan.CartesianProduct('cypher', res, nextPart);
+        res = new plan.ProjectionConcat('cypher', nextPart, false, res);
       }
     }
 
@@ -645,6 +658,10 @@ export class CypherLogicalPlanBuilder
       ]);
     }
     res = new plan.Projection('cypher', cols, res);
+    if (args.optional) {
+      const src = args.src ?? new plan.NullSource('cypher');
+      res = new plan.ProjectionConcat('cypher', res, true, src);
+    }
 
     return res;
   }
@@ -996,9 +1013,16 @@ export class CypherLogicalPlanBuilder
     return res;
   }
   visitMatchClause(node: AST.MatchClause, args: DescentArgs): PlanOperator {
-    let res = this.visitPatternElChain(node.pattern[0], args);
+    let res = this.visitPatternElChain(node.pattern[0], {
+      ...args,
+      optional: node.optional,
+    });
     for (let i = 1; i < node.pattern.length; i++) {
-      res = this.visitPatternElChain(node.pattern[i], { ...args, src: res });
+      res = this.visitPatternElChain(node.pattern[i], {
+        ...args,
+        src: res,
+        optional: node.optional,
+      });
     }
     if (node.where) {
       res = exprToSelection(
@@ -1012,24 +1036,38 @@ export class CypherLogicalPlanBuilder
         'cypher',
       );
     }
-    if (node.optional) {
-      res = new plan.Join('cypher', new plan.NullSource('cypher'), res, []);
-      (res as plan.Join).leftOuter = (res as plan.Join).rightOuter = true;
-    }
     return res;
   }
   visitUnwindClause(node: AST.UnwindClause, args: DescentArgs): PlanOperator {
-    const unwound = new plan.ItemFnSource(
-      'cypher',
-      [
-        this.toCalc(node.expr, {
-          ...args,
-          ctx: union(args.ctx, args.src?.schema ?? []),
-        }),
-      ],
-      unwind.impl,
-      toId('unwind'),
-    );
+    let expr = this.processNode(node.expr, {
+      ...args,
+      ctx: union(args.ctx, args.src?.schema ?? []),
+    });
+    if (plan.CalcIntermediate in expr) {
+      expr = intermediateToCalc(
+        expr as PlanOperator,
+        this.calcBuilders,
+        this.eqCheckers,
+      );
+    }
+    let unwound: PlanOperator;
+    if (expr instanceof ASTIdentifier || expr instanceof plan.Calculation) {
+      unwound = new plan.ItemFnSource(
+        'cypher',
+        [expr],
+        unwind.impl,
+        toId('unwind'),
+      );
+    } else if (expr instanceof PlanTupleOperator) {
+      unwound = new plan.MapToItem(
+        'cypher',
+        ASTIdentifier.fromParts([allAttrs]),
+        expr,
+      );
+    } else {
+      unwound = expr;
+    }
+
     const renamed = new plan.MapFromItem('cypher', node.variable, unwound);
     if (!args.src) return renamed;
     return new plan.ProjectionConcat('cypher', renamed, false, args.src);
@@ -1144,7 +1182,7 @@ export class CypherLogicalPlanBuilder
         }
       } else {
         if (!col[0].aggregates.length) {
-          groupByCols.push(col);
+          groupByCols.push([col[0].clone(), col[1]]);
         }
       }
     }

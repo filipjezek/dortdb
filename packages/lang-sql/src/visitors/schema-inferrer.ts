@@ -22,7 +22,7 @@ import {
 import { retI1, toPair } from '@dortdb/core/internal-fns';
 import { LangSwitch } from '../plan/langswitch.js';
 import { SQLPlanVisitor } from '../plan/index.js';
-import { DEFAULT_COLUMN } from './builder.js';
+import { defaultCol } from './builder.js';
 
 const EMPTY = new Trie<string | symbol | number>();
 function zip<T, U>(a: T[], b: U[]): [T, U][] {
@@ -196,6 +196,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   protected getRelNames(operator: PlanTupleOperator): IdSet {
     while (
       'source' in operator &&
+      operator.lang === 'sql' &&
       operator.source instanceof PlanTupleOperator
     ) {
       operator = operator.source;
@@ -236,6 +237,11 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     if (operator instanceof LangSwitch) {
       res.add([operator.alias]);
       return res;
+    } else if (operator.lang !== 'sql') {
+      // langswitch already replaced and second pass was triggered (presumably by OrderBy)
+      if (operator.parent instanceof plan.MapFromItem)
+        operator = operator.parent;
+      operator = operator.parent as PlanTupleOperator;
     }
     res.add(operator.schema[0].parts.slice(0, -1));
     return res;
@@ -342,7 +348,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   }
   visitOrderBy(operator: plan.OrderBy, ctx: IdSet): IdSet {
     const tempSchema = new plan.NullSource('sql');
-    const external = operator.source.accept(this.vmap, ctx);
     const attrCtx = union(ctx, operator.source.schema);
     for (const item of operator.orders) {
       this.processArg(tempSchema, item.key, attrCtx);
@@ -353,7 +358,8 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         : operator.source;
 
     if (proj instanceof plan.Projection) {
-      // otherwise it's a set op
+      // otherwise it's a set op or an aggregate
+      const external = operator.source.accept(this.vmap, ctx);
       const parent = operator.parent;
       const parentProj = new plan.Projection(
         'sql',
@@ -379,9 +385,13 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
       // reconstruct external
       return operator.source.accept(this.vmap, ctx);
+    } else if (!(proj instanceof plan.SetOperator)) {
+      // aggregate
+      operator.source.addToSchema(tempSchema.schema);
+      return operator.source.accept(this.vmap, ctx);
+    } else {
+      return operator.source.accept(this.vmap, ctx);
     }
-
-    return external;
   }
   visitGroupBy(operator: plan.GroupBy, ctx: IdSet): IdSet {
     const keyCtx = union(ctx, operator.source.schema);
@@ -391,8 +401,8 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     for (const agg of operator.aggs) {
       for (const arg of agg.args) {
         this.processArg(operator.source, arg, ctx);
-        this.processArg(operator.source, agg.postGroupOp, ctx);
       }
+      this.processArg(operator.source, agg.postGroupOp, ctx);
     }
     const external = operator.source.accept(this.vmap, ctx);
     operator.clearSchema();
@@ -529,7 +539,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       operator.node.lang,
     ).visitors.logicalPlanBuilder)(this.db).buildPlan(operator.node.node, ctx);
     let res: PlanTupleOperator;
-    if (nested.plan instanceof PlanTupleOperator) {
+    if (nested.plan instanceof PlanTupleOperator && nested.plan.schema) {
       res = operator.alias
         ? nested.plan
         : new plan.Projection(
@@ -538,7 +548,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
             nested.plan,
           );
     } else {
-      res = new plan.MapFromItem('sql', DEFAULT_COLUMN, nested.plan);
+      res = new plan.MapFromItem('sql', defaultCol, nested.plan);
     }
     if (operator.alias) {
       res = new plan.Projection(
@@ -555,13 +565,19 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       }
     }
 
+    if (
+      operator.parent instanceof plan.MapToItem &&
+      operator.parent.parent instanceof plan.Calculation
+    ) {
+      // was child of a calculation
+      operator.parent.parent.replaceChild(operator, res);
+    }
+    const schemaLinked =
+      operator.parent instanceof PlanTupleOperator &&
+      operator.schema === operator.parent.schema;
     operator.parent.replaceChild(operator, res);
-    if (nested.plan instanceof PlanTupleOperator) {
-      const temp = res.schema;
-      res.schema = operator.schema;
-      res.schemaSet = operator.schemaSet;
-      res.clearSchema();
-      res.addToSchema(temp);
+    if (nested.plan instanceof PlanTupleOperator && schemaLinked) {
+      linkSchemaToParent(res);
     }
     return external;
   }

@@ -18,6 +18,7 @@ import {
   toInfer,
   DortDBAsFriend,
   EqualityChecker,
+  AttributeRenamer,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -34,10 +35,12 @@ import {
   overrideSource,
   schemaToTrie,
 } from '@dortdb/core/utils';
-import { clone, ret1, retI0 } from '@dortdb/core/internal-fns';
+import { ret1, retI0 } from '@dortdb/core/internal-fns';
 import { inOp } from '../operators/basic.js';
+import { Trie } from '@dortdb/core/data-structures';
 
-export const DEFAULT_COLUMN = toId('value');
+export const defaultCol = toId('value');
+export const nonlocalPrefix = 'nonlocal';
 
 function toId(id: string | symbol): ASTIdentifier {
   return AST.SQLIdentifier.fromParts([id]);
@@ -53,7 +56,7 @@ function attrToOpArg(
 function toTuples(op: PlanOperator): PlanTupleOperator {
   return op instanceof PlanTupleOperator
     ? op
-    : new plan.MapFromItem('sql', DEFAULT_COLUMN, op);
+    : new plan.MapFromItem('sql', defaultCol, op);
 }
 
 export class SQLLogicalPlanBuilder
@@ -63,10 +66,12 @@ export class SQLLogicalPlanBuilder
   private inferrerMap: Record<string, SchemaInferrer> = {};
   private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
   private eqCheckers: Record<string, EqualityChecker>;
+  private renamers: Record<string, AttributeRenamer>;
 
   constructor(private db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
+    this.renamers = db.langMgr.getVisitorMap('attributeRenamer');
     this.inferrerMap['sql'] = new SchemaInferrer(this.inferrerMap, db);
 
     this.processNode = this.processNode.bind(this);
@@ -81,6 +86,13 @@ export class SQLLogicalPlanBuilder
       node.accept(this),
       ctx,
     );
+    const nonlocal: plan.RenameMap = new Trie();
+    for (const key of inferred.keys([nonlocalPrefix])) {
+      nonlocal.set(key, key.slice(1));
+    }
+    if (nonlocal.size) {
+      this.renamers['sql'].rename(plan, nonlocal);
+    }
     return { plan, inferred };
   }
 
@@ -388,7 +400,7 @@ export class SQLLogicalPlanBuilder
       const tempParams = havingCond.accept(this.calcBuilders);
       for (const agg of tempParams.aggregates ?? []) {
         if (!aggFields.has(agg.fieldName.parts)) {
-          aggregates.push(agg);
+          aggregates.push(agg.clone());
           aggFields.add(agg.fieldName.parts);
         }
       }
@@ -460,17 +472,21 @@ export class SQLLogicalPlanBuilder
         );
       attrs = (node.items as ASTNode[]).map(this.processAttr);
     }
-    const res = new plan.GroupBy('sql', attrs, aggregates, src);
     for (const aggr of aggregates) {
       const schemaToReplace = aggr.postGroupSource.schema;
       for (
-        let step = aggr.postGroupSource;
+        let step = aggr.postGroupSource.parent as PlanTupleOperator;
         step?.schema === schemaToReplace;
         step = step.parent as PlanTupleOperator
       ) {
         step.schema = src.schema;
         step.schemaSet = src.schemaSet;
       }
+    }
+    const res = new plan.GroupBy('sql', attrs, aggregates, src);
+    for (const aggr of res.aggs) {
+      aggr.postGroupSource.schema = res.source.schema;
+      aggr.postGroupSource.schemaSet = res.source.schemaSet;
     }
     return res;
   }

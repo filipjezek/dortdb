@@ -727,9 +727,9 @@ union-expr:
 
 mult-op:
 	STAR
-	| DIV
-	| IDIV
-	| MOD ;
+	| DIV { $$ = '/'; }
+	| IDIV { $$ = '//'; }
+	| MOD { $$ = '%'; } ;
 
 multiplicative-expr:
 	union-expr

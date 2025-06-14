@@ -16,6 +16,10 @@ export const divide: Operator = {
   name: '/',
   impl: (a, b) => a / b,
 };
+export const idivide: Operator = {
+  name: '//',
+  impl: (a, b) => Math.floor(a / b),
+};
 export const mod: Operator = {
   name: '%',
   impl: (a, b) => a % b,

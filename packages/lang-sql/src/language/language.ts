@@ -8,6 +8,8 @@ import { inOp, notInOp } from '../operators/basic.js';
 import { SQLEqualityChecker } from '../visitors/equality-checker.js';
 import { SQLExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
+import { objAccess, objMatch } from '../operators/json.js';
+import { concat } from '../operators/string.js';
 
 export interface SQLConfig {
   /** defaults to {@link ObjectDataAdapter} */
@@ -22,7 +24,7 @@ export interface SQLLanguage extends Language<'sql'> {
 export function SQL(config?: SQLConfig): SQLLanguage {
   return {
     name: 'sql',
-    operators: [inOp, notInOp],
+    operators: [inOp, notInOp, objAccess, concat, objMatch],
     aggregates: [],
     functions: [coalesce],
     castables: [],
