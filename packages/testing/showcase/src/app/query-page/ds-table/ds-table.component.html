@@ -20,7 +20,7 @@
       @for (row of currPageRows(); track row; let i = $index) {
         <div
           class="row"
-          [style.height.px]="clampRowsControl.value ? rowHeight : null"
+          [style.height.px]="clampRowsControl.value ? rowHeight() : null"
         >
           <ng-container dortDsRow #rowRef="DsRow">
             <dort-multiview [(ratios)]="colSizes">

@@ -143,7 +143,6 @@ export class MergeProjections
       }
     }
 
-    console.log(calc.original.clone());
     return intermediateToCalc(
       calc.original,
       this.calcBuilderVmap,

@@ -106,6 +106,31 @@ export class UnibenchService {
       separator: '|',
     },
   };
+  private static readonly graphTables: Record<string, UnibenchObjectKeys> = {
+    person: 'customers',
+    post: 'posts',
+  };
+
+  private cachedIndices: Record<
+    string,
+    Map<string | number, Record<string, any>>
+  > = {};
+  private dsPromises: {
+    [key in keyof UnibenchData]: {
+      promise: Promise<UnibenchData[key]>;
+      resolve: (val: UnibenchData[key]) => UnibenchData[key];
+    };
+  } = {
+    customers: this.getPromise(),
+    invoices: this.getPromise(),
+    orders: this.getPromise(),
+    feedback: this.getPromise(),
+    products: this.getPromise(),
+    brandProducts: this.getPromise(),
+    vendors: this.getPromise(),
+    socialNetwork: this.getPromise(),
+    posts: this.getPromise(),
+  };
 
   public downloadProgress = signal<number>(undefined);
   public dataLocation = computed<DataLocation>(() => {
@@ -230,23 +255,26 @@ export class UnibenchService {
     });
 
     const graph = new MultiDirectedGraph();
+    const graphPromises: Promise<void>[] = [];
     const result = { socialNetwork: graph } as UnibenchData;
-    const promises: Promise<unknown>[] = [];
     for await (const entry of this.iterStream(reader.readable)) {
       if (entry.filename in UnibenchService.csvTables) {
-        promises.push(this.parseCSVTable(entry, result));
+        this.parseCSVTable(entry, result);
       } else if (entry.filename === 'Dataset/Invoice/Invoice.xml') {
-        promises.push(this.parseInvoices(entry, result));
+        this.parseInvoices(entry, result);
       } else if (entry.filename === 'Dataset/Order/Order.json') {
-        promises.push(this.parseOrders(entry, result));
+        this.parseOrders(entry, result);
       } else if (
         entry.filename.startsWith('Dataset/SocialNetwork/') &&
         entry.filename.endsWith('.csv')
       ) {
-        promises.push(this.csvToGraph(entry, graph));
+        graphPromises.push(this.csvToGraph(entry, graph));
       }
     }
-    await Promise.all(promises);
+    await Promise.all(graphPromises);
+    this.dsPromises.socialNetwork.resolve(graph);
+    await Promise.all(Object.values(this.dsPromises).map((p) => p.promise));
+    this.cachedIndices = {};
     console.log('Unibench data loaded');
     this.data.set(result);
     return result;
@@ -303,6 +331,7 @@ export class UnibenchService {
         }),
       );
     result[opts.key] = await this.toArray(this.iterStream(stream));
+    this.dsPromises[opts.key].resolve(result[opts.key]);
     console.log(`${opts.key} parsed in ${(Date.now() - now) / 1000} s`);
   }
 
@@ -313,6 +342,7 @@ export class UnibenchService {
     const parser = new DOMParser();
     const xml = parser.parseFromString(text, 'text/xml');
     result.invoices = xml;
+    this.dsPromises.invoices.resolve(xml);
     console.log('Invoices parsed in', (Date.now() - now) / 1000, 's');
   }
 
@@ -322,6 +352,7 @@ export class UnibenchService {
       .pipeThrough(new TextDecoderStream())
       .pipeThrough(new NDJSONParser());
     result.orders = await this.toArray(this.iterStream(stream));
+    this.dsPromises.orders.resolve(result.orders);
     console.log('Orders parsed in', (Date.now() - now) / 1000, 's');
   }
 
@@ -338,6 +369,15 @@ export class UnibenchService {
           columns: undefined,
         }),
       );
+    const fromIndex =
+      from in UnibenchService.graphTables
+        ? await this.getTableIndex(UnibenchService.graphTables[from])
+        : null;
+    const toIndex =
+      to in UnibenchService.graphTables
+        ? await this.getTableIndex(UnibenchService.graphTables[to])
+        : null;
+
     const iter = this.iterStream(stream)[
       Symbol.asyncIterator
     ]() as any as AsyncIterableIterator<any[]>;
@@ -346,13 +386,53 @@ export class UnibenchService {
     for await (const row of iter) {
       const fromNode = from + row[0];
       const toNode = to + row[1];
-      graph.mergeNode(fromNode, { id: row[0], labels: [from] });
-      graph.mergeNode(toNode, { id: row[1], labels: [to] });
+      if (fromIndex) {
+        if (!graph.hasNode(fromNode)) {
+          const fromRow = fromIndex.get(row[0]) ?? { id: row[0] };
+          fromRow['labels'] = [from];
+          graph.addNode(fromNode, fromRow);
+        }
+      } else {
+        graph.mergeNode(fromNode, { id: row[0], labels: [from] });
+      }
+      if (toIndex) {
+        if (!graph.hasNode(toNode)) {
+          const toRow = toIndex.get(row[1]) ?? { id: row[1] };
+          toRow['labels'] = [to];
+          graph.addNode(toNode, toRow);
+        }
+      } else {
+        graph.mergeNode(toNode, { id: row[1], labels: [to] });
+      }
       graph.addEdge(fromNode, toNode, {
         type: edgeType,
         ...Object.fromEntries(edgeProps.map((key, i) => [key, row[2 + i]])),
       });
     }
     console.log(entry.filename, 'parsed in', (Date.now() - now) / 1000, 's');
+  }
+
+  private async getTableIndex(
+    table: UnibenchObjectKeys,
+    column = 'id',
+  ): Promise<Map<string | number, Record<string, any>>> {
+    const ds = await this.dsPromises[table].promise;
+    if (this.cachedIndices[table]) {
+      return this.cachedIndices[table];
+    }
+    const index = new Map<string | number, Record<string, any>>();
+    for (const row of ds) {
+      index.set(row[column], row);
+    }
+    this.cachedIndices[table] = index;
+    return index;
+  }
+
+  private getPromise(): { promise: Promise<any>; resolve: (val: any) => any } {
+    let cb: (val: any) => any;
+    const promise = new Promise<any>((resolve) => {
+      cb = resolve;
+    });
+    return { promise, resolve: cb };
   }
 }

@@ -570,14 +570,15 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       operator.parent.parent instanceof plan.Calculation
     ) {
       // was child of a calculation
-      operator.parent.parent.replaceChild(operator, res);
-    }
-    const schemaLinked =
-      operator.parent instanceof PlanTupleOperator &&
-      operator.schema === operator.parent.schema;
-    operator.parent.replaceChild(operator, res);
-    if (nested.plan instanceof PlanTupleOperator && schemaLinked) {
-      linkSchemaToParent(res);
+      operator.parent.replaceChild(operator, res);
+    } else {
+      const schemaLinked =
+        operator.parent instanceof PlanTupleOperator &&
+        operator.schema === operator.parent.schema;
+      operator.parent.replaceChild(operator, res);
+      if (nested.plan instanceof PlanTupleOperator && schemaLinked) {
+        linkSchemaToParent(res);
+      }
     }
     return external;
   }

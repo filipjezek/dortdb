@@ -17,7 +17,7 @@ SELECT
     RETURN post
   ) posts
 FROM customers
-WHERE id = :customer`,
+WHERE id = 4145`,
     lang: 'sql',
   },
   {
@@ -28,12 +28,12 @@ WHERE id = :customer`,
 SELECT id, firstName FROM customers
 WHERE EXISTS (
   LANG cypher
-  MATCH (:person {id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: $product})
+  MATCH (:person {id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: 52})
   RETURN 1
 ) AND EXISTS (
   SELECT 1 FROM orders
   WHERE PersonId = customers.id AND EXISTS (
-    SELECT 1 FROM unwind(orders.Orderline) orderline WHERE productId = :product
+    SELECT 1 FROM unwind(orders.Orderline) orderline WHERE productId = 52
   )
 )`,
     lang: 'sql',
@@ -47,7 +47,7 @@ SELECT customers.id, feedback.feedback, products.productId
 FROM customers
 JOIN feedback ON customers.id = feedback.personId
 JOIN products ON feedback.productAsin = products.asin
-WHERE products.productId = :product AND (feedback.feedback[1])::number < 3
+WHERE products.productId = 202 AND (feedback.feedback[1])::number < 3
 AND EXISTS (
   LANG cypher
   MATCH ({id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: products.productId})
@@ -60,14 +60,15 @@ AND EXISTS (
 //
 // these two are actually not connected in the sample data
 
-WITH [x IN (
+UNWIND (
   LANG sql
     SELECT PersonId::number
     FROM orders
     GROUP BY PersonId
     ORDER BY sum(TotalPrice) DESC
     LIMIT 2
-) | x] AS toptwo
+) AS toptwo
+WITH collect(toptwo) AS toptwo
 MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
 RETURN foaf`,
     lang: 'cypher',
@@ -84,7 +85,7 @@ WHERE EXISTS {
   LANG xquery
   $Invoices/Invoices/Invoice.xml[PersonId=$person/@id]/Orderline[brand="Reebok"]
 }
-RETURN DISTINCT person`,
+RETURN DISTINCT tag.id`,
     lang: 'cypher',
   },
   {
@@ -153,7 +154,7 @@ FROM (
     LANG cypher
     UNWIND categoryProducts AS pid
     MATCH ({id: pid})<-[:hasTag]-(p)
-    WHERE (LANG SQL SELECT creationDate FROM posts WHERE id = nonlocal.p->'id') > postsYrAgo
+    WHERE p.creationDate > postsYrAgo
     RETURN count(p)
   )
 
@@ -164,7 +165,7 @@ FROM (
   $relatedPosts := (
     LANG cypher
     MATCH ({id: pid})<-[:hasTag]-(p)
-    WHERE (LANG SQL SELECT creationDate FROM posts WHERE id = nonlocal.p->'id') > postsYrAgo
+    WHERE p.creationDate > postsYrAgo
     RETURN count(p)
   )
   return <product
@@ -190,23 +191,17 @@ SELECT
     )
   ) mfRatio,
   ARRAY(
-    SELECT posts.content
-    FROM posts
-    JOIN (
-      LANG cypher
-      UNWIND (
-        LANG sql
-        SELECT products.productId
-        FROM products
-        JOIN brandProducts ON products.asin = brandProducts.productAsin
-        WHERE brandProducts.brandName = topVendors.id
-      ) AS productId
-      MATCH ({id: productId})<-[:hasTag]-(post)
-      RETURN post.id AS id
-    ) postIds
-    ON posts.id = postIds.id
-    ORDER BY posts.creationDate DESC
-    LIMIT 5
+    LANG cypher
+    UNWIND (
+      LANG sql
+      SELECT products.productId
+      FROM products
+      JOIN brandProducts ON products.asin = brandProducts.productAsin
+      WHERE brandProducts.brandName = topVendors.id
+    ) AS productId
+    MATCH ({id: productId})<-[:hasTag]-(post)
+    RETURN post.content
+    ORDER BY post.creationDate DESC LIMIT 5
   ) latestPosts
 FROM (
   SELECT
@@ -227,26 +222,27 @@ FROM (
 -- their interests and their latest feedback
 
 SELECT
-  orders.personId,
+  orders.PersonId,
   topPosters.interests,
-  MAX(orders.orderDate) recency,
-  COUNT(orders.personId) frequency,
-  SUM(orders.totalPrice) monetary,
+  MAX(orders.OrderDate) recency,
+  COUNT(orders.PersonId) frequency,
+  SUM(orders.TotalPrice) monetary,
   ARRAY(
     SELECT feedback FROM feedback
-    WHERE customerId = orders.personId
+    WHERE personId = orders.PersonId
     LIMIT 10
   ) recentReviews
 FROM orders JOIN (
   LANG cypher
-  MATCH (cust)-[:hasCreated]->(post),
-    (cust)-[:hasInterest]->(tag)
-  WHERE post.creationDate > now() - interval('1 year')
+  MATCH (cust)<-[:hasCreator]-(post)
+  WHERE post.creationDate > date.sub(date('2011-12-31'), interval('1 year'))
+  WITH DISTINCT cust, count(post) AS postCount
+  ORDER BY postCount DESC LIMIT 10
+  MATCH (cust)-[:hasInterest]->(tag)
   RETURN cust.id AS custId, collect(tag.id) AS interests
-  ORDER BY count(post) DESC LIMIT 10
 ) topPosters
-ON orders.personId = topPosters.custId
-GROUP BY orders.personId, topPosters.interests`,
+ON orders.PersonId = topPosters.custId
+GROUP BY orders.PersonId, topPosters.interests`,
     lang: 'sql',
   },
 ];

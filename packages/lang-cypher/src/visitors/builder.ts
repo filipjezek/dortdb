@@ -484,14 +484,14 @@ export class CypherLogicalPlanBuilder
       const fn = new plan.FnCall('cypher', args, (...args) => {
         const last = args.pop();
         if (recursive) {
-          return args.every((arg, i) =>
-            (chain[i * 2 + 1] as AST.RelPattern).range
+          return args.every((arg, j) =>
+            (chain[j * 2 + 1] as AST.RelPattern).range
               ? arg.every((e: unknown) => !last.includes(e))
               : !last.includes(arg),
           );
         }
-        return args.every((arg) =>
-          (chain[i * 2 + 1] as AST.RelPattern).range
+        return args.every((arg, j) =>
+          (chain[j * 2 + 1] as AST.RelPattern).range
             ? !arg.includes(last)
             : arg !== last,
         );
@@ -1215,7 +1215,7 @@ export class CypherLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
   visitWithClause(node: AST.WithClause, args: DescentArgs): PlanOperator {
-    let res = this.visitProjectionBody(node.body, { ...args, append: true });
+    let res = this.visitProjectionBody(node.body, { ...args, append: false });
     if (node.where) {
       res = exprToSelection(
         this.processNode(node.where, {
