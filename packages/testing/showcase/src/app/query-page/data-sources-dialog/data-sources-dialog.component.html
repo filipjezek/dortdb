@@ -50,9 +50,18 @@
           }
         </mat-expansion-panel-header>
         <p>{{ source.description }}</p>
-        <pre
-          class="language-{{ source.lang }}"
-        ><code class="language-{{source.lang}}" [innerHTML]="source.exampleHighlighted"></code></pre>
+        @if (source.example) {
+          <pre
+            class="language-{{ source.lang }}"
+          ><code class="language-{{source.lang}}" [innerHTML]="source.exampleHighlighted"></code></pre>
+        }
+        @if (source.img) {
+          <img
+            class="source-image"
+            [src]="source.img"
+            [alt]="source.name + ' example image'"
+          />
+        }
       </mat-expansion-panel>
     }
   </mat-accordion>

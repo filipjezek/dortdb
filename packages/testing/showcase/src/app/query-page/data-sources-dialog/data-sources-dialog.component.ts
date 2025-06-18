@@ -11,8 +11,9 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
 interface Source {
   name: string;
   description: string;
-  example: string;
+  example?: string;
   exampleHighlighted?: SafeHtml;
+  img?: string;
   lang: string;
 }
 
@@ -37,7 +38,7 @@ export class DataSourcesDialogComponent {
       description:
         'Unibench data. Invoices represented as XML. Same data as orders, but in a different format.',
       example: `<Invoices>
-  <Invoice>
+  <Invoice.xml>
       <OrderId>6711da51-dee6-452a-a7b8-f79a1cbb9436</OrderId>
       <PersonId>1</PersonId>
       <OrderDate>2022-09-01</OrderDate>
@@ -56,35 +57,9 @@ export class DataSourcesDialogComponent {
           <price>61.99</price>
           <brand>Elfin_Sports_Cars</brand>
       </Orderline>
-  </Invoice>
+  </Invoice.xml>
   <!-- more invoices -->
 </Invoices>`,
-    },
-    {
-      lang: 'javascript',
-      name: 'customers',
-      description: 'Unibench data. Customers represented as JS objects.',
-      example: `[{
-  "id": 1,
-  "firstName": "John",
-  "lastName": "Doe",
-  "gender": "male",
-  "birthday": new Date("1980-01-01"),
-  "creationDate": new Date("2010-03-13T02:10:23.099+0000"),
-  "locationIP": "41.138.53.138",
-  "browserUsed": "Firefox",
-  "place": 1263
-}, /* ... */]`,
-    },
-    {
-      lang: 'javascript',
-      name: 'feedback',
-      description: 'Unibench data. Feedback represented as JS objects.',
-      example: `[{
-  "personId": 1,
-  "productId": 1,
-  "feedback": "5.0,This feels just like a dart board you would use in a bar, minus the 1,000 holes that other drunk people put into it. Took me about 10 minutes to install. It is very heavy, so make sure you have some good studs in the wall to support it. I would suggest buying some extra darts for it, as the ones it comes with are cheaply made...had one break on me during my first game.***NOTE*** The installation was very easy, just don\\t listen to the instructions. It tells you to slide the paper inside to mark everything. Just put the paper on the back of the board and poke the holes, saves a lot of frustration and gives you the most accurate markings."
-}, /* ... */]`,
     },
     {
       lang: 'javascript',
@@ -116,29 +91,85 @@ export class DataSourcesDialogComponent {
     },
     {
       lang: 'javascript',
-      name: 'addresses',
-      description: 'Addresses of customers. Represented as JS objects.',
+      name: 'customers',
+      description: 'Unibench data. Customers represented as JS objects.',
       example: `[{
-  "customerId": 1,
-  "street": "Ke Karlovu",
-  "city": "Prague",
-  "zip": "12000",
+  "id": 4145,
+  "firstName": "Albade",
+  "lastName": "Maazou",
+  "gender": "female",
+  "birthday": "1981-03-21T00:00:00.000Z",
+  "creationDate": "2010-03-13T02:10:23.099Z",
+  "locationIP": "41.138.53.138",
+  "browserUsed": "Internet Explorer",
+  "place": 1263
+}, /* ... */]`,
+    },
+    {
+      lang: 'javascript',
+      name: 'feedback',
+      description: 'Unibench data. Feedback represented as JS objects.',
+      example: `[{
+  "productAsin": "B005FUKW6M",
+  "personId": 26388279075595,
+  "feedback": "'5.0,This feels just like a dart board you would use in a bar, minus the 1,000 holes that other drunk people put into it. Took me about 10 minutes to install. It is very heavy, so make sure you have some good studs in the wall to support it. I would suggest buying some extra darts for it, as the ones it comes with are cheaply made...had one break on me during my first game.***NOTE*** The installation was very easy, just don\\\\t listen to the instructions. It tells you to slide the paper inside to mark everything. Just put the paper on the back of the board and poke the holes, saves a lot of frustration and gives you the most accurate markings.'"
+}, /* ... */]`,
+    },
+    {
+      lang: 'javascript',
+      name: 'products',
+      description: 'Unibench data. E-shop products represented as JS objects.',
+      example: `[{
+  "asin": "B0001XH6G2",
+  "title": "Canon 12x36 Image Stabilization II Binoculars w/Case, Neck Strap &amp; Batteries",
+  "price": 670.1,
+  "imgUrl": "http://ecx.images-amazon.com/images/I/413ZMJSMGVL._SX300_.jpg",
+  "productId": 2566,
+  "brand": 18
+}, /* ... */]`,
+    },
+    {
+      lang: 'javascript',
+      name: 'brandProducts',
+      description:
+        'Unibench data. A relation linking vendors and products. Represented as JS objects.',
+      example: `[{
+  "brandName": "Signia_(sportswear)",
+  "productAsin": "B002OP5TUA"
+}, /* ... */]`,
+    },
+    {
+      lang: 'javascript',
+      name: 'vendors',
+      description: 'Unibench data. E-shop vendors represented as JS objects.',
+      example: `[{
+  "id": "Signia_(sportswear)",
+  "Country": "Argentina",
+  "Industry": "Sports"
+}, /* ... */]`,
+    },
+    {
+      lang: 'javascript',
+      name: 'posts',
+      description:
+        'Unibench data. Social network posts represented as JS objects.',
+      example: `[{
+  "id": 549755814351,
+  "imageFile": "",
+  "creationDate": "2010-11-24T04:47:12.247Z",
+  "locationIP": "78.143.191.96",
+  "browserUsed": "Internet Explorer",
+  "language": "uz",
+  "content": "About Armasight Spark CORE Multi-Purpose Night Vision Monocular, in tour singles titles, butAbout Schwinn 425 Elliptical Trainer (2013), d musician who has sold ",
+  "length": "161"
 }, /* ... */]`,
     },
     {
       lang: 'javascript',
       name: 'defaultGraph',
       description:
-        'Relationships between customers. Represented as Graphology graph.',
-      example: `const defaultGraph = new MultiDirectedGraph();
-defaultGraph.addNode('1', { id: 1, name: 'Alice' });
-defaultGraph.addNode('2', { id: 2, name: 'Bob' });
-defaultGraph.addNode('3', { id: 3, name: 'Cynthia' });
-defaultGraph.addNode('4', { id: 4, name: 'Daniel' });
-defaultGraph.addEdge('2', '1', { type: 'hasFriend' });
-defaultGraph.addEdge('2', '3', { type: 'hasFriend' });
-defaultGraph.addEdge('2', '4', { type: 'hasFriend' });
-// ...`,
+        'Unibench data. Social network. Represented as Graphology graph.',
+      img: 'social-network.svg',
     },
   ];
   languages: Record<string, Prism.Grammar> = {
@@ -150,6 +181,7 @@ defaultGraph.addEdge('2', '4', { type: 'hasFriend' });
 
   constructor(sanitizer: DomSanitizer) {
     for (const src of this.sources) {
+      if (!src.example) continue;
       src.exampleHighlighted = sanitizer.bypassSecurityTrustHtml(
         Prism.highlight(src.example, this.languages[src.lang], src.lang),
       );
