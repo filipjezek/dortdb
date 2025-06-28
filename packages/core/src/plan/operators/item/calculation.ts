@@ -56,6 +56,7 @@ export class Calculation implements PlanOperator {
       this.original = replacement;
     } else {
       const locs = this.argMeta[idx].originalLocations;
+      if (!locs.length) return; // the calculation was created from a single PlanOperator which was not a CalcIntermediate
       locs[0].obj[locs[0].key] = replacement;
       for (let i = 1; i < locs.length; i++) {
         locs[i].obj[locs[i].key] = replacement.clone();
