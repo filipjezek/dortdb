@@ -29,6 +29,11 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       renameMap,
     }: { other: OpOrId; ignoreLang: boolean; renameMap?: plan.RenameMap },
   ): boolean {
+    if (operator instanceof ASTIdentifier && other instanceof ASTIdentifier) {
+      return operator.equals(
+        this.maybeRename(other as ASTIdentifier, renameMap),
+      );
+    }
     if (operator.constructor !== other.constructor) {
       if (
         (operator instanceof ASTIdentifier &&
@@ -49,15 +54,13 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       return false;
     }
 
-    if (operator instanceof ASTIdentifier) {
-      return operator.equals(
-        this.maybeRename(other as ASTIdentifier, renameMap),
-      );
-    }
-    if (!ignoreLang && operator.lang !== (other as PlanOperator).lang) {
+    if (
+      !ignoreLang &&
+      (operator as PlanOperator).lang !== (other as PlanOperator).lang
+    ) {
       return false;
     }
-    return operator.accept(this.vmap, {
+    return (operator as PlanOperator).accept(this.vmap, {
       other: other as PlanOperator,
       ignoreLang,
       renameMap,
