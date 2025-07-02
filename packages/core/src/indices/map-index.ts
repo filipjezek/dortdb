@@ -59,11 +59,7 @@ export class MapIndex implements Index {
   createAccessor(expressions: IndexMatchInput[]): Calculation {
     const eqFn = expressions[0].containingFn;
     const otherArg = eqFn.args.find(
-      (a) =>
-        a !==
-        ('op' in expressions[0].expr
-          ? expressions[0].expr.op
-          : expressions[0].expr),
+      (a) => expressions[0].expr !== ('op' in a ? a.op : a),
     );
     const accessorFnCall = new FnCall(
       eqFn.lang,
