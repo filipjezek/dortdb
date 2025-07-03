@@ -74,19 +74,25 @@ select foo.frst, (
 from foo`,
     },
     {
-      lang: 'xquery',
+      lang: 'sql',
       name: 'Cross model optimization',
       tags: [],
-      query: `(: See how the optimizer pushes down an xquery selection into the sql subquery :)
+      query: `-- See how the optimizer pushes down an xquery selection into the cypher subquery
 
-for $invoice:person in $invoices//PersonId
-let $address := (
-  LANG SQL
-  SELECT ROW(city, street) FROM addresses
-  WHERE invoice.person = addresses.personId
-)
-where $address/@city = 'Prague'
-return $address`,
+SELECT products.name
+FROM products
+JOIN (
+  LANG cypher
+  MATCH (p:person)-[:HAS_INTEREST]->(c:category)
+  RETURN p, c.name AS category
+) AS interests
+ON products.category = interests.category
+WHERE interests.p->'id' IN (
+  LANG xquery
+  $Invoices/Invoice[
+    orderDate < date:sub(now(), interval('1 month'))
+  ]/personId/fn:data()
+)`,
     },
     {
       lang: 'xquery',
