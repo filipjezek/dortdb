@@ -13,12 +13,12 @@ export const defaultRules: (
   | PatternRuleConstructor<PatternRule<any>>
 )[] = [
   UnnestSubqueries,
-  mergeFromToItems,
   mergeToFromItems,
+  mergeFromToItems,
   PushdownSelections,
   ProjConcatToJoin,
-  MergeProjections,
   productsToJoins,
   JoinIndices,
   IndexScans,
+  MergeProjections,
 ];
