@@ -1,4 +1,3 @@
-import { cloneDeep } from 'lodash-es';
 import { DortDBAsFriend } from '../../db.js';
 import {
   CartesianProduct,
@@ -328,7 +327,7 @@ export class PushdownSelections
   }
 
   protected cloneSelection(s: Selection): Selection {
-    const clone = new Selection(s.lang, cloneDeep(s.condition), s.source);
+    const clone = new Selection(s.lang, s.condition.clone(), s.source);
     clone.schema = clone.schema.slice();
     clone.schemaSet = clone.schemaSet.clone();
     return clone;
