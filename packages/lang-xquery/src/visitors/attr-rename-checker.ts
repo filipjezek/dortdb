@@ -29,6 +29,9 @@ export class XQueryAttributeRenameChecker
     operator: ProjectionSize,
     renamesInv: RenameMap,
   ): boolean {
-    return operator.source.accept(this.vmap, renamesInv);
+    return (
+      !renamesInv.has(operator.sizeCol.parts) &&
+      operator.source.accept(this.vmap, renamesInv)
+    );
   }
 }

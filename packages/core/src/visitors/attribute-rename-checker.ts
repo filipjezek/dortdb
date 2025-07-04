@@ -1,10 +1,16 @@
-import { IdSet, OpOrId, PlanOperator, PlanVisitor } from '../plan/visitor.js';
+import {
+  Aliased,
+  IdSet,
+  OpOrId,
+  PlanOperator,
+  PlanVisitor,
+} from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
 import { DortDBAsFriend } from '../db.js';
 import { TransitiveDependencies } from './transitive-deps.js';
 import { containsAny, difference, union } from '../utils/trie.js';
 import { ASTIdentifier } from '../ast.js';
-import { retI0 } from '../internal-fns/index.js';
+import { retI0, retI1 } from '../internal-fns/index.js';
 
 export class AttributeRenameChecker
   implements PlanVisitor<boolean, plan.RenameMap>
@@ -47,6 +53,20 @@ export class AttributeRenameChecker
     return true;
   }
 
+  protected checkAttrs(
+    attrs: Aliased<ASTIdentifier | plan.Calculation>[],
+    verticalCtx: IdSet,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return (
+      !attrs.some(
+        (x) =>
+          renamesInv.has(x[1].parts) &&
+          (!(x[0] instanceof ASTIdentifier) || !x[0].equals(x[1])),
+      ) && this.checkHorizontalArray(attrs.map(retI0), verticalCtx, renamesInv)
+    );
+  }
+
   protected checkVerticalArray(vertical: OpOrId[], renamesInv: plan.RenameMap) {
     for (const v of vertical) {
       if (!(v instanceof ASTIdentifier)) {
@@ -75,11 +95,8 @@ export class AttributeRenameChecker
     renamesInv: plan.RenameMap,
   ): boolean {
     return (
-      this.checkHorizontalArray(
-        operator.attrs.map(retI0),
-        operator.source.schemaSet,
-        renamesInv,
-      ) && operator.source.accept(this.vmap, renamesInv)
+      this.checkAttrs(operator.attrs, operator.source.schemaSet, renamesInv) &&
+      operator.source.accept(this.vmap, renamesInv)
     );
   }
   visitSelection(
@@ -173,13 +190,19 @@ export class AttributeRenameChecker
     operator: plan.MapFromItem,
     renamesInv: plan.RenameMap,
   ): boolean {
-    return operator.source.accept(this.vmap, renamesInv);
+    return (
+      !renamesInv.has(operator.key.parts) &&
+      operator.source.accept(this.vmap, renamesInv)
+    );
   }
   visitProjectionIndex(
     operator: plan.ProjectionIndex,
     renamesInv: plan.RenameMap,
   ): boolean {
-    return operator.source.accept(this.vmap, renamesInv);
+    return (
+      !renamesInv.has(operator.indexCol.parts) &&
+      operator.source.accept(this.vmap, renamesInv)
+    );
   }
   visitOrderBy(operator: plan.OrderBy, renamesInv: plan.RenameMap): boolean {
     return (
@@ -192,11 +215,7 @@ export class AttributeRenameChecker
   }
   visitGroupBy(operator: plan.GroupBy, renamesInv: plan.RenameMap): boolean {
     return (
-      this.checkHorizontalArray(
-        operator.keys.map(retI0),
-        operator.source.schemaSet,
-        renamesInv,
-      ) &&
+      this.checkAttrs(operator.keys, operator.source.schemaSet, renamesInv) &&
       this.checkHorizontalArray(
         operator.aggs,
         operator.source.schemaSet,
@@ -256,6 +275,7 @@ export class AttributeRenameChecker
     renamesInv: plan.RenameMap,
   ): boolean {
     return (
+      !renamesInv.has(operator.fieldName.parts) &&
       this.checkVerticalArray(operator.args, renamesInv) &&
       operator.postGroupOp.accept(this.vmap, renamesInv)
     );
