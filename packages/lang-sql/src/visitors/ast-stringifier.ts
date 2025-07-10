@@ -40,14 +40,14 @@ import { WindowSpec } from '../ast/window.js';
 import { SearchType, WithQuery } from '../ast/with.js';
 
 export class ASTDeterministicStringifier implements SQLVisitor<string> {
-  private uniqueId = 0;
+  protected uniqueId = 0;
 
   constructor() {
     this.processNode = this.processNode.bind(this);
     this.visitSchemaPart = this.visitSchemaPart.bind(this);
   }
 
-  private processNode(x: ASTNode) {
+  protected processNode(x: ASTNode) {
     return x.accept(this);
   }
 
@@ -85,7 +85,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     return `${node.quantifier}(${node.query.accept(this)})`;
   }
 
-  private visitSchemaPart(node: string | symbol | number): string {
+  protected visitSchemaPart(node: string | symbol | number): string {
     return typeof node === 'symbol' || typeof node === 'number'
       ? node === allAttrs
         ? '*'
@@ -99,7 +99,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   visitSQLIdentifier(node: SQLIdentifier): string {
     return this.visitIdentifier(node);
   }
-  private addQuotes(str: string, quot: '"' | "'") {
+  protected addQuotes(str: string, quot: '"' | "'") {
     return quot + str.replaceAll(quot, quot + quot) + quot;
   }
 
@@ -126,7 +126,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     if (node.offset) res += ' OFFSET ' + node.offset.accept(this);
     return res;
   }
-  private visitOrderBy(nodes: OrderByItem[]): string {
+  protected visitOrderBy(nodes: OrderByItem[]): string {
     return nodes
       .map(
         (x) =>
@@ -235,7 +235,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     }
     return res + ')';
   }
-  private visitFrameBoundary(x: ASTNode, start: boolean): string {
+  protected visitFrameBoundary(x: ASTNode, start: boolean): string {
     const prefol = start ? ' PRECEDING' : ' FOLLOWING';
     if (x instanceof ASTLiteral) {
       switch (x.value) {

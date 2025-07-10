@@ -62,13 +62,13 @@ function toTuples(op: PlanOperator): PlanTupleOperator {
 export class SQLLogicalPlanBuilder
   implements SQLVisitor<PlanOperator>, LogicalPlanBuilder
 {
-  private stringifier = new ASTDeterministicStringifier();
-  private inferrerMap: Record<string, SchemaInferrer> = {};
-  private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
-  private eqCheckers: Record<string, EqualityChecker>;
-  private renamers: Record<string, AttributeRenamer>;
+  protected stringifier = new ASTDeterministicStringifier();
+  protected inferrerMap: Record<string, SchemaInferrer> = {};
+  protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  protected eqCheckers: Record<string, EqualityChecker>;
+  protected renamers: Record<string, AttributeRenamer>;
 
-  constructor(private db: DortDBAsFriend) {
+  constructor(protected db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.renamers = db.langMgr.getVisitorMap('attributeRenamer');
@@ -96,13 +96,13 @@ export class SQLLogicalPlanBuilder
     return { plan, inferred };
   }
 
-  private processNode(item: ASTNode): OpOrId {
+  protected processNode(item: ASTNode): OpOrId {
     return item instanceof ASTIdentifier ? item : item.accept(this);
   }
-  private processFnArg(item: ASTNode): plan.PlanOpAsArg | ASTIdentifier {
+  protected processFnArg(item: ASTNode): plan.PlanOpAsArg | ASTIdentifier {
     return item instanceof ASTIdentifier ? item : { op: item.accept(this) };
   }
-  private toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
+  protected toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
     const intermediate = node.accept(this);
     if (intermediate instanceof plan.AggregateCall)
@@ -300,7 +300,7 @@ export class SQLLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
 
-  private processOrderItem(item: AST.OrderByItem): plan.Order {
+  protected processOrderItem(item: AST.OrderByItem): plan.Order {
     return {
       ascending: item.ascending,
       key: this.toCalc(item.expression),
@@ -327,7 +327,7 @@ export class SQLLogicalPlanBuilder
     }
     return op;
   }
-  private buildLimit(node: AST.SelectStatement, op: PlanTupleOperator) {
+  protected buildLimit(node: AST.SelectStatement, op: PlanTupleOperator) {
     const limit = node.limit && this.toCalc(node.limit);
     const offset = node.offset && this.toCalc(node.offset);
     if (limit && !assertCalcLiteral(limit, 'number'))
@@ -438,7 +438,7 @@ export class SQLLogicalPlanBuilder
     return op;
   }
 
-  private processAttr(
+  protected processAttr(
     attr: ASTNode,
   ): Aliased<ASTIdentifier | plan.Calculation> {
     if (attr instanceof AST.SQLIdentifier) {
@@ -491,7 +491,7 @@ export class SQLLogicalPlanBuilder
     return res;
   }
 
-  private getTableName(
+  protected getTableName(
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [PlanTupleOperator, ASTIdentifier] {
     if (node instanceof ASTIdentifier) {

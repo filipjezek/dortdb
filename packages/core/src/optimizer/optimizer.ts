@@ -8,12 +8,12 @@ export interface OptimizerConfig {
 }
 
 export class Optimizer {
-  private rules: PatternRule[];
-  private config: OptimizerConfig;
+  protected rules: PatternRule[];
+  protected config: OptimizerConfig;
 
   constructor(
     config: OptimizerConfig,
-    private db: DortDBAsFriend,
+    protected db: DortDBAsFriend,
   ) {
     this.reconfigure(config);
   }
@@ -39,7 +39,7 @@ export class Optimizer {
     return optimizedPlan;
   }
 
-  private visitOperator(operator: PlanOperator, rule: PatternRule) {
+  protected visitOperator(operator: PlanOperator, rule: PatternRule) {
     if (
       rule.operator === null ||
       operator.constructor === rule.operator ||
@@ -68,7 +68,7 @@ export class Optimizer {
     }
   }
 
-  private breakReferences(operator: PlanOperator) {
+  protected breakReferences(operator: PlanOperator) {
     if (
       operator instanceof PlanTupleOperator &&
       operator.parent instanceof PlanTupleOperator &&

@@ -38,8 +38,8 @@ export class GraphBuilder
   public static readonly PADDING = 8;
   public static readonly CHILD_OFFSET = 30;
 
-  private readonly drawingContainer: SVGGElement;
-  private readonly textContainer = document.createElement('p');
+  protected readonly drawingContainer: SVGGElement;
+  protected readonly textContainer = document.createElement('p');
   public readonly cssVariables: ReadonlySet<string>;
   public get width() {
     return this._width;
@@ -47,12 +47,12 @@ export class GraphBuilder
   public get height() {
     return this._height;
   }
-  private _width = 0;
-  private _height = 0;
+  protected _width = 0;
+  protected _height = 0;
 
   constructor(
-    private readonly container: SVGSVGElement,
-    private vmap: Record<string, PlanVisitor<SVGGElement>>,
+    protected readonly container: SVGSVGElement,
+    protected vmap: Record<string, PlanVisitor<SVGGElement>>,
   ) {
     this.container.innerHTML = `
       <style>
@@ -111,11 +111,11 @@ export class GraphBuilder
           padding: 1px 0;
         }
         rect {
-          fill: white;
+          fill: var(--mat-sys-surface);
           stroke: var(--mat-sys-outline);
 
           &:has(~ foreignObject > .groupby) {
-            stroke: white !important;
+            stroke: var(--mat-sys-surface) !important;
             filter: none !important;
           }
         }
@@ -149,7 +149,7 @@ export class GraphBuilder
     this.drawingContainer = this.container.querySelector('#drawing-container');
   }
 
-  private getSchemaTemplate(operator: PlanOperator) {
+  protected getSchemaTemplate(operator: PlanOperator) {
     return (
       operator instanceof PlanTupleOperator &&
       operator.schema &&
@@ -159,12 +159,12 @@ export class GraphBuilder
     );
   }
 
-  private markup<T extends Element>(template: string): T {
+  protected markup<T extends Element>(template: string): T {
     this.drawingContainer.innerHTML = template;
     return this.drawingContainer.firstElementChild as T;
   }
 
-  private drawNode(
+  protected drawNode(
     text: string,
     operator: PlanOperator,
     textClass = '',
@@ -203,17 +203,17 @@ export class GraphBuilder
     return result;
   }
 
-  private getG(): SVGGElement {
+  protected getG(): SVGGElement {
     return this.markup('<g></g>');
   }
-  private escapeHtml(text: string) {
+  protected escapeHtml(text: string) {
     this.textContainer.textContent = text;
     return this.textContainer.innerHTML;
   }
-  private escapeAttr(text: string) {
+  protected escapeAttr(text: string) {
     return text.replace(/"/g, '&quot;');
   }
-  private stringifyId(id: ASTIdentifier) {
+  protected stringifyId(id: ASTIdentifier) {
     const full = id.parts
       .map((x) =>
         typeof x === 'string'
@@ -232,7 +232,7 @@ export class GraphBuilder
     )}&hellip;</span>`;
   }
 
-  private processAttr(
+  protected processAttr(
     [attr, alias]: Aliased<ASTIdentifier | plan.Calculation>,
     counter: { i: number },
   ): string {
@@ -266,7 +266,7 @@ export class GraphBuilder
     this.container.style.aspectRatio = `${this.width} / ${this.height}`;
   }
 
-  private drawBranches(parent: SVGGraphicsElement, ...branches: Branch[]) {
+  protected drawBranches(parent: SVGGraphicsElement, ...branches: Branch[]) {
     const g = this.getG();
     g.append(parent, ...branches.map((b) => b.el));
     const parentBBox = parent.getBoundingClientRect();
@@ -306,7 +306,7 @@ export class GraphBuilder
     return g;
   }
 
-  private drawEdge(
+  protected drawEdge(
     srcBBox: DOMRect,
     edgeType: string,
     bbox: DOMRect,
@@ -354,7 +354,7 @@ export class GraphBuilder
     return this.drawBranches(parent, { el: src }, ...calcs);
   }
 
-  private processArg(
+  protected processArg(
     arg: ASTIdentifier | PlanOperator,
     counter: { i: number },
   ) {
@@ -611,7 +611,7 @@ export class GraphBuilder
     throw new Error('Method not implemented.');
   }
 
-  private visitFnSource(
+  protected visitFnSource(
     operator: plan.ItemFnSource | plan.TupleFnSource,
   ): SVGGElement {
     const opI = { i: 0 };

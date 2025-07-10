@@ -159,10 +159,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
-  private processItem(item: OpOrId) {
+  protected processItem(item: OpOrId) {
     return item instanceof ASTIdentifier ? item : item.accept(this.vmap);
   }
-  private processQuantifiedFn(
+  protected processQuantifiedFn(
     operator: operators.FnCall,
     children: (CalculationParams | ASTIdentifier)[],
   ) {
@@ -196,7 +196,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       return false;
     };
   }
-  private processFnArg(arg: operators.PlanOpAsArg | ASTIdentifier) {
+  protected processFnArg(arg: operators.PlanOpAsArg | ASTIdentifier) {
     if (arg instanceof ASTIdentifier) return arg;
     const params = arg.op.accept(this.vmap);
     if (arg.acceptSequence && params.impl === assertMaxOne) {
@@ -265,7 +265,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
-  private processWhenThen(item: [OpOrId, OpOrId]) {
+  protected processWhenThen(item: [OpOrId, OpOrId]) {
     return [this.processItem(item[0]), this.processItem(item[1])] as [
       CalculationParams | ASTIdentifier,
       CalculationParams | ASTIdentifier,
@@ -340,7 +340,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
-  private processLiteralConditional(
+  protected processLiteralConditional(
     cond: CalculationParams,
     whenthens: [
       CalculationParams | ASTIdentifier,

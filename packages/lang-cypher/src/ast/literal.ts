@@ -21,14 +21,14 @@ export class CypherIdentifier extends ASTIdentifier {
     return visitor.visitCypherIdentifier(this, arg);
   }
 
-  private parseId(id: string): string {
+  protected parseId(id: string): string {
     if (id.startsWith('`') && id.endsWith('`')) {
       return id.replaceAll('`', '');
     }
     return id;
   }
 
-  private splitId(id: string): [string, string] {
+  protected splitId(id: string): [string, string] {
     if (id[0] !== '`') {
       const dot = id.indexOf('.');
       if (dot !== -1) {
@@ -96,7 +96,7 @@ export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
     return visitor.visitBooleanLiteral(this, arg);
   }
 
-  private parse(val: string) {
+  protected parse(val: string) {
     const lc = val.toLowerCase();
     if (lc === 'true') {
       return true;

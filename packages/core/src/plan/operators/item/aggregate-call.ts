@@ -26,7 +26,7 @@ export class AggregateCall implements PlanOperator {
   public get postGroupSource(): PlanTupleOperator {
     return this._postGSource;
   }
-  private _postGSource: PlanTupleOperator;
+  protected _postGSource: PlanTupleOperator;
   public parent: PlanOperator;
   public dependencies: IdSet;
 

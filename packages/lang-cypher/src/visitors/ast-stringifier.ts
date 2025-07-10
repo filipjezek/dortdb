@@ -49,7 +49,7 @@ import {
 import { CypherVisitor } from '../ast/visitor.js';
 
 export class ASTDeterministicStringifier implements CypherVisitor<string> {
-  private uniqueId = 0;
+  protected uniqueId = 0;
 
   constructor() {
     this.processNode = this.processNode.bind(this);
@@ -58,21 +58,21 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     this.processNodeOrAttr = this.processNodeOrAttr.bind(this);
   }
 
-  private processNode(x: ASTNode) {
+  protected processNode(x: ASTNode) {
     return x.accept(this);
   }
-  private processNodeOrAttr(x: ASTNode | Aliased<ASTNode> | '*') {
+  protected processNodeOrAttr(x: ASTNode | Aliased<ASTNode> | '*') {
     return x === '*'
       ? x
       : x instanceof Array
         ? this.processAttr(x)
         : this.processNode(x);
   }
-  private processAttr(x: Aliased<ASTNode>) {
+  protected processAttr(x: Aliased<ASTNode>) {
     return `${x[0].accept(this)} AS ${x[1].accept(this)}`;
   }
 
-  private visitSchemaPart(node: string | symbol | number): string {
+  protected visitSchemaPart(node: string | symbol | number): string {
     return typeof node === 'symbol' || typeof node === 'number'
       ? node === allAttrs
         ? '*'
@@ -86,7 +86,7 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
   visitCypherIdentifier(node: CypherIdentifier): string {
     return this.visitIdentifier(node);
   }
-  private addQuotes(str: string, quot: '"' | "'" | '`') {
+  protected addQuotes(str: string, quot: '"' | "'" | '`') {
     return quot + str.replaceAll(quot, quot + quot) + quot;
   }
   visitStringLiteral(node: ASTStringLiteral): string {
@@ -144,7 +144,7 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     return res + ')';
   }
 
-  private visitRange(
+  protected visitRange(
     range: [ASTNode | undefined, ASTNode | undefined] | [ASTNode | undefined],
   ) {
     const [start, end] = range;

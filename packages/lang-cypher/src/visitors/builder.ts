@@ -82,19 +82,19 @@ interface DescentArgs {
 export class CypherLogicalPlanBuilder
   implements LogicalPlanBuilder, CypherVisitor<PlanOperator, DescentArgs>
 {
-  private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
-  private eqCheckers: Record<string, EqualityChecker>;
-  private stringifier = new ASTDeterministicStringifier();
-  private dataAdapter: CypherDataAdaper;
+  protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  protected eqCheckers: Record<string, EqualityChecker>;
+  protected stringifier = new ASTDeterministicStringifier();
+  protected dataAdapter: CypherDataAdaper;
 
-  constructor(private db: DortDBAsFriend) {
+  constructor(protected db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     const lang = db.langMgr.getLang<'cypher', CypherLanguage>('cypher');
     this.dataAdapter = lang.dataAdapter;
   }
 
-  private maybeId(node: ASTNode, args: DescentArgs): ASTNode {
+  protected maybeId(node: ASTNode, args: DescentArgs): ASTNode {
     if (!(node instanceof AST.PropLookup)) return node;
     const parts = [node.prop.parts[0]];
     let root = node.expr;
@@ -114,7 +114,7 @@ export class CypherLogicalPlanBuilder
     return node;
   }
 
-  private toCalc(
+  protected toCalc(
     node: ASTNode,
     args: DescentArgs,
   ): plan.Calculation | ASTIdentifier {
@@ -126,7 +126,7 @@ export class CypherLogicalPlanBuilder
     }
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
-  private processFnArg(
+  protected processFnArg(
     item: ASTNode,
     args: DescentArgs,
   ): plan.PlanOpAsArg | ASTIdentifier {
@@ -135,7 +135,7 @@ export class CypherLogicalPlanBuilder
       ? infer(item, args)
       : { op: item.accept(this, args) };
   }
-  private processAttr(
+  protected processAttr(
     attr: ASTNode | Aliased<ASTNode>,
     args: DescentArgs,
   ): Aliased<ASTIdentifier | plan.Calculation> {
@@ -153,7 +153,7 @@ export class CypherLogicalPlanBuilder
     const alias = toId(attr.accept(this.stringifier));
     return [this.toCalc(attr, args), alias];
   }
-  private processNode(node: ASTNode, args: DescentArgs) {
+  protected processNode(node: ASTNode, args: DescentArgs) {
     node = this.maybeId(node, args);
     return node instanceof ASTIdentifier
       ? infer(node, args)
@@ -249,7 +249,7 @@ export class CypherLogicalPlanBuilder
     return new plan.FnCall('cypher', fnArgs, impl.impl, impl.pure);
   }
 
-  private visitProcedure(
+  protected visitProcedure(
     node: AST.FnCallWrapper,
     args: DescentArgs,
   ): PlanOperator {
@@ -389,7 +389,7 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
-  private preparePatternRefs(
+  protected preparePatternRefs(
     refVars: ASTIdentifier[],
     chain: (AST.NodePattern | AST.RelPattern)[],
     isRef: boolean[],
@@ -412,7 +412,7 @@ export class CypherLogicalPlanBuilder
     }
     return args.src;
   }
-  private patternToSelection(
+  protected patternToSelection(
     src: PlanTupleOperator,
     variable: ASTIdentifier,
     el: AST.NodePattern | AST.RelPattern,
@@ -455,7 +455,7 @@ export class CypherLogicalPlanBuilder
     return src;
   }
 
-  private setupChainSelections(
+  protected setupChainSelections(
     chain: (AST.NodePattern | AST.RelPattern)[],
     variables: ASTIdentifier[],
     res: PlanTupleOperator,
@@ -531,7 +531,7 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
-  private checkCorrectAnyRecursion(
+  protected checkCorrectAnyRecursion(
     variables: ASTIdentifier[],
     graphName: ASTIdentifier,
     i: number,
@@ -577,7 +577,7 @@ export class CypherLogicalPlanBuilder
     );
   }
 
-  private isEdgeConnected(
+  protected isEdgeConnected(
     res: PlanTupleOperator,
     dir: EdgeDirection,
     node: ASTIdentifier,
@@ -771,7 +771,7 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
-  private addRecursion(
+  protected addRecursion(
     edge: AST.RelPattern,
     source: PlanTupleOperator,
     args: DescentArgs & { variable: ASTIdentifier },
@@ -794,7 +794,7 @@ export class CypherLogicalPlanBuilder
 
     return new plan.IndexedRecursion('cypher', min, max, mapping, source);
   }
-  private createRecursionMapping(
+  protected createRecursionMapping(
     edgeVar: ASTIdentifier,
     graph: unknown,
     edgeDir: EdgeDirection,
@@ -1155,7 +1155,7 @@ export class CypherLogicalPlanBuilder
     }
     return res;
   }
-  private processOrderBy(
+  protected processOrderBy(
     node: AST.ProjectionBody,
     res: PlanTupleOperator,
     args: DescentArgs & { append: boolean },
@@ -1192,7 +1192,7 @@ export class CypherLogicalPlanBuilder
     }
     return new plan.OrderBy('cypher', orders, res);
   }
-  private processGroupBy(
+  protected processGroupBy(
     res: PlanTupleOperator,
     aggrs: plan.AggregateCall[],
     allCols: Aliased<plan.Calculation | ASTIdentifier>[],
@@ -1216,7 +1216,7 @@ export class CypherLogicalPlanBuilder
 
     return new plan.GroupBy('cypher', groupByCols, aggrs, res);
   }
-  private buildLimit(
+  protected buildLimit(
     node: AST.ProjectionBody,
     res: PlanTupleOperator,
     args: DescentArgs,

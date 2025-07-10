@@ -20,7 +20,7 @@ export interface XQueryDataAdapter<NodeType = any> {
 }
 
 export class DomDataAdapter implements XQueryDataAdapter<Node> {
-  constructor(private doc: Document) {
+  constructor(protected doc: Document) {
     this.atomize = this.atomize.bind(this);
   }
 
@@ -97,7 +97,7 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
     return el.lookupNamespaceURI(prefix);
   }
 
-  private appendItem(node: Node, item: unknown) {
+  protected appendItem(node: Node, item: unknown) {
     if (item instanceof Attr) {
       (node as Element).setAttributeNodeNS(item);
     } else if (item instanceof Node) {

@@ -102,15 +102,15 @@ export const xhtml = 'http://www.w3.org/1999/xhtml';
 export class XQueryLogicalPlanBuilder
   implements XQueryVisitor<PlanOperator, DescentArgs>, LogicalPlanBuilder
 {
-  private calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
-  private eqCheckers: Record<string, EqualityChecker>;
-  private prologOptions = {
+  protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  protected eqCheckers: Record<string, EqualityChecker>;
+  protected prologOptions = {
     namespaces: new Map<string, string>([[undefined, xhtml]]),
   };
-  private prefixCounter = 0;
-  private dataAdapter: XQueryDataAdapter<unknown>;
+  protected prefixCounter = 0;
+  protected dataAdapter: XQueryDataAdapter<unknown>;
 
-  constructor(private db: DortDBAsFriend) {
+  constructor(protected db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.dataAdapter = db.langMgr.getLang<'xquery', XQueryLanguage>(
@@ -128,16 +128,16 @@ export class XQueryLogicalPlanBuilder
     return { plan: res, inferred };
   }
 
-  private toCalc(
+  protected toCalc(
     node: ASTNode,
     args: DescentArgs,
   ): plan.Calculation | ASTIdentifier;
-  private toCalc(
+  protected toCalc(
     node: ASTNode,
     args: DescentArgs,
     skipVars: false,
   ): plan.Calculation;
-  private toCalc(
+  protected toCalc(
     node: ASTNode,
     args: DescentArgs,
     skipVars = true,
@@ -150,11 +150,11 @@ export class XQueryLogicalPlanBuilder
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
 
-  private atomize(item: unknown) {
+  protected atomize(item: unknown) {
     return this.dataAdapter.atomize(item);
   }
 
-  private maybeUnwind(item: ASTNode, args: DescentArgs) {
+  protected maybeUnwind(item: ASTNode, args: DescentArgs) {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
     }
@@ -170,14 +170,14 @@ export class XQueryLogicalPlanBuilder
     }
     return res;
   }
-  private processNode(item: ASTNode, args: DescentArgs): OpOrId {
+  protected processNode(item: ASTNode, args: DescentArgs): OpOrId {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
       return item;
     }
     return item.accept(this, args);
   }
-  private processFnArg(
+  protected processFnArg(
     item: ASTNode,
     args: DescentArgs,
   ): plan.PlanOpAsArg | ASTIdentifier {
@@ -278,7 +278,7 @@ export class XQueryLogicalPlanBuilder
     return res;
   }
 
-  private maybeProjectConcat(
+  protected maybeProjectConcat(
     op: PlanTupleOperator,
     src: PlanTupleOperator,
   ): PlanTupleOperator {
@@ -355,7 +355,7 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
-  private processGroupByItem(
+  protected processGroupByItem(
     item: [AST.ASTVariable, ASTNode],
     args: DescentArgs,
   ): Aliased<ASTIdentifier | plan.Calculation> {
@@ -381,7 +381,7 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
-  private processOrderItem(
+  protected processOrderItem(
     item: AST.OrderByItem,
     args: DescentArgs,
   ): plan.Order {
@@ -538,7 +538,7 @@ export class XQueryLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
 
-  private processPathStart(
+  protected processPathStart(
     first: ASTNode,
     args: DescentArgs,
   ): PlanTupleOperator {
@@ -589,7 +589,7 @@ export class XQueryLogicalPlanBuilder
     }
     return res as PlanTupleOperator;
   }
-  private processPathStep(
+  protected processPathStep(
     step: ASTNode,
     removeDuplicates: boolean,
     args: DescentArgs,
@@ -704,7 +704,7 @@ export class XQueryLogicalPlanBuilder
   }
 
   /** returns [ns uri, prefixed:name] */
-  private idToQName(id: ASTIdentifier, source?: unknown): [string, string] {
+  protected idToQName(id: ASTIdentifier, source?: unknown): [string, string] {
     const local = id.parts.at(-1) as string;
     const schema = id.parts.at(-2) as string;
     if (schema && URL.canParse(schema)) {
@@ -718,7 +718,7 @@ export class XQueryLogicalPlanBuilder
       this.prologOptions.namespaces.get(schema);
     return [uri, schema ? `${schema}:${local}` : local];
   }
-  private processDirConstrContent(
+  protected processDirConstrContent(
     content: string | ASTNode,
     args: DescentArgs,
   ) {
@@ -905,7 +905,7 @@ export class XQueryLogicalPlanBuilder
   visitLiteral<U>(node: ASTLiteral<U>, args: DescentArgs): PlanOperator {
     return new plan.Literal('xquery', node.value);
   }
-  private processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
+  protected processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
       return {
@@ -930,7 +930,7 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
-  private renameAggSource(
+  protected renameAggSource(
     src: PlanTupleOperator,
     dot: ASTIdentifier,
     len: ASTIdentifier,
@@ -952,7 +952,7 @@ export class XQueryLogicalPlanBuilder
       src,
     );
   }
-  private joinAggArgs(args: PlanTupleOperator[]) {
+  protected joinAggArgs(args: PlanTupleOperator[]) {
     const colNames = args.map((_, i) => toId(i + ''));
     const posNames = args.map((_, i) => toId('i' + i));
     const countNames = args.map((_, i) => toId('c' + i));
@@ -981,7 +981,7 @@ export class XQueryLogicalPlanBuilder
     return joined;
   }
 
-  private prepareAggArg(arg: PlanOperator): PlanTupleOperator {
+  protected prepareAggArg(arg: PlanOperator): PlanTupleOperator {
     if (plan.CalcIntermediate in arg) {
       let calcParams = arg.accept(this.calcBuilders);
       calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
@@ -1013,7 +1013,7 @@ export class XQueryLogicalPlanBuilder
     return toTuples(arg);
   }
 
-  private processAggregateFn(
+  protected processAggregateFn(
     node: ASTFunction,
     dargs: DescentArgs,
     impl: XQueryAggregate,

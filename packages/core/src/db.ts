@@ -163,7 +163,10 @@ export class DortDB<LangNames extends string = string> {
    * Renames expressions for item source indices to a common key
    * @param expr The expression to rename
    */
-  private renameItemIndexExpr(expr: Calculation, fromItemKey: string[]): void {
+  protected renameItemIndexExpr(
+    expr: Calculation,
+    fromItemKey: string[],
+  ): void {
     if (expr.dependencies.size === 0) return;
     if (expr.original) {
       const renamers = this.langMgr.getVisitorMap('attributeRenamer');

@@ -65,7 +65,7 @@ export type GraphologyGraph = MultiDirectedGraph<
 export class GraphologyDataAdapter
   implements CypherDataAdaper<GraphologyGraph>
 {
-  private convertNode(
+  protected convertNode(
     node: string,
     attrs: Attributes & Record<string | symbol, unknown>,
   ): GraphologyNode {
@@ -73,7 +73,7 @@ export class GraphologyDataAdapter
     return attrs as GraphologyNode;
   }
 
-  private convertEdge(
+  protected convertEdge(
     edge: string,
     attrs: Attributes & Record<string | symbol, unknown>,
   ): GraphologyEdge {

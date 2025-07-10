@@ -188,7 +188,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     return operator.source.accept(this.vmap);
   }
-  private visitSetOp(operator: plan.SetOperator) {
+  protected visitSetOp(operator: plan.SetOperator) {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const result = union(
       operator.left.accept(this.vmap),
