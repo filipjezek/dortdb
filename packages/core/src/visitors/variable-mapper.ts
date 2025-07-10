@@ -5,7 +5,7 @@ import {
   PlanVisitor,
 } from '../plan/visitor.js';
 import * as plan from '../plan/operators/index.js';
-import { allAttrs, ASTIdentifier } from '../ast.js';
+import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 
 export type VariableMap = Trie<string | number | symbol, ASTIdentifier>;
 export interface VariableMapperCtx {
@@ -22,7 +22,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
 
   public mapVariables(plan: PlanOperator): VariableMapperCtx {
     const ctx: VariableMapperCtx = {
-      scopeStack: [],
+      scopeStack: [
+        new Trie(), // for bound params
+      ],
       currentIndex: 0,
       variableNames: [],
       translations: new Map(),
@@ -36,8 +38,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     ctx: VariableMapperCtx,
     depth = ctx.scopeStack.length,
   ): ASTIdentifier {
+    const isBoundParam = attr.parts[0] === boundParam;
     for (
-      let i = ctx.scopeStack.length - 1;
+      let i = isBoundParam ? 0 : ctx.scopeStack.length - 1;
       i >= ctx.scopeStack.length - depth;
       i--
     ) {
@@ -48,7 +51,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
       }
     }
     const newTranslation = ASTIdentifier.fromParts([ctx.currentIndex]);
-    ctx.scopeStack.at(-1).set(attr.parts, newTranslation);
+    ctx.scopeStack.at(isBoundParam ? 0 : -1).set(attr.parts, newTranslation);
     ctx.variableNames[ctx.currentIndex++] = attr;
     return newTranslation;
   }

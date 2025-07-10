@@ -7,7 +7,7 @@ import {
 import * as plan from '../plan/operators/index.js';
 import { ExecutionContext } from '../execution-context.js';
 import { DortDBAsFriend } from '../db.js';
-import { allAttrs, ASTIdentifier } from '../ast.js';
+import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 import { VariableMapperCtx } from './variable-mapper.js';
 import { retI1, toArray } from '../internal-fns/index.js';
 import { Trie } from '../data-structures/trie.js';
@@ -33,8 +33,19 @@ export abstract class Executor
   public execute(
     plan: PlanOperator,
     varMapperCtx: VariableMapperCtx,
+    boundParams?: Record<string, unknown>,
   ): { result: Iterable<unknown>; ctx: ExecutionContext } {
     const ctx = new ExecutionContext();
+
+    if (boundParams) {
+      const scope = varMapperCtx.scopeStack[0];
+      for (const [key, value] of Object.entries(boundParams)) {
+        const variable = scope.get([boundParam, key]);
+        if (!variable) throw new Error(`Bound parameter ${key} not found`);
+        ctx.set(variable, value);
+      }
+    }
+
     ctx.translations = varMapperCtx.translations;
     ctx.variableNames = varMapperCtx.variableNames;
     const result = plan.accept(this.vmap, ctx);

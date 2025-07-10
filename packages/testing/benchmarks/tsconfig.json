@@ -4,13 +4,16 @@
   "include": [],
   "references": [
     {
+      "path": "../dataloaders"
+    },
+    {
       "path": "../../lang-xquery"
     },
     {
-      "path": "../../lang-sql"
+      "path": "../../lang-cypher"
     },
     {
-      "path": "../../lang-cypher"
+      "path": "../../lang-sql"
     },
     {
       "path": "../../core"

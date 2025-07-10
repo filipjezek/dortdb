@@ -33,7 +33,13 @@ import {
 } from '../language/language.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { isMatch } from 'lodash-es';
-import { ret1, retI0, toPair } from '@dortdb/core/internal-fns';
+import {
+  createMapLiteral,
+  propLookup,
+  ret1,
+  retI0,
+  toPair,
+} from '@dortdb/core/internal-fns';
 import {
   assertCalcLiteral,
   exprToSelection,
@@ -43,6 +49,7 @@ import {
   union,
 } from '@dortdb/core/utils';
 import { collect } from '@dortdb/core/aggregates';
+import { eq } from '@dortdb/core/operators';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [id.parts.at(-1) as string, id.parts.at(-2) as string];
@@ -187,13 +194,8 @@ export class CypherLogicalPlanBuilder
   visitMapLiteral(node: AST.ASTMapLiteral, args: DescentArgs): PlanOperator {
     const names = node.items.map((i) => i[1].parts[0]);
     const values = node.items.map((i) => this.processFnArg(i[0], args));
-    return new plan.FnCall('cypher', values, (...vals) => {
-      const res: Record<string | symbol, unknown> = {};
-      for (let i = 0; i < vals.length; i++) {
-        res[names[i]] = vals[i];
-      }
-      return res;
-    });
+    values.unshift({ op: new plan.Literal('cypher', names) });
+    return new plan.FnCall('cypher', values, createMapLiteral);
   }
   visitBooleanLiteral(node: AST.ASTBooleanLiteral): PlanOperator {
     return new plan.Literal('cypher', node.value);
@@ -418,15 +420,39 @@ export class CypherLogicalPlanBuilder
   ) {
     if (!el.props) return src;
 
-    const fn = new plan.FnCall(
-      'cypher',
-      [variable, this.processFnArg(el.props, args)],
-      (v, p) => {
-        return isMatch(v, p);
-      },
-    );
-    const calc = intermediateToCalc(fn, this.calcBuilders, this.eqCheckers);
-    return new plan.Selection('cypher', calc, src);
+    if (el.props instanceof ASTIdentifier) {
+      const fn = new plan.FnCall(
+        'cypher',
+        [variable, this.processFnArg(el.props, args)],
+        isMatch,
+      );
+      const calc = intermediateToCalc(fn, this.calcBuilders, this.eqCheckers);
+      return new plan.Selection('cypher', calc, src);
+    }
+
+    for (const prop of el.props.items) {
+      const fn = new plan.FnCall(
+        'cypher',
+        [
+          {
+            op: new plan.FnCall(
+              'cypher',
+              [
+                variable,
+                { op: new plan.Literal('cypher', [prop[1].parts[0]]) },
+              ],
+              propLookup,
+              true,
+            ),
+          },
+          this.processFnArg(prop[0], args),
+        ],
+        eq.impl,
+      );
+      const calc = intermediateToCalc(fn, this.calcBuilders, this.eqCheckers);
+      src = new plan.Selection('cypher', calc, src);
+    }
+    return src;
   }
 
   private setupChainSelections(
@@ -977,13 +1003,11 @@ export class CypherLogicalPlanBuilder
   visitPropLookup(node: AST.PropLookup, args: DescentArgs): PlanOperator {
     return new plan.FnCall(
       'cypher',
-      [this.processFnArg(node.expr, args)],
-      (n) => {
-        for (const part of node.prop.parts) {
-          n = n[part];
-        }
-        return n;
-      },
+      [
+        this.processFnArg(node.expr, args),
+        { op: new plan.Literal('cypher', node.prop.parts) },
+      ],
+      propLookup,
     );
   }
   visitSetOp(node: AST.SetOp, args: DescentArgs): PlanTupleOperator {

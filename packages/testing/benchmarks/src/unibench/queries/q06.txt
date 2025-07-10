@@ -1,0 +1,19 @@
+-- find persons in the shortest path between CUSTOMERS and return their top 3 bestsellers
+--
+-- example customer ids: 4145, 4882
+
+SELECT x.value AS productId FROM (
+  LANG xquery
+  for $interPerson in (
+    LANG cypher
+    MATCH (:person {id: $customerId1})-[edges:knows*]-({id: $customerId2})
+    WITH [e in edges[1..-1] | [startNode(e), endNode(e)]] AS edges LIMIT 1 // recursion is BFS, so this is shortest path
+    UNWIND edges AS edge
+    UNWIND edge AS person
+    RETURN DISTINCT person.id
+  ), $productId in $Invoices/Invoices/Invoice.xml[PersonId=$interPerson]//productId
+  group by $num := number($productId)
+  order by fn:count($productId) descending
+  return $num
+) x
+LIMIT 3

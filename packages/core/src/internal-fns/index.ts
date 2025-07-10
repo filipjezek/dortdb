@@ -57,3 +57,17 @@ export function flat<T>(input: RecursiveArray<T>): T[] | T {
   }
   return flattened;
 }
+
+export function propLookup(n: any, parts: any[]) {
+  for (const part of parts) {
+    n = n[part];
+  }
+  return n;
+}
+export function createMapLiteral(names: any[], ...vals: any[]) {
+  const res: Record<string | symbol, unknown> = {};
+  for (let i = 0; i < vals.length; i++) {
+    res[names[i]] = vals[i];
+  }
+  return res;
+}

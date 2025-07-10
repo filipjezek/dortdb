@@ -96,11 +96,11 @@ export class TreeVisualizerComponent implements AfterViewInit {
     image.src = url;
     image.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
+      canvas.width = image.width * 2;
+      canvas.height = image.height * 2;
 
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0);
+      ctx.drawImage(image, 0, 0, image.width * 2, image.height * 2);
       URL.revokeObjectURL(url);
 
       const imgURI = canvas

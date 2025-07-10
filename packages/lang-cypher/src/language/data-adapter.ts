@@ -48,9 +48,15 @@ export interface CypherDataAdaper<
 }
 
 export const nodeOrEdgeId = Symbol('nodeOrEdgeId');
-type GraphologyNode = Attributes & { labels: string[]; [nodeOrEdgeId]: string };
-type GraphologyEdge = Attributes & { type: string; [nodeOrEdgeId]: string };
-type GraphologyGraph = MultiDirectedGraph<
+export type GraphologyNode = Attributes & {
+  labels: string[];
+  [nodeOrEdgeId]: string;
+};
+export type GraphologyEdge = Attributes & {
+  type: string;
+  [nodeOrEdgeId]: string;
+};
+export type GraphologyGraph = MultiDirectedGraph<
   GraphologyNode,
   GraphologyEdge,
   Attributes

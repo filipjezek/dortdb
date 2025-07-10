@@ -1,9 +1,13 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { from, Observable, switchMap, tap } from 'rxjs';
-import * as zip from '@zip.js/zip.js';
 import { MultiDirectedGraph } from 'graphology';
-import { CSVParser } from '../utils/csv-parser';
-import { NDJSONParser } from '../utils/ndjson-parser';
+import {
+  unibenchGraphTables,
+  UnibenchData,
+  extractArchive,
+  iterStream,
+  unibenchFiles,
+} from '@dortdb/dataloaders';
+import { GraphologyGraph } from '@dortdb/lang-cypher';
 
 const LS_KEY = 'indexeddb-used';
 const DB_NAME = 'unibench';
@@ -29,32 +33,6 @@ interface SerializedUnibenchData
   socialNetwork: unknown; // Serialized MultiDirectedGraph
 }
 
-export interface UnibenchData {
-  customers: Record<string, any>[];
-  invoices: Document;
-  orders: Record<string, any>[];
-  feedback: Record<string, any>[];
-  products: Record<string, any>[];
-  brandProducts: Record<string, any>[];
-  vendors: Record<string, any>[];
-  socialNetwork: MultiDirectedGraph;
-  posts: Record<string, any>[];
-}
-type UnibenchObjectKeys = keyof {
-  [K in keyof UnibenchData as UnibenchData[K] extends Record<string, any>[]
-    ? K
-    : never]: any;
-};
-interface CSVParseOptions {
-  key: UnibenchObjectKeys;
-  cast?: Record<string, (v: string) => any>;
-  columns?: string[];
-  separator?: string;
-}
-type StreamedEntry = Omit<zip.Entry, 'getData'> & {
-  readable?: ReadableStream<Uint8Array>;
-};
-
 export type DataLocation = 'indexeddb' | 'memory' | 'remote';
 
 @Injectable({ providedIn: 'root' })
@@ -67,70 +45,6 @@ export class UnibenchService {
    * and we don't want to ask the user for confirmation if we don't need it
    */
   private dbPopulated = signal<boolean>(!!localStorage.getItem(LS_KEY));
-
-  private static readonly csvTables: Record<string, CSVParseOptions> = {
-    'Dataset/Customer/person_0_0.csv': {
-      key: 'customers',
-      cast: {
-        id: Number,
-        birthday: (v: string) => new Date(v),
-        creationDate: (v: string) => new Date(v),
-        place: Number,
-      },
-      separator: '|',
-    },
-    'Dataset/Feedback/Feedback.csv': {
-      key: 'feedback',
-      cast: {
-        personId: Number,
-      },
-      columns: ['productAsin', 'personId', 'feedback'],
-      separator: '|',
-    },
-    'Dataset/Product/BrandByProduct.csv': {
-      key: 'brandProducts',
-      columns: ['brandName', 'productAsin'],
-    },
-    'Dataset/Product/Product.csv': {
-      key: 'products',
-      cast: {
-        price: Number,
-        productId: Number,
-        brand: Number,
-      },
-    },
-    'Dataset/Vendor/Vendor.csv': { key: 'vendors' },
-    'Dataset/SocialNetwork/post_0_0.csv': {
-      key: 'posts',
-      cast: { id: Number, creationDate: (v: string) => new Date(v) },
-      separator: '|',
-    },
-  };
-  private static readonly graphTables: Record<string, UnibenchObjectKeys> = {
-    person: 'customers',
-    post: 'posts',
-  };
-
-  private cachedIndices: Record<
-    string,
-    Map<string | number, Record<string, any>>
-  > = {};
-  private dsPromises: {
-    [key in keyof UnibenchData]: {
-      promise: Promise<UnibenchData[key]>;
-      resolve: (val: UnibenchData[key]) => UnibenchData[key];
-    };
-  } = {
-    customers: this.getPromise(),
-    invoices: this.getPromise(),
-    orders: this.getPromise(),
-    feedback: this.getPromise(),
-    products: this.getPromise(),
-    brandProducts: this.getPromise(),
-    vendors: this.getPromise(),
-    socialNetwork: this.getPromise(),
-    posts: this.getPromise(),
-  };
 
   public downloadProgress = signal<number>(undefined);
   public dataLocation = computed<DataLocation>(() => {
@@ -156,22 +70,19 @@ export class UnibenchService {
   public downloadData(): Promise<UnibenchData> {
     this.downloadProgress.set(0);
     let bytesRead = 0;
-    const stream = from(
-      fetch(
+    const stream = async function* (this: UnibenchService) {
+      const resp = await fetch(
         'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.sample.zip',
-      ),
-    ).pipe(
-      switchMap((resp) => {
-        this.rawData = new ArrayBuffer(+resp.headers.get('Content-Length'));
-        this.rawDataView = new Uint8Array(this.rawData);
-        return this.iterStream(resp.body);
-      }),
-      tap((chunk) => {
+      );
+      this.rawData = new ArrayBuffer(+resp.headers.get('Content-Length'));
+      this.rawDataView = new Uint8Array(this.rawData);
+      for await (const chunk of iterStream(resp.body)) {
         this.rawDataView.set(chunk, bytesRead);
         bytesRead += chunk.length;
         this.downloadProgress.set(bytesRead / this.rawData.byteLength);
-      }),
-    );
+        yield chunk;
+      }
+    }.bind(this)();
     return this.processArchive(stream);
   }
 
@@ -226,7 +137,9 @@ export class UnibenchService {
   private deserializeData(serialized: SerializedUnibenchData): UnibenchData {
     return {
       ...serialized,
-      socialNetwork: new MultiDirectedGraph().import(serialized.socialNetwork),
+      socialNetwork: new MultiDirectedGraph().import(
+        serialized.socialNetwork,
+      ) as GraphologyGraph,
       invoices: new DOMParser().parseFromString(
         serialized.invoices,
         'text/xml',
@@ -245,194 +158,17 @@ export class UnibenchService {
   }
 
   private async processArchive(
-    archive: Observable<Uint8Array<ArrayBufferLike>>,
+    archive: AsyncIterable<Uint8Array<ArrayBufferLike>>,
   ): Promise<UnibenchData> {
-    const reader = new zip.ZipReaderStream();
-    const writer = reader.writable.getWriter();
-    archive.subscribe({
-      next: (chunk) => writer.write(chunk),
-      complete: () => writer.close(),
-    });
+    const result = (await extractArchive(
+      archive,
+      unibenchFiles,
+      new DOMParser(),
+      'socialNetwork',
+      unibenchGraphTables,
+    )) as any as UnibenchData;
 
-    const graph = new MultiDirectedGraph();
-    const graphPromises: Promise<void>[] = [];
-    const result = { socialNetwork: graph } as UnibenchData;
-    for await (const entry of this.iterStream(reader.readable)) {
-      if (entry.filename in UnibenchService.csvTables) {
-        this.parseCSVTable(entry, result);
-      } else if (entry.filename === 'Dataset/Invoice/Invoice.xml') {
-        this.parseInvoices(entry, result);
-      } else if (entry.filename === 'Dataset/Order/Order.json') {
-        this.parseOrders(entry, result);
-      } else if (
-        entry.filename.startsWith('Dataset/SocialNetwork/') &&
-        entry.filename.endsWith('.csv')
-      ) {
-        graphPromises.push(this.csvToGraph(entry, graph));
-      }
-    }
-    await Promise.all(graphPromises);
-    this.dsPromises.socialNetwork.resolve(graph);
-    await Promise.all(Object.values(this.dsPromises).map((p) => p.promise));
-    this.cachedIndices = {};
-    console.log('Unibench data loaded');
     this.data.set(result);
     return result;
-  }
-
-  private async *iterStream<T>(stream: ReadableStream<T>) {
-    const reader = stream.getReader();
-    try {
-      let done = false;
-      while (!done) {
-        const { value, done: d } = await reader.read();
-        done = d;
-        if (value) yield value;
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-
-  private async toArray<T>(iter: AsyncIterable<T>): Promise<T[]> {
-    const arr: T[] = [];
-    for await (const item of iter) {
-      arr.push(item);
-    }
-    return arr;
-  }
-  private async streamToString(
-    stream: ReadableStream<string>,
-  ): Promise<string> {
-    let str = '';
-    for await (const item of this.iterStream(stream)) {
-      str += item;
-    }
-    return str;
-  }
-
-  private async parseCSVTable(entry: StreamedEntry, result: UnibenchData) {
-    const now = Date.now();
-    const opts = UnibenchService.csvTables[entry.filename];
-    const stream = entry.readable
-      .pipeThrough(new TextDecoderStream())
-      .pipeThrough(
-        new CSVParser({
-          delimiter: opts.separator ?? ',',
-          escape: '\\',
-          columns: opts.columns ?? true,
-          cast: (val, ctx) => {
-            if (ctx.header) return val;
-            if (opts.cast?.[ctx.column]) {
-              return opts.cast[ctx.column](val);
-            }
-            return val;
-          },
-        }),
-      );
-    result[opts.key] = await this.toArray(this.iterStream(stream));
-    this.dsPromises[opts.key].resolve(result[opts.key]);
-    console.log(`${opts.key} parsed in ${(Date.now() - now) / 1000} s`);
-  }
-
-  private async parseInvoices(entry: StreamedEntry, result: UnibenchData) {
-    const now = Date.now();
-    const stream = entry.readable.pipeThrough(new TextDecoderStream());
-    const text = await this.streamToString(stream);
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, 'text/xml');
-    result.invoices = xml;
-    this.dsPromises.invoices.resolve(xml);
-    console.log('Invoices parsed in', (Date.now() - now) / 1000, 's');
-  }
-
-  private async parseOrders(entry: StreamedEntry, result: UnibenchData) {
-    const now = Date.now();
-    const stream = entry.readable
-      .pipeThrough(new TextDecoderStream())
-      .pipeThrough(new NDJSONParser());
-    result.orders = await this.toArray(this.iterStream(stream));
-    this.dsPromises.orders.resolve(result.orders);
-    console.log('Orders parsed in', (Date.now() - now) / 1000, 's');
-  }
-
-  private async csvToGraph(entry: StreamedEntry, graph: MultiDirectedGraph) {
-    const now = Date.now();
-    const [from, edgeType, to] = entry.filename.split('/').pop().split('_');
-    const stream = entry.readable
-      .pipeThrough(new TextDecoderStream())
-      .pipeThrough(
-        new CSVParser({
-          delimiter: '|',
-          cast: true,
-          castDate: true,
-          columns: undefined,
-        }),
-      );
-    const fromIndex =
-      from in UnibenchService.graphTables
-        ? await this.getTableIndex(UnibenchService.graphTables[from])
-        : null;
-    const toIndex =
-      to in UnibenchService.graphTables
-        ? await this.getTableIndex(UnibenchService.graphTables[to])
-        : null;
-
-    const iter = this.iterStream(stream)[
-      Symbol.asyncIterator
-    ]() as any as AsyncIterableIterator<any[]>;
-    const currentState = await iter.next();
-    const edgeProps = currentState.value.slice(2) as string[];
-    for await (const row of iter) {
-      const fromNode = from + row[0];
-      const toNode = to + row[1];
-      if (fromIndex) {
-        if (!graph.hasNode(fromNode)) {
-          const fromRow = fromIndex.get(row[0]) ?? { id: row[0] };
-          fromRow['labels'] = [from];
-          graph.addNode(fromNode, fromRow);
-        }
-      } else {
-        graph.mergeNode(fromNode, { id: row[0], labels: [from] });
-      }
-      if (toIndex) {
-        if (!graph.hasNode(toNode)) {
-          const toRow = toIndex.get(row[1]) ?? { id: row[1] };
-          toRow['labels'] = [to];
-          graph.addNode(toNode, toRow);
-        }
-      } else {
-        graph.mergeNode(toNode, { id: row[1], labels: [to] });
-      }
-      graph.addEdge(fromNode, toNode, {
-        type: edgeType,
-        ...Object.fromEntries(edgeProps.map((key, i) => [key, row[2 + i]])),
-      });
-    }
-    console.log(entry.filename, 'parsed in', (Date.now() - now) / 1000, 's');
-  }
-
-  private async getTableIndex(
-    table: UnibenchObjectKeys,
-    column = 'id',
-  ): Promise<Map<string | number, Record<string, any>>> {
-    const ds = await this.dsPromises[table].promise;
-    if (this.cachedIndices[table]) {
-      return this.cachedIndices[table];
-    }
-    const index = new Map<string | number, Record<string, any>>();
-    for (const row of ds) {
-      index.set(row[column], row);
-    }
-    this.cachedIndices[table] = index;
-    return index;
-  }
-
-  private getPromise(): { promise: Promise<any>; resolve: (val: any) => any } {
-    let cb: (val: any) => any;
-    const promise = new Promise<any>((resolve) => {
-      cb = resolve;
-    });
-    return { promise, resolve: cb };
   }
 }

@@ -6,6 +6,8 @@ import { Optimizer, OptimizerConfig } from './optimizer/optimizer.js';
 import { fromItemIndexKey, Index } from './indices/index.js';
 import {
   Calculation,
+  ItemSource,
+  MapFromItem,
   Projection,
   RenameMap,
   TupleSource,
@@ -14,7 +16,7 @@ import { idToCalculation } from './utils/calculation.js';
 import { toArray } from './internal-fns/index.js';
 import { Aliased, PlanOperator } from './plan/visitor.js';
 
-export class DortDB<LangNames extends string> {
+export class DortDB<LangNames extends string = string> {
   protected langMgr: LanguageManager = null;
   protected registeredSources = new Trie<symbol | string | number, unknown>();
   public readonly optimizer: Optimizer;
@@ -53,14 +55,11 @@ export class DortDB<LangNames extends string> {
     query: ASTNode,
     options?: QueryOptions<LangNames>,
   ): PlanOperator {
-    const varMappers = this.langMgr.getVisitorMap('variableMapper');
+    // const varMappers = this.langMgr.getVisitorMap('variableMapper');
     const Visitor = this.langMgr.getLang(
       options?.mainLang ?? this.config.mainLang.name,
     ).visitors.logicalPlanBuilder;
-    const plan = new Visitor(this.friendInterface).buildPlan(
-      query,
-      new Trie<symbol | string>(),
-    );
+    const plan = new Visitor(this.friendInterface).buildPlan(query, new Trie());
     const optimized = this.optimizer.optimize(plan.plan);
     // varMappers[optimized.lang].mapVariables(optimized);
     return optimized;
@@ -72,7 +71,7 @@ export class DortDB<LangNames extends string> {
   ): QueryResult<T> {
     const parsed = this.parse(query, options);
     const plan = this.buildPlan(parsed.at(-1), options);
-    const serialized = this.executePlan<T>(plan);
+    const serialized = this.executePlan<T>(plan, options?.boundParams);
     return {
       data: toArray(serialized.data),
       schema: serialized.schema,
@@ -81,6 +80,7 @@ export class DortDB<LangNames extends string> {
 
   public executePlan<T = unknown>(
     plan: PlanOperator,
+    boundParams?: Record<string, unknown>,
   ): {
     data: Iterable<T>;
     schema?: string[];
@@ -90,7 +90,11 @@ export class DortDB<LangNames extends string> {
     const serialize = this.langMgr.getLang(plan.lang).serialize;
 
     const varMapCtx = varMappers[plan.lang].mapVariables(plan);
-    const { result, ctx } = executors[plan.lang].execute(plan, varMapCtx);
+    const { result, ctx } = executors[plan.lang].execute(
+      plan,
+      varMapCtx,
+      boundParams,
+    );
     const serialized = serialize(result, ctx, plan);
     return serialized as {
       data: Iterable<T>;
@@ -106,27 +110,41 @@ export class DortDB<LangNames extends string> {
     source: (symbol | string | number)[],
     expressions: string[],
     indexCls: { new (expressions: Calculation[], db: DortDBAsFriend): Index },
-    options?: QueryOptions<LangNames>,
+    options?: QueryOptions<LangNames> & {
+      /** If the source is supposed to be an {@link ItemSource},
+       * what is the key we are looking for in the expression? */
+      fromItemKey?: string[];
+    },
   ) {
     const lang = options?.mainLang ?? this.config.mainLang.name;
     const parser = this.langMgr.getLang(lang).createParser(this.langMgr);
     const calcs = expressions.map((expr) => {
       const parsed = parser.parseExpr(expr);
-      const maybeProj = this.buildPlan(parsed.value[0], options);
-      const isProj = maybeProj instanceof Projection;
-      const res = isProj
-        ? maybeProj.attrs[0][0]
-        : (maybeProj as Calculation | ASTIdentifier);
+      const planBuilder = this.langMgr.getLang(
+        options?.mainLang ?? this.config.mainLang.name,
+      ).visitors.logicalPlanBuilder;
+      const plan = new planBuilder(this.friendInterface).buildPlan(
+        parsed.value[0],
+        new Trie(options?.fromItemKey ? [options.fromItemKey] : []),
+      );
+      const maybeProj = this.optimizer.optimize(plan.plan);
+      const res =
+        maybeProj instanceof Projection
+          ? maybeProj.attrs[0][0]
+          : (maybeProj as Calculation | ASTIdentifier);
 
       if (res instanceof Calculation) {
         if (res.getChildren().length) {
           throw new Error('Expression cannot contain subqueries');
         }
-        if (!isProj) this.renameItemIndexExpr(res);
+        if (options?.fromItemKey)
+          this.renameItemIndexExpr(res, options.fromItemKey);
         return res;
       }
       return idToCalculation(
-        isProj ? res : ASTIdentifier.fromParts([fromItemIndexKey]),
+        options?.fromItemKey
+          ? ASTIdentifier.fromParts([fromItemIndexKey])
+          : res,
         lang,
       );
     });
@@ -137,54 +155,64 @@ export class DortDB<LangNames extends string> {
     } else {
       this.indices.set(source, [index]);
     }
+
+    this.fillIndex(index, source, !!options?.fromItemKey);
   }
 
   /**
    * Renames expressions for item source indices to a common key
    * @param expr The expression to rename
    */
-  private renameItemIndexExpr(expr: Calculation): void {
-    if (expr.dependencies.size > 1) {
-      throw new Error('Too many dependencies in item source index');
-    }
+  private renameItemIndexExpr(expr: Calculation, fromItemKey: string[]): void {
     if (expr.dependencies.size === 0) return;
     if (expr.original) {
       const renamers = this.langMgr.getVisitorMap('attributeRenamer');
       const renameMap: RenameMap = new Trie();
-      renameMap.set((expr.args[0] as ASTIdentifier).parts, [fromItemIndexKey]);
+      renameMap.set(fromItemKey, [fromItemIndexKey]);
       renamers[expr.lang].rename(expr.original, renameMap);
     }
     const newId = ASTIdentifier.fromParts([fromItemIndexKey]);
     expr.args = expr.args.map(() => newId);
   }
 
-  protected fillIndex(index: Index, source: (symbol | string | number)[]) {
+  protected fillIndex(
+    index: Index,
+    source: (symbol | string | number)[],
+    isItemSource = false,
+  ) {
+    if (index.expressions.length === 0) return;
     const lang = index.expressions[0].lang;
-    const data = this.registeredSources.get(source);
-    if (!data) {
-      throw new Error(`Source ${source.join('.')} not found`);
-    }
 
     const varMappers = this.langMgr.getVisitorMap('variableMapper');
     const executors = this.langMgr.getVisitorMap('executor');
 
     const exprs = index.expressions.map(
       (e, i) =>
-        [e, ASTIdentifier.fromParts([i])] as Aliased<
+        [e.clone(), ASTIdentifier.fromParts([i])] as Aliased<
           Calculation | ASTIdentifier
         >,
     );
-    const allAttrsId = ASTIdentifier.fromParts([allAttrs]);
+    const allAttrsId = isItemSource
+      ? ASTIdentifier.fromParts([fromItemIndexKey])
+      : ASTIdentifier.fromParts([allAttrs]);
     exprs.unshift([allAttrsId, allAttrsId]);
     const projection = new Projection(
       lang,
       exprs,
-      new TupleSource(lang, ASTIdentifier.fromParts(source)),
+      isItemSource
+        ? new MapFromItem(
+            lang,
+            allAttrsId,
+            new ItemSource(lang, ASTIdentifier.fromParts(source)),
+          )
+        : new TupleSource(lang, ASTIdentifier.fromParts(source)),
     );
-    for (const expr of index.expressions) {
-      projection.source.addToSchema(expr.dependencies);
+    if (!isItemSource) {
+      for (const expr of index.expressions) {
+        projection.source.addToSchema(expr.dependencies);
+      }
+      projection.source.addToSchema(allAttrsId);
     }
-    projection.source.addToSchema(allAttrsId);
     const varMapCtx = varMappers[lang].mapVariables(projection);
 
     const { result, ctx } = executors[lang].execute(projection, varMapCtx);
@@ -205,6 +233,7 @@ export interface QueryResult<T = unknown> {
 
 export interface QueryOptions<LangNames extends string> {
   mainLang?: Lowercase<LangNames>;
+  boundParams?: Record<string, unknown>;
 }
 
 export interface DortDBConfig<LangNames extends string> {

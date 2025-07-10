@@ -1,0 +1,26 @@
+{
+  "name": "@dortdb/dataloaders",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@zip.js/zip.js": "^2.7.63",
+    "csv": "^6.3.11",
+    "graphology": "^0.26.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "graphology-types": "^0.24.8"
+  }
+}

@@ -12,7 +12,10 @@
   "exclude": ["jest.config.ts", "src/**/*.spec.ts"],
   "references": [
     {
-      "path": "../../core/tsconfig.lib.json"
+      "path": "../dataloaders/tsconfig.lib.json"
+    },
+    {
+      "path": "../../lang-xquery/tsconfig.lib.json"
     },
     {
       "path": "../../lang-cypher/tsconfig.lib.json"
@@ -21,7 +24,7 @@
       "path": "../../lang-sql/tsconfig.lib.json"
     },
     {
-      "path": "../../lang-xquery/tsconfig.lib.json"
+      "path": "../../core/tsconfig.lib.json"
     }
   ]
 }

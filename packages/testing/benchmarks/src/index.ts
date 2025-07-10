@@ -1,3 +1,3 @@
-import { prepareData } from './prepare-data.js';
+import { unibenchBenchmark } from './unibench/benchmark.js';
 
-await prepareData();
+await unibenchBenchmark();

@@ -111,11 +111,11 @@ export class GraphBuilder
           padding: 1px 0;
         }
         rect {
-          fill: var(--mat-sys-surface);
+          fill: white;
           stroke: var(--mat-sys-outline);
 
           &:has(~ foreignObject > .groupby) {
-            stroke: var(--mat-sys-surface) !important;
+            stroke: white !important;
             filter: none !important;
           }
         }

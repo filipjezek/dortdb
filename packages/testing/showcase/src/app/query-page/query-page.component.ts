@@ -6,13 +6,7 @@ import {
   trigger,
 } from '@angular/animations';
 import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  inject,
-  Injector,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormControl,
@@ -33,7 +27,11 @@ import {
   PlanOperator,
   QueryResult,
 } from '@dortdb/core';
-import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
+import {
+  ConnectionIndex,
+  Cypher,
+  GraphologyDataAdapter,
+} from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
 import { startWith } from 'rxjs';
@@ -62,7 +60,8 @@ import {
   OptimizerListComponent,
   OptimizerListItem,
 } from './optimizer-list/optimizer-list.component';
-import { UnibenchData, UnibenchService } from '../services/unibench.service';
+import { UnibenchService } from '../services/unibench.service';
+import { UnibenchData, unibenchFiles } from '@dortdb/dataloaders';
 
 @Component({
   selector: 'dort-query-page',
@@ -189,9 +188,6 @@ export class QueryPageComponent {
         }
       });
 
-    this.db.createIndex(['t2'], ['id'], MapIndex);
-    this.db.createIndex(['t2'], ['a + b / 2'], MapIndex);
-
     this.registerDataSources();
   }
 
@@ -253,7 +249,21 @@ export class QueryPageComponent {
     this.db.registerSource(['vendors'], this.unibenchData.vendors);
 
     this.db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);
+    this.db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, {
+      fromItemKey: ['x'],
+      mainLang: 'cypher',
+    });
     this.db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);
+    this.db.createIndex(['customers'], ['id'], MapIndex);
+    this.db.createIndex(['products'], ['productId'], MapIndex);
+    this.db.createIndex(['products'], ['brand'], MapIndex);
+    this.db.createIndex(['products'], ['asin'], MapIndex);
+    this.db.createIndex(['feedback'], ['productAsin'], MapIndex);
+    this.db.createIndex(['brandProducts'], ['brandName'], MapIndex);
+    this.db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
+    this.db.createIndex(['vendors'], ['id'], MapIndex);
+    this.db.createIndex(['posts'], ['id'], MapIndex);
+    this.db.createIndex(['orders'], ['PersonId::number'], MapIndex);
   }
 
   openHistory() {

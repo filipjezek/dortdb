@@ -1,0 +1,15 @@
+-- all data about CUSTOMER
+--
+-- one such customer id is 4145
+
+SELECT
+  ROW(customers.id AS id, customers.firstName AS firstName, customers.lastName AS lastName) profile,
+  ARRAY(SELECT ROW(orders.OrderId as orderId, orders.Orderline AS orderline, orders.TotalPrice AS totalPrice) FROM orders WHERE PersonId = customers.id) orders,
+  ARRAY(SELECT ROW(feedback.productAsin AS asin, feedback.feedback AS feedback) FROM feedback WHERE personId = customers.id) feedback,
+  ARRAY(
+    LANG cypher
+    MATCH ({id: customers.id})<-[:hasCreator]-(post)
+    RETURN post
+  ) posts
+FROM customers
+WHERE id = :customerId

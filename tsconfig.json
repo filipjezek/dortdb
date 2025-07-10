@@ -19,6 +19,9 @@
     },
     {
       "path": "./packages/testing/benchmarks"
+    },
+    {
+      "path": "./packages/testing/dataloaders"
     }
   ]
 }

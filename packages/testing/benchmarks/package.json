@@ -10,7 +10,7 @@
   "repository": "filipjezek/dortdb",
   "private": true,
   "scripts": {
-    "start": "node dist/index.js"
+    "start": "node --expose-gc --max-old-space-size=32768 dist/index.js"
   },
   "author": "dortdb",
   "license": "ISC",
@@ -25,6 +25,7 @@
   },
   "peerDependencies": {
     "@dortdb/core": "^1.0.0",
+    "@dortdb/dataloaders": "^1.0.0",
     "@dortdb/lang-cypher": "^1.0.0",
     "@dortdb/lang-sql": "^1.0.0",
     "@dortdb/lang-xquery": "^1.0.0"
@@ -32,6 +33,11 @@
   "dependencies": {
     "@swc/helpers": "^0.5.15",
     "graphology": "^0.26.0",
+    "jsdom": "^26.1.0",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
+    "slimdom": "^4.3.5",
+    "tasty-treewalker": "^0.3.5",
     "unzipper": "^0.12.3"
   }
 }

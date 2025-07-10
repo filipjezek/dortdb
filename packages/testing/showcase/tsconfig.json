@@ -8,15 +8,6 @@
   },
   "references": [
     {
-      "path": "./tsconfig.editor.json"
-    },
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.spec.json"
-    },
-    {
       "path": "../../lang-xquery"
     },
     {
@@ -26,7 +17,19 @@
       "path": "../../lang-cypher"
     },
     {
+      "path": "../dataloaders"
+    },
+    {
       "path": "../../core"
+    },
+    {
+      "path": "./tsconfig.editor.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.spec.json"
     }
   ],
   "angularCompilerOptions": {

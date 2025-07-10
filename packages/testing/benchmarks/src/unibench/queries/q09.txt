@@ -1,0 +1,38 @@
+-- compare top 3 vendors' male and female customer ratio and find latest posts about them
+
+SELECT
+  topVendors.id,
+  (
+    SELECT
+      count(*) FILTER (WHERE gender = 'male') / count(*) FILTER (WHERE gender = 'female')
+    FROM customers
+    WHERE EXISTS (
+      SELECT 1 FROM orders WHERE PersonId = customers.id
+      AND Orderline @> ARRAY[ROW(topVendors.id AS brand)]
+    )
+  ) mfRatio,
+  ARRAY(
+    LANG cypher
+    UNWIND (
+      LANG sql
+      SELECT products.productId
+      FROM products
+      JOIN brandProducts ON products.asin = brandProducts.productAsin
+      WHERE brandProducts.brandName = topVendors.id
+    ) AS productId
+    MATCH ({id: productId})<-[:hasTag]-(post)
+    RETURN post
+    ORDER BY post.creationDate DESC LIMIT 5
+  ) latestPosts
+FROM (
+  SELECT
+    vendors.id,
+    (
+      LANG xquery
+      let $sales := $Invoices/Invoices/Invoice.xml/Orderline[brand = $vendors:id]
+      return fn:count($sales)
+    ) sales
+  FROM vendors
+  ORDER BY sales DESC
+  LIMIT 3
+) topVendors

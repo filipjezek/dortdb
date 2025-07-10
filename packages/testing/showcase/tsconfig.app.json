@@ -4,9 +4,26 @@
     "outDir": "dist/out-tsc",
     "declaration": true,
     "types": [],
-    "lib": ["ES2024", "DOM"]
+    "lib": ["ES2024", "DOM", "ESNext.Iterator"]
   },
   "files": ["src/main.ts"],
   "include": ["src/**/*.d.ts", "src/**/*.ts"],
-  "exclude": ["jest.config.ts", "src/**/*.test.ts", "src/**/*.spec.ts"]
+  "exclude": ["jest.config.ts", "src/**/*.test.ts", "src/**/*.spec.ts"],
+  "references": [
+    {
+      "path": "../../lang-xquery/tsconfig.lib.json"
+    },
+    {
+      "path": "../../lang-sql/tsconfig.lib.json"
+    },
+    {
+      "path": "../../lang-cypher/tsconfig.lib.json"
+    },
+    {
+      "path": "../dataloaders/tsconfig.lib.json"
+    },
+    {
+      "path": "../../core/tsconfig.lib.json"
+    }
+  ]
 }

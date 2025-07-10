@@ -1,0 +1,15 @@
+-- customers which bought PRODUCT and posted about it
+--
+-- one such product id is 52
+
+SELECT id, firstName FROM customers
+WHERE EXISTS (
+  LANG cypher
+  MATCH (:person {id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: $productId})
+  RETURN 1
+) AND EXISTS (
+  SELECT 1 FROM orders
+  WHERE PersonId = customers.id AND EXISTS (
+    SELECT 1 FROM unwind(orders.Orderline) orderline WHERE productId = :productId
+  )
+)

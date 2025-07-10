@@ -1,0 +1,12 @@
+// what did the friends of CUSTOMER which bought BRAND products post about?
+//
+// example customer id: 4659
+// example brand: Reebok
+
+
+MATCH (:person {id: $personId})-[:knows]->(person)<-[:hasCreator]-()-[:hasTag]->(tag)
+WHERE EXISTS {
+  LANG xquery
+  $Invoices/Invoices/Invoice.xml[PersonId=$person/@id]/Orderline[brand=$param:brand]
+}
+RETURN DISTINCT tag.id

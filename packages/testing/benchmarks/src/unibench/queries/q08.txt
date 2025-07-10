@@ -1,0 +1,42 @@
+-- compute this year's total sales amount and social media popularity of
+-- products in CATEGORY
+--
+-- the only category in the dataset is Sports
+
+SELECT x.value->'id' AS productId, x.value->'sales' AS sales, x.value->'popularity' || '%' AS popularity
+FROM (
+  LANG xquery
+  let $categoryProducts := (
+    LANG sql
+    SELECT products.productId
+    FROM products
+    JOIN brandProducts ON products.asin = brandProducts.productAsin
+    JOIN vendors ON brandProducts.brandName = vendors.id
+    WHERE vendors.Industry = :industry
+  ),
+  $yrAgo := date:sub(date('2024-12-31'), interval('1y')),
+  $postsYrAgo := date('2011-12-31') (: there are no posts newer than 2012 in the dataset :)
+  let $totalPosts := (
+    LANG cypher
+    UNWIND categoryProducts AS pid
+    MATCH ({id: pid})<-[:hasTag]-(p)
+    WHERE p.creationDate > postsYrAgo
+    RETURN count(p)
+  )
+
+  for $pid in $categoryProducts
+  let $soldProducts := $Invoices/Invoices/Invoice.xml[
+    date(OrderDate) gt $yrAgo
+  ]/Orderline[productId eq $pid],
+  $relatedPosts := (
+    LANG cypher
+    MATCH ({id: pid})<-[:hasTag]-(p)
+    WHERE p.creationDate > postsYrAgo
+    RETURN count(p)
+  )
+  return <product
+    id="{ $pid }"
+    sales="{ sum($soldProducts/price/number()) }"
+    popularity="{ $relatedPosts div $totalPosts * 100 }"
+  />
+) x

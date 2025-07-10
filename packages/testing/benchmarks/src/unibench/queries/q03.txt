@@ -1,0 +1,14 @@
+-- customers which posted about PRODUCT and left negative feedback
+--
+-- the only such product in the dataset is 202
+
+SELECT customers.id, feedback.feedback, products.productId
+FROM customers
+JOIN feedback ON customers.id = feedback.personId
+JOIN products ON feedback.productAsin = products.asin
+WHERE products.productId = :productId AND (feedback.feedback[1])::number < 3
+AND EXISTS (
+  LANG cypher
+  MATCH ({id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->({id: products.productId})
+  RETURN 1
+)
