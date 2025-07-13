@@ -131,7 +131,7 @@ let $invoices :=
   where $i/PersonId = $p/@id
   return $i
 return <item person="{ $p/@name }">
-  { fn:count($i) }
+  { fn:count($invoices) }
 </item>`,
     },
   ];

@@ -1,3 +1,4 @@
+import { allAttrs } from '../../ast.js';
 import { MapFromItem, MapToItem } from '../../plan/operators/conversion.js';
 import { Projection } from '../../plan/operators/index.js';
 import { PatternRule } from '../rule.js';
@@ -18,7 +19,10 @@ export const mergeToFromItems: PatternRule<MapToItem> = {
 export const mergeFromToItems: PatternRule<MapFromItem> = {
   operator: MapFromItem,
   match: (node) => {
-    return node.source.constructor === MapToItem ? { bindings: {} } : null;
+    return node.source.constructor === MapToItem &&
+      (node.source as MapToItem).key.parts[0] !== allAttrs
+      ? { bindings: {} }
+      : null;
   },
   transform: (node) => {
     const source = node.source as MapToItem;

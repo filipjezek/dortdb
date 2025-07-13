@@ -199,6 +199,19 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       operator.lang === 'sql' &&
       operator.source instanceof PlanTupleOperator
     ) {
+      if (operator instanceof plan.Projection) {
+        // alias renaming
+        if (operator.renames.size === operator.attrs.length) {
+          const maybeName = operator.attrs[0][1].parts[0];
+          if (
+            Array.from(operator.renamesInv.keys([maybeName])).length ===
+            operator.renames.size
+          ) {
+            // all attrs are renamed to the same prefix
+            return new Trie([[maybeName]]);
+          }
+        }
+      }
       operator = operator.source;
     }
     // joins are made of either TupleSources or Projections based on table aliases or other joins or langswitches
