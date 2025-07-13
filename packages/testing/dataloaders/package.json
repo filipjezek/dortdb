@@ -21,6 +21,7 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@dortdb/lang-cypher": "^1.0.0",
     "graphology-types": "^0.24.8"
   }
 }

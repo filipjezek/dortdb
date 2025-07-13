@@ -1,5 +1,5 @@
 import { ExtractedFileOptions } from './zip/zip-extractor.js';
-import { GraphologyGraph } from '@dortdb/lang-cypher';
+import { type GraphologyGraph } from '@dortdb/lang-cypher';
 
 export interface UnibenchData {
   customers: Record<string, any>[];

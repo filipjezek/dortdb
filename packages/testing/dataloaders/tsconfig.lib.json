@@ -9,5 +9,9 @@
     "lib": ["DOM", "ESNext"]
   },
   "include": ["src/**/*.ts"],
-  "references": []
+  "references": [
+    {
+      "path": "../../lang-cypher/tsconfig.lib.json"
+    }
+  ]
 }
