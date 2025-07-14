@@ -1,0 +1,6 @@
+LET vendors=(For brand in Vendor filter brand.Country=="China" return brand.name)
+LET brands=FLATTEN(For order in Order Filter order.OrderDate < "2019" and order.OrderDate > "2018" and count(intersection(vendors,order.Orderline[*].brand))>0 Return (order.Orderline[*].brand))[**]
+LET top_companies=(For brand in brands Filter brand in vendors Collect name=brand with count into sales Sort sales DESC LIMIT 3 Return {name,sales})
+LET merged=( For company in top_companies For order in Order Filter order.OrderDate < "2019" and order.OrderDate > "2018" and company.name in order.Orderline[*].brand For customer in Customer Filter customer._key==order.PersonId Return {name:company.name,persons:order.PersonId,gender:customer.gender})
+LET groups= (For item in merged Collect name=item.name, gender=item.gender into sales Return {name:name,gender:gender,sales:count(sales), plist:sales[*].item.persons})
+For group in groups For person in group.plist For post in Outbound Concat('Customer/',person) PersonHasPost Filter post.creationDate>"2012-10-10" Collect entry=group with count into posts Sort posts DESC Return {entry:entry,posts:posts}

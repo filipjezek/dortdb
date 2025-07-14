@@ -177,7 +177,9 @@ FROM (
     lang: 'sql',
   },
   {
-    query: `-- compare top 3 vendors' male and female customer ratio and find latest posts about them
+    query: `-- compare male and female customer ratio of top 3 vendors in COUNTRY and find latest posts about them
+--
+-- an example country is China
 
 SELECT
   topVendors.id,
@@ -212,6 +214,7 @@ FROM (
       return fn:count($sales)
     ) sales
   FROM vendors
+  WHERE Country = 'China'
   ORDER BY sales DESC
   LIMIT 3
 ) topVendors`,

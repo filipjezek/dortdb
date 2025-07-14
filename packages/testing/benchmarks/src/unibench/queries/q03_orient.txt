@@ -1,0 +1,4 @@
+Select $post,$feedback 
+let $post=(select Expand(In('PostHasTag')) from `Product` 
+where productId=:id),
+$feedback=(select * from `Feedback` where asin=:id and feedback.charAt(1).asInteger() <5)

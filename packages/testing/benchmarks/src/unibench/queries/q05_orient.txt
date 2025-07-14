@@ -1,0 +1,1 @@
+Select Out('PersonHasPost').Out('PostHasTag') as tags from (select Expand(Out('Knows')) from Customer where id=:person) Where :brand in Order.Orderline.brand unwind tags

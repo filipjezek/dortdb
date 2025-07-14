@@ -1,0 +1,4 @@
+Let Plist=(For friend in 1..1 Outbound @id KnowsGraph
+For order in Order Filter order.PersonId==friend._key and @brand in order.Orderline[*].brand return distinct(friend))
+For person in Plist For post in Outbound person._id PersonHasPost
+For tag in Outbound post PostHasTag Return {person:person,tags:tag}

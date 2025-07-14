@@ -1,0 +1,4 @@
+LET shortestPath= (FOR vertex, edge IN OUTBOUND SHORTEST_PATH @customerOne TO @customerTwo KnowsGraph  Return vertex)
+LET plist = Flatten( For item in shortestPath For order in Order  Filter item._key==order.PersonId Return order.Orderline)
+For item in plist collect productId=item.productId with count into cnt Sort cnt desc limit 5
+Return {productId,cnt}

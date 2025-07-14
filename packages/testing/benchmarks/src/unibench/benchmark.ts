@@ -16,7 +16,7 @@ import { promiseTimeout } from '../utils/promise-timeout.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
 
-interface Query {
+export interface Query {
   filename: string;
   lang: 'sql' | 'xquery' | 'cypher';
   params?: Record<string, () => any>;
@@ -56,14 +56,14 @@ const queries: Query[] = [
       brand: () => pickRandom(brands),
     },
   },
-  // {
-  //   filename: 'q06.txt',
-  //   lang: 'sql',
-  //   params: {
-  //     customerId1: () => pickRandom(personIds),
-  //     customerId2: () => pickRandom(personIds),
-  //   },
-  // },
+  {
+    filename: 'q06.txt',
+    lang: 'sql',
+    params: {
+      customerId1: () => pickRandom(personIds),
+      customerId2: () => pickRandom(personIds),
+    },
+  },
   {
     filename: 'q07.txt',
     lang: 'sql',
@@ -88,6 +88,9 @@ const queries: Query[] = [
   {
     filename: 'q09.txt',
     lang: 'sql',
+    params: {
+      country: () => 'China',
+    },
   },
   {
     filename: 'q10.txt',
@@ -235,7 +238,7 @@ async function runQuery(
         { ...process.memoryUsage(), query: query.filename },
         'Memory usage after running query',
       );
-    await promiseTimeout(1000);
+    await promiseTimeout(10000);
   }
 }
 

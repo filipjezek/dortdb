@@ -1,0 +1,6 @@
+// LET brands=(For brand in Vendor Filter brand.Country=="China" return brand.name) 
+LET brands=(For brand in Vendor Filter brand.Industry==@industry return brand.name) // the query description clearly talks about CATEGORY
+LET orderlines=Flatten(For order in Order Filter order.OrderDate < "2019" and order.OrderDate > "2018" and count(intersection(brands,order.Orderline[*].brand))>0 return order.Orderline)
+LET lines=(For line in orderlines Filter line.brand in brands return line)
+LET popularity=Count(For item in Unique(lines)
+For post in Inbound CONCAT("Product/",item.productId) PostHasTag Return post)  Return popularity

@@ -1,0 +1,7 @@
+LET customer=(FOR doc IN Customer FILTER doc._key==@key RETURN doc )
+LET orders=(For order in Order Filter order.PersonId==@key return order)
+LET feedback=(For feedback in Feedback Filter TO_STRING(feedback.PersonId)==@key return feedback)
+LET posts=(For post in Outbound CONCAT("Customer/", @key) PersonHasPost return post) LET plist=Flatten(For order in orders return order.Orderline[*])
+LET list1=(For item in plist  collect category=item.brand with count into cnt sort cnt DESC return {category,cnt})
+LET list2=(For post in posts For Tag in Outbound post PostHasTag Collect id= Tag._key WITH COUNT INTO cnt SORT cnt DESC Return {id,cnt})
+Return {customer,orders,feedback,posts,list1,list2}

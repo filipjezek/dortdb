@@ -1,0 +1,6 @@
+LET productList1=Flatten(For order in Order Filter order.OrderDate < "2019" and order.OrderDate > "2018"  and @brand in order.Orderline[*].brand Return order.Orderline)
+LET sales1=(For item in productList1 Filter item.brand==@brand collect asin=item.asin with count into cnt Sort cnt desc return {asin,cnt})
+LET productList2= Flatten(For order in Order Filter order.OrderDate < "2020" and order.OrderDate > "2019" and  @brand in order.Orderline[*].brand Return order.Orderline)
+LET sales2=(For item in productList2 Filter item.brand==@brand collect asin=item.asin with count into cnt Sort cnt desc return {asin,cnt})
+LET declineList=( For item1 in sales1 For item2 in sales2 Filter item1.asin==item2.asin and item1.cnt > item2.cnt return item1.asin )
+For item in declineList For feedback in Feedback Filter item==feedback.asin return feedback

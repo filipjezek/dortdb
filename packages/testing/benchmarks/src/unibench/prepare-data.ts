@@ -25,8 +25,8 @@ async function downloadData() {
   console.log('Downloading Unibench data...');
   await fs.mkdir(DATA_DIR, { recursive: true });
   const url =
-    // 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip';
-    'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.sample.zip';
+    'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip';
+  // 'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.sample.zip';
 
   const response = await fetch(url);
   if (!response.ok)

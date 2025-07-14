@@ -1,0 +1,4 @@
+SELECT commonset.size() from (SELECT intersect($set1,$set2) as commonset 
+let $person = (select pid from (select PersonId as pid, SUM(TotalPrice) as sum from Order Group by PersonId order by sum desc limit 2)),
+$set1=(TRAVERSE out("Knows") FROM (select from Customer where PersonId=$person.pid[0]) while $depth <= 3 STRATEGY BREADTH_FIRST),
+$set2=(TRAVERSE out("Knows") FROM (select from Customer where PersonId=$person.pid[1]) while $depth <= 3 STRATEGY BREADTH_FIRST))

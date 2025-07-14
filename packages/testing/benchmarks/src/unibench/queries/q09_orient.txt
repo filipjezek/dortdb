@@ -1,0 +1,3 @@
+Select Orderline.brand, count(*) from(Select PersonId, Orderline From Order
+Let  $brand=(select name as brand from `Vendor` where country='China') Where OrderDate>"2018" and OrderDate<"2019" unwind Orderline)
+Where Orderline.brand in $brand.brand Group by Orderline.brand Order by count DESC LIMIT 3

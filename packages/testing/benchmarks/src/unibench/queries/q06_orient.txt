@@ -1,0 +1,4 @@
+SELECT transactions, count(transactions) as cnt 
+FROM(SELECT Order.Orderline.productId as transactions from(SELECT EXPAND(path) from(SELECT shortestPath($from, $to) AS path 
+LET $from = (SELECT FROM Customer WHERE id=:id1),
+$to = (SELECT FROM Customer WHERE id=:id2))) unwind transactions) GROUP BY transactions Order by cnt DESC LIMIT 5

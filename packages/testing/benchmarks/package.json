@@ -32,8 +32,11 @@
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",
+    "@types/orientjs": "^2.1.6",
+    "arangojs": "^10.1.1",
     "graphology": "^0.26.0",
     "jsdom": "^26.1.0",
+    "orientjs": "2.2",
     "pino": "^9.7.0",
     "pino-pretty": "^13.0.0",
     "slimdom": "^4.3.5",

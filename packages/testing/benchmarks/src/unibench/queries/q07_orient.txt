@@ -1,0 +1,10 @@
+Select feedback from Feedback where asin in 
+(Select dlist from(Select set(dlist) as dlist  
+from(Select $declineList.asin as dlist 
+let $list1 = (Select asin,count(asin) as cnt from 
+(Select ol_unwind.asin as asin, ol_unwind.brand as brand from 
+(Select Orderline as ol_unwind from (Select From Order Where OrderDate>"2018" and OrderDate<"2019" and :brand in Orderline.brand) unwind ol_unwind)) 
+where brand=:brand group by asin order by cnt DESC), 
+$list2=(Select asin,count(asin) as cnt from (Select ol_unwind.asin as asin, ol_unwind.brand as brand from 
+(Select Orderline as ol_unwind from (Select From Order Where OrderDate>"2019" and OrderDate<"2020" and :brand in Orderline.brand) unwind ol_unwind)) 
+where brand=:brand group by asin order by cnt DESC), $declineList=compareList($list1,$list2))))

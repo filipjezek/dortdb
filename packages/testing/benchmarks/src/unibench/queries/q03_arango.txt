@@ -1,0 +1,3 @@
+Let posts=(For post in Inbound @id PostHasTag  return post)
+Let feedback=(For feedback in Feedback Filter feedback.asin==@id and TO_NUMBER(SUBSTRING(feedback.feedback,1,1)) < 5 return feedback)
+Return {posts,feedback}

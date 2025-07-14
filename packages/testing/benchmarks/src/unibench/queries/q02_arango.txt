@@ -1,0 +1,3 @@
+Let personlist =(For post in Inbound CONCAT("Product/", @key) PostHasTag For person in Inbound post._id PersonHasPost limit 100 return person._key)
+For order in Order Filter order.OrderDate>"2022" and @key in order.Orderline[*].productId and order.PersonId in Unique(personlist)
+Return Distinct(order.PersonId)

@@ -1,0 +1,3 @@
+Select $person let $list=(select In('PostHasTag').In('PersonHasPost').id as pid
+from `Product` where productId=:id),$person=(select PersonId,Orderline.productId from Order
+where OrderDate>"2022" and PersonId in $list and :id in Orderline.productId)

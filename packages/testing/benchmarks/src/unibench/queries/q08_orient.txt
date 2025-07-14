@@ -1,0 +1,4 @@
+Select Sum(Popularity) from(Select In('PostHasTag').size() as Popularity
+from `Product` Where productId in (Select  Distinct(Orderline.productId)
+From (Select Orderline From Order let  $brand=(select name as brand from `Vendor` where Industry=:industry)
+Where OrderDate>"2018" and OrderDate<"2019" unwind Orderline) Where Orderline.brand in $brand.brand))

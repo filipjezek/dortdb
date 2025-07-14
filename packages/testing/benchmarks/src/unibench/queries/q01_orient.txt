@@ -1,0 +1,7 @@
+Select $profile,$orders,$feedback,$posts,$list1,$list2 
+let $profile=(select from `Customer` where id=:id),
+$orders=(select Expand(Order) from `Customer` where id=:id),
+$feedback=(select Expand(Feedback) from `Customer` where id=:id),
+$posts= (select Out('PersonHasPost') from `Customer` where id=:id),
+$list1= (select list.brand as brand, count(list.brand) as cnt from (select Order.Orderline as list from `Customer` where id=:id unwind list) group by list.brand ORDER BY cnt DESC),
+$list2=(select pid, count(pid) from (select Out('PersonHasPost').Out('PostHasTag').productId as pid from `Customer` where id=:id unwind pid) group by pid order by count Desc)
