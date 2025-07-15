@@ -646,6 +646,10 @@ export abstract class Executor
   *visitLimit(operator: plan.Limit, ctx: ExecutionContext): Iterable<unknown> {
     const source = operator.source.accept(this.vmap, ctx);
     let count = 0;
+    if (Array.isArray(source)) {
+      yield* source.slice(operator.skip, operator.limit + operator.skip);
+      return;
+    }
     for (const item of source) {
       count++;
       if (count > operator.skip) yield item;
