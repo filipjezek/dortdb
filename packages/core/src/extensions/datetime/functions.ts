@@ -124,3 +124,27 @@ export class Interval {
     );
   }
 }
+
+export const extract: Fn = {
+  name: 'extract',
+  schema: 'date',
+  impl: (date: Date, field: string) => {
+    switch (field.toLowerCase()) {
+      case 'year':
+        return date.getFullYear();
+      case 'month':
+        return date.getMonth() + 1; // getMonth() is zero-based
+      case 'day':
+        return date.getDate();
+      case 'hour':
+        return date.getHours();
+      case 'minute':
+        return date.getMinutes();
+      case 'second':
+        return date.getSeconds();
+      default:
+        throw new Error(`Unknown field: ${field}`);
+    }
+  },
+  pure: true,
+};

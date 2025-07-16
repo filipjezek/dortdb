@@ -21,3 +21,19 @@ export const notInOp: Operator = {
     return true;
   },
 };
+
+export const between: Operator = {
+  name: 'between',
+  impl: (a: unknown, b: unknown, c: unknown): boolean => {
+    return (
+      a !== null &&
+      a !== undefined &&
+      b !== null &&
+      b !== undefined &&
+      c !== null &&
+      c !== undefined &&
+      a >= b &&
+      a <= c
+    );
+  },
+};

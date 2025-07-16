@@ -4,12 +4,12 @@ import { SQLLogicalPlanBuilder } from '../visitors/builder.js';
 import { SQLCalculationBuilder } from '../visitors/calculation-builder.js';
 import { ObjectDataAdapter, SQLDataAdapter } from './data-adapter.js';
 import { createParser } from './create-parser.js';
-import { inOp, notInOp } from '../operators/basic.js';
+import { between, inOp, notInOp } from '../operators/basic.js';
 import { SQLEqualityChecker } from '../visitors/equality-checker.js';
 import { SQLExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 import { objAccess, objMatch } from '../operators/json.js';
-import { concat } from '../operators/string.js';
+import { concat, ilike, like } from '../operators/string.js';
 
 export interface SQLConfig {
   /** defaults to {@link ObjectDataAdapter} */
@@ -24,7 +24,16 @@ export interface SQLLanguage extends Language<'sql'> {
 export function SQL(config?: SQLConfig): SQLLanguage {
   return {
     name: 'sql',
-    operators: [inOp, notInOp, objAccess, concat, objMatch],
+    operators: [
+      inOp,
+      notInOp,
+      objAccess,
+      concat,
+      objMatch,
+      like,
+      ilike,
+      between,
+    ],
     aggregates: [],
     functions: [coalesce],
     castables: [],

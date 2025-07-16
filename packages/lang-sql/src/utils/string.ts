@@ -62,3 +62,10 @@ export function parseIdentifier(original: string): string {
     ? original.replaceAll('""', '"').slice(1, -1)
     : original;
 }
+
+export function likeToRegex(like: string, caseSensitive = true): RegExp {
+  return new RegExp(
+    like.replace(/%/g, '.*').replace(/_/g, '.'),
+    caseSensitive ? undefined : 'i',
+  );
+}

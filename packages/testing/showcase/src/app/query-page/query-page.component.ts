@@ -27,11 +27,7 @@ import {
   PlanOperator,
   QueryResult,
 } from '@dortdb/core';
-import {
-  ConnectionIndex,
-  Cypher,
-  GraphologyDataAdapter,
-} from '@dortdb/lang-cypher';
+import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
 import { startWith } from 'rxjs';
@@ -61,7 +57,7 @@ import {
   OptimizerListItem,
 } from './optimizer-list/optimizer-list.component';
 import { UnibenchService } from '../services/unibench.service';
-import { UnibenchData, unibenchFiles } from '@dortdb/dataloaders';
+import { UnibenchData } from '@dortdb/dataloaders';
 
 @Component({
   selector: 'dort-query-page',

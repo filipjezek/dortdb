@@ -208,9 +208,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     const children = operator.args.map(this.processFnArg);
     if (operator.pure && children.every(isLit)) {
       const args = (children as CalculationParams[]).map(callImpl);
+      const precomputed = operator.impl(...args);
       return {
         args: [],
-        impl: () => operator.impl(...args),
+        impl: () => precomputed,
         literal: true,
         argMeta: [],
       };
@@ -355,9 +356,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       if ((w as CalculationParams).literal) {
         if (resolvedCond === (w as CalculationParams).impl()) {
           if ((t as CalculationParams).literal) {
+            const precomputed = (t as CalculationParams).impl();
             return {
               args: [],
-              impl: () => (t as CalculationParams).impl(),
+              impl: () => precomputed,
               literal: true,
               argMeta: [],
             };
@@ -371,9 +373,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       }
     }
     if (!broken && defaultCase && (defaultCase as CalculationParams).literal) {
+      const precomputed = (defaultCase as CalculationParams).impl();
       return {
         args: [],
-        impl: () => (defaultCase as CalculationParams).impl(),
+        impl: () => precomputed,
         literal: true,
         argMeta: [],
       };

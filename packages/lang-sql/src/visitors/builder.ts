@@ -38,6 +38,8 @@ import {
 import { ret1, retI0 } from '@dortdb/core/internal-fns';
 import { inOp } from '../operators/basic.js';
 import { Trie } from '@dortdb/core/data-structures';
+import { ilike, like } from '../operators/string.js';
+import { likeToRegex } from '../utils/string.js';
 
 export const defaultCol = toId('value');
 export const nonlocalPrefix = 'nonlocal';
@@ -663,6 +665,19 @@ export class SQLLogicalPlanBuilder
     );
     if (result.impl === inOp.impl && 'op' in result.args[1]) {
       result.args[1].acceptSequence = true;
+    } else if (result.impl === like.impl || result.impl === ilike.impl) {
+      // possibly precompute the regex for LIKE/ILIKE
+      result.args[1] = {
+        op: new plan.FnCall(
+          'sql',
+          [
+            result.args[1],
+            { op: new plan.Literal('sql', result.impl === like.impl) },
+          ],
+          likeToRegex,
+          true,
+        ),
+      };
     }
     return result;
   }
