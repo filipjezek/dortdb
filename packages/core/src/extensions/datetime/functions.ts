@@ -129,6 +129,9 @@ export const extract: Fn = {
   name: 'extract',
   schema: 'date',
   impl: (date: Date, field: string) => {
+    if (!(date instanceof Date)) {
+      date = new Date(date);
+    }
     switch (field.toLowerCase()) {
       case 'year':
         return date.getFullYear();

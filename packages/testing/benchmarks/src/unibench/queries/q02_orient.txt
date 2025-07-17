@@ -1,3 +1,12 @@
-Select $person let $list=(select In('PostHasTag').In('PersonHasPost').id as pid
-from `Product` where productId=:id),$person=(select PersonId,Orderline.productId from Order
-where OrderDate>"2022" and PersonId in $list and :id in Orderline.productId)
+SELECT $person
+LET $list=(
+  SELECT IN('PostHasTag').IN('PersonHasPost').id AS pid
+  FROM `Product`
+  WHERE productId=:id
+), $person=(
+  SELECT PersonId,Orderline.productId
+  FROM Order
+  WHERE OrderDate>"2022"
+  AND PersonId IN $list
+  AND :id IN Orderline.productId
+)

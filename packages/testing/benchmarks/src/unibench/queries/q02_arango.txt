@@ -1,3 +1,11 @@
-Let personlist =(For post in Inbound CONCAT("Product/", @key) PostHasTag For person in Inbound post._id PersonHasPost limit 100 return person._key)
-For order in Order Filter order.OrderDate>"2022" and @key in order.Orderline[*].productId and order.PersonId in Unique(personlist)
-Return Distinct(order.PersonId)
+LET personlist = (
+  FOR post IN INBOUND CONCAT("Product/", @key) PostHasTag
+  FOR person IN INBOUND post._id PersonHasPost
+  LIMIT 100
+  RETURN person._key
+)
+FOR order IN Order
+FILTER order.OrderDate > "2022"
+AND @key IN order.Orderline[*].productId
+AND order.PersonId IN UNIQUE(personlist)
+RETURN DISTINCT(order.PersonId)

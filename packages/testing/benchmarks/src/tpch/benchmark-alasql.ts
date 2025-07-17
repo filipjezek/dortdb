@@ -3,21 +3,34 @@ import pino from 'pino';
 import { readFileSync } from 'node:fs';
 import { promiseTimeout } from '../utils/promise-timeout.js';
 import { prepareData } from './prepare-data.js';
-import initSqlJs, { Database } from 'sql.js';
+import alasql from 'alasql';
 import { LOG_DIR } from '../logger.js';
+import { substr } from '@dortdb/core/fns';
+import { datetime } from '@dortdb/core';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
-export async function tpchBenchmarkSQLite(): Promise<void> {
-  const SQL = await initSqlJs();
-  const db = new SQL.Database();
+export async function tpchBenchmarkAlaSQL(): Promise<void> {
+  alasql.options.postgres = true;
+  (alasql.options as any).dateAsString = false;
+  alasql.options.cache = false;
+  alasql.fn['substr'] = substr.impl;
+  alasql.fn['date_interval'] = datetime.functions.find(
+    (x) => x.name === 'interval',
+  ).impl;
+  alasql.fn['date_add'] = datetime.functions.find((x) => x.name === 'add').impl;
+  alasql.fn['date_sub'] = datetime.functions.find((x) => x.name === 'sub').impl;
+  alasql.fn['date_extract'] = datetime.functions.find(
+    (x) => x.name === 'extract',
+  ).impl;
+
   const logger = pino.pino(
     pino.transport({
       targets: [
         {
           target: 'pino/file',
           options: {
-            destination: resolve(LOG_DIR, 'benchmark_sqlite.log'),
+            destination: resolve(LOG_DIR, 'benchmark_alasql.4.log'),
             mkdir: true,
           },
         },
@@ -37,31 +50,41 @@ export async function tpchBenchmarkSQLite(): Promise<void> {
   });
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
-  await registerDataSources(db, logger);
-  for (let i = 1; i <= 22; i++) {
-    if (i !== 13) continue;
-    await runQuery(i, db, logger);
+  await registerDataSources(alasql, logger);
+  for (let i = 20; i <= 20; i++) {
+    if (i === 15) continue;
+    await runQuery(i, alasql, logger);
   }
 }
 
 async function runQuery(
   query: number,
-  db: Database,
+  db: typeof alasql,
   logger: pino.Logger,
 ): Promise<void> {
   const queryText = readFileSync(
-    resolve(QUERY_DIR, `tpch-q${query}_sqlite.sql`),
+    resolve(QUERY_DIR, `tpch-q${query}.sql`),
     'utf-8',
-  ).replaceAll('\r\n', '\n');
+  )
+    .replaceAll('\r\n', '\n')
+    .replaceAll('date.add', 'date_add')
+    .replaceAll('date.sub', 'date_sub')
+    .replaceAll('date.extract', 'date_extract')
+    .replaceAll('interval', 'date_interval');
   console.log(new Date());
-  console.log(`Running query: tpch-q${query}_sqlite.sql`);
+  console.log(`Running query: tpch-q${query}.sql`);
   console.log(queryText);
 
   const now = Date.now();
   for (let i = 0; i < 10 && Date.now() - now < 15 * 60 * 1000; i++) {
     console.log(i);
+    if (i === 0)
+      logger.info(
+        { ...process.memoryUsage(), query },
+        'Memory usage before running query',
+      );
     performance.mark(`runQuery_${query}_start`);
-    db.exec(queryText);
+    db(queryText);
 
     performance.mark(`runQuery_${query}_end`);
     performance.measure(`runQuery_${query}`, {
@@ -69,14 +92,19 @@ async function runQuery(
       start: `runQuery_${query}_start`,
       end: `runQuery_${query}_end`,
     });
+    if (i === 0)
+      logger.info(
+        { ...process.memoryUsage(), query },
+        'Memory usage after running query',
+      );
     await promiseTimeout(1000);
   }
 }
 
-async function registerDataSources(db: Database, logger: pino.Logger) {
+async function registerDataSources(db: typeof alasql, logger: pino.Logger) {
   const data = await prepareData();
 
-  db.run(`
+  db(`
 CREATE TABLE region (
     regionkey INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -176,16 +204,25 @@ CREATE INDEX idx_lineitem_suppkey ON lineitem(suppkey);
 CREATE INDEX idx_lineitem_partkey_suppkey ON lineitem(partkey, suppkey);
   `);
 
-  for (const [table, rows] of Object.entries(data)) {
+  for (const table of [
+    'region',
+    'nation',
+    'supplier',
+    'part',
+    'partsupp',
+    'customer',
+    'orders',
+    'lineitem',
+  ] as const) {
+    console.log(`Inserting data into ${table}`);
+    const rows = data[table];
     const columns = Object.keys(rows[0]);
     const placeholders = Object.keys(rows[0])
       .map(() => '?')
       .join(', ');
-    const stmt = db.prepare(
-      `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
-    );
     for (const row of rows) {
-      stmt.run(
+      db(
+        `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
         columns.map((col) => {
           const val = row[col];
           if (val instanceof Date) return val.getTime();
@@ -193,6 +230,5 @@ CREATE INDEX idx_lineitem_partkey_suppkey ON lineitem(partkey, suppkey);
         }),
       );
     }
-    stmt.free();
   }
 }

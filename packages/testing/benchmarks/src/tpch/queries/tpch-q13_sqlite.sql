@@ -20,7 +20,7 @@ from
 				and o.comment not like '%unusual%deposits%'
 		group by
 			c.custkey
-	) as orders (custkey, count)
+	) as orders
 group by
 	orders.count
 order by
