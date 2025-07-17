@@ -58,6 +58,7 @@ import {
 } from './optimizer-list/optimizer-list.component';
 import { UnibenchService } from '../services/unibench.service';
 import { UnibenchData } from '@dortdb/dataloaders';
+import { TPCHService } from '../services/tpch.service';
 
 @Component({
   selector: 'dort-query-page',
@@ -109,6 +110,7 @@ export class QueryPageComponent {
   private queryHistory = new History<string>(20);
   private dialogS = inject(MatDialog);
   private unibenchS = inject(UnibenchService);
+  private tpchS = inject(TPCHService);
   private allOptimizations = [
     UnnestSubqueries,
     mergeToFromItems,
@@ -298,5 +300,34 @@ export class QueryPageComponent {
       minWidth: '60vw',
     });
     ref.afterClosed().subscribe(() => this.registerDataSources());
+  }
+
+  private async registerTPCH() {
+    const data = await this.tpchS.downloadData();
+
+    this.db.registerSource(['customer'], data.customer);
+    this.db.registerSource(['lineitem'], data.lineitem);
+    this.db.registerSource(['nation'], data.nation);
+    this.db.registerSource(['orders'], data.orders);
+    this.db.registerSource(['part'], data.part);
+    this.db.registerSource(['partsupp'], data.partsupp);
+    this.db.registerSource(['region'], data.region);
+    this.db.registerSource(['supplier'], data.supplier);
+
+    this.db.createIndex(['customer'], ['custkey'], MapIndex);
+    this.db.createIndex(['customer'], ['nationkey'], MapIndex);
+    this.db.createIndex(['lineitem'], ['orderkey'], MapIndex);
+    this.db.createIndex(['lineitem'], ['partkey'], MapIndex);
+    this.db.createIndex(['lineitem'], ['suppkey'], MapIndex);
+    this.db.createIndex(['nation'], ['nationkey'], MapIndex);
+    this.db.createIndex(['nation'], ['regionkey'], MapIndex);
+    this.db.createIndex(['orders'], ['custkey'], MapIndex);
+    this.db.createIndex(['orders'], ['orderkey'], MapIndex);
+    this.db.createIndex(['part'], ['partkey'], MapIndex);
+    this.db.createIndex(['partsupp'], ['partkey'], MapIndex);
+    this.db.createIndex(['partsupp'], ['suppkey'], MapIndex);
+    this.db.createIndex(['region'], ['regionkey'], MapIndex);
+    this.db.createIndex(['supplier'], ['suppkey'], MapIndex);
+    this.db.createIndex(['supplier'], ['nationkey'], MapIndex);
   }
 }

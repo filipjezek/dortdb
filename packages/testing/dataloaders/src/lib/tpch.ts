@@ -1,4 +1,4 @@
-import { ExtractedFileOptions } from '@dortdb/dataloaders';
+import { ExtractedFileOptions } from './zip/zip-extractor.js';
 
 export interface TPCHData {
   customer: any[];
@@ -27,6 +27,11 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
         'mktsegment',
         'comment',
       ],
+      cast: {
+        custkey: Number,
+        nationkey: Number,
+        acctbal: Number,
+      },
     },
   },
   'lineitem.tbl': {
@@ -52,6 +57,19 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
         'shipmode',
         'comment',
       ],
+      cast: {
+        orderkey: Number,
+        partkey: Number,
+        suppkey: Number,
+        linenumber: Number,
+        quantity: Number,
+        extendedprice: Number,
+        discount: Number,
+        tax: Number,
+        shipdate: (d) => new Date(d),
+        commitdate: (d) => new Date(d),
+        receiptdate: (d) => new Date(d),
+      },
     },
   },
   'nation.tbl': {
@@ -60,6 +78,10 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
     csvOptions: {
       separator: '|',
       columns: ['nationkey', 'name', 'regionkey', 'comment'],
+      cast: {
+        nationkey: Number,
+        regionkey: Number,
+      },
     },
   },
   'orders.tbl': {
@@ -78,6 +100,13 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
         'shippriority',
         'comment',
       ],
+      cast: {
+        orderkey: Number,
+        custkey: Number,
+        totalprice: Number,
+        orderdate: (d) => new Date(d),
+        shippriority: Number,
+      },
     },
   },
   'part.tbl': {
@@ -96,6 +125,11 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
         'retailprice',
         'comment',
       ],
+      cast: {
+        partkey: Number,
+        size: Number,
+        retailprice: Number,
+      },
     },
   },
   'partsupp.tbl': {
@@ -104,6 +138,12 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
     csvOptions: {
       separator: '|',
       columns: ['partkey', 'suppkey', 'availqty', 'supplycost', 'comment'],
+      cast: {
+        partkey: Number,
+        suppkey: Number,
+        availqty: Number,
+        supplycost: Number,
+      },
     },
   },
   'region.tbl': {
@@ -112,6 +152,9 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
     csvOptions: {
       separator: '|',
       columns: ['regionkey', 'name', 'comment'],
+      cast: {
+        regionkey: Number,
+      },
     },
   },
   'supplier.tbl': {
@@ -128,6 +171,11 @@ export const tpchFiles: Record<string, ExtractedFileOptions> = {
         'acctbal',
         'comment',
       ],
+      cast: {
+        suppkey: Number,
+        nationkey: Number,
+        acctbal: Number,
+      },
     },
   },
 };

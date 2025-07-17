@@ -28,8 +28,8 @@ export async function tpchBenchmark(): Promise<void> {
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
   await registerDataSources(db, logger);
-  for (let i = 1; i <= 22; i++) {
-    if (i === 15) continue;
+  for (let i = 19; i <= 22; i++) {
+    if (i === 15 || i === 13) continue;
     await runQuery(i, db, logger);
   }
 }

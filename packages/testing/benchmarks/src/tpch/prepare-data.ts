@@ -17,14 +17,26 @@ export async function parseTPCHData(): Promise<TPCHData> {
   const result: TPCHData = {} as any;
   for (const file of Object.keys(tpchFiles)) {
     const filePath = resolve(DATA_DIR, file);
+    const options = tpchFiles[file].csvOptions || {};
     const data = Readable.toWeb(
       createReadStream(filePath, 'utf-8'),
     ).pipeThrough(
       new CSVParser({
-        cast: true,
-        castDate: true,
-        columns: tpchFiles[file].csvOptions.columns,
-        delimiter: tpchFiles[file].csvOptions.separator,
+        cast:
+          options.cast === true
+            ? true
+            : (val, ctx) => {
+                if (ctx.header) return val;
+                const castFn = (
+                  options.cast as Record<string, (v: string) => any>
+                )?.[ctx.column];
+                if (castFn) {
+                  return castFn(val);
+                }
+                return val;
+              },
+        columns: options.columns,
+        delimiter: options.separator,
       }),
     );
     result[tpchFiles[file].key as keyof TPCHData] = await toArray(data);

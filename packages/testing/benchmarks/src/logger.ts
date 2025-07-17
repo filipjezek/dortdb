@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { resolve } from 'node:path';
 
-const LOG_DIR = resolve(import.meta.dirname, '../dist/logs');
+export const LOG_DIR = resolve(import.meta.dirname, '../dist/logs');
 
 export const logger = pino(
   pino.transport({
