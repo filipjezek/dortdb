@@ -23,6 +23,7 @@
 .row {
   padding: 0 10px;
   position: relative;
+  color: var(--mat-sys-on-surface);
 }
 .header {
   font-weight: bold;
@@ -36,6 +37,7 @@
 .table-body {
   .row:nth-child(even) {
     background-color: var(--mat-sys-surface-variant);
+    color: var(--mat-sys-on-surface-variant);
   }
 }
 
