@@ -1,7 +1,7 @@
 <mat-card appearance="outlined">
   <mat-card-content>
     <form class="input-container" [formGroup]="form">
-      <textarea formControlName="query"></textarea>
+      <div class="editor-container" #editorContainer></div>
       <div class="actions">
         <mat-form-field>
           <mat-label>Default language</mat-label>
