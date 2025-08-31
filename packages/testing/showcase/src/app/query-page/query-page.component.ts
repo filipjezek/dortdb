@@ -6,14 +6,7 @@ import {
   trigger,
 } from '@angular/animations';
 import { CommonModule } from '@angular/common';
-import {
-  AfterViewInit,
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  inject,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormControl,
@@ -66,9 +59,7 @@ import {
 import { UnibenchService } from '../services/unibench.service';
 import { UnibenchData } from '@dortdb/dataloaders';
 import { TPCHService } from '../services/tpch.service';
-import { EditorView, basicSetup } from 'codemirror';
-import { keymap } from '@codemirror/view';
-import { Prec } from '@codemirror/state';
+import { CodeInputComponent } from './code-input/code-input.component';
 
 @Component({
   selector: 'dort-query-page',
@@ -84,6 +75,7 @@ import { Prec } from '@codemirror/state';
     MatCheckbox,
     DsTableComponent,
     OptimizerListComponent,
+    CodeInputComponent,
   ],
   templateUrl: './query-page.component.html',
   styleUrl: './query-page.component.scss',
@@ -108,9 +100,7 @@ import { Prec } from '@codemirror/state';
     ]),
   ],
 })
-export class QueryPageComponent implements AfterViewInit {
-  private editorContainer =
-    viewChild<ElementRef<HTMLElement>>('editorContainer');
+export class QueryPageComponent {
   private readonly db = new DortDB({
     mainLang: SQL(),
     additionalLangs: [XQuery(), Cypher({ defaultGraph: 'defaultGraph' })],
@@ -157,7 +147,6 @@ export class QueryPageComponent implements AfterViewInit {
       enabled: true,
     },
   ];
-  private editor: EditorView;
 
   optimizerOptions = new FormGroup({
     enabled: new FormControl(false),
@@ -200,39 +189,6 @@ export class QueryPageComponent implements AfterViewInit {
       });
 
     this.registerDataSources();
-  }
-
-  ngAfterViewInit(): void {
-    this.editor = new EditorView({
-      parent: this.editorContainer().nativeElement,
-      doc: this.form.value.query,
-      extensions: [
-        basicSetup,
-        EditorView.theme({
-          '&': {
-            height: '210px',
-            resize: 'vertical',
-            overflow: 'hidden',
-            minHeight: '120px',
-          },
-          '.cm-scroller': { overflow: 'auto' },
-        }),
-        Prec.highest(
-          keymap.of([
-            {
-              key: 'Ctrl-Enter',
-              run: () => {
-                this.parse();
-                return true;
-              },
-            },
-          ]),
-        ),
-      ],
-    });
-    // EditorView.updateListener.of()
-    // this.editor.dom.addEventListener
-    console.log(this.editor.state.doc.toString());
   }
 
   parse() {

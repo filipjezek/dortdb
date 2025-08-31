@@ -1,7 +1,10 @@
 <mat-card appearance="outlined">
   <mat-card-content>
     <form class="input-container" [formGroup]="form">
-      <div class="editor-container" #editorContainer></div>
+      <dort-code-input
+        formControlName="query"
+        (codeSubmit)="parse()"
+      ></dort-code-input>
       <div class="actions">
         <mat-form-field>
           <mat-label>Default language</mat-label>
