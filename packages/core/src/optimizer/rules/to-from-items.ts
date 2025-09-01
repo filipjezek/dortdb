@@ -3,6 +3,9 @@ import { MapFromItem, MapToItem } from '../../plan/operators/conversion.js';
 import { Projection } from '../../plan/operators/index.js';
 import { PatternRule } from '../rule.js';
 
+/**
+ * Merges a {@link MapToItem} operator with its corresponding {@link MapFromItem} operator, removing both.
+ */
 export const mergeToFromItems: PatternRule<MapToItem> = {
   operator: MapToItem,
   match: (node) => {
@@ -16,6 +19,10 @@ export const mergeToFromItems: PatternRule<MapToItem> = {
     return source.source;
   },
 };
+/**
+ * Merges a {@link MapFromItem} operator with its corresponding {@link MapToItem} operator,
+ * replacing them with a {@link Projection} if necessary.
+ */
 export const mergeFromToItems: PatternRule<MapFromItem> = {
   operator: MapFromItem,
   match: (node) => {

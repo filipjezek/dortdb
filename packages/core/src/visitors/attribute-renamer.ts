@@ -5,6 +5,9 @@ import { TransitiveDependencies } from './transitive-deps.js';
 import { ASTIdentifier } from '../ast.js';
 import { retI0 } from '../internal-fns/index.js';
 
+/**
+ * Renames attributes in the plan.
+ */
 export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 

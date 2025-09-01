@@ -27,6 +27,10 @@ export interface PushdownSelectionsBindings {
   source: PlanTupleOperator;
 }
 
+/**
+ * Pushes down selection predicates through the query plan, so that
+ * they can be applied as early as possible.
+ */
 export class PushdownSelections
   implements PatternRule<Selection, PushdownSelectionsBindings>
 {

@@ -24,6 +24,9 @@ export interface UnnestSubqueriesBindings {
 
 export const unnestedAttr = Symbol('unnested');
 
+/**
+ * Replaces eligible nested operators with {@link plan.ProjectionConcat}.
+ */
 export class UnnestSubqueries
   implements
     PatternRule<

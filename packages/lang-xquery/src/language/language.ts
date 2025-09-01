@@ -23,14 +23,26 @@ import { XQueryVariableMapper } from '../visitors/variable-mapper.js';
 import { XQueryExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 
+/**
+ * Configuration for the XQuery language.
+ */
 export interface XQueryConfig {
   /** defaults to {@link DomDataAdapter} */
   adapter?: XQueryDataAdapter;
+  /**
+   * Function to serialize query results.
+   */
   serialize?: SerializeFn;
 }
 export interface XQueryLanguage extends Language<'xquery'> {
   dataAdapter: XQueryDataAdapter;
 }
+
+/**
+ * Creates a new XQuery language instance.
+ * @param config Configuration options for the XQuery language.
+ * @returns A new XQuery language instance.
+ */
 export function XQuery(config?: XQueryConfig): XQueryLanguage {
   const dataAdapter = config?.adapter ?? new DomDataAdapter(document);
   return {

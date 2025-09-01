@@ -11,6 +11,9 @@ export interface DescentArgs {
   renameMap?: plan.RenameMap;
 }
 
+/**
+ * Checks for equality between two plan operator trees.
+ */
 export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
   constructor(
     protected vmap: Record<string, PlanVisitor<boolean, DescentArgs>>,

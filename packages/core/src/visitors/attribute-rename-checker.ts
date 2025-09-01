@@ -10,8 +10,11 @@ import { DortDBAsFriend } from '../db.js';
 import { TransitiveDependencies } from './transitive-deps.js';
 import { containsAny, difference, union } from '../utils/trie.js';
 import { ASTIdentifier } from '../ast.js';
-import { retI0, retI1 } from '../internal-fns/index.js';
+import { retI0 } from '../internal-fns/index.js';
 
+/**
+ * Verifies whether renaming attributes in the plan is safe.
+ */
 export class AttributeRenameChecker
   implements PlanVisitor<boolean, plan.RenameMap>
 {

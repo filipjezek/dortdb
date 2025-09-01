@@ -11,7 +11,7 @@ export function idToCalculation(id: ASTIdentifier, lang: Lowercase<string>) {
     lang,
     ret1,
     [id],
-    [{ originalLocations: [{ obj: fn.args, key: 0, fnArg: true }] }],
+    [{ originalLocations: [{ obj: fn.args, key: 0, idAsFnArg: true }] }],
     fn,
     [],
     false,

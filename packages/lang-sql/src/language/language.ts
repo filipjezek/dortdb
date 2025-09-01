@@ -11,9 +11,13 @@ import { serializeToObjects } from '@dortdb/core/utils';
 import { objAccess, objMatch } from '../operators/json.js';
 import { concat, ilike, like } from '../operators/string.js';
 
+/**
+ * Configuration for the SQL language.
+ */
 export interface SQLConfig {
   /** defaults to {@link ObjectDataAdapter} */
   adapter?: SQLDataAdapter;
+  /** Function to serialize query results. */
   serialize: SerializeFn;
 }
 
@@ -21,6 +25,11 @@ export interface SQLLanguage extends Language<'sql'> {
   dataAdapter: SQLDataAdapter;
 }
 
+/**
+ * Creates a new SQL language instance.
+ * @param config Configuration options for the SQL language.
+ * @returns A new SQL language instance.
+ */
 export function SQL(config?: SQLConfig): SQLLanguage {
   return {
     name: 'sql',

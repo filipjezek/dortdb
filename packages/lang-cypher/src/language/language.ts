@@ -6,9 +6,15 @@ import { CypherExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 import * as fns from '../functions/index.js';
 
+/**
+ * Configuration for the Cypher language.
+ */
 export interface CypherConfig {
+  /** Data adapter for accessing graph data. Uses {@link GraphologyDataAdapter} by default */
   adapter?: CypherDataAdaper;
+  /** The default graph to query against. */
   defaultGraph: string;
+  /** Function to serialize query results. */
   serialize?: SerializeFn;
 }
 
@@ -17,6 +23,11 @@ export interface CypherLanguage extends Language<'cypher'> {
   defaultGraph: ASTIdentifier;
 }
 
+/**
+ * Creates a new Cypher language instance.
+ * @param config Configuration options for the Cypher language.
+ * @returns A new Cypher language instance.
+ */
 export function Cypher(config?: CypherConfig): CypherLanguage {
   return {
     name: 'cypher',

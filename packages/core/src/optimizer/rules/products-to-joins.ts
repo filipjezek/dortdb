@@ -11,6 +11,9 @@ export interface ProductsToJoinsBindings {
   product: CartesianProduct;
 }
 
+/**
+ * Converts a Cartesian product of selections into a join operator.
+ */
 export const productsToJoins: PatternRule<Selection, ProductsToJoinsBindings> =
   {
     operator: Selection,

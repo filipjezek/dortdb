@@ -15,6 +15,10 @@ import { CypherDataAdaper, EdgeDirection } from '../language/data-adapter.js';
 import { CypherLanguage } from '../language/language.js';
 import { intermediateToCalc } from '@dortdb/core/utils';
 
+/**
+ * A secondary index that translates joins based on connected nodes into graph lookups.
+ * This index does not actually store any indexed data.
+ */
 export class ConnectionIndex implements Index {
   protected eqCheckers: Record<string, EqualityChecker>;
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;

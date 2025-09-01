@@ -26,6 +26,9 @@ export interface IndexScansBindings {
   accessor: Calculation;
 }
 
+/**
+ * Finds selections that can be satisfied by an index scan and replaces them with an index scan operator.
+ */
 export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
   constructor(protected db: DortDBAsFriend) {}
 

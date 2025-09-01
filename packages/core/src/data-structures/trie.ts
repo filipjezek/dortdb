@@ -4,13 +4,26 @@ const SENTINEL = Symbol('SENTINEL');
 
 type TrieInner<T, U> = Map<T, TrieInner<T, U>> & Map<typeof SENTINEL, U | true>;
 
+/**
+ * Trie data structure for storing sequences of keys with associated values.
+ * Supports efficient prefix-based operations and iteration.
+ * @template T Type of the key parts (e.g., string, symbol).
+ * @template U Type of the value stored (default: true for set-like behavior).
+ */
 export class Trie<T, U = true> {
   private root: TrieInner<T, U> = new Map();
+  /**
+   * Number of entries in the trie.
+   */
   public get size(): number {
     return this._size;
   }
   private _size = 0;
 
+  /**
+   * Creates a new Trie instance.
+   * @param source Optional iterable of key arrays or object to initialize the trie.
+   */
   constructor(
     source?: Iterable<T[]> | Record<Extract<T, string | symbol>, unknown>,
   ) {
@@ -36,9 +49,18 @@ export class Trie<T, U = true> {
     }
   }
 
+  /**
+   * Adds a key sequence to the trie, storing `true` as the value.
+   * @param parts Array of key parts.
+   */
   public add(parts: T[]): void {
     this.set(parts, true);
   }
+  /**
+   * Sets a value for a key sequence in the trie.
+   * @param parts Array of key parts.
+   * @param value Value to associate with the key sequence.
+   */
   public set(parts: T[], value: U | true): void {
     let lvl = this.root;
     for (const part of parts) {
@@ -53,6 +75,11 @@ export class Trie<T, U = true> {
     lvl.set(SENTINEL, value);
   }
 
+  /**
+   * Checks if a key sequence exists in the trie.
+   * @param parts Array of key parts.
+   * @returns True if the key exists, false otherwise.
+   */
   public has(parts: T[]): boolean {
     let lvl = this.root;
     for (const part of parts) {
@@ -63,6 +90,11 @@ export class Trie<T, U = true> {
     }
     return lvl.has(SENTINEL);
   }
+  /**
+   * Gets the value associated with a key sequence.
+   * @param parts Array of key parts.
+   * @returns The value if present, otherwise undefined.
+   */
   public get(parts: T[]): U | undefined {
     let lvl = this.root;
     for (const part of parts) {
@@ -74,6 +106,11 @@ export class Trie<T, U = true> {
     return lvl.get(SENTINEL) as U;
   }
 
+  /**
+   * Deletes a key sequence from the trie.
+   * @param parts Array of key parts.
+   * @returns True if the key was deleted, false if not found.
+   */
   public delete(parts: T[]): boolean {
     const deleted = this.deleteRecursive(this.root, parts);
     if (deleted) {
@@ -97,10 +134,17 @@ export class Trie<T, U = true> {
     return false;
   }
 
+  /**
+   * Removes all entries from the trie.
+   */
   public clear(): void {
     this.root.clear();
     this._size = 0;
   }
+  /**
+   * Adds a prefix to all existing keys in the trie.
+   * @param prefix Array of key parts to prepend.
+   */
   public prefixAll(prefix: T[]): void {
     if (prefix.length === 0 || !this.size) return;
     const oldRoot = this.root;
@@ -112,9 +156,18 @@ export class Trie<T, U = true> {
     lvl.set(prefix.at(-1), oldRoot);
   }
 
+  /**
+   * Returns an iterator over all key sequences in the trie.
+   * @returns IterableIterator of key arrays.
+   */
   public [Symbol.iterator](): IterableIterator<T[]> {
     return this.keys();
   }
+  /**
+   * Returns an iterator over all key sequences, optionally starting with a prefix.
+   * @param prefix Optional prefix to filter keys.
+   * @returns IterableIterator of key arrays.
+   */
   public *keys(prefix: T[] = []): IterableIterator<T[]> {
     let lvl = this.root;
     for (const key of prefix) {
@@ -126,6 +179,11 @@ export class Trie<T, U = true> {
     yield* this.iterTrieInner(lvl, prefix);
   }
 
+  /**
+   * Returns an iterator over all [key, value] pairs, optionally starting with a prefix.
+   * @param prefix Optional prefix to filter entries.
+   * @returns IterableIterator of [key array, value] pairs.
+   */
   public *entries(prefix: T[] = []): IterableIterator<[T[], U]> {
     let lvl = this.root;
     for (const key of prefix) {
@@ -162,6 +220,11 @@ export class Trie<T, U = true> {
     }
   }
 
+  /**
+   * Creates a clone of the trie.
+   * @param deep If true, performs a deep clone; otherwise, shallow clone.
+   * @returns A new Trie instance with the same contents.
+   */
   public clone(deep = false): Trie<T, U> {
     const clonedRoot = deep
       ? cloneDeep(this.root)

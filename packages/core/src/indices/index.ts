@@ -14,9 +14,17 @@ export interface IndexFillInput {
 
 export const fromItemIndexKey = Symbol('fromItemIndexKey');
 
+/**
+ * Represents a secondary index on a data structure.
+ */
 export interface Index {
+  /** The indexed expressions. More expressions result in multi-level index. */
   expressions: Calculation[];
 
+  /**
+   * Rebuild the index with new values.
+   * @param values - the new values to index
+   */
   reindex(values: Iterable<IndexFillInput>): void;
   /**
    * Can the index be used to match the given expressions?

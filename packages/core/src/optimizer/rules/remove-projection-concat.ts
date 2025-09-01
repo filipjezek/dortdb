@@ -9,6 +9,9 @@ import { containsAny } from '../../utils/trie.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 
+/**
+ * Converts a non-correlated projection concatenation into a join or cartesian product operator.
+ */
 export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
   public operator = ProjectionConcat;
   protected tdepsVmap: Record<string, TransitiveDependencies>;

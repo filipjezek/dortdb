@@ -15,6 +15,10 @@ export interface VariableMapperCtx {
   currentIndex: number;
 }
 
+/**
+ * Translates identifiers used in the query plan into numerical indices. The executor may
+ * then represent a scope using an array instead of a map.
+ */
 export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   constructor(
     protected vmap: Record<string, PlanVisitor<void, VariableMapperCtx>>,

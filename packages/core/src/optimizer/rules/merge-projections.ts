@@ -14,10 +14,7 @@ import { union } from '../../utils/trie.js';
 import { isId } from '../../internal-fns/index.js';
 import { CalculationParams } from '../../visitors/calculation-builder.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
-import {
-  intermediateToCalc,
-  simplifyCalcParams,
-} from '../../utils/calculation.js';
+import { intermediateToCalc } from '../../utils/calculation.js';
 
 export type MergeProjectionsBindings = plan.Projection[];
 export type ProjMap = Trie<
@@ -25,6 +22,9 @@ export type ProjMap = Trie<
   ASTIdentifier | plan.Calculation
 >;
 
+/**
+ * Merge multiple projections into a single projection.
+ */
 export class MergeProjections
   implements PatternRule<plan.Projection, MergeProjectionsBindings>
 {
@@ -132,9 +132,10 @@ export class MergeProjections
       if (arg instanceof ASTIdentifier) {
         const mapped = projMap.get(arg.parts);
         if (mapped) {
-          for (const { obj, key, fnArg } of calc.argMeta[i].originalLocations) {
+          for (const { obj, key, idAsFnArg } of calc.argMeta[i]
+            .originalLocations) {
             if (mapped instanceof plan.Calculation) {
-              obj[key] = fnArg ? { op: mapped.original } : mapped.original;
+              obj[key] = idAsFnArg ? { op: mapped.original } : mapped.original;
             } else {
               obj[key] = mapped;
             }

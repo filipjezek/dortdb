@@ -17,6 +17,10 @@ export interface JoinIndicesBindings {
   source: plan.TupleSource | plan.ItemSource;
 }
 
+/**
+ * Finds join conditions that match an existing index and replaces them with {@link plan.ProjectionConcat} and {@link plan.Selection}
+ * operators, that could be further optimized by the {@link IndexScans} rule.
+ */
 export class JoinIndices
   implements PatternRule<plan.Join, JoinIndicesBindings>
 {

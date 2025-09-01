@@ -11,6 +11,10 @@ import { allAttrs } from '../ast.js';
 
 let tdepsCache = new WeakMap<PlanOperator, IdSet>();
 
+/**
+ * Calculate the transitive dependencies for a plan operator tree. The dependencies are
+ * identifiers that are used within the tree, but are defined in external scopes.
+ */
 export class TransitiveDependencies implements PlanVisitor<IdSet> {
   constructor(protected vmap: Record<string, PlanVisitor<IdSet>>) {
     this.processNode = this.processNode.bind(this);

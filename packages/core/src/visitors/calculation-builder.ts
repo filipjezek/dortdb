@@ -1,35 +1,70 @@
 import { assertMaxOne, ret1, ret2 } from '../internal-fns/index.js';
 import { ASTIdentifier } from '../ast.js';
-import * as operators from '../plan/operators/index.js';
-import {
-  OpOrId,
-  PlanOperator,
-  PlanTupleOperator,
-  PlanVisitor,
-} from '../plan/visitor.js';
+import * as plan from '../plan/operators/index.js';
+import { OpOrId, PlanTupleOperator, PlanVisitor } from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
 import { DortDBAsFriend } from '../db.js';
 import { or } from '../operators/logical.js';
-import { EqualityChecker } from './equality-checker.js';
 
 export interface ArgMeta {
+  /** Evaluation of this argument may be skipped, for example,
+   * if it is a part of OR or AND expressions.
+   */
   maybeSkipped?: boolean;
-  aggregate?: operators.AggregateCall;
+  /**
+   * This argument is the result of this aggregation.
+   */
+  aggregate?: plan.AggregateCall;
+  /**
+   * Where exactly is this argument located? Used for argument replacements
+   * during query planning.
+   */
   originalLocations: {
+    /** The original object containing this argument. */
     obj: any;
+    /** The key in the original object. */
     key: string | number;
-    /** the location was for an identifier, operators should be passed as `PlanOpAsArg` */
-    fnArg?: boolean;
+    /**
+     * This argument is an identifier and its location is in an {@link plan.FnCall}.
+     * This is important, because if the argument is to be later replaced with a {@link PlanOperator},
+     * the replacement must be in the form of {@link plan.PlanOpAsArg}.
+     */
+    idAsFnArg?: boolean;
   }[];
+  /**
+   * This argument is used multiple times in the calculation.
+   */
   usedMultipleTimes?: boolean;
+  /**
+   * This argument may be a sequence of values. No enforcement of single value is necessary.
+   */
   acceptSequence?: boolean;
 }
+
+/**
+ * Represents the parameters for a calculation.
+ */
 export interface CalculationParams {
+  /**
+   * The arguments for the calculation.
+   */
   args: OpOrId[];
+  /**
+   * The implementation of the calculation.
+   */
   impl: (...args: any[]) => unknown;
+  /**
+   * Metadata for the arguments.
+   */
   argMeta: ArgMeta[];
+  /**
+   * Whether the calculation is a literal value.
+   */
   literal?: boolean;
-  aggregates?: operators.AggregateCall[];
+  /**
+   * The aggregate function results used in the calculation.
+   */
+  aggregates?: plan.AggregateCall[];
 }
 
 // avoid creating a new function every time
@@ -53,7 +88,7 @@ function getMetas(
   fnArg?: boolean,
 ): ArgMeta[] {
   if (a instanceof ASTIdentifier)
-    return [{ originalLocations: [{ obj, key, fnArg }] }];
+    return [{ originalLocations: [{ obj, key, idAsFnArg: fnArg }] }];
   for (const m of a.argMeta) {
     if (m.originalLocations.length === 0) {
       m.originalLocations.push(
@@ -95,22 +130,25 @@ function* cartesian(iters: Iterable<unknown>[]): Iterable<unknown[]> {
   }
 }
 function isQuantifier(op: unknown) {
-  return op instanceof operators.Quantifier;
+  return op instanceof plan.Quantifier;
 }
 function getQuantifierIndices(
-  args: (ASTIdentifier | operators.PlanOpAsArg)[],
-  type: operators.QuantifierType,
+  args: (ASTIdentifier | plan.PlanOpAsArg)[],
+  type: plan.QuantifierType,
 ) {
   return args
     .map(ret2)
     .filter(
       (i) =>
         !(args[i] instanceof ASTIdentifier) &&
-        args[i].op instanceof operators.Quantifier &&
+        args[i].op instanceof plan.Quantifier &&
         args[i].op.type === type,
     );
 }
 
+/**
+ * Builds a {@link plan.Calculation} from the given operator.
+ */
 export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   constructor(
     protected vmap: Record<string, PlanVisitor<CalculationParams>>,
@@ -121,37 +159,37 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     this.processWhenThen = this.processWhenThen.bind(this);
   }
 
-  protected toItem(op: PlanTupleOperator): operators.MapToItem {
+  protected toItem(op: PlanTupleOperator): plan.MapToItem {
     const oldParent = op.parent;
-    const toItem = new operators.MapToItem(op.lang, null, op);
+    const toItem = new plan.MapToItem(op.lang, null, op);
     if (oldParent) {
       oldParent.replaceChild(op, toItem);
     }
     return toItem;
   }
 
-  visitProjection(operator: operators.Projection): CalculationParams {
+  visitProjection(operator: plan.Projection): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitSelection(operator: operators.Selection): CalculationParams {
+  visitSelection(operator: plan.Selection): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitTupleSource(operator: operators.TupleSource): CalculationParams {
+  visitTupleSource(operator: plan.TupleSource): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitItemSource(operator: operators.ItemSource): CalculationParams {
+  visitItemSource(operator: plan.ItemSource): CalculationParams {
     return {
       args: [operator],
       impl: assertMaxOne,
@@ -163,18 +201,18 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return item instanceof ASTIdentifier ? item : item.accept(this.vmap);
   }
   protected processQuantifiedFn(
-    operator: operators.FnCall,
+    operator: plan.FnCall,
     children: (CalculationParams | ASTIdentifier)[],
   ) {
     return (...args: unknown[]) => {
       const resolvedArgs = resolveArgs(args, children);
       const anyIs = getQuantifierIndices(
         operator.args,
-        operators.QuantifierType.ANY,
+        plan.QuantifierType.ANY,
       );
       const allIs = getQuantifierIndices(
         operator.args,
-        operators.QuantifierType.ALL,
+        plan.QuantifierType.ALL,
       );
       const anys = anyIs.map((i) => resolvedArgs[i]) as unknown[][];
       const alls = allIs.map((i) => resolvedArgs[i]) as unknown[][];
@@ -196,7 +234,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       return false;
     };
   }
-  protected processFnArg(arg: operators.PlanOpAsArg | ASTIdentifier) {
+  protected processFnArg(arg: plan.PlanOpAsArg | ASTIdentifier) {
     if (arg instanceof ASTIdentifier) return arg;
     const params = arg.op.accept(this.vmap);
     if (arg.acceptSequence && params.impl === assertMaxOne) {
@@ -204,7 +242,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     }
     return params;
   }
-  visitFnCall(operator: operators.FnCall): CalculationParams {
+  visitFnCall(operator: plan.FnCall): CalculationParams {
     const children = operator.args.map(this.processFnArg);
     if (operator.pure && children.every(isLit)) {
       const args = (children as CalculationParams[]).map(callImpl);
@@ -222,13 +260,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     for (let i = 0; i < nestedMetas.length; i++) {
       if (
         !(operator.args[i] instanceof ASTIdentifier) &&
-        !(
-          operators.CalcIntermediate in
-          (operator.args[i] as operators.PlanOpAsArg).op
-        )
+        !(plan.CalcIntermediate in (operator.args[i] as plan.PlanOpAsArg).op)
       ) {
         nestedMetas[i][0].acceptSequence =
-          (operator.args[i] as operators.PlanOpAsArg).acceptSequence ?? false;
+          (operator.args[i] as plan.PlanOpAsArg).acceptSequence ?? false;
       }
     }
     const metas = nestedMetas.flat();
@@ -250,7 +285,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       aggregates: children.flatMap(getAggrs),
     };
   }
-  visitLiteral(operator: operators.Literal<unknown>): CalculationParams {
+  visitLiteral(operator: plan.Literal<unknown>): CalculationParams {
     return {
       args: [],
       impl: () => operator.value,
@@ -258,7 +293,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [],
     };
   }
-  visitCalculation(operator: operators.Calculation): CalculationParams {
+  visitCalculation(operator: plan.Calculation): CalculationParams {
     return {
       args: [operator],
       impl: ret1,
@@ -272,7 +307,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       CalculationParams | ASTIdentifier,
     ];
   }
-  visitConditional(operator: operators.Conditional): CalculationParams {
+  visitConditional(operator: plan.Conditional): CalculationParams {
     const whenthens = operator.whenThens.map(this.processWhenThen);
     const cond = operator.condition && this.processItem(operator.condition);
     const defaultCase =
@@ -280,9 +315,9 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     const args: ((ASTIdentifier | OpOrId[]) | (ASTIdentifier | OpOrId[])[])[] =
       whenthens.map(getWhenThenArgs);
     const aggrs: (
-      | operators.AggregateCall
-      | operators.AggregateCall[]
-      | operators.AggregateCall[][]
+      | plan.AggregateCall
+      | plan.AggregateCall[]
+      | plan.AggregateCall[][]
     )[] = whenthens.map(getWhenThenAggrs);
     const metas = whenthens
       .map((wt, i) => getWhenThenMetas(wt, operator.whenThens[i]))
@@ -384,67 +419,63 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return null;
   }
 
-  visitCartesianProduct(
-    operator: operators.CartesianProduct,
-  ): CalculationParams {
+  visitCartesianProduct(operator: plan.CartesianProduct): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitJoin(operator: operators.Join): CalculationParams {
+  visitJoin(operator: plan.Join): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitProjectionConcat(
-    operator: operators.ProjectionConcat,
-  ): CalculationParams {
+  visitProjectionConcat(operator: plan.ProjectionConcat): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitMapToItem(operator: operators.MapToItem): CalculationParams {
+  visitMapToItem(operator: plan.MapToItem): CalculationParams {
     return {
       args: [operator],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitMapFromItem(operator: operators.MapFromItem): CalculationParams {
+  visitMapFromItem(operator: plan.MapFromItem): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitProjectionIndex(operator: operators.ProjectionIndex): CalculationParams {
+  visitProjectionIndex(operator: plan.ProjectionIndex): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitOrderBy(operator: operators.OrderBy): CalculationParams {
+  visitOrderBy(operator: plan.OrderBy): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitGroupBy(operator: operators.GroupBy): CalculationParams {
+  visitGroupBy(operator: plan.GroupBy): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitLimit(operator: operators.Limit): CalculationParams {
+  visitLimit(operator: plan.Limit): CalculationParams {
     return {
       args: [
         operator.source instanceof PlanTupleOperator
@@ -455,7 +486,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitUnion(operator: operators.Union): CalculationParams {
+  visitUnion(operator: plan.Union): CalculationParams {
     return {
       args: [
         operator.left instanceof PlanTupleOperator
@@ -466,7 +497,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitIntersection(operator: operators.Intersection): CalculationParams {
+  visitIntersection(operator: plan.Intersection): CalculationParams {
     return {
       args: [
         operator.left instanceof PlanTupleOperator
@@ -477,7 +508,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitDifference(operator: operators.Difference): CalculationParams {
+  visitDifference(operator: plan.Difference): CalculationParams {
     return {
       args: [
         operator.left instanceof PlanTupleOperator
@@ -488,21 +519,21 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitDistinct(operator: operators.Distinct): CalculationParams {
+  visitDistinct(operator: plan.Distinct): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitNullSource(operator: operators.NullSource): CalculationParams {
+  visitNullSource(operator: plan.NullSource): CalculationParams {
     return {
       args: [operator],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitAggregate(operator: operators.AggregateCall): CalculationParams {
+  visitAggregate(operator: plan.AggregateCall): CalculationParams {
     return {
       args: [operator.fieldName],
       impl: ret1,
@@ -510,40 +541,38 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{ aggregate: operator, originalLocations: [] }],
     };
   }
-  visitItemFnSource(operator: operators.ItemFnSource): CalculationParams {
+  visitItemFnSource(operator: plan.ItemFnSource): CalculationParams {
     return {
       args: [operator],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitTupleFnSource(operator: operators.TupleFnSource): CalculationParams {
+  visitTupleFnSource(operator: plan.TupleFnSource): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitQuantifier(operator: operators.Quantifier): CalculationParams {
+  visitQuantifier(operator: plan.Quantifier): CalculationParams {
     return operator.query.accept(this.vmap);
   }
-  visitRecursion(operator: operators.Recursion): CalculationParams {
+  visitRecursion(operator: plan.Recursion): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitIndexScan(operator: operators.IndexScan): CalculationParams {
+  visitIndexScan(operator: plan.IndexScan): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,
       argMeta: [{ originalLocations: [] }],
     };
   }
-  visitIndexedRecursion(
-    operator: operators.IndexedRecursion,
-  ): CalculationParams {
+  visitIndexedRecursion(operator: plan.IndexedRecursion): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,

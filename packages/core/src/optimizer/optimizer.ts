@@ -4,9 +4,15 @@ import { PlanOperator, PlanTupleOperator } from '../plan/visitor.js';
 import { PatternRule, PatternRuleConstructor } from './rule.js';
 
 export interface OptimizerConfig {
+  /**
+   * The optimization rules to apply. The order of rules matters.
+   */
   rules: (PatternRule | PatternRuleConstructor)[];
 }
 
+/**
+ * Optimizer for query plans.
+ */
 export class Optimizer {
   protected rules: PatternRule[];
   protected config: OptimizerConfig;
@@ -18,6 +24,10 @@ export class Optimizer {
     this.reconfigure(config);
   }
 
+  /**
+   * Reconfigure the optimizer with a new set of rules.
+   * @param config - The new configuration to apply.
+   */
   public reconfigure(config: OptimizerConfig) {
     this.config = config;
     this.rules = config.rules.map((rule) => {
@@ -28,6 +38,11 @@ export class Optimizer {
     });
   }
 
+  /**
+   * Optimize the given query plan.
+   * @param plan - The query plan to optimize.
+   * @returns The optimized query plan.
+   */
   public optimize(plan: PlanOperator): PlanOperator {
     this.breakReferences(plan);
     const planParent = new Limit('dummy', 0, 1, plan);
@@ -39,6 +54,11 @@ export class Optimizer {
     return optimizedPlan;
   }
 
+  /**
+   * Visit an operator and apply the given rule. Recursively applies the rule to child operators.
+   * @param operator - The operator to visit.
+   * @param rule - The rule to apply.
+   */
   protected visitOperator(operator: PlanOperator, rule: PatternRule) {
     if (
       rule.operator === null ||

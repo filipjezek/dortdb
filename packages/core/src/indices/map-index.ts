@@ -7,6 +7,9 @@ import { CalculationParams } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
 import { Index, IndexFillInput, IndexMatchInput } from './index.js';
 
+/**
+ * A simple secondary index based on JavaScript Maps.
+ */
 export class MapIndex implements Index {
   protected map: Map<unknown, unknown[]> = new Map();
   protected eqCheckers: Record<string, EqualityChecker>;

@@ -1,5 +1,4 @@
 import {
-  OpOrId,
   PlanOperator,
   PlanTupleOperator,
   PlanVisitor,
@@ -9,11 +8,14 @@ import { ExecutionContext } from '../execution-context.js';
 import { DortDBAsFriend } from '../db.js';
 import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 import { VariableMapperCtx } from './variable-mapper.js';
-import { retI1, toArray } from '../internal-fns/index.js';
+import { toArray } from '../internal-fns/index.js';
 import { Trie } from '../data-structures/trie.js';
 import { SerializeFn } from '../lang-manager.js';
 import { Queue } from 'mnemonist';
 
+/**
+ * Execute a query plan. Languages have to provide their own implementation of {@link generateTuplesFromValues}
+ */
 export abstract class Executor
   implements PlanVisitor<Iterable<unknown>, ExecutionContext>
 {
@@ -825,6 +827,9 @@ export abstract class Executor
     }
   }
 
+  /**
+   * Convert items from a data source into tuples.
+   */
   protected generateTuplesFromValues(
     values: Iterable<unknown>,
     operator: PlanTupleOperator,
