@@ -2,6 +2,7 @@ import {
   AfterViewInit,
   ChangeDetectorRef,
   Component,
+  effect,
   ElementRef,
   forwardRef,
   inject,
@@ -11,8 +12,21 @@ import {
 import { CommonModule } from '@angular/common';
 import { EditorView, basicSetup } from 'codemirror';
 import { keymap } from '@codemirror/view';
-import { Prec } from '@codemirror/state';
+import { Compartment, Prec } from '@codemirror/state';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { LightDarkService } from '../../services/light-dark.service';
+
+const theme = {
+  '&': {
+    height: '100%',
+    border: '1px solid var(--mat-sys-on-surface-variant)',
+    resize: 'vertical',
+    overflow: 'hidden',
+    minHeight: '180px',
+    color: 'var(--mat-sys-on-surface)',
+  },
+  '.cm-scroller': { overflow: 'auto' },
+};
 
 @Component({
   selector: 'dort-code-input',
@@ -35,9 +49,24 @@ export class CodeInputComponent implements AfterViewInit, ControlValueAccessor {
   private onChangeCb: (val: string) => void;
   private onTouchCb: () => void;
   private cdRef = inject(ChangeDetectorRef);
+  private themeCompartment = new Compartment();
+  private lightTheme = EditorView.theme(theme, { dark: false });
+  private darkTheme = EditorView.theme(structuredClone(theme), { dark: true });
+  private lightDarkS = inject(LightDarkService);
 
   constructor() {
     this.cdRef.detach();
+    effect(() => {
+      console.log('theme change');
+      const dark = this.lightDarkS.isDarkTheme();
+      if (this.editor) {
+        this.editor.dispatch({
+          effects: this.themeCompartment.reconfigure(
+            dark ? this.darkTheme : this.lightTheme,
+          ),
+        });
+      }
+    });
   }
 
   codeSubmit = output<void>();
@@ -48,16 +77,9 @@ export class CodeInputComponent implements AfterViewInit, ControlValueAccessor {
       doc: this.tempValue,
       extensions: [
         basicSetup,
-        EditorView.theme({
-          '&': {
-            height: '100%',
-            border: '1px solid var(--mat-sys-on-surface-variant)',
-            resize: 'vertical',
-            overflow: 'hidden',
-            minHeight: '180px',
-          },
-          '.cm-scroller': { overflow: 'auto' },
-        }),
+        this.themeCompartment.of(
+          this.lightDarkS.isDarkTheme() ? this.darkTheme : this.lightTheme,
+        ),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             this.onChangeCb(update.state.doc.toString());
@@ -81,8 +103,13 @@ export class CodeInputComponent implements AfterViewInit, ControlValueAccessor {
 
   writeValue(obj: string): void {
     if (this.editor) {
-      // this.editor.state.
-      // console.log('after replacement', this.editor.state.doc.toString());
+      this.editor.dispatch({
+        changes: {
+          from: 0,
+          to: this.editor.state.doc.length,
+          insert: obj,
+        },
+      });
     } else {
       this.tempValue = obj;
     }
