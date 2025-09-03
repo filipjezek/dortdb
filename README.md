@@ -121,9 +121,9 @@ import { SQL } from '@dortdb/lang-sql';
 const db = new DortDB({
   mainLang: SQL({
     adapter: {
-      createColumnAccessor: (prop) => {
-        return (row: Map<string | symbol | number, unknown>) => row.get(prop);
-      },
+      createColumnAccessor: (prop) => (
+        row: Map<string | symbol | number, unknown>
+      ) => row.get(prop),
     },
   }),
   optimizer: defaultRules,
@@ -131,18 +131,9 @@ const db = new DortDB({
 
 // use maps instead of objects
 const users = [
-  new Map([
-    ['name', 'Alice'],
-    ['age', 30],
-  ]),
-  new Map([
-    ['name', 'Bob'],
-    ['age', 25],
-  ]),
-  new Map([
-    ['name', 'Charlie'],
-    ['age', 35],
-  ]),
+  new Map([['name', 'Alice'], ['age', 30]]),
+  new Map([['name', 'Bob'], ['age', 25]]),
+  new Map([['name', 'Charlie'], ['age', 35]]),
 ];
 
 // register the data
@@ -172,12 +163,7 @@ const db = new DortDB({
 });
 
 // register the data
-db.registerSource(
-  ['users'],
-  [
-    /* ... */
-  ],
-);
+db.registerSource(['users'], [/* ... */]);
 
 // create a secondary index on the "age" field
 db.createIndex(['users'], ['age'], MapIndex);
@@ -212,3 +198,5 @@ The datetime extension provides the following functions:
 - `date.add(Date | Interval, Interval)`: Adds an interval to a date and returns the resulting date. Can also sum two intervals.
 - `date.sub(Date | Interval, Interval)`: Subtracts an interval from a date and returns the resulting date. Similarly to above, can also compute a difference between two intervals.
 - `date.extract(Date, string)`: Extracts a specific component (e.g. year, month, day) from a date.
+
+<!-- prettier-ignore-end -->
