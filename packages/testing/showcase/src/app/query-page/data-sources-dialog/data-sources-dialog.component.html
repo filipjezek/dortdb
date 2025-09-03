@@ -62,6 +62,33 @@
             [alt]="source.name + ' example image'"
           />
         }
+        @if (source.indices?.length) {
+          <h3>Secondary Indices</h3>
+          <ul>
+            @for (index of source.indicesHighlighted; track index) {
+              <li>
+                <pre
+                  class="language-javascript"
+                ><code class="language-javascript" [innerHTML]="index">{{ index }}</code></pre>
+              </li>
+            }
+          </ul>
+        }
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+
+  <h2>Query Inspiration</h2>
+
+  <mat-accordion multi>
+    @for (q of unibench; track q) {
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            UniBench query {{ $index + 1 | number: '2.0' }}
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+        <p>{{ q }}</p>
       </mat-expansion-panel>
     }
   </mat-accordion>

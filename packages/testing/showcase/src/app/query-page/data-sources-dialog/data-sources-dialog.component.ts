@@ -15,6 +15,8 @@ interface Source {
   exampleHighlighted?: SafeHtml;
   img?: string;
   lang: string;
+  indices?: string[];
+  indicesHighlighted?: SafeHtml[];
 }
 
 @Component({
@@ -88,6 +90,7 @@ export class DataSourcesDialogComponent {
     }
   ]
 }, /* ... */]`,
+      indices: [`db.createIndex(['orders'], ['PersonId::number'], MapIndex);`],
     },
     {
       lang: 'javascript',
@@ -104,6 +107,7 @@ export class DataSourcesDialogComponent {
   "browserUsed": "Internet Explorer",
   "place": 1263
 }, /* ... */]`,
+      indices: [`db.createIndex(['customers'], ['id'], MapIndex);`],
     },
     {
       lang: 'javascript',
@@ -114,6 +118,7 @@ export class DataSourcesDialogComponent {
   "personId": 26388279075595,
   "feedback": "'5.0,This feels just like a dart board you would use in a bar, minus the 1,000 holes that other drunk people put into it. Took me about 10 minutes to install. It is very heavy, so make sure you have some good studs in the wall to support it. I would suggest buying some extra darts for it, as the ones it comes with are cheaply made...had one break on me during my first game.***NOTE*** The installation was very easy, just don\\\\t listen to the instructions. It tells you to slide the paper inside to mark everything. Just put the paper on the back of the board and poke the holes, saves a lot of frustration and gives you the most accurate markings.'"
 }, /* ... */]`,
+      indices: [`db.createIndex(['feedback'], ['productAsin'], MapIndex);`],
     },
     {
       lang: 'javascript',
@@ -127,6 +132,11 @@ export class DataSourcesDialogComponent {
   "productId": 2566,
   "brand": 18
 }, /* ... */]`,
+      indices: [
+        `db.createIndex(['products'], ['productId'], MapIndex);`,
+        `db.createIndex(['products'], ['brand'], MapIndex);`,
+        `db.createIndex(['products'], ['asin'], MapIndex);`,
+      ],
     },
     {
       lang: 'javascript',
@@ -137,6 +147,10 @@ export class DataSourcesDialogComponent {
   "brandName": "Signia_(sportswear)",
   "productAsin": "B002OP5TUA"
 }, /* ... */]`,
+      indices: [
+        `db.createIndex(['brandProducts'], ['brandName'], MapIndex);`,
+        `db.createIndex(['brandProducts'], ['productAsin'], MapIndex);`,
+      ],
     },
     {
       lang: 'javascript',
@@ -147,6 +161,7 @@ export class DataSourcesDialogComponent {
   "Country": "Argentina",
   "Industry": "Sports"
 }, /* ... */]`,
+      indices: [`db.createIndex(['vendors'], ['id'], MapIndex);`],
     },
     {
       lang: 'javascript',
@@ -163,6 +178,7 @@ export class DataSourcesDialogComponent {
   "content": "About Armasight Spark CORE Multi-Purpose Night Vision Monocular, in tour singles titles, butAbout Schwinn 425 Elliptical Trainer (2013), d musician who has sold ",
   "length": "161"
 }, /* ... */]`,
+      indices: [`db.createIndex(['posts'], ['id'], MapIndex);`],
     },
     {
       lang: 'javascript',
@@ -170,7 +186,27 @@ export class DataSourcesDialogComponent {
       description:
         'Unibench data. Social network. Represented as Graphology graph.',
       img: 'social-network.svg',
+      indices: [
+        `db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);`,
+        `db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);`,
+        `db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, {
+  fromItemKey: ['x'],
+  mainLang: 'cypher',
+});`,
+      ],
     },
+  ];
+  unibench: string[] = [
+    'For a given CUSTOMER, find their profile, orders, feedback, and posts.',
+    'For a given PRODUCT, find the persons who had bought it and posted on it.',
+    'For a given PRODUCT, find persons who have commented and posted on it, and detect negative sentiments from them.',
+    'Find the top-2 persons who spend the highest amount of money in orders. Then for each person, traverse their knows-graph with 3-hop to find the friends, and finally return the common friends of these two persons.',
+    'The query description given in the original paper is completely different from example implementations for ArangoDB, OrientDB, and AgensGraph that are part of the UniBench repository. The actual queries can be described as ”what did the friends of CUSTOMER who bought BRAND products post about?”',
+    'Given CUSTOMER 1 and CUSTOMER 2, find persons in the shortest path between them in the subgraph, and return the TOP 3 best sellers from all these persons’ purchases.',
+    'For the products of a given VENDOR with declining sales, analyze the reviews for these items to see if there are any negative sentiments.',
+    'For all the products of a given CATEGORY during a given year, compute its total sales amount, and measure its popularity in the social media.',
+    'Find top-3 companies who have the largest amount of sales at one COUNTRY, for each company, compare the number of the male and female customers, and return the most recent posts of them.',
+    'Find the top-10 most active persons by aggregating the posts during the last year, then calculate their RFM (Recency, Frequency, Monetary) value in the same period, and return their recent reviews and tags of interest.',
   ];
   languages: Record<string, Prism.Grammar> = {
     markup: Prism.languages['markup'],
@@ -181,10 +217,18 @@ export class DataSourcesDialogComponent {
 
   constructor(sanitizer: DomSanitizer) {
     for (const src of this.sources) {
-      if (!src.example) continue;
-      src.exampleHighlighted = sanitizer.bypassSecurityTrustHtml(
-        Prism.highlight(src.example, this.languages[src.lang], src.lang),
-      );
+      if (src.example) {
+        src.exampleHighlighted = sanitizer.bypassSecurityTrustHtml(
+          Prism.highlight(src.example, this.languages[src.lang], src.lang),
+        );
+      }
+      if (src.indices) {
+        src.indicesHighlighted = src.indices.map((code) =>
+          sanitizer.bypassSecurityTrustHtml(
+            Prism.highlight(code, this.languages['javascript'], 'javascript'),
+          ),
+        );
+      }
     }
   }
 }

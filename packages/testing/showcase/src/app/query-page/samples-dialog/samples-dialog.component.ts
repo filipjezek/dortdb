@@ -37,22 +37,24 @@ export class SamplesDialogComponent {
   queries: Sample[] = [
     {
       lang: 'sql',
-      name: 'Demopaper query',
-      tags: ['demopaper'],
-      query: `SELECT products.value, count(*) AS productCount
-FROM addresses
+      name: 'Cross model optimization',
+      tags: [],
+      query: `-- See how the optimizer pushes down an xquery selection into the cypher subquery
+
+SELECT products.name
+FROM products
 JOIN (
-    LANG cypher
-    MATCH ({id: $myId})-[:hasFriend]->(friend)
-    RETURN friend.id AS id
-) friends ON friends.id = addresses.customerId
-JOIN LATERAL (
-    LANG xquery
-    $invoices/Invoice[PersonId=$friends:id]/Orderline[0]/title
-) products
-WHERE addresses.city = 'Prague'
-GROUP BY products.value
-HAVING productCount > 2`,
+  LANG cypher
+  MATCH (p:person)-[:HAS_INTEREST]->(c:category)
+  RETURN p, c.name AS category
+) AS interests
+ON products.category = interests.category
+WHERE interests.p->'id' IN (
+  LANG xquery
+  $Invoices/Invoices/Invoice.xml[
+    OrderDate < date:sub(now(), interval('1 month'))
+  ]/PersonId/fn:data()
+)`,
     },
     ...unibenchQueries.map<Sample>(({ query, lang }, i) => ({
       lang,
@@ -72,27 +74,6 @@ select foo.frst, (
   return $foo:second + (lang sql select foo.third from bar)
 ) as nested
 from foo`,
-    },
-    {
-      lang: 'sql',
-      name: 'Cross model optimization',
-      tags: [],
-      query: `-- See how the optimizer pushes down an xquery selection into the cypher subquery
-
-SELECT products.name
-FROM products
-JOIN (
-  LANG cypher
-  MATCH (p:person)-[:HAS_INTEREST]->(c:category)
-  RETURN p, c.name AS category
-) AS interests
-ON products.category = interests.category
-WHERE interests.p->'id' IN (
-  LANG xquery
-  $Invoices/Invoice[
-    orderDate < date:sub(now(), interval('1 month'))
-  ]/personId/fn:data()
-)`,
     },
     {
       lang: 'xquery',
