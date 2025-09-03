@@ -28,3 +28,14 @@ The following is also not implemented, but may be added in the future:
 - inline functions
 - `%private` and `%public` modifiers
 - any module prolog except namespace definition
+
+## Custom plan operators
+
+## XQuery specific operators
+
+XQuery extends the DortDB [unified algebra](https://github.com/filipjezek/dortdb/blob/main/algebra.md) with the following operators:
+
+| name           | signature                                         | schema                         | description                                                                                                                                                           |
+| -------------- | ------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| projectionSize | $\text{size}(\texttt{name}, \texttt{source})$     | source + (name)                | Adds attribute `name` to each tuple from `source` containing the total count of tuples in `source`.                                                                   |
+| treeJoin       | $\text{treeJoin}(\texttt{expr}, \texttt{source})$ | source + (`dot`, `pos`, `len`) | Similar to projectionConcat, but `expr` generates items instead of tuples. Also adds attributes for xquery context: current item, ordinal index and total item count. |
