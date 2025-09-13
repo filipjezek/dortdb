@@ -5,7 +5,7 @@ This algebra is used for DortDB logical query plans. It is mostly based on these
 - <https://ieeexplore.ieee.org/abstract/document/1617382>
 - <https://arxiv.org/abs/2407.04823>
 
-Each language can provide its own operators if neccessary.
+Each language can provide its own operators if necessary.
 
 ## Tuple operators
 
