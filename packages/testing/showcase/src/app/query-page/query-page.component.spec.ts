@@ -1,4 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+vi.mock('@dortdb/lang-cypher', () => ({
+  ConnectionIndex: {} as any,
+  Cypher: () => ({ name: '', visitors: {} }) as any,
+}));
+vi.mock('@dortdb/lang-sql', () => ({
+  SQL: () => ({ name: '', visitors: {} }) as any,
+}));
+vi.mock('@dortdb/lang-xquery', () => ({
+  XQuery: () => ({ name: '', visitors: {} }) as any,
+}));
+
 import { QueryPageComponent } from './query-page.component';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 

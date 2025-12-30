@@ -1,2 +1,4 @@
-// eslint-disable-next-line @nx/enforce-module-boundaries
-import '../../../../tools/vitest/angular-test-setup.mjs';
+import '@angular/compiler';
+import { setupTestBed } from '@analogjs/vitest-angular/setup-testbed';
+
+setupTestBed({ zoneless: true });

@@ -17,6 +17,7 @@ export function getBaseVitestConfig(
       name: displayName,
       include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
       setupFiles: ['src/test-setup.ts'],
+      mockReset: true,
     },
   };
 }

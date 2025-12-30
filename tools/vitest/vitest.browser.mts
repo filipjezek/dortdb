@@ -24,7 +24,7 @@ export function configBrowserTests(
     css: {
       preprocessorOptions: {
         scss: {
-          silenceDeprecations: [],
+          silenceDeprecations: ['if-function'],
         },
       },
     },
