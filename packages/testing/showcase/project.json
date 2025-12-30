@@ -60,7 +60,8 @@
           "sourceMap": true
         }
       },
-      "defaultConfiguration": "production"
+      "defaultConfiguration": "production",
+      "dependsOn": ["^build"]
     },
     "serve": {
       "executor": "@angular/build:dev-server",

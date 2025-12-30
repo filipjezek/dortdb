@@ -11,7 +11,10 @@ export async function parseDocument(
   >,
   parser = new DOMParser(),
 ) {
-  const stream = entry.readable.pipeThrough(new TextDecoderStream());
+  const stream = entry.readable.pipeThrough(
+    // type incompatibility between node:stream/web and DOM streams
+    new TextDecoderStream() as unknown as TransformStream<Uint8Array, string>,
+  );
   const text = await streamToString(stream);
   const xml = parser.parseFromString(text, 'text/xml');
   result[resultKey] = xml;

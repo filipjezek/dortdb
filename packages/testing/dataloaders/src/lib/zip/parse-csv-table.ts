@@ -19,7 +19,10 @@ export async function parseCSVTable(
   >,
 ) {
   const stream = entry.readable
-    .pipeThrough(new TextDecoderStream())
+    .pipeThrough(
+      // type incompatibility between node:stream/web and DOM streams
+      new TextDecoderStream() as unknown as TransformStream<Uint8Array, string>,
+    )
     .pipeThrough(
       new CSVParser({
         delimiter: options.separator ?? ',',
