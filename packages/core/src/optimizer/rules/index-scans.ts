@@ -105,6 +105,7 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
   transform(node: Selection, bindings: IndexScansBindings): PlanOperator {
     const { selections, source, index, accessor } = bindings;
     const firstSelectionIsMatch = selections[0] === node;
+    // cannot remove the `node`, as that is handled by the parent call
     for (let i = firstSelectionIsMatch ? 1 : 0; i < selections.length; i++) {
       const s = selections[i];
       s.parent.replaceChild(s, s.source);
@@ -119,7 +120,7 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
       newSource.schemaSet = source.schemaSet;
       newSource.schema = source.schema;
       source.parent.replaceChild(source, newSource);
-      return firstSelectionIsMatch ? newSource : node;
+      return firstSelectionIsMatch ? node.source : node;
     }
 
     const newSource = new IndexScan(
@@ -131,7 +132,7 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
     );
     newSource.addToSchema((source.parent as MapFromItem).key);
     source.parent.parent.replaceChild(source.parent, newSource);
-    return firstSelectionIsMatch ? newSource : node;
+    return firstSelectionIsMatch ? node.source : node;
   }
   operator = Selection;
 }
