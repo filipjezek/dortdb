@@ -8,12 +8,9 @@ const THEME_KEY = 'theme';
 export class LightDarkService {
   private _isDarkTheme = signal(false);
   public isDarkTheme = this._isDarkTheme.asReadonly();
-  private prismLink: HTMLLinkElement;
+  prismLink = this.createPrismLink();
 
   constructor() {
-    this.prismLink = document.querySelector(
-      'link[rel="stylesheet"][href*="prism"]',
-    );
     const ls = localStorage.getItem(THEME_KEY);
     if (ls) {
       this._isDarkTheme.set(ls === 'dark');
@@ -24,6 +21,14 @@ export class LightDarkService {
     effect(() => {
       this.applyToBody();
     });
+  }
+
+  private createPrismLink() {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = `prism-${this.isDarkTheme() ? 'dark' : 'light'}.css`;
+    document.head.appendChild(link);
+    return link;
   }
 
   toggleTheme() {
