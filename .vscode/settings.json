@@ -12,5 +12,7 @@
   "jest.nodeEnv": {
     "TS_NODE_COMPILER_OPTIONS": "{\"moduleResolution\":\"node10\"}"
   },
-  "typescript.preferences.importModuleSpecifier": "project-relative"
+  "typescript.preferences.importModuleSpecifier": "project-relative",
+  "angular.enable-strict-mode-prompt": false,
+  "vitest.rootConfig": "vitest.config.mts"
 }

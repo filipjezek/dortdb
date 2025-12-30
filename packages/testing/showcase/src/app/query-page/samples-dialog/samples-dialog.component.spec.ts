@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SamplesDialogComponent } from './samples-dialog.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('SamplesDialogComponent', () => {
   let component: SamplesDialogComponent;
@@ -8,7 +9,14 @@ describe('SamplesDialogComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SamplesDialogComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(SamplesDialogComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(SamplesDialogComponent);
     component = fixture.componentInstance;

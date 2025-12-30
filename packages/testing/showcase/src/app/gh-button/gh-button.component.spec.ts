@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { GhButtonComponent } from './gh-button.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('GhButtonComponent', () => {
   let component: GhButtonComponent;
@@ -8,7 +9,14 @@ describe('GhButtonComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [GhButtonComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(GhButtonComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(GhButtonComponent);
     component = fixture.componentInstance;

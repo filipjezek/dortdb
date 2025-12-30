@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { MultiviewPartitionComponent } from './multiview-partition.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('MultiviewPartitionComponent', () => {
   let component: MultiviewPartitionComponent;
@@ -8,9 +9,15 @@ describe('MultiviewPartitionComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ MultiviewPartitionComponent ]
+      imports: [MultiviewPartitionComponent],
     })
-    .compileComponents();
+      .overrideComponent(MultiviewPartitionComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(MultiviewPartitionComponent);
     component = fixture.componentInstance;

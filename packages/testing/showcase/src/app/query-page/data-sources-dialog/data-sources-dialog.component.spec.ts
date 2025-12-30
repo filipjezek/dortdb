@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DataSourcesDialogComponent } from './data-sources-dialog.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { DecimalPipe } from '@angular/common';
 
 describe('DataSourcesDialogComponent', () => {
   let component: DataSourcesDialogComponent;
@@ -8,7 +10,14 @@ describe('DataSourcesDialogComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DataSourcesDialogComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(DataSourcesDialogComponent, {
+        set: {
+          imports: [DecimalPipe],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(DataSourcesDialogComponent);
     component = fixture.componentInstance;

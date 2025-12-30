@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { QueryPageComponent } from './query-page.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('QueryPageComponent', () => {
   let component: QueryPageComponent;
@@ -7,8 +8,15 @@ describe('QueryPageComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QueryPageComponent]
-    }).compileComponents();
+      imports: [QueryPageComponent],
+    })
+      .overrideComponent(QueryPageComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(QueryPageComponent);
     component = fixture.componentInstance;

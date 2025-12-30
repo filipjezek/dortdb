@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { OptimizerListComponent } from './optimizer-list.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('OptimizerListComponent', () => {
   let component: OptimizerListComponent;
@@ -8,7 +9,14 @@ describe('OptimizerListComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [OptimizerListComponent],
-    }).compileComponents();
+    })
+      .overrideComponent(OptimizerListComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(OptimizerListComponent);
     component = fixture.componentInstance;

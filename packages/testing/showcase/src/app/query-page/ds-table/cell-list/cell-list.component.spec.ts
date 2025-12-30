@@ -10,10 +10,16 @@ describe('CellListComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [CellListComponent],
+      imports: [CellListComponent],
       providers: [{ provide: DSCELL_VAL, useValue: ['a', 'b'] }],
-      schemas: [NO_ERRORS_SCHEMA],
-    }).compileComponents();
+    })
+      .overrideComponent(CellListComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(CellListComponent);
     component = fixture.componentInstance;

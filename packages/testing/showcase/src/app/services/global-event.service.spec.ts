@@ -4,10 +4,11 @@ import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 import { GlobalEventService } from './global-event.service';
+import { Mocked } from 'vitest';
 
 describe('GlobalEventService', () => {
   let service: GlobalEventService;
-  let docSpy: jest.Mocked<Document>;
+  let docSpy: Mocked<Document>;
   let endSubj: Subject<void>;
 
   beforeEach(() => {
@@ -16,9 +17,9 @@ describe('GlobalEventService', () => {
         {
           provide: DOCUMENT,
           useValue: {
-            addEventListener: jest.fn(),
-            removeEventListener: jest.fn(),
-            querySelector: jest.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            querySelector: vi.fn(),
           },
         },
       ],
@@ -51,7 +52,7 @@ describe('GlobalEventService', () => {
       );
     }
 
-    const spy = jasmine.createSpy('observable_cb_spy');
+    const spy = vi.fn(() => {});
     service.enterPressed.pipe(takeUntil(endSubj)).subscribe(spy);
     hitKey('a');
     expect(spy).not.toHaveBeenCalled();
@@ -62,7 +63,7 @@ describe('GlobalEventService', () => {
 
     endSubj.next();
     service.spacePressed.pipe(takeUntil(endSubj)).subscribe(spy);
-    spy.calls.reset();
+    spy.mockClear();
     hitKey('a');
     expect(spy).not.toHaveBeenCalled();
     hitKey('Spacebar');
@@ -74,7 +75,7 @@ describe('GlobalEventService', () => {
 
     endSubj.next();
     service.escapePressed.pipe(takeUntil(endSubj)).subscribe(spy);
-    spy.calls.reset();
+    spy.mockClear();
     hitKey('a');
     expect(spy).not.toHaveBeenCalled();
     hitKey('Escape');
@@ -84,7 +85,7 @@ describe('GlobalEventService', () => {
 
     endSubj.next();
     service.keyPressed.pipe(takeUntil(endSubj)).subscribe(spy);
-    spy.calls.reset();
+    spy.mockClear();
     hitKey('a');
     expect(spy).toHaveBeenCalledTimes(1);
     hitKey('Escape');

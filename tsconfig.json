@@ -22,6 +22,9 @@
     },
     {
       "path": "./packages/testing/dataloaders"
+    },
+    {
+      "path": "./tools/vitest"
     }
   ]
 }

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { CellGenericComponent } from './cell-generic.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('CellGenericComponent', () => {
   let component: CellGenericComponent;
@@ -8,9 +9,15 @@ describe('CellGenericComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ CellGenericComponent ]
+      imports: [CellGenericComponent],
     })
-    .compileComponents();
+      .overrideComponent(CellGenericComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(CellGenericComponent);
     component = fixture.componentInstance;

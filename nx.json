@@ -34,6 +34,7 @@
       "cache": true
     },
     "test": {
+      "executor": "@nx/vitest:test",
       "dependsOn": ["^build", "jison"]
     },
     "lint": {
@@ -67,9 +68,9 @@
       }
     },
     {
-      "plugin": "@nx/jest/plugin",
+      "plugin": "@nx/vitest",
       "options": {
-        "targetName": "test"
+        "testTargetName": "test"
       }
     },
     {
@@ -93,7 +94,7 @@
     "@nx/angular:application": {
       "linter": "eslint",
       "style": "scss",
-      "unitTestRunner": "jest"
+      "unitTestRunner": "vitest"
     }
   }
 }

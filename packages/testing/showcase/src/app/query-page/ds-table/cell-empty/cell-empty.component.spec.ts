@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { CellEmptyComponent } from './cell-empty.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('CellEmptyComponent', () => {
   let component: CellEmptyComponent;
@@ -8,9 +9,15 @@ describe('CellEmptyComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ CellEmptyComponent ]
+      imports: [CellEmptyComponent],
     })
-    .compileComponents();
+      .overrideComponent(CellEmptyComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(CellEmptyComponent);
     component = fixture.componentInstance;

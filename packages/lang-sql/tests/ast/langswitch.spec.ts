@@ -5,6 +5,7 @@ import * as astSQL from '../../src/ast/index.js';
 describe('AST langswitch', () => {
   const db = new DortDB({
     mainLang: SQL(),
+    optimizer: { rules: [] },
   });
 
   it('should parse langswitch with mutiple scope exits', () => {
@@ -38,7 +39,7 @@ describe('AST langswitch', () => {
       'select x, (z + (lang sql select foo.c + foo.d)) + y from foo',
       'select x, (z + (lang sql select (foo.c + foo.d))) + y from foo',
     ]) {
-      const result = db.parse(query).value[0];
+      const result = db.parse(query)[0];
       expect(result).toEqual(expected);
     }
   });

@@ -8,21 +8,6 @@
   },
   "references": [
     {
-      "path": "../../lang-xquery"
-    },
-    {
-      "path": "../../lang-sql"
-    },
-    {
-      "path": "../../lang-cypher"
-    },
-    {
-      "path": "../dataloaders"
-    },
-    {
-      "path": "../../core"
-    },
-    {
       "path": "./tsconfig.editor.json"
     },
     {

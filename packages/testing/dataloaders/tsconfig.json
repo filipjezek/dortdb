@@ -4,9 +4,6 @@
   "include": [],
   "references": [
     {
-      "path": "../../lang-cypher"
-    },
-    {
       "path": "./tsconfig.lib.json"
     }
   ],

@@ -6,11 +6,12 @@ import { ASTOperator } from '@dortdb/core';
 describe('AST Expressions', () => {
   const db = new DortDB({
     mainLang: SQL(),
+    optimizer: { rules: [] },
   });
 
   describe('operators', () => {
     it('should preserve operator precedence', () => {
-      const result = db.parse('SELECT 1 + 2 * 3 - 5 ^ 8 ~ a.b[3]::int').value;
+      const result = db.parse('SELECT 1 + 2 * 3 - 5 ^ 8 ~ a.b[3]::int');
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -42,7 +43,7 @@ describe('AST Expressions', () => {
       expect(result).toEqual(expected);
     });
     it('should preserve associativity', () => {
-      const result = db.parse('SELECT 1 - 2 - 3').value;
+      const result = db.parse('SELECT 1 - 2 - 3');
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -62,7 +63,7 @@ describe('AST Expressions', () => {
 
   describe('function calls', () => {
     it('should parse function calls', () => {
-      const result = db.parse('SELECT foo(1, 2, 3)').value;
+      const result = db.parse('SELECT foo(1, 2, 3)');
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -77,7 +78,7 @@ describe('AST Expressions', () => {
       expect(result).toEqual(expected);
     });
     it('should parse function calls with one subquery', () => {
-      const result = db.parse('SELECT foo(SELECT 1)').value;
+      const result = db.parse('SELECT foo(SELECT 1)');
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -92,7 +93,7 @@ describe('AST Expressions', () => {
       expect(result).toEqual(expected);
     });
     it('should parse function calls with multiple subquueries', () => {
-      const result = db.parse('SELECT foo((SELECT 1), (SELECT 2))').value;
+      const result = db.parse('SELECT foo((SELECT 1), (SELECT 2))');
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -117,7 +118,7 @@ describe('AST Expressions', () => {
         for (const quantifier of ['ALL', 'ANY']) {
           const result = db.parse(
             `SELECT 1 ${operator} ${quantifier} (SELECT 2)`,
-          ).value;
+          );
           const expected = [
             new astSQL.SelectStatement(
               new astSQL.SelectSet([
@@ -143,7 +144,7 @@ describe('AST Expressions', () => {
     it('should parse if-else style expressions', () => {
       const result = db.parse(
         'SELECT CASE WHEN 1 THEN 2 WHEN 3 THEN 4 ELSE 5 END',
-      ).value;
+      );
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -169,7 +170,7 @@ describe('AST Expressions', () => {
     it('should parse switch style expressions', () => {
       const result = db.parse(
         'SELECT CASE a WHEN 2 THEN 3 WHEN 4 THEN 5 ELSE 6 END',
-      ).value;
+      );
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -203,7 +204,7 @@ describe('AST Expressions', () => {
       ['0x10', 16],
       ['0o10', 8],
     ]) {
-      const result = db.parse(`SELECT ${original}`).value;
+      const result = db.parse(`SELECT ${original}`);
       expect(
         (
           ((result[0] as astSQL.SelectStatement).selectSet as astSQL.SelectSet)
@@ -221,7 +222,7 @@ describe('AST Expressions', () => {
       ['$$hel\'"lo$$', 'hel\'"lo'],
       ['$foo$hel$$lo$foo$', 'hel$$lo'],
     ]) {
-      const result = db.parse(`SELECT ${original}`).value;
+      const result = db.parse(`SELECT ${original}`);
       expect(
         (
           ((result[0] as astSQL.SelectStatement).selectSet as astSQL.SelectSet)
@@ -236,7 +237,7 @@ describe('AST Expressions', () => {
       const result = db.parse(`
         SELECT 1, -- 2,
         -- 3,
-        4`).value;
+        4`);
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
@@ -251,7 +252,7 @@ describe('AST Expressions', () => {
     it('should ignore block comments', () => {
       const result = db.parse(`
         SELECT 1, /* 2,
-        /* 3, */ 4, */ 5`).value;
+        /* 3, */ 4, */ 5`);
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([

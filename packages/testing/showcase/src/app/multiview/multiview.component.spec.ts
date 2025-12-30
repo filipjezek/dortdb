@@ -11,7 +11,7 @@ import {
   OrderingFn,
 } from './multiview.component';
 import { MultiviewPartitionComponent } from './multiview-partition/multiview-partition.component';
-import { Component } from '@angular/core';
+import { Component, NO_ERRORS_SCHEMA } from '@angular/core';
 import { GlobalEventService } from '../services/global-event.service';
 import { GlobalEventServiceStub } from '../testing/global-event.service.stub';
 import { MouseSimulator } from '../testing/mouse-simulator';
@@ -19,32 +19,33 @@ import { promiseTimeout } from '../utils/promise-timeout';
 
 @Component({
   template: `
-    <mozaik-multiview
+    <dort-multiview
       [(ratios)]="ratios"
       [mainAxisOrder]="mainAxisOrder"
       [secondaryAxisOrder]="secondaryAxisOrder"
       [secondaryAxisGroup]="secondaryAxisGroup"
       [vertical]="vertical"
     >
-      <mozaik-multiview-partition data="1" (visible)="visible[0] = $event"
-        ><p>a</p></mozaik-multiview-partition
+      <dort-multiview-partition data="1" (visible)="visible[0] = $event"
+        ><p>a</p></dort-multiview-partition
       >
-      <mozaik-multiview-partition data="2" (visible)="visible[1] = $event"
-        ><p>b</p></mozaik-multiview-partition
+      <dort-multiview-partition data="2" (visible)="visible[1] = $event"
+        ><p>b</p></dort-multiview-partition
       >
-      <mozaik-multiview-partition data="3" (visible)="visible[2] = $event"
-        ><p>c</p></mozaik-multiview-partition
+      <dort-multiview-partition data="3" (visible)="visible[2] = $event"
+        ><p>c</p></dort-multiview-partition
       >
-    </mozaik-multiview>
+    </dort-multiview>
   `,
   styles: [
     `
-      mozaik-multiview {
+      dort-multiview {
         width: 400px;
         height: 200px;
       }
     `,
   ],
+  imports: [MultiviewComponent, MultiviewPartitionComponent],
 })
 class Container {
   vertical = false;
@@ -68,11 +69,7 @@ describe('MultiviewComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [
-        MultiviewComponent,
-        MultiviewPartitionComponent,
-        Container,
-      ],
+      imports: [MultiviewComponent, MultiviewPartitionComponent, Container],
       providers: [
         { provide: GlobalEventService, useClass: GlobalEventServiceStub },
       ],
@@ -213,14 +210,14 @@ describe('MultiviewComponent', () => {
     }));
 
     it('should group items', () => {
-      expect(getGrid()).toEqual([['a', 'c'], ['b']]);
+      expect(getGrid()).toEqual([['b'], ['a', 'c']]);
     });
     it('should order items on secondary axis by provided function', fakeAsync(() => {
       component.secondaryAxisOrder = (a, b) => b.data() - a.data();
       fixture.detectChanges();
       tick();
       fixture.detectChanges();
-      expect(getGrid()).toEqual([['c', 'a'], ['b']]);
+      expect(getGrid()).toEqual([['b'], ['c', 'a']]);
     }));
   });
 });

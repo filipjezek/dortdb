@@ -5,7 +5,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "lib": ["DOM", "ES2024"]
   },
   "include": ["src/**/*.ts"],
   "files": ["src/parser/sql.cjs"],

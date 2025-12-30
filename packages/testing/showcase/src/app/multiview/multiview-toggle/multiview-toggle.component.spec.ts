@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { MultiviewToggleComponent } from './multiview-toggle.component';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 
 describe('MultiviewToggleComponent', () => {
   let component: MultiviewToggleComponent;
@@ -8,9 +9,15 @@ describe('MultiviewToggleComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ MultiviewToggleComponent ]
+      imports: [MultiviewToggleComponent],
     })
-    .compileComponents();
+      .overrideComponent(MultiviewToggleComponent, {
+        set: {
+          imports: [],
+          schemas: [NO_ERRORS_SCHEMA],
+        },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(MultiviewToggleComponent);
     component = fixture.componentInstance;

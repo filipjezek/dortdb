@@ -46,25 +46,15 @@
   align-items: center;
   justify-content: flex-end;
   padding: 25px 20px 15px;
-
-  label {
-    margin-right: 30px;
-    font-size: 0.9em;
-
-    mozaik-input {
-      width: 50px;
-      font-size: 1.1em;
-    }
-  }
 }
 
 .row ::ng-deep {
-  mozaik-cell-generic,
-  mozaik-cell-object,
-  mozaik-cell-list,
-  mozaik-cell-link,
-  mozaik-cell-keyvalue,
-  mozaik-cell-empty {
+  dort-cell-generic,
+  dort-cell-object,
+  dort-cell-list,
+  dort-cell-link,
+  dort-cell-keyvalue,
+  dort-cell-empty {
     margin: auto 0;
     overflow-y: auto;
   }
