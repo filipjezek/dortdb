@@ -149,7 +149,7 @@ export class QueryPageComponent {
   ];
 
   optimizerOptions = new FormGroup({
-    enabled: new FormControl(false),
+    enabled: new FormControl(true),
     optimizations: new FormControl(this.ruleList),
   });
   form = new FormGroup({

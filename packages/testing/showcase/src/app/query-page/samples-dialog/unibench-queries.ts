@@ -117,7 +117,7 @@ LIMIT 3`,
 
 SELECT feedback.feedback FROM feedback
 JOIN brandProducts ON brandProducts.productAsin = feedback.productAsin
-WHERE brandProducts.brandName = :brand AND feedback.feedback[1]::number < 4 AND (
+WHERE brandProducts.brandName = 'Reebok' AND feedback.feedback[1]::number < 4 AND (
   LANG xquery
   let $now := date('2024-12-31') (: the data is static :)
   let $recent := $Invoices/Invoices/Invoice.xml[ 
