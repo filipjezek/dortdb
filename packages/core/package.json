@@ -21,7 +21,10 @@
     "dist",
     "!**/*.tsbuildinfo"
   ],
-  "repository": "filipjezek/dortdb",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filipjezek/dortdb.git"
+  },
   "author": "dortdb",
   "license": "ISC",
   "nx": {

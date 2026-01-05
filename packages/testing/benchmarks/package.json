@@ -7,7 +7,10 @@
     ".": "./dist/index.js",
     "./package.json": "./package.json"
   },
-  "repository": "filipjezek/dortdb",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filipjezek/dortdb.git"
+  },
   "private": true,
   "scripts": {
     "start": "node --expose-gc --max-old-space-size=32768 dist/index.js"

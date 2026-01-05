@@ -8,7 +8,10 @@
     "./package.json": "./package.json",
     "./ast": "./dist/ast/index.js"
   },
-  "repository": "filipjezek/dortdb",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filipjezek/dortdb.git"
+  },
   "scripts": {
     "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs && node replace-parser.mjs"
   },

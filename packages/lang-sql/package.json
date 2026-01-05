@@ -8,7 +8,10 @@
     "./ast": "./dist/ast/index.js",
     "./package.json": "./package.json"
   },
-  "repository": "filipjezek/dortdb",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filipjezek/dortdb.git"
+  },
   "scripts": {
     "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.cjs"
   },
