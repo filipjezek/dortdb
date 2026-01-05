@@ -1,7 +1,7 @@
 {
   "name": "@dortdb/lang-cypher",
   "type": "module",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Cypher parser and executor for DortDB",
   "exports": {
     ".": "./dist/index.js",
