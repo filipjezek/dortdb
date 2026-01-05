@@ -1,8 +1,9 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { Trie } from '../../../data-structures/trie.js';
-import { cloneIfPossible } from '../../../internal-fns/index.js';
+import { cloneIfPossible, cloneWithArgs } from '../../../internal-fns/index.js';
+import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
-import { CalcIntermediate } from './calculation.js';
+import { CalcIntermediate, Calculation } from './calculation.js';
 
 export class Conditional implements PlanOperator {
   public [CalcIntermediate] = true;
@@ -60,16 +61,34 @@ export class Conditional implements PlanOperator {
       (ch) => ch && !(ch instanceof ASTIdentifier),
     ) as PlanOperator[];
   }
-  clone(): Conditional {
+
+  /**
+   * Clone this FnCall
+   * @param meta provided by cloned {@link Calculation}, should be modified in-place
+   * to reflect new locations of arguments
+   */
+  clone(meta?: ArgMeta[]): Conditional {
     const res = new Conditional(
       this.lang,
-      cloneIfPossible(this.condition),
+      cloneWithArgs(this.condition, meta),
       this.whenThens.map((wt) => [
-        cloneIfPossible(wt[0]),
-        cloneIfPossible(wt[1]),
+        cloneWithArgs(wt[0], meta),
+        cloneWithArgs(wt[1], meta),
       ]),
-      cloneIfPossible(this.defaultCase),
+      cloneWithArgs(this.defaultCase, meta),
     );
+
+    for (const m of meta ?? []) {
+      for (const loc of m.originalLocations) {
+        if (loc.op === this) loc.op = res;
+        else continue;
+        if (loc.obj === this) loc.obj = res;
+        else {
+          const i = this.whenThens.indexOf(loc.obj as any);
+          if (i !== -1) loc.obj = res.whenThens[i];
+        }
+      }
+    }
     return res;
   }
 }

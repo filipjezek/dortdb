@@ -2,15 +2,9 @@ import { ASTIdentifier } from '../../../ast.js';
 import { clone, cloneIfPossible, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import {
-  ArgMeta,
-  CalculationParams,
-} from '../../../visitors/calculation-builder.js';
+import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import { IdSet, OpOrId, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { AggregateCall } from './aggregate-call.js';
-import { clone as _clone } from 'lodash-es';
-import { intermediateToCalc } from '../../../utils/calculation.js';
-import { EqualityChecker } from '../../../visitors/equality-checker.js';
 
 /**
  * This property identifies plan operators which are intermediate steps for {@link Calculation}
@@ -23,11 +17,6 @@ export const CalcIntermediate = Symbol('CalcIntermediate');
 export class Calculation implements PlanOperator {
   public parent: PlanOperator;
   public dependencies: IdSet;
-
-  protected cachedITCVisitors: {
-    calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
-    eqCheckers: Record<string, EqualityChecker>;
-  } = null;
 
   constructor(
     public lang: Lowercase<string>,
@@ -83,35 +72,45 @@ export class Calculation implements PlanOperator {
     return res;
   }
 
-  /**
-   * Called by {@link intermediateToCalc} to cache visitors for future cloning.
-   */
-  cacheITCVisitors(
-    calcBuilders: Record<string, PlanVisitor<CalculationParams>>,
-    eqCheckers: Record<string, EqualityChecker>,
-  ) {
-    this.cachedITCVisitors = { calcBuilders, eqCheckers };
-  }
-
-  /**
-   * In order to clone a calculation properly, it may need to call {@link intermediateToCalc}. In that case, it will use the
-   * cached versions of calcBuilder and eqCheckers provided.
-   */
   clone(): Calculation {
-    if (this.cachedITCVisitors) {
-      return intermediateToCalc(
-        this.original.clone(),
-        this.cachedITCVisitors.calcBuilders,
-        this.cachedITCVisitors.eqCheckers,
+    const clonedMeta: ArgMeta[] = this.argMeta.map((m) => ({
+      ...m,
+      originalLocations: m.originalLocations.map((loc) => ({ ...loc })),
+    }));
+    if (
+      this.original &&
+      (CalcIntermediate in this.original ||
+        this.original instanceof AggregateCall)
+    ) {
+      const clonedOriginal = this.original.clone(clonedMeta);
+      const aggregates = clonedMeta
+        .filter((m) => m.aggregate)
+        .map((m) => m.aggregate);
+      const args = clonedMeta.map((m) => {
+        const loc = m.originalLocations[0];
+        return loc.obj[loc.key];
+      });
+      return new Calculation(
+        this.lang,
+        this.impl,
+        args,
+        clonedMeta,
+        clonedOriginal,
+        aggregates,
+        this.literal,
       );
     }
 
+    // most likely synthetic calculation created directly
+    const clonedOriginal = this.original?.clone();
     const res = new Calculation(
       this.lang,
       this.impl,
-      this.args.map(cloneIfPossible),
-      _clone(this.argMeta),
-      this.original?.clone(),
+      this.args[0] === this.original && this.args.length === 1
+        ? [clonedOriginal]
+        : this.args.map(cloneIfPossible),
+      clonedMeta,
+      clonedOriginal,
       this.aggregates.map(clone),
       this.literal,
     );

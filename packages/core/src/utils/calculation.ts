@@ -92,6 +92,5 @@ export function intermediateToCalc(
     calcParams.aggregates,
     calcParams.literal,
   );
-  res.cacheITCVisitors(calcBuilders, eqCheckers);
   return res;
 }

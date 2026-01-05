@@ -1,6 +1,11 @@
 import { ASTIdentifier } from '../ast.js';
-import { Calculation } from '../plan/operators/index.js';
+import {
+  AggregateCall,
+  CalcIntermediate,
+  Calculation,
+} from '../plan/operators/index.js';
 import { Aliased, OpOrId, PlanOperator } from '../plan/visitor.js';
+import { ArgMeta } from '../visitors/calculation-builder.js';
 
 export function ret1<T>(a: T): T {
   return a;
@@ -36,6 +41,22 @@ export function cloneIfPossible<T extends OpOrId | Aliased<OpOrId>>(x: T): T {
   }
   if (x instanceof ASTIdentifier) {
     return x;
+  }
+  return x.clone() as T;
+}
+export function cloneWithArgs<T extends OpOrId | Aliased<OpOrId>>(
+  x: T,
+  args: ArgMeta[],
+): T {
+  if (!x) return x;
+  if (Array.isArray(x)) {
+    return [cloneWithArgs(x[0], args), x[1]] as T;
+  }
+  if (x instanceof ASTIdentifier) {
+    return x;
+  }
+  if (CalcIntermediate in x || x instanceof AggregateCall) {
+    return x.clone(args) as T;
   }
   return x.clone() as T;
 }

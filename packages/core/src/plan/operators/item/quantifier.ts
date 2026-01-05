@@ -1,6 +1,7 @@
 import { Trie } from '../../../data-structures/trie.js';
+import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import { PlanOperator, PlanVisitor } from '../../visitor.js';
-import { CalcIntermediate } from './calculation.js';
+import { CalcIntermediate, Calculation } from './calculation.js';
 
 export enum QuantifierType {
   ALL = 'all',
@@ -29,7 +30,22 @@ export class Quantifier implements PlanOperator {
   getChildren(): PlanOperator[] {
     return [this.query];
   }
-  clone(): Quantifier {
-    return new Quantifier(this.lang, this.type, this.query.clone());
+
+  /**
+   * Clone this FnCall
+   * @param meta provided by cloned {@link Calculation}, should be modified in-place
+   * to reflect new locations of arguments
+   */
+  clone(meta?: ArgMeta[]): Quantifier {
+    const res = new Quantifier(this.lang, this.type, this.query.clone());
+
+    for (const m of meta ?? []) {
+      for (const loc of m.originalLocations) {
+        if (loc.op === this) loc.op = res;
+        else continue;
+        if (loc.obj === this) loc.obj = res;
+      }
+    }
+    return res;
   }
 }

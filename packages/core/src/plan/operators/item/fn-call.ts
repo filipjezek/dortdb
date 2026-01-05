@@ -1,9 +1,10 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { isId } from '../../../internal-fns/index.js';
-import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
+import { ArgMeta } from '../../../visitors/index.js';
 import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
-import { CalcIntermediate } from './calculation.js';
+import { AggregateCall } from './aggregate-call.js';
+import { CalcIntermediate, Calculation } from './calculation.js';
 
 export interface PlanOpAsArg {
   op: PlanOperator;
@@ -60,17 +61,40 @@ export class FnCall implements PlanOperator {
     return res;
   }
 
-  clone(): FnCall {
-    return new FnCall(
+  /**
+   * Clone this FnCall
+   * @param meta provided by cloned {@link Calculation}, should be modified in-place
+   * to reflect new locations of arguments
+   */
+  clone(meta?: ArgMeta[]): FnCall {
+    const res = new FnCall(
       this.lang,
       this.args.map((arg) => {
         if ('op' in arg) {
-          return { ...arg, op: arg.op.clone() };
+          return {
+            ...arg,
+            op:
+              CalcIntermediate in arg.op || arg.op instanceof AggregateCall
+                ? arg.op.clone(meta)
+                : arg.op.clone(),
+          };
         }
         return arg;
       }),
       this.impl,
       this.pure,
     );
+    for (const m of meta ?? []) {
+      for (const loc of m.originalLocations) {
+        if (loc.op === this) loc.op = res;
+        else continue;
+        if (loc.obj === this.args) loc.obj = res.args;
+        else {
+          const i = this.args.indexOf(loc.obj as any);
+          if (i !== -1) loc.obj = res.args[i];
+        }
+      }
+    }
+    return res;
   }
 }

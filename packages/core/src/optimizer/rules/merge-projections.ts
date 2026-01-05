@@ -133,8 +133,8 @@ export class MergeProjections implements PatternRule<
       if (arg instanceof ASTIdentifier) {
         const mapped = projMap.get(arg.parts);
         if (mapped) {
-          for (const { obj, key, idAsFnArg, op } of calc.argMeta[i]
-            .originalLocations) {
+          for (const loc of calc.argMeta[i].originalLocations) {
+            const { obj, key, idAsFnArg, op } = loc;
             op.dependencies.delete(arg.parts);
             if (mapped instanceof plan.Calculation) {
               obj[key] = idAsFnArg ? { op: mapped.original } : mapped.original;

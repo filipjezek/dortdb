@@ -1,4 +1,3 @@
-import { Trie } from '../../../data-structures/trie.js';
 import { ASTIdentifier } from '../../../ast.js';
 import { AggregateFn } from '../../../extension.js';
 import {
@@ -13,6 +12,7 @@ import { GroupBy } from '../tuple/groupby.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
+import { ArgMeta } from '../../../visitors/calculation-builder.js';
 
 /**
  * Container for aggregate calls used in {@link GroupBy}
@@ -65,9 +65,20 @@ export class AggregateCall implements PlanOperator {
   getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
   }
-  clone(): AggregateCall {
+
+  /**
+   * Clone this FnCall
+   * @param meta provided by cloned {@link Calculation}, should be modified in-place
+   * to reflect new locations of arguments
+   */
+  clone(meta?: ArgMeta[]): AggregateCall {
     const args = this.args.map(cloneIfPossible);
-    const clone = new AggregateCall(this.lang, args, this.impl, this.fieldName);
+    const clone = new AggregateCall(
+      this.lang,
+      args,
+      this.impl,
+      ASTIdentifier.fromParts(this.fieldName.parts), // so that the `.aggregate` property is correctly set
+    );
     const childIndices: number[] = [];
     let origIter = this._postGSource as PlanOperator;
     while (origIter !== this.postGroupOp) {
@@ -82,6 +93,10 @@ export class AggregateCall implements PlanOperator {
       cloneIter = cloneIter.getChildren()[childIndices[i]];
     }
     clone._postGSource = cloneIter as TupleSource;
+
+    for (const m of meta ?? []) {
+      if (m.aggregate === this) m.aggregate = clone;
+    }
     return clone;
   }
 }

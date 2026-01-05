@@ -95,8 +95,9 @@ function getMetas(
   op: PlanOperator,
   fnArg?: boolean,
 ): ArgMeta[] {
-  if (a instanceof ASTIdentifier)
+  if (a instanceof ASTIdentifier) {
     return [{ originalLocations: [{ obj, key, op, idAsFnArg: fnArg }] }];
+  }
   for (const m of a.argMeta) {
     if (m.originalLocations.length === 0) {
       m.originalLocations.push(
@@ -252,8 +253,6 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     arg: plan.PlanOpAsArg | ASTIdentifier,
   ): CalculationParams | ASTIdentifier {
     if (arg instanceof ASTIdentifier) return arg;
-    if (arg.op instanceof plan.FnCall && arg.op.impl === ret1)
-      return this.processFnArg(arg.op.args[0]);
     const params = arg.op.accept(this.vmap);
     if (arg.acceptSequence && params.impl === assertMaxOne) {
       params.impl = ret1;
@@ -261,6 +260,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     return params;
   }
   visitFnCall(operator: plan.FnCall): CalculationParams {
+    operator.args.forEach((arg, i) => {
+      const fn = (arg as plan.PlanOpAsArg).op as plan.FnCall;
+      if (!(fn instanceof plan.FnCall)) return;
+      if (fn.impl === ret1) operator.args[i] = fn.args[0];
+    });
     const children = operator.args.map(this.processFnArg);
     if (operator.pure && children.every(isLit)) {
       const args = (children as CalculationParams[]).map(callImpl);
@@ -273,7 +277,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       };
     }
     const nestedMetas = children.map((ch, i) =>
-      getMetas(ch, operator.args, i, operator, ch instanceof ASTIdentifier),
+      getMetas(ch, operator.args, i, operator, true),
     );
     for (let i = 0; i < nestedMetas.length; i++) {
       if (

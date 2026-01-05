@@ -1,6 +1,7 @@
 import { Trie } from '../../../data-structures/trie.js';
+import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import { PlanOperator, PlanVisitor } from '../../visitor.js';
-import { CalcIntermediate } from './calculation.js';
+import { CalcIntermediate, Calculation } from './calculation.js';
 
 export class Literal<T = unknown> implements PlanOperator {
   public [CalcIntermediate] = true;
@@ -23,7 +24,13 @@ export class Literal<T = unknown> implements PlanOperator {
   getChildren(): PlanOperator[] {
     return [];
   }
-  clone(): Literal<T> {
+
+  /**
+   * Clone this FnCall
+   * @param meta provided by cloned {@link Calculation}, should be modified in-place
+   * to reflect new locations of arguments
+   */
+  clone(meta?: ArgMeta[]): Literal<T> {
     return new Literal(this.lang, this.value);
   }
 }
