@@ -118,7 +118,10 @@ export class DataSourcesDialogComponent {
   "personId": 26388279075595,
   "feedback": "'5.0,This feels just like a dart board you would use in a bar, minus the 1,000 holes that other drunk people put into it. Took me about 10 minutes to install. It is very heavy, so make sure you have some good studs in the wall to support it. I would suggest buying some extra darts for it, as the ones it comes with are cheaply made...had one break on me during my first game.***NOTE*** The installation was very easy, just don\\\\t listen to the instructions. It tells you to slide the paper inside to mark everything. Just put the paper on the back of the board and poke the holes, saves a lot of frustration and gives you the most accurate markings.'"
 }, /* ... */]`,
-      indices: [`db.createIndex(['feedback'], ['productAsin'], MapIndex);`],
+      indices: [
+        `db.createIndex(['feedback'], ['productAsin'], MapIndex);`,
+        `db.createIndex(['feedback'], ['personId'], MapIndex);`,
+      ],
     },
     {
       lang: 'javascript',
@@ -148,8 +151,8 @@ export class DataSourcesDialogComponent {
   "productAsin": "B002OP5TUA"
 }, /* ... */]`,
       indices: [
-        `db.createIndex(['brandProducts'], ['brandName'], MapIndex);`,
         `db.createIndex(['brandProducts'], ['productAsin'], MapIndex);`,
+        `db.createIndex(['brandProducts'], ['brandName'], MapIndex);`,
       ],
     },
     {

@@ -287,8 +287,9 @@ async function registerDataSources(db: DortDB, logger: pino.Logger) {
   db.createIndex(['products'], ['brand'], MapIndex);
   db.createIndex(['products'], ['asin'], MapIndex);
   db.createIndex(['feedback'], ['productAsin'], MapIndex);
-  db.createIndex(['brandProducts'], ['brandName'], MapIndex);
+  db.createIndex(['feedback'], ['personId'], MapIndex);
   db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
+  db.createIndex(['brandProducts'], ['brandName'], MapIndex);
   db.createIndex(['vendors'], ['id'], MapIndex);
   db.createIndex(['posts'], ['id'], MapIndex);
   db.createIndex(['orders'], ['PersonId'], MapIndex);

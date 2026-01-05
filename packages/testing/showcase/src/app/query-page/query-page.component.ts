@@ -259,8 +259,9 @@ export class QueryPageComponent {
     this.db.createIndex(['products'], ['brand'], MapIndex);
     this.db.createIndex(['products'], ['asin'], MapIndex);
     this.db.createIndex(['feedback'], ['productAsin'], MapIndex);
-    this.db.createIndex(['brandProducts'], ['brandName'], MapIndex);
+    this.db.createIndex(['feedback'], ['personId'], MapIndex);
     this.db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
+    this.db.createIndex(['brandProducts'], ['brandName'], MapIndex);
     this.db.createIndex(['vendors'], ['id'], MapIndex);
     this.db.createIndex(['posts'], ['id'], MapIndex);
     this.db.createIndex(['orders'], ['PersonId::number'], MapIndex);
