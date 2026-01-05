@@ -12,6 +12,10 @@
     "type": "git",
     "url": "git+https://github.com/filipjezek/dortdb.git"
   },
+  "files": [
+    "dist",
+    "!**/*.tsbuildinfo"
+  ],
   "scripts": {
     "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs && node replace-parser.mjs"
   },
