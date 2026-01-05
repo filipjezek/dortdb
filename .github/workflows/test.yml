@@ -1,0 +1,43 @@
+name: Publish to Pages
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Cache dependencies
+        id: cache_dependencies
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: node-modules-${{ hashFiles('package-lock.json') }}
+
+      - name: Install dependencies
+        shell: bash
+        if: steps.cache_dependencies.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Build prerequisites
+        run: npx nx run-many -t build
+
+      - name: Test
+        run: |
+          npx playwright install --with-deps
+          npx nx run-many -t test
