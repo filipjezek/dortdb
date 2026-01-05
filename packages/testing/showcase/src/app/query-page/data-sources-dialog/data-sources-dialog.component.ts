@@ -214,17 +214,18 @@ export class DataSourcesDialogComponent {
   };
 
   unibenchS = inject(UnibenchService);
+  private sanitizer = inject(DomSanitizer);
 
-  constructor(sanitizer: DomSanitizer) {
+  constructor() {
     for (const src of this.sources) {
       if (src.example) {
-        src.exampleHighlighted = sanitizer.bypassSecurityTrustHtml(
+        src.exampleHighlighted = this.sanitizer.bypassSecurityTrustHtml(
           Prism.highlight(src.example, this.languages[src.lang], src.lang),
         );
       }
       if (src.indices) {
         src.indicesHighlighted = src.indices.map((code) =>
-          sanitizer.bypassSecurityTrustHtml(
+          this.sanitizer.bypassSecurityTrustHtml(
             Prism.highlight(code, this.languages['javascript'], 'javascript'),
           ),
         );

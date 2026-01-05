@@ -13,8 +13,8 @@
   "author": "dortdb",
   "license": "ISC",
   "devDependencies": {
-    "@analogjs/vite-plugin-angular": "~2.1.2",
-    "@analogjs/vitest-angular": "~2.1.2",
+    "@analogjs/vite-plugin-angular": "~2.2.0",
+    "@analogjs/vitest-angular": "~2.2.0",
     "@angular-devkit/core": "21.0.3",
     "@angular-devkit/schematics": "21.0.3",
     "@angular-eslint/eslint-plugin": "21.0.1",
@@ -53,6 +53,10 @@
     "vitest": "^4.0.16"
   },
   "nx": {
-    "targets": {}
+    "targets": {
+      "test": {
+        "executor": "nx:noop"
+      }
+    }
   }
 }
