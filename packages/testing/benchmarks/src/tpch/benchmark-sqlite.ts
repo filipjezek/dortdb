@@ -5,6 +5,7 @@ import { promiseTimeout } from '../utils/promise-timeout.js';
 import { prepareData } from './prepare-data.js';
 import initSqlJs, { Database } from 'sql.js';
 import { LOG_DIR } from '../logger.js';
+import { PerformanceMeasure } from 'node:perf_hooks';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -30,7 +31,11 @@ export async function tpchBenchmarkSQLite(): Promise<void> {
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
       logger.info(
-        { duration: entry.duration, name: entry.name, detail: entry.detail },
+        {
+          duration: entry.duration,
+          name: entry.name,
+          detail: (entry as PerformanceMeasure).detail,
+        },
         'Performance entry',
       );
     });

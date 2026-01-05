@@ -27,13 +27,10 @@ export const unnestedAttr = Symbol('unnested');
 /**
  * Replaces eligible nested operators with {@link plan.ProjectionConcat}.
  */
-export class UnnestSubqueries
-  implements
-    PatternRule<
-      PlanTupleOperator & { source: PlanTupleOperator },
-      UnnestSubqueriesBindings
-    >
-{
+export class UnnestSubqueries implements PatternRule<
+  PlanTupleOperator & { source: PlanTupleOperator },
+  UnnestSubqueriesBindings
+> {
   operator = [
     plan.Projection,
     plan.Selection,
@@ -101,7 +98,9 @@ export class UnnestSubqueries
         projConcat.parent = node;
         node.source = projConcat;
         projConcat.validateSingleValue = true;
-        node.addToSchema(newAttr);
+        if (!(node instanceof plan.Projection)) {
+          node.addToSchema(newAttr);
+        }
       }
     }
     tdeps.clearCache();
@@ -150,9 +149,13 @@ export class UnnestSubqueries
       case plan.OrderBy:
         return this.isGuaranteedValue((node as any).source);
       case plan.Union:
-      case plan.CartesianProduct:
         return (
           this.isGuaranteedValue((node as any).left) ||
+          this.isGuaranteedValue((node as any).right)
+        );
+      case plan.CartesianProduct:
+        return (
+          this.isGuaranteedValue((node as any).left) &&
           this.isGuaranteedValue((node as any).right)
         );
       case plan.ProjectionConcat:
@@ -175,7 +178,10 @@ export class UnnestSubqueries
       case plan.NullSource:
         return true;
       case plan.GroupBy:
-        return !(node as plan.GroupBy).keys.length;
+        return (
+          !(node as plan.GroupBy).keys.length ||
+          this.isGuaranteedValue((node as plan.GroupBy).source)
+        );
       default:
         return false;
     }

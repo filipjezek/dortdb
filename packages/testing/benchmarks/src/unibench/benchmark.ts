@@ -9,7 +9,11 @@ import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { prepareData } from './prepare-data.js';
 import { logger as parentLogger } from '../logger.js';
 import pino from 'pino';
-import { performance, PerformanceObserver } from 'node:perf_hooks';
+import {
+  performance,
+  PerformanceMeasure,
+  PerformanceObserver,
+} from 'node:perf_hooks';
 import { Attr, Document, Element, Node } from 'slimdom';
 import { createTreeWalker } from 'tasty-treewalker/src/TreeWalker-polyfill.js';
 import { promiseTimeout } from '../utils/promise-timeout.js';
@@ -171,7 +175,11 @@ export async function unibenchBenchmark(): Promise<void> {
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
       logger.info(
-        { duration: entry.duration, name: entry.name, detail: entry.detail },
+        {
+          duration: entry.duration,
+          name: entry.name,
+          detail: (entry as PerformanceMeasure).detail,
+        },
         'Performance entry',
       );
     });

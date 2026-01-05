@@ -21,9 +21,10 @@ export interface JoinIndicesBindings {
  * Finds join conditions that match an existing index and replaces them with {@link plan.ProjectionConcat} and {@link plan.Selection}
  * operators, that could be further optimized by the {@link IndexScans} rule.
  */
-export class JoinIndices
-  implements PatternRule<plan.Join, JoinIndicesBindings>
-{
+export class JoinIndices implements PatternRule<
+  plan.Join,
+  JoinIndicesBindings
+> {
   public operator = plan.Join;
   protected tdepsVmap: Record<string, TransitiveDependencies>;
   protected renamerVmap: Record<string, AttributeRenamer>;
@@ -46,10 +47,10 @@ export class JoinIndices
         continue;
       const tRes = this.traverseSide(node[side]);
       if (!tRes) continue;
-      const candidates = this.getExprCandidates(
-        node.conditions,
-        node[side].schemaSet,
-      );
+      const validAttrs = tRes.projections.length
+        ? this.findValidAttrs(tRes.projections)
+        : node[side].schemaSet;
+      const candidates = this.getExprCandidates(node.conditions, validAttrs);
       if (!candidates.length) continue;
       const indices =
         this.db.indices.get(
@@ -109,6 +110,21 @@ export class JoinIndices
       }
     }
     return renameMap;
+  }
+
+  /**
+   * Filters out computed attributes from projections.
+   */
+  protected findValidAttrs(projections: plan.Projection[]): IdSet {
+    let validAttrs = projections.at(-1).source.schemaSet.clone();
+    for (let i = projections.length - 1; i >= 0; i--) {
+      validAttrs = new Trie(
+        [...projections[i].renames.entries()]
+          .filter(([k, _]) => validAttrs.has(k))
+          .map(([_, v]) => v),
+      );
+    }
+    return validAttrs;
   }
 
   /**

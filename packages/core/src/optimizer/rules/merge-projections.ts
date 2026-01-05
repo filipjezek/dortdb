@@ -25,9 +25,10 @@ export type ProjMap = Trie<
 /**
  * Merge multiple projections into a single projection.
  */
-export class MergeProjections
-  implements PatternRule<plan.Projection, MergeProjectionsBindings>
-{
+export class MergeProjections implements PatternRule<
+  plan.Projection,
+  MergeProjectionsBindings
+> {
   operator = plan.Projection;
   protected tdepsVmap: Record<string, TransitiveDependencies>;
   protected calcBuilderVmap: Record<string, PlanVisitor<CalculationParams>>;
@@ -132,11 +133,14 @@ export class MergeProjections
       if (arg instanceof ASTIdentifier) {
         const mapped = projMap.get(arg.parts);
         if (mapped) {
-          for (const { obj, key, idAsFnArg } of calc.argMeta[i]
+          for (const { obj, key, idAsFnArg, op } of calc.argMeta[i]
             .originalLocations) {
+            op.dependencies.delete(arg.parts);
             if (mapped instanceof plan.Calculation) {
               obj[key] = idAsFnArg ? { op: mapped.original } : mapped.original;
+              mapped.original.parent = op;
             } else {
+              op.dependencies.add(mapped.parts);
               obj[key] = mapped;
             }
           }
@@ -151,6 +155,9 @@ export class MergeProjections
     );
   }
 
+  /**
+   * @returns [canMerge, attributes of b that are not filtered out by a]
+   */
   protected canMergeIntoOne(
     a: plan.Projection,
     b: plan.Projection,

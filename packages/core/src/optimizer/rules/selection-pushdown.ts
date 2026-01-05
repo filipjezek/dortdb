@@ -31,9 +31,10 @@ export interface PushdownSelectionsBindings {
  * Pushes down selection predicates through the query plan, so that
  * they can be applied as early as possible.
  */
-export class PushdownSelections
-  implements PatternRule<Selection, PushdownSelectionsBindings>
-{
+export class PushdownSelections implements PatternRule<
+  Selection,
+  PushdownSelectionsBindings
+> {
   public operator = Selection;
   public alwaysSwap: {
     new (...args: any[]): PlanTupleOperator & { source: PlanTupleOperator };
@@ -347,9 +348,7 @@ export class PushdownSelections
     if (areRenamed === RenamedDepsResult.modified) return false;
     if (areRenamed === RenamedDepsResult.unchanged) return true;
 
-    if (
-      this.renameCheckerVmap[s.condition.lang].canRename(s.condition, p.renames)
-    ) {
+    if (this.renameCheckerVmap[s.condition.lang].canRename(s, p.renames)) {
       if (toRenameContainer) {
         toRenameContainer.add(s);
       }

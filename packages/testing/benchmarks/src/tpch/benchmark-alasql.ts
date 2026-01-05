@@ -7,6 +7,7 @@ import alasql from 'alasql';
 import { LOG_DIR } from '../logger.js';
 import { substr } from '@dortdb/core/fns';
 import { datetime } from '@dortdb/core';
+import { PerformanceMeasure } from 'node:perf_hooks';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -43,7 +44,11 @@ export async function tpchBenchmarkAlaSQL(): Promise<void> {
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
       logger.info(
-        { duration: entry.duration, name: entry.name, detail: entry.detail },
+        {
+          duration: entry.duration,
+          name: entry.name,
+          detail: (entry as PerformanceMeasure).detail,
+        },
         'Performance entry',
       );
     });

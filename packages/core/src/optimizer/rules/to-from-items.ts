@@ -27,7 +27,7 @@ export const mergeFromToItems: PatternRule<MapFromItem> = {
   operator: MapFromItem,
   match: (node) => {
     return node.source.constructor === MapToItem &&
-      (node.source as MapToItem).key.parts[0] !== allAttrs
+      (node.source as MapToItem).key.parts.at(-1) !== allAttrs
       ? { bindings: {} }
       : null;
   },

@@ -1,7 +1,12 @@
 import { assertMaxOne, ret1, ret2 } from '../internal-fns/index.js';
 import { ASTIdentifier } from '../ast.js';
 import * as plan from '../plan/operators/index.js';
-import { OpOrId, PlanTupleOperator, PlanVisitor } from '../plan/visitor.js';
+import {
+  OpOrId,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../plan/visitor.js';
 import { resolveArgs } from '../utils/invoke.js';
 import { DortDBAsFriend } from '../db.js';
 import { or } from '../operators/logical.js';
@@ -24,6 +29,8 @@ export interface ArgMeta {
     obj: any;
     /** The key in the original object. */
     key: string | number;
+    /** The containing operator. */
+    op: PlanOperator;
     /**
      * This argument is an identifier and its location is in an {@link plan.FnCall}.
      * This is important, because if the argument is to be later replaced with a {@link PlanOperator},
@@ -85,14 +92,15 @@ function getMetas(
   a: CalculationParams | ASTIdentifier,
   obj: any,
   key: string | number,
+  op: PlanOperator,
   fnArg?: boolean,
 ): ArgMeta[] {
   if (a instanceof ASTIdentifier)
-    return [{ originalLocations: [{ obj, key, idAsFnArg: fnArg }] }];
+    return [{ originalLocations: [{ obj, key, op, idAsFnArg: fnArg }] }];
   for (const m of a.argMeta) {
     if (m.originalLocations.length === 0) {
       m.originalLocations.push(
-        'op' in obj[key] ? { obj: obj[key], key: 'op' } : { obj, key },
+        'op' in obj[key] ? { obj: obj[key], key: 'op', op } : { obj, key, op },
       );
     }
   }
@@ -111,8 +119,9 @@ function getWhenThenAggrs(
 function getWhenThenMetas(
   a: [CalculationParams | ASTIdentifier, CalculationParams | ASTIdentifier],
   obj: any,
+  op: plan.Conditional,
 ) {
-  return [getMetas(a[0], obj, 0), getMetas(a[1], obj, 1)];
+  return [getMetas(a[0], obj, 0, op), getMetas(a[1], obj, 1, op)];
 }
 function* cartesian(iters: Iterable<unknown>[]): Iterable<unknown[]> {
   if (iters.length === 0) {
@@ -197,8 +206,13 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
-  protected processItem(item: OpOrId) {
-    return item instanceof ASTIdentifier ? item : item.accept(this.vmap);
+  protected processItem(item: OpOrId): CalculationParams | ASTIdentifier {
+    if (item instanceof ASTIdentifier) return item;
+    if (item instanceof plan.FnCall && item.impl === ret1)
+      return this.processItem(
+        item.args[0] instanceof ASTIdentifier ? item.args[0] : item.args[0].op,
+      );
+    return item.accept(this.vmap);
   }
   protected processQuantifiedFn(
     operator: plan.FnCall,
@@ -234,8 +248,12 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       return false;
     };
   }
-  protected processFnArg(arg: plan.PlanOpAsArg | ASTIdentifier) {
+  protected processFnArg(
+    arg: plan.PlanOpAsArg | ASTIdentifier,
+  ): CalculationParams | ASTIdentifier {
     if (arg instanceof ASTIdentifier) return arg;
+    if (arg.op instanceof plan.FnCall && arg.op.impl === ret1)
+      return this.processFnArg(arg.op.args[0]);
     const params = arg.op.accept(this.vmap);
     if (arg.acceptSequence && params.impl === assertMaxOne) {
       params.impl = ret1;
@@ -255,7 +273,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       };
     }
     const nestedMetas = children.map((ch, i) =>
-      getMetas(ch, operator.args, i, ch instanceof ASTIdentifier),
+      getMetas(ch, operator.args, i, operator, ch instanceof ASTIdentifier),
     );
     for (let i = 0; i < nestedMetas.length; i++) {
       if (
@@ -320,12 +338,12 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       | plan.AggregateCall[][]
     )[] = whenthens.map(getWhenThenAggrs);
     const metas = whenthens
-      .map((wt, i) => getWhenThenMetas(wt, operator.whenThens[i]))
+      .map((wt, i) => getWhenThenMetas(wt, operator.whenThens[i], operator))
       .flat(2);
     if (defaultCase) {
       args.push(getArgs(defaultCase));
       aggrs.push(getAggrs(defaultCase));
-      metas.push(...getMetas(defaultCase, operator, 'defaultCase'));
+      metas.push(...getMetas(defaultCase, operator, 'defaultCase', operator));
     }
     for (const m of metas) {
       if (m) {
@@ -335,7 +353,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     if (cond) {
       args.unshift(getArgs(cond));
       aggrs.push(getAggrs(cond));
-      metas.unshift(...getMetas(cond, operator, 'condition'));
+      metas.unshift(...getMetas(cond, operator, 'condition', operator));
     }
 
     if ((cond as CalculationParams)?.literal) {

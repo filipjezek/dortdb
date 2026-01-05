@@ -11,7 +11,11 @@ export function idToCalculation(id: ASTIdentifier, lang: Lowercase<string>) {
     lang,
     ret1,
     [id],
-    [{ originalLocations: [{ obj: fn.args, key: 0, idAsFnArg: true }] }],
+    [
+      {
+        originalLocations: [{ obj: fn.args, key: 0, idAsFnArg: true, op: fn }],
+      },
+    ],
     fn,
     [],
     false,
@@ -79,7 +83,7 @@ export function intermediateToCalc(
 ): Calculation {
   let calcParams = op.accept(calcBuilders);
   calcParams = simplifyCalcParams(calcParams, eqCheckers, op.lang);
-  return new Calculation(
+  const res = new Calculation(
     op.lang,
     calcParams.impl,
     calcParams.args,
@@ -88,4 +92,6 @@ export function intermediateToCalc(
     calcParams.aggregates,
     calcParams.literal,
   );
+  res.cacheITCVisitors(calcBuilders, eqCheckers);
+  return res;
 }

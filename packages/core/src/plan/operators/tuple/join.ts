@@ -50,11 +50,13 @@ export class CartesianProduct extends PlanTupleOperator {
     return [this.left, this.right];
   }
   clone(): CartesianProduct {
-    return new CartesianProduct(
+    const res = new CartesianProduct(
       this.lang,
       this.left.clone(),
       this.right.clone(),
     );
+    res.validateSingleValue = this.validateSingleValue;
+    return res;
   }
 }
 
@@ -98,11 +100,14 @@ export class Join extends CartesianProduct {
     return [this.left, this.right, ...this.conditions];
   }
   override clone(): Join {
-    return new Join(
+    const res = new Join(
       this.lang,
       this.left.clone(),
       this.right.clone(),
       this.conditions.map(clone),
     );
+    res.leftOuter = this.leftOuter;
+    res.rightOuter = this.rightOuter;
+    return res;
   }
 }

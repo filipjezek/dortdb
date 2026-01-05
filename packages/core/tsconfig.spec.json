@@ -23,7 +23,16 @@
     "src/**/*.spec.js",
     "src/**/*.test.jsx",
     "src/**/*.spec.jsx",
-    "src/**/*.d.ts"
+    "src/**/*.d.ts",
+    "src/testing/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../../tools/vitest"
+    },
+    {
+      "path": "./tsconfig.lib.json"
+    }
   ],
   "files": ["src/test-setup.ts"]
 }
