@@ -16,7 +16,8 @@
   "license": "ISC",
   "nx": {
     "targets": {
-      "build": {}
+      "build": {},
+      "test": {}
     },
     "name": "@dortdb/benchmarks"
   },

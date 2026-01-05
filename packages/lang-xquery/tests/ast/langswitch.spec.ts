@@ -5,6 +5,7 @@ import * as astXQuery from '../../src/ast/index.js';
 describe('AST langswitch', () => {
   const db = new DortDB({
     mainLang: XQuery(),
+    optimizer: { rules: [] },
   });
 
   it('should parse langswitch with mutiple scope exits', () => {
@@ -30,7 +31,7 @@ describe('AST langswitch', () => {
       '($z + (lang xquery $c + $d)) + $y',
       '($z + (lang xquery ($c + $d))) + $y',
     ]) {
-      const result = db.parse(query).value[0];
+      const result = db.parse(query)[0];
       expect(result).toEqual(expected);
     }
   });

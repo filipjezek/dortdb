@@ -6,9 +6,10 @@ import { ASTOperator } from '@dortdb/core';
 describe('AST Expressions', () => {
   const db = new DortDB({
     mainLang: XQuery(),
+    optimizer: { rules: [] },
   });
   const getExpr = (query: string) =>
-    (db.parse(query).value[0] as astXQuery.Module).body[0];
+    (db.parse(query)[0] as astXQuery.Module).body[0];
 
   describe('operators', () => {
     it('should preserve operator precedence', () => {
@@ -25,7 +26,7 @@ describe('AST Expressions', () => {
                 new astXQuery.ASTNumberLiteral('3'),
               ]),
             ]),
-            new ASTOperator('xquery', new astXQuery.XQueryIdentifier('div'), [
+            new ASTOperator('xquery', new astXQuery.XQueryIdentifier('/'), [
               new astXQuery.ASTNumberLiteral('5'),
               new astXQuery.CastExpr(
                 new astXQuery.ASTNumberLiteral('8'),

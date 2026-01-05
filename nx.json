@@ -35,7 +35,10 @@
     },
     "test": {
       "executor": "@nx/vitest:test",
-      "dependsOn": ["^build", "jison"]
+      "dependsOn": ["^build", "jison"],
+      "options": {
+        "reporters": ["default"]
+      }
     },
     "lint": {
       "cache": true,

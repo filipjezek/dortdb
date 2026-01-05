@@ -134,6 +134,12 @@ describe('AST Expressions', () => {
               ]),
             ),
           ];
+          (
+            (
+              (expected[0].selectSet as astSQL.SelectSet)
+                .items[0] as ASTOperator
+            ).operands[1] as astSQL.ASTQuantifier
+          ).parentOp = operator;
           expect(result).toEqual(expected);
         }
       }

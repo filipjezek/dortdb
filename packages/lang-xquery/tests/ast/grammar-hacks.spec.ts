@@ -5,9 +5,10 @@ import * as astXQuery from '../../src/ast/index.js';
 describe('Grammar hacks', () => {
   const db = new DortDB({
     mainLang: XQuery(),
+    optimizer: { rules: [] },
   });
   const getExpr = (query: string) =>
-    (db.parse(query).value[0] as astXQuery.Module).body[0];
+    (db.parse(query)[0] as astXQuery.Module).body[0];
   // see https://www.w3.org/TR/2014/REC-xquery-30-20140408/#extra-grammatical-constraints - the grammar from the spec itself is hacky
 
   it('should parse lone slash path', () => {

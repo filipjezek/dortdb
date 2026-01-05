@@ -149,8 +149,16 @@ DEC       [0-9]
 <blockc>.|\n       this.yy.comment += yytext;
 <blockc><<EOF>> %{ this.popState(); return new Error('Unexpected end of file'); %}
 
-([+*/<>=-])+[*/<>=] return this.yy.AdditionalTokens.USEROP;
-[+*/<>=~!@#%^&|`?-]*[~!@#%^&|`?][+*/<>=~!@#%^&|`?-]* return this.yy.AdditionalTokens.USEROP;
+([+*/<>=-])+[*/<>=] %{
+  if (yytext === '<>') return this.yy.AdditionalTokens.NEQ;
+  return this.yy.AdditionalTokens.USEROP;
+%}
+[+*/<>=~!@#%^&|`?-]*[~!@#%^&|`?][+*/<>=~!@#%^&|`?-]* %{
+  if (yytext === '!=') return this.yy.AdditionalTokens.NEQ;
+  if (yytext === '%') return this.yy.AdditionalTokens.MOD;
+  if (yytext === '^') return this.yy.AdditionalTokens.EXP;
+  return this.yy.AdditionalTokens.USEROP;
+%}
 "," 			return this.yy.AdditionalTokens.COMMA;
 ".*"      return this.yy.AdditionalTokens.DOTSTAR;
 "."				return this.yy.AdditionalTokens.DOT;
@@ -167,10 +175,7 @@ DEC       [0-9]
 "+"	  		return this.yy.AdditionalTokens.PLUS;
 "-" 			return this.yy.AdditionalTokens.MINUS;
 "/" 			return this.yy.AdditionalTokens.DIV;
-"%" 			return this.yy.AdditionalTokens.MOD;
-"^"				return this.yy.AdditionalTokens.EXP;
 "=" 			return this.yy.AdditionalTokens.EQ;
-"!="|"<>" return this.yy.AdditionalTokens.NEQ;
 ">="      return this.yy.AdditionalTokens.GTE;
 "<="      return this.yy.AdditionalTokens.LTE;
 ">"       return this.yy.AdditionalTokens.GT;

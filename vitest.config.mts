@@ -9,5 +9,6 @@ export default defineConfig({
       reportsDirectory: join(__dirname, 'coverage'),
       provider: 'v8' as const,
     },
+    passWithNoTests: true,
   },
 });

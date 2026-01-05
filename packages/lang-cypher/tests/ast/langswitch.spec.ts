@@ -5,6 +5,7 @@ import * as astCypher from '../../src/ast/index.js';
 describe('AST langswitch', () => {
   const db = new DortDB({
     mainLang: Cypher(),
+    optimizer: { rules: [] },
   });
 
   it('should parse langswitch with mutiple scope exits', () => {
@@ -46,7 +47,7 @@ describe('AST langswitch', () => {
       'from g return (z + (lang cypher from g return c + d)) + y',
       'from g return (z + (lang cypher from g return (c + d))) + y',
     ]) {
-      const result = db.parse(query).value[0];
+      const result = db.parse(query)[0];
       expect(result).toEqual(expected);
     }
   });

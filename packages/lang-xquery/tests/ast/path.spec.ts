@@ -5,6 +5,7 @@ import { ASTNode, ASTOperator, DortDB } from '@dortdb/core';
 describe('AST paths', () => {
   const db = new DortDB({
     mainLang: XQuery(),
+    optimizer: { rules: [] },
   });
   const wrapChild = (
     name: astXQuery.XQueryIdentifier | '*',
@@ -19,7 +20,7 @@ describe('AST paths', () => {
   };
   const wrapPath = (lit: ASTNode) => new astXQuery.PathExpr([lit]);
   const getExpr = (query: string) =>
-    (db.parse(query).value[0] as astXQuery.Module).body[0];
+    (db.parse(query)[0] as astXQuery.Module).body[0];
 
   it('should parse paths', () => {
     const result = getExpr('$x/y/z');
@@ -158,7 +159,7 @@ describe('AST paths', () => {
     const result = getExpr('$x/./y');
     const expected = new astXQuery.PathExpr([
       new astXQuery.ASTVariable(new astXQuery.XQueryIdentifier('x')),
-      DOT,
+      new astXQuery.ASTVariable(DOT as astXQuery.XQueryIdentifier),
       wrapChild(new astXQuery.XQueryIdentifier('y')),
     ]);
     expect(result).toEqual(expected);

@@ -36,7 +36,6 @@
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.10.16",
     "@swc/helpers": "~0.5.11",
-    "@types/jest": "^29.5.14",
     "@types/node": "^24.0.10",
     "@vitest/browser": "^4.0.16",
     "@vitest/browser-playwright": "^4.0.16",
@@ -53,5 +52,7 @@
     "vite": "^7.3.0",
     "vitest": "^4.0.16"
   },
-  "nx": {}
+  "nx": {
+    "targets": {}
+  }
 }

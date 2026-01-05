@@ -5,9 +5,10 @@ import { DortDB } from '@dortdb/core';
 describe('AST constructors', () => {
   const db = new DortDB({
     mainLang: XQuery(),
+    optimizer: { rules: [] },
   });
   const getExpr = (str: string) =>
-    (db.parse(str).value[0] as astXQuery.Module).body[0];
+    (db.parse(str)[0] as astXQuery.Module).body[0];
 
   it('should parse self closing tags', () => {
     const result = getExpr('<foo/>');
