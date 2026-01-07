@@ -15,9 +15,10 @@ import { retI0 } from '../internal-fns/index.js';
 /**
  * Verifies whether renaming attributes in the plan is safe.
  */
-export class AttributeRenameChecker
-  implements PlanVisitor<boolean, plan.RenameMap>
-{
+export class AttributeRenameChecker implements PlanVisitor<
+  boolean,
+  plan.RenameMap
+> {
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
   constructor(
@@ -321,6 +322,25 @@ export class AttributeRenameChecker
         operator.source.schemaSet,
         renamesInv,
       ) && operator.source.accept(this.vmap, renamesInv)
+    );
+  }
+  visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+    renamesInv: plan.RenameMap,
+  ): boolean {
+    return (
+      this.checkHorizontal(
+        operator.mappingFwd,
+        operator.source.schemaSet,
+        renamesInv,
+      ) &&
+      this.checkHorizontal(
+        operator.mappingRev,
+        operator.source.schemaSet,
+        renamesInv,
+      ) &&
+      operator.source.accept(this.vmap, renamesInv) &&
+      operator.target.accept(this.vmap, renamesInv)
     );
   }
 }

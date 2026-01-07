@@ -37,7 +37,7 @@
   "dependencies": {
     "@swc/helpers": "^0.5.15",
     "date-fns": "^4.1.0",
-    "lodash-es": "^4.17.21",
+    "es-toolkit": "^1.43.0",
     "mnemonist": "^0.40.3"
   }
 }

@@ -8,17 +8,63 @@ import { ExecutionContext } from '../execution-context.js';
 import { DortDBAsFriend } from '../db.js';
 import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 import { VariableMapperCtx } from './variable-mapper.js';
-import { toArray } from '../internal-fns/index.js';
+import { pickArr, toArray } from '../internal-fns/index.js';
 import { Trie } from '../data-structures/trie.js';
 import { SerializeFn } from '../lang-manager.js';
 import { Queue } from 'mnemonist';
+import { LinkedListNode } from '../data-structures/index.js';
+import { difference } from '../utils/trie.js';
+
+/**
+ * Convert a linked list of arrays into an array of arrays, collecting values for specified keys.
+ * @param row Linked list containing the current values
+ * @param keys keys to extract
+ * @param initialKeys keys contained only in the initial row (will not be wrapped in arrays)
+ * @returns Array of arrays representing the collected values for each key
+ */
+export function llToArray(
+  row: LinkedListNode<unknown[]>,
+  keys: number[],
+): unknown[][];
+export function llToArray(
+  row: LinkedListNode<unknown[]>,
+  keys: number[],
+  initialKeys: number[],
+): (unknown[] | unknown)[];
+export function llToArray(
+  row: LinkedListNode<unknown[]>,
+  keys: number[],
+  initialKeys?: number[],
+): (unknown[] | unknown)[] {
+  const result: (unknown[] | unknown)[] = [];
+  for (const key of keys) {
+    result[key] = [];
+  }
+  while (row.next) {
+    for (const key of keys) {
+      (result[key] as unknown[]).push(row.value[key]);
+    }
+    row = row.next;
+  }
+  if (initialKeys) {
+    for (const key of initialKeys) {
+      result[key] = row.value[key];
+    }
+  }
+  for (const key of keys) {
+    (result[key] as unknown[]).push(row.value[key]);
+    (result[key] as unknown[]).reverse();
+  }
+  return result;
+}
 
 /**
  * Execute a query plan. Languages have to provide their own implementation of {@link generateTuplesFromValues}
  */
-export abstract class Executor
-  implements PlanVisitor<Iterable<unknown>, ExecutionContext>
-{
+export abstract class Executor implements PlanVisitor<
+  Iterable<unknown>,
+  ExecutionContext
+> {
   protected serialize: SerializeFn;
 
   constructor(
@@ -82,43 +128,51 @@ export abstract class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     if (operator.min > operator.max || operator.max === 0) return;
-    const queue = new Queue<unknown[][]>();
+    const queue = new Queue<LinkedListNode<unknown[]>>();
     const items: unknown[][] = [];
     const keys = ctx.getKeys(operator);
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
     >) {
       items.push(item);
-      const toQueue = [];
+      const toQueue = new LinkedListNode<unknown[]>([]);
       for (const key of keys) {
-        toQueue[key] = [item[key]];
+        toQueue.value[key] = item[key];
       }
       if (operator.min <= 1) {
-        yield ctx.setTuple(toQueue, keys);
+        yield ctx.setTuple(llToArray(toQueue, keys), keys);
       }
       if (operator.max > 1) {
         queue.enqueue(toQueue);
       }
     }
 
+    let level = 1;
     while (queue.size > 0) {
-      const item = queue.dequeue();
-      for (const next of items) {
-        for (const key of keys) {
-          ctx.variableValues[key] = [item[key], next[key]];
-        }
-        if (!this.visitCalculation(operator.condition, ctx)[0]) continue;
+      level++;
+      const levelSize = queue.size;
+      for (let i = 0; i < levelSize; i++) {
+        const item = queue.dequeue();
+        for (const next of items) {
+          const arrayed = llToArray(item, keys);
+          for (const key of keys) {
+            ctx.variableValues[key] = [arrayed[key], next[key]];
+          }
+          if (!this.visitCalculation(operator.condition, ctx)[0]) continue;
 
-        const result: unknown[][] = [];
-        for (const key of keys) {
-          result[key] = item[key].concat([next[key]]);
-        }
-        const size = result[keys[0]].length;
-        if (size >= operator.min) {
-          yield ctx.setTuple(result, keys);
-        }
-        if (size < operator.max) {
-          queue.enqueue(result);
+          if (level >= operator.min) {
+            for (const key of keys) {
+              arrayed[key].push(next[key]);
+            }
+            yield ctx.setTuple(arrayed, keys);
+          }
+          if (level < operator.max) {
+            const result = new LinkedListNode<unknown[]>([], item);
+            for (const key of keys) {
+              result.value[key] = next[key];
+            }
+            queue.enqueue(result);
+          }
         }
       }
     }
@@ -128,43 +182,314 @@ export abstract class Executor
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     if (operator.min > operator.max || operator.max === 0) return;
-    const queue = new Queue<unknown[][]>();
+    const queue = new Queue<LinkedListNode<unknown[]>>();
     const keys = ctx.getKeys(operator);
     const renameMappedKeys = ctx.getRenames(operator, operator.mapping);
+
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
     >) {
-      const toQueue = [];
+      const toQueue = new LinkedListNode<unknown[]>([]);
       for (const key of keys) {
-        toQueue[key] = [item[key]];
+        toQueue.value[key] = item[key];
       }
       if (operator.min <= 1) {
-        yield ctx.setTuple(toQueue, keys);
+        yield ctx.setTuple(llToArray(toQueue, keys), keys);
       }
       if (operator.max > 1) {
         queue.enqueue(toQueue);
       }
     }
 
+    let level = 1;
     while (queue.size > 0) {
-      const item = queue.dequeue();
-      for (const key of keys) {
-        ctx.variableValues[key] = item[key];
+      level++;
+      const levelSize = queue.size;
+      for (let i = 0; i < levelSize; i++) {
+        const item = queue.dequeue();
+        ctx.setTuple(llToArray(item, keys), keys);
+        for (const next of operator.mapping.accept(this.vmap, ctx) as Iterable<
+          unknown[]
+        >) {
+          if (level >= operator.min) {
+            const arrayed = llToArray(item, keys);
+            for (const key of keys) {
+              arrayed[key].push(next[renameMappedKeys[key]]);
+            }
+            yield ctx.setTuple(arrayed, keys);
+          }
+          if (level < operator.max) {
+            const result = new LinkedListNode<unknown[]>([], item);
+            for (let i = 0; i < keys.length; i++) {
+              result.value[keys[i]] = next[renameMappedKeys[i]];
+            }
+            queue.enqueue(result);
+          }
+        }
       }
-      for (const next of operator.mapping.accept(this.vmap, ctx) as Iterable<
-        unknown[]
-      >) {
-        const result: unknown[][] = [];
+    }
+  }
+
+  protected *expandBidiFrontier(
+    frontier: Queue<LinkedListNode<unknown[]>>,
+    otherFrontier: Trie<unknown, LinkedListNode<unknown[]>[]>,
+    visitedItems: Trie<unknown, LinkedListNode<unknown[]>[]>,
+    pathSize: number,
+    getNextItems: (ctx: ExecutionContext) => Iterable<unknown[]>,
+    ctx: ExecutionContext,
+    keys: number[],
+    renameMappedKeys: number[],
+    mappedKeys: number[],
+    min: number,
+    max: number,
+    initialKeys: number[],
+    allKeys: number[],
+    isForward: boolean,
+  ) {
+    const levelSize = frontier.size;
+
+    for (let i = 0; i < levelSize; i++) {
+      const item = frontier.dequeue();
+      const arrayed = llToArray(item, keys, initialKeys);
+      ctx.setTuple(arrayed, allKeys);
+      for (const next of getNextItems(ctx)) {
+        const result = new LinkedListNode<unknown[]>([], item);
         for (let i = 0; i < keys.length; i++) {
-          result[keys[i]] = item[keys[i]].concat([next[renameMappedKeys[i]]]);
+          result.value[renameMappedKeys[i]] = next[mappedKeys[i]];
         }
-        const size = result[keys[0]].length;
-        if (size >= operator.min) {
-          yield ctx.setTuple(result, keys);
+
+        const joinVals = pickArr(result.value, keys);
+        if (pathSize >= min) {
+          const otherPaths = otherFrontier.get(joinVals);
+          if (otherPaths) {
+            yield* this.joinBidiPaths(
+              isForward ? [result] : otherPaths,
+              isForward ? otherPaths : [result],
+              ctx,
+              keys,
+              initialKeys,
+            );
+          }
         }
-        if (size < operator.max) {
-          queue.enqueue(result);
+        if (pathSize <= max) {
+          frontier.enqueue(result);
+          visitedItems.get(joinVals, []).push(result);
         }
+      }
+    }
+  }
+
+  protected *joinBidiPaths(
+    fwdPaths: LinkedListNode<unknown[]>[],
+    revPaths: LinkedListNode<unknown[]>[],
+    ctx: ExecutionContext,
+    keys: number[],
+    initialKeys: number[],
+  ) {
+    const allKeys = keys.concat(initialKeys);
+    for (const fwdPath of fwdPaths) {
+      const fwdArrayed = llToArray(fwdPath, keys, initialKeys);
+      for (const key of keys) {
+        (fwdArrayed[key] as unknown[]).pop();
+      }
+      for (let revPath of revPaths) {
+        while (revPath.next) {
+          for (const key of keys) {
+            (fwdArrayed[key] as unknown[]).push(revPath.value[key]);
+          }
+          revPath = revPath.next;
+        }
+        for (const key of keys) {
+          (fwdArrayed[key] as unknown[]).push(revPath.value[key]);
+        }
+        for (const key of initialKeys) {
+          fwdArrayed[key] ??= revPath.value[key];
+        }
+        yield ctx.setTuple(fwdArrayed, allKeys);
+      }
+    }
+  }
+
+  protected getBidiKeys(
+    operator: plan.BidirectionalRecursion,
+    ctx: ExecutionContext,
+  ) {
+    const translations = ctx.translations.get(operator);
+    const initialKeys = Array.from(
+      difference(operator.schemaSet, operator.mappingFwd.schemaSet),
+    ).map((id) => translations.get(id).parts[0] as number);
+    const keys = operator.mappingFwd.schema.map(
+      (x) => translations.get(x.parts).parts[0] as number,
+    );
+    const allKeys = ctx.getKeys(operator);
+
+    const fwdRenames = ctx.getRenames(operator.mappingFwd, operator);
+    const revRenames = ctx.getRenames(operator.mappingRev, operator);
+    const tgtRenames = ctx.getRenames(operator.target, operator);
+    const srcRenames = ctx.getRenames(operator.source, operator);
+
+    const fwdKeys = ctx.getKeys(operator.mappingFwd);
+    const revKeys = ctx.getKeys(operator.mappingRev);
+    const tgtKeys = ctx.getKeys(operator.target);
+    const srcKeys = ctx.getKeys(operator.source);
+
+    return {
+      keys,
+      initialKeys,
+      fwdRenames,
+      revRenames,
+      tgtRenames,
+      allKeys,
+      fwdKeys,
+      revKeys,
+      tgtKeys,
+      srcKeys,
+      srcRenames,
+    };
+  }
+
+  protected *initBidiFrontiers(
+    operator: plan.BidirectionalRecursion,
+    ctx: ExecutionContext,
+    fwdFrontier: Queue<LinkedListNode<unknown[]>>,
+    revFrontier: Queue<LinkedListNode<unknown[]>>,
+    fwdVisited: Trie<unknown, LinkedListNode<unknown[]>[]>,
+    revVisited: Trie<unknown, LinkedListNode<unknown[]>[]>,
+    keys: number[],
+    initialKeys: number[],
+    tgtRenames: number[],
+    tgtKeys: number[],
+    srcRenames: number[],
+    srcKeys: number[],
+    allKeys: number[],
+  ) {
+    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
+      unknown[]
+    >) {
+      const toQueue = new LinkedListNode<unknown[]>([]);
+      for (let i = 0; i < allKeys.length; i++) {
+        toQueue.value[srcRenames[i]] = item[srcKeys[i]];
+      }
+      fwdFrontier.enqueue(toQueue);
+      const joinVals = pickArr(toQueue.value, keys);
+      fwdVisited.get(joinVals, []).push(toQueue);
+    }
+    for (const item of operator.target.accept(this.vmap, ctx) as Iterable<
+      unknown[]
+    >) {
+      const toQueue = new LinkedListNode<unknown[]>([]);
+      for (let i = 0; i < allKeys.length; i++) {
+        toQueue.value[tgtRenames[i]] = item[tgtKeys[i]];
+      }
+      revFrontier.enqueue(toQueue);
+      const joinVals = pickArr(toQueue.value, keys);
+      revVisited.get(joinVals, []).push(toQueue);
+      const fwdMatches = fwdVisited.get(joinVals);
+      if (operator.min <= 1 && fwdMatches) {
+        yield* this.joinBidiPaths(
+          fwdMatches,
+          [toQueue],
+          ctx,
+          keys,
+          initialKeys,
+        );
+      }
+    }
+  }
+
+  *visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+    ctx: ExecutionContext,
+  ): Iterable<unknown> {
+    if (operator.min > operator.max || operator.max === 0) return;
+    const {
+      keys,
+      initialKeys,
+      fwdRenames,
+      revRenames,
+      tgtRenames,
+      allKeys,
+      fwdKeys,
+      revKeys,
+      tgtKeys,
+      srcRenames,
+      srcKeys,
+    } = this.getBidiKeys(operator, ctx);
+    const fwdFrontier = new Queue<LinkedListNode<unknown[]>>();
+    const revFrontier = new Queue<LinkedListNode<unknown[]>>();
+    let fwdVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
+    let revVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
+
+    yield* this.initBidiFrontiers(
+      operator,
+      ctx,
+      fwdFrontier,
+      revFrontier,
+      fwdVisited,
+      revVisited,
+      keys,
+      initialKeys,
+      tgtRenames,
+      tgtKeys,
+      srcRenames,
+      srcKeys,
+      allKeys,
+    );
+    if (operator.max === 1) return;
+
+    let pathSize = 1;
+    while (
+      (fwdFrontier.size && (revFrontier.size || revVisited.size)) ||
+      (revFrontier.size && (fwdFrontier.size || fwdVisited.size))
+    ) {
+      if (fwdFrontier.size > 0) {
+        pathSize++;
+        console.log(
+          `path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
+        );
+        fwdVisited = new Trie();
+        yield* this.expandBidiFrontier(
+          fwdFrontier,
+          revVisited,
+          fwdVisited,
+          pathSize,
+          (ctx) =>
+            operator.mappingFwd.accept(this.vmap, ctx) as Iterable<unknown[]>,
+          ctx,
+          keys,
+          fwdRenames,
+          fwdKeys,
+          operator.min,
+          operator.max,
+          initialKeys,
+          allKeys,
+          true,
+        );
+      }
+      if (pathSize >= operator.max) break;
+      if (revFrontier.size > 0) {
+        pathSize++;
+        console.log(
+          `path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
+        );
+        revVisited = new Trie();
+        yield* this.expandBidiFrontier(
+          revFrontier,
+          fwdVisited,
+          revVisited,
+          pathSize,
+          (ctx) =>
+            operator.mappingRev.accept(this.vmap, ctx) as Iterable<unknown[]>,
+          ctx,
+          keys,
+          revRenames,
+          revKeys,
+          operator.min,
+          operator.max,
+          initialKeys,
+          allKeys,
+          false,
+        );
       }
     }
   }

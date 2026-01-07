@@ -601,4 +601,13 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       argMeta: [{ originalLocations: [] }],
     };
   }
+  visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+  ): CalculationParams {
+    return {
+      args: [this.toItem(operator)],
+      impl: assertMaxOne,
+      argMeta: [{ originalLocations: [] }],
+    };
+  }
 }

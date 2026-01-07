@@ -48,7 +48,7 @@
   "dependencies": {
     "@swc/helpers": "^0.5.15",
     "@ts-jison/parser-generator": "^0.4.1-alpha.2",
-    "lodash-es": "^4.17.21",
+    "es-toolkit": "^1.43.0",
     "tslib": "^2.6.2"
   }
 }

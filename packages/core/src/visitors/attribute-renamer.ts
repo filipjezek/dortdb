@@ -243,4 +243,13 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
     operator.source.accept(this.vmap, renames);
     this.processItem(operator, 'mapping', operator.dependencies, renames);
   }
+  visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+    renames: plan.RenameMap,
+  ): void {
+    operator.source.accept(this.vmap, renames);
+    operator.target.accept(this.vmap, renames);
+    this.processItem(operator, 'mappingFwd', operator.dependencies, renames);
+    this.processItem(operator, 'mappingRev', operator.dependencies, renames);
+  }
 }

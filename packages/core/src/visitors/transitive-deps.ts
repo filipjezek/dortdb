@@ -282,6 +282,24 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     tdepsCache.set(operator, result);
     return result;
   }
+  visitBidirectionalRecursion(operator: plan.BidirectionalRecursion): IdSet {
+    if (tdepsCache.has(operator)) return tdepsCache.get(operator);
+    const horizontal = this.onlyExternal(
+      union(
+        operator.mappingFwd.accept(this.vmap),
+        operator.mappingRev.accept(this.vmap),
+      ),
+      operator,
+    );
+    const result = union(
+      horizontal,
+      operator.source.accept(this.vmap),
+      operator.target.accept(this.vmap),
+    );
+    tdepsCache.set(operator, result);
+    return result;
+  }
+
   public clearCache() {
     tdepsCache = new WeakMap();
   }

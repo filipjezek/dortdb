@@ -92,3 +92,11 @@ export function createMapLiteral(names: any[], ...vals: any[]) {
   }
   return res;
 }
+
+export function pickArr<T>(arr: T[], indices: number[]): T[] {
+  const res: T[] = [];
+  for (const i of indices) {
+    res.push(arr[i]);
+  }
+  return res;
+}

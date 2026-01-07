@@ -1,5 +1,5 @@
 import { Operator } from '@dortdb/core';
-import { isMatch } from 'lodash-es';
+import { isMatch } from 'es-toolkit/compat';
 
 export const objAccess: Operator = {
   name: '->',

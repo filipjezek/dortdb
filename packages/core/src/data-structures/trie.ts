@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash-es';
+import { cloneDeep } from 'es-toolkit';
 
 const SENTINEL = Symbol('SENTINEL');
 
@@ -93,15 +93,25 @@ export class Trie<T, U = true> {
   /**
    * Gets the value associated with a key sequence.
    * @param parts Array of key parts.
-   * @returns The value if present, otherwise undefined.
+   * @param defaultVal Optional default value to set and return if the key is not found.
+   * @returns The value if present, otherwise the provided default value.
    */
-  public get(parts: T[]): U | undefined {
+  public get(parts: T[], defaultVal?: U): U | undefined {
     let lvl = this.root;
     for (const part of parts) {
       if (!lvl.has(part)) {
-        return undefined;
+        if (defaultVal !== undefined) {
+          lvl.set(part, new Map());
+        } else {
+          return undefined;
+        }
       }
       lvl = lvl.get(part) as TrieInner<T, U>;
+    }
+    if (defaultVal !== undefined && !lvl.has(SENTINEL)) {
+      lvl.set(SENTINEL, defaultVal);
+      this._size++;
+      return defaultVal;
     }
     return lvl.get(SENTINEL) as U;
   }

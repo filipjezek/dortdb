@@ -94,6 +94,10 @@ export type IdSet = Trie<string | symbol | number, any>;
 export interface PlanVisitor<Ret, Arg = never> {
   visitRecursion(operator: operators.Recursion, arg?: Arg): Ret;
   visitIndexedRecursion(operator: operators.IndexedRecursion, arg?: Arg): Ret;
+  visitBidirectionalRecursion(
+    operator: operators.BidirectionalRecursion,
+    arg?: Arg,
+  ): Ret;
   visitProjection(operator: operators.Projection, arg?: Arg): Ret;
   visitSelection(operator: operators.Selection, arg?: Arg): Ret;
   visitTupleSource(operator: operators.TupleSource, arg?: Arg): Ret;

@@ -327,4 +327,34 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     operator.mapping.accept(this.vmap, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
+  visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+    ctx: VariableMapperCtx,
+  ): void {
+    operator.source.accept(this.vmap, ctx);
+    const src = ctx.scopeStack.pop();
+    operator.target.accept(this.vmap, ctx);
+    const tgt = ctx.scopeStack.pop();
+    const sum = this.union(src, tgt);
+    ctx.scopeStack.push(sum);
+    ctx.translations.set(operator, sum);
+    ctx.currentIndex =
+      Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
+      1;
+    for (const prop of ['mappingFwd', 'mappingRev'] as const) {
+      operator[prop].accept(this.vmap, ctx);
+      ctx.currentIndex -= ctx.scopeStack.pop().size;
+    }
+
+    // operator.left.accept(this.vmap, ctx);
+    // const left = ctx.scopeStack.pop();
+    // operator.right.accept(this.vmap, ctx);
+    // const right = ctx.scopeStack.pop();
+    // const sum = this.union(right, left);
+    // ctx.scopeStack.push(sum);
+    // ctx.translations.set(operator, sum);
+    // ctx.currentIndex =
+    //   Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
+    //   1;
+  }
 }

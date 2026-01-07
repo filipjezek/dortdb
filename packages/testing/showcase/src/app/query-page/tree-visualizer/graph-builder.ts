@@ -697,13 +697,28 @@ export class GraphBuilder
 
   visitIndexedRecursion(operator: plan.IndexedRecursion): SVGGElement {
     const parent = this.drawNode(
-      `&phi;&#x0362;(${operator.min}, ${operator.max})`,
+      `&phi;&#x20EF; (${operator.min}, ${operator.max})`,
       operator,
     );
     return this.drawBranches(
       parent,
       { el: operator.source.accept(this.vmap) },
       { el: operator.mapping.accept(this.vmap), edgeType: 'djoin' },
+    );
+  }
+  visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+  ): SVGGElement {
+    const parent = this.drawNode(
+      `&phi;&#x034D; (${operator.min}, ${operator.max})`,
+      operator,
+    );
+    return this.drawBranches(
+      parent,
+      { el: operator.mappingRev.accept(this.vmap), edgeType: 'djoin' },
+      { el: operator.source.accept(this.vmap) },
+      { el: operator.target.accept(this.vmap) },
+      { el: operator.mappingFwd.accept(this.vmap), edgeType: 'djoin' },
     );
   }
 }

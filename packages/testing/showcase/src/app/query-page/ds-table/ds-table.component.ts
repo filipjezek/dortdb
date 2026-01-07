@@ -8,7 +8,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { isEqual } from 'lodash-es';
+import { isEqual } from 'es-toolkit';
 import {
   CellGenericComponent,
   DSCell,

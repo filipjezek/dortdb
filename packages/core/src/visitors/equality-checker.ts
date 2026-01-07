@@ -1,4 +1,4 @@
-import { isEqual } from 'lodash-es';
+import { isEqual } from 'es-toolkit';
 import { allAttrs, ASTIdentifier } from '../ast.js';
 import { isId, ret1, retI0, retI1 } from '../internal-fns/index.js';
 import * as plan from '../plan/operators/index.js';
@@ -347,6 +347,20 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       a.max === b.max &&
       this.processItem(a.mapping, { ...args, other: b.mapping }) &&
       this.processItem(a.source, { ...args, other: b.source })
+    );
+  }
+  visitBidirectionalRecursion(
+    a: plan.BidirectionalRecursion,
+    args: DescentArgs,
+  ): boolean {
+    const b = args.other as plan.BidirectionalRecursion;
+    return (
+      a.min === b.min &&
+      a.max === b.max &&
+      this.processItem(a.mappingFwd, { ...args, other: b.mappingFwd }) &&
+      this.processItem(a.mappingRev, { ...args, other: b.mappingRev }) &&
+      this.processItem(a.source, { ...args, other: b.source }) &&
+      this.processItem(a.target, { ...args, other: b.target })
     );
   }
 }

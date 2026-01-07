@@ -609,4 +609,10 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     const vertical = operator.source.accept(this.vmap, ctx);
     return vertical;
   }
+  visitBidirectionalRecursion(
+    operator: plan.BidirectionalRecursion,
+    ctx: IdSet,
+  ): IdSet {
+    throw new Error('Method not implemented.');
+  }
 }
