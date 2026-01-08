@@ -50,6 +50,7 @@ export class GraphBuilder
   public static readonly CHILD_OFFSET = 30;
 
   protected readonly drawingContainer: SVGGElement;
+  protected readonly treeContainer: SVGGElement;
   protected readonly textContainer = document.createElement('p');
   public readonly cssVariables: ReadonlySet<string>;
   public get width() {
@@ -161,6 +162,7 @@ export class GraphBuilder
         }
       </style>
       <g id="drawing-container"></g>
+      <g id="tree-container"></g>
     `;
     this.cssVariables = new Set(
       Array.from(
@@ -169,6 +171,7 @@ export class GraphBuilder
       ),
     );
     this.drawingContainer = this.container.querySelector('#drawing-container');
+    this.treeContainer = this.container.querySelector('#tree-container');
   }
 
   protected getSchemaTemplate(operator: PlanOperator) {
@@ -267,17 +270,14 @@ export class GraphBuilder
   }
 
   public drawTree(plan: PlanOperator): void {
-    this.container
-      .querySelectorAll('#drawing-container ~ *')
-      .forEach((el) => el.remove());
+    this.treeContainer.innerHTML = '';
     this.container.removeAttribute('viewBox');
     const root = plan.accept(this.vmap);
     const tree = this.layout.hierarchy(root);
     this.layout(tree);
-    const treeContainer = this.getG();
     this.drawingContainer.innerHTML = '';
-    this.container.appendChild(treeContainer);
-    const drawnTree = this.drawSubTree(treeContainer, tree);
+    this.treeContainer.innerHTML = '';
+    const drawnTree = this.drawSubTree(this.treeContainer, tree);
 
     const bbox = drawnTree.getBBox();
     drawnTree.setAttribute(
@@ -605,15 +605,20 @@ export class GraphBuilder
               edgeType: 'djoin',
             },
           })),
-        ...operator.aggs.map((a, i) => ({
-          ...a.postGroupOp.accept(this.vmap),
-          connection: {
-            edgeType: 'group-op',
-            src: parent.querySelector<SVGGraphicsElement>(
-              `.placeholder-${i + kChildren}`,
-            ),
-          },
-        })),
+        ...operator.aggs
+          .map((a, i) => ({
+            ...a.postGroupOp.accept(this.vmap),
+            connection: {
+              edgeType: 'group-op',
+              src: parent.querySelector<SVGGraphicsElement>(
+                `.placeholder-${i + kChildren}`,
+              ),
+            },
+          }))
+          .map((x) => {
+            console.log(x);
+            return x;
+          }),
       ],
     };
     parent.setAttribute(
@@ -626,8 +631,11 @@ export class GraphBuilder
 
     const groupbyWrapper = this
       .markup<SVGGElement>(`<g style="--lang-color: ${langColors[operator.lang]}"><rect
-    ></rect><g></g><polygon points="0,0 0,10 10,0" /></g>`);
-    this.drawSubTree(groupbyWrapper.querySelector('g'), parentTree);
+    ></rect><polygon points="0,0 0,10 10,0" /></g>`);
+
+    const treeContainer = this.getG();
+    this.treeContainer.appendChild(treeContainer);
+    this.drawSubTree(treeContainer, parentTree);
     const grect = groupbyWrapper.querySelector('rect');
     const bbox = parentTree.extents;
     const grectW = bbox.right - bbox.left + GraphBuilder.PADDING * 2;
@@ -638,6 +646,7 @@ export class GraphBuilder
       GraphBuilder.CHILD_OFFSET;
     grect.setAttribute('width', grectW + '');
     grect.setAttribute('height', grectH + '');
+    groupbyWrapper.appendChild(treeContainer);
 
     parentTree.data.el.parentElement.setAttribute(
       'transform',
