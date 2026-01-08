@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PlanOperator, PlanVisitor } from '@dortdb/core';
-import { GraphBuilder } from './graph-builder';
+import { GraphBuilder, NodeData } from './graph-builder';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { lsSyncForm } from '../../utils/ls-sync-form';
@@ -66,7 +66,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    const vmap: Record<string, PlanVisitor<SVGGElement>> = {};
+    const vmap: Record<string, PlanVisitor<NodeData>> = {};
     this.graphBuilder = new GraphBuilder(this.svg().nativeElement, vmap);
     vmap['xquery'] = vmap['sql'] = vmap['cypher'] = this.graphBuilder;
     if (this.plan()) {

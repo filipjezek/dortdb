@@ -33,12 +33,14 @@
     "codemirror": "^6.0.2",
     "csv": "^6.3.11",
     "d3": "^7.9.0",
+    "d3-flextree": "^2.1.2",
     "es-toolkit": "^1.43.0",
     "fuzzysort": "^3.1.0",
     "prismjs": "^1.30.0"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
+    "@types/d3-flextree": "^2.1.4",
     "@types/prismjs": "^1.26.5"
   }
 }
