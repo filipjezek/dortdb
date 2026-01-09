@@ -1,5 +1,4 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { MultiDirectedGraph } from 'graphology';
 import {
   unibenchGraphTables,
   UnibenchData,
@@ -7,7 +6,7 @@ import {
   iterStream,
   unibenchFiles,
 } from '@dortdb/dataloaders';
-import { GraphologyGraph } from '@dortdb/lang-cypher';
+import { gaLabelsOrType, GraphologyDataAdapter } from '@dortdb/lang-cypher';
 
 const LS_KEY = 'indexeddb-used';
 const DB_NAME = 'unibench';
@@ -27,8 +26,10 @@ function promisify(req: IDBTransaction | IDBRequest): Promise<any> {
   });
 }
 
-interface SerializedUnibenchData
-  extends Omit<UnibenchData, 'socialNetwork' | 'invoices'> {
+interface SerializedUnibenchData extends Omit<
+  UnibenchData,
+  'socialNetwork' | 'invoices'
+> {
   invoices: string; // XML serialized as string
   socialNetwork: unknown; // Serialized MultiDirectedGraph
 }
@@ -129,22 +130,33 @@ export class UnibenchService {
     const d = this.data();
     return {
       ...d,
-      socialNetwork: d.socialNetwork.export(),
+      socialNetwork: GraphologyDataAdapter.export(d.socialNetwork),
       invoices: new XMLSerializer().serializeToString(d.invoices),
     };
   }
 
   private deserializeData(serialized: SerializedUnibenchData): UnibenchData {
-    return {
+    const result = {
       ...serialized,
-      socialNetwork: new MultiDirectedGraph().import(
-        serialized.socialNetwork,
-      ) as GraphologyGraph,
+      socialNetwork: GraphologyDataAdapter.import(serialized.socialNetwork),
       invoices: new DOMParser().parseFromString(
         serialized.invoices,
         'text/xml',
       ),
     };
+    if (
+      !(
+        gaLabelsOrType in
+        result.socialNetwork.nodeEntries().next().value.attributes
+      )
+    ) {
+      alert(
+        'Warning: You seem to be using an old version of the Unibench data stored in IndexedDB.\n' +
+          'Please clear the stored data (using the button in the UI) and re-download it.',
+      );
+    }
+
+    return result;
   }
 
   public async clear(): Promise<void> {

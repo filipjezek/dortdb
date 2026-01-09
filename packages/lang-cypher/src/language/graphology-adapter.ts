@@ -24,6 +24,20 @@ export type GraphologyGraph = MultiDirectedGraph<
   Attributes
 >;
 
+const serializedLabelsKey = '__symbol__labelsOrType';
+interface SerializedGraphology {
+  nodes: {
+    key: string;
+    attributes: Attributes & { [serializedLabelsKey]: string[] };
+  }[];
+  edges: {
+    key: string;
+    source: string;
+    target: string;
+    attributes: Attributes & { [serializedLabelsKey]: string };
+  }[];
+}
+
 /**
  * In order not to create unnecessary functions for each check with `.every`
  */
@@ -35,7 +49,9 @@ const isSubset = <T>(subset: T[], set: T[]): boolean => {
 };
 
 /**
- * A data adapter for the Graphology graph library.
+ * A data adapter for the Graphology graph library. The node labels/edge types are expected to be stored
+ * in the attributes using the `gaLabelsOrType` symbol key. Convenience functions are provided to serialize
+ * and deserialize the graph to/from a format that can be stored (since symbols are not generally serializable).
  */
 export class GraphologyDataAdapter implements CypherDataAdaper<GraphologyGraph> {
   protected convertNode(
@@ -181,7 +197,7 @@ export class GraphologyDataAdapter implements CypherDataAdaper<GraphologyGraph> 
     node: GraphologyNode,
     labels: string[],
   ): boolean {
-    return isSubset(node[gaLabelsOrType] ?? [], labels);
+    return isSubset(labels, node[gaLabelsOrType] ?? []);
   }
   getLabels(graph: GraphologyGraph, node: GraphologyNode): string[] {
     if (node === undefined || node === null) return null;
@@ -205,5 +221,43 @@ export class GraphologyDataAdapter implements CypherDataAdaper<GraphologyGraph> 
   ): GraphologyNode {
     const node = graph[type](edge[gaNodeOrEdgeId]);
     return this.convertNode(node, graph.getNodeAttributes(node));
+  }
+
+  /**
+   * Imports a serialized Graphology graph.
+   */
+  static import(serialized: unknown): GraphologyGraph {
+    for (const n of (serialized as SerializedGraphology).nodes) {
+      (n.attributes as any)[gaLabelsOrType] = n.attributes[serializedLabelsKey];
+      delete n.attributes[serializedLabelsKey];
+    }
+    for (const e of (serialized as SerializedGraphology).edges) {
+      (e.attributes as any)[gaLabelsOrType] = e.attributes[serializedLabelsKey];
+      delete e.attributes[serializedLabelsKey];
+    }
+    return new MultiDirectedGraph<
+      GraphologyNode,
+      GraphologyEdge,
+      Attributes
+    >().import(serialized);
+  }
+  /**
+   * Exports the Graphology graph to a serialized format.
+   */
+  static export(graph: GraphologyGraph): unknown {
+    const exported = graph.export();
+    for (const n of exported.nodes) {
+      n.attributes ??= {} as any;
+      n.attributes[serializedLabelsKey] = graph.getNodeAttributes(n.key)[
+        gaLabelsOrType
+      ];
+    }
+    for (const e of exported.edges) {
+      e.attributes ??= {} as any;
+      e.attributes[serializedLabelsKey] = graph.getEdgeAttributes(e.key)[
+        gaLabelsOrType
+      ];
+    }
+    return exported;
   }
 }

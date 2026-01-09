@@ -1,8 +1,20 @@
+import { gaLabelsOrType } from '@dortdb/lang-cypher';
 import { CSVParser } from '../csv-parser.js';
 import { iterStream } from '../utils/stream.js';
 import { CSVParseOptions } from './parse-csv-table.js';
 import { StreamedEntry } from './zip-extractor.js';
 import { MultiDirectedGraph } from 'graphology';
+
+function updateNode(attrs: any, id: string, label: string) {
+  const oldLabels: string[] = attrs[gaLabelsOrType] ?? [];
+  return {
+    ...attrs,
+    id,
+    [gaLabelsOrType]: oldLabels.includes(label)
+      ? oldLabels
+      : [...oldLabels, label],
+  };
+}
 
 /**
  * @param indexedTableNames - maps node types to table names
@@ -62,23 +74,25 @@ export async function csvToGraph(
     if (fromIndex) {
       if (!graph.hasNode(fromNode)) {
         const fromRow = fromIndex.get(row[0]) ?? { id: row[0] };
-        fromRow['labels'] = [from];
+        fromRow[gaLabelsOrType] = [from];
         graph.addNode(fromNode, fromRow);
       }
     } else {
-      graph.mergeNode(fromNode, { id: row[0], labels: [from] });
+      graph.updateNode(fromNode, (attrs: any) =>
+        updateNode(attrs, row[0], from),
+      );
     }
     if (toIndex) {
       if (!graph.hasNode(toNode)) {
         const toRow = toIndex.get(row[1]) ?? { id: row[1] };
-        toRow['labels'] = [to];
+        toRow[gaLabelsOrType] = [to];
         graph.addNode(toNode, toRow);
       }
     } else {
-      graph.mergeNode(toNode, { id: row[1], labels: [to] });
+      graph.updateNode(toNode, (attrs: any) => updateNode(attrs, row[1], to));
     }
     graph.addEdge(fromNode, toNode, {
-      type: edgeType,
+      [gaLabelsOrType]: edgeType,
       ...Object.fromEntries(edgeProps.map((key, i) => [key, row[2 + i]])),
     });
   }
@@ -87,14 +101,17 @@ export async function csvToGraph(
 async function getTableIndex(
   table: string,
   dsPromises: Record<string, { promise: Promise<any[]> }>,
-  cachedIndices: Record<string, Map<string | number, Record<string, any>>>,
+  cachedIndices: Record<
+    string,
+    Map<string | number, Record<string | symbol, any>>
+  >,
   column = 'id',
-): Promise<Map<string | number, Record<string, any>>> {
+): Promise<Map<string | number, Record<string | symbol, any>>> {
   const ds = await dsPromises[table].promise;
   if (cachedIndices[table]) {
     return cachedIndices[table];
   }
-  const index = new Map<string | number, Record<string, any>>();
+  const index = new Map<string | number, Record<string | symbol, any>>();
   for (const row of ds) {
     index.set(row[column], row);
   }
