@@ -1,10 +1,11 @@
 import { ASTIdentifier, Fn, Language, SerializeFn } from '@dortdb/core';
 import { CypherLogicalPlanBuilder } from '../visitors/builder.js';
 import { createParser } from './create-parser.js';
-import { CypherDataAdaper, GraphologyDataAdapter } from './data-adapter.js';
+import { CypherDataAdaper } from './data-adapter.js';
 import { CypherExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 import * as fns from '../functions/index.js';
+import { GraphologyDataAdapter } from './graphology-adapter.js';
 
 /**
  * Configuration for the Cypher language.

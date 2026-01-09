@@ -14,3 +14,15 @@ export const endNode: CypherFn = {
   impl: (ctx: AdapterCtxArg, e) =>
     ctx.adapter.getEdgeNode(ctx.graph, e, 'target'),
 };
+export const labels: CypherFn = {
+  name: 'labels',
+  addAdapterCtx: true,
+  pure: true,
+  impl: (ctx: AdapterCtxArg, n) => ctx.adapter.getLabels(ctx.graph, n),
+};
+export const type: CypherFn = {
+  name: 'type',
+  addAdapterCtx: true,
+  pure: true,
+  impl: (ctx: AdapterCtxArg, e) => ctx.adapter.getType(ctx.graph, e),
+};

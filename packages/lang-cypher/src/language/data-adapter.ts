@@ -1,6 +1,3 @@
-import { MultiDirectedGraph } from 'graphology';
-import { Attributes } from 'graphology-types';
-
 export type EdgeDirection = 'in' | 'out' | 'any';
 
 /**
@@ -103,196 +100,22 @@ export interface CypherDataAdaper<
    */
   hasLabels(graph: GraphType, node: NodeType, labels: string[]): boolean;
   /**
+   * Return the labels of a node.
+   * @param graph The graph to query.
+   * @param node The node to check.
+   */
+  getLabels(graph: GraphType, node: NodeType): string[];
+  /**
    * Check if an edge has any of the specified types.
    * @param graph The graph to query.
    * @param edge The edge to check.
    * @param types The types to check for.
    */
   hasAnyType(graph: GraphType, edge: EdgeType, types: string[]): boolean;
-}
-
-/**
- * A key used to store the unique identifier for a node or edge in its attributes.
- */
-export const nodeOrEdgeId = Symbol('nodeOrEdgeId');
-export type GraphologyNode = Attributes & {
-  labels: string[];
-  [nodeOrEdgeId]: string;
-};
-export type GraphologyEdge = Attributes & {
-  type: string;
-  [nodeOrEdgeId]: string;
-};
-export type GraphologyGraph = MultiDirectedGraph<
-  GraphologyNode,
-  GraphologyEdge,
-  Attributes
->;
-
-/**
- * A data adapter for the Graphology graph library.
- */
-export class GraphologyDataAdapter
-  implements CypherDataAdaper<GraphologyGraph>
-{
-  protected convertNode(
-    node: string,
-    attrs: Attributes & Record<string | symbol, unknown>,
-  ): GraphologyNode {
-    attrs[nodeOrEdgeId] = node;
-    return attrs as GraphologyNode;
-  }
-
-  protected convertEdge(
-    edge: string,
-    attrs: Attributes & Record<string | symbol, unknown>,
-  ): GraphologyEdge {
-    attrs[nodeOrEdgeId] = edge;
-    return attrs as GraphologyEdge;
-  }
-
-  *getNodesByLabels(
-    graph: GraphologyGraph,
-    ...labels: string[]
-  ): Iterable<GraphologyNode> {
-    for (const { node, attributes } of graph.nodeEntries()) {
-      const nodeLabels = attributes.labels ?? [];
-      if (labels.every((label) => nodeLabels.includes(label))) {
-        yield this.convertNode(node, attributes);
-      }
-    }
-  }
-  *filterNodes(
-    graph: GraphologyGraph,
-    predicate?: (node: GraphologyNode) => boolean,
-  ): Iterable<GraphologyNode> {
-    if (!predicate) {
-      yield* graph.mapNodes(this.convertNode);
-    } else {
-      for (const { node, attributes } of graph.nodeEntries()) {
-        const converted = this.convertNode(node, attributes);
-        if (predicate(converted)) {
-          yield converted;
-        }
-      }
-    }
-  }
-  *getEdgesByType(
-    graph: GraphologyGraph,
-    type: string,
-  ): Iterable<GraphologyEdge> {
-    for (const { edge, attributes } of graph.edgeEntries()) {
-      if (attributes.type === type) {
-        yield this.convertEdge(edge, attributes);
-      }
-    }
-  }
-  *filterEdges(
-    graph: GraphologyGraph,
-    predicate?: (
-      src: GraphologyNode,
-      tgt: GraphologyNode,
-      edge: GraphologyEdge,
-    ) => boolean,
-  ): Iterable<GraphologyEdge> {
-    if (!predicate) {
-      for (const { edge, attributes } of graph.edgeEntries()) {
-        yield this.convertEdge(edge, attributes);
-      }
-    } else {
-      for (const edge of graph.edgeEntries()) {
-        const converted = this.convertEdge(edge.edge, edge.attributes);
-        const source = this.convertNode(edge.source, edge.sourceAttributes);
-        const target = this.convertNode(edge.target, edge.targetAttributes);
-        if (predicate(source, target, converted)) {
-          yield converted;
-        }
-      }
-    }
-  }
-  *getNodeEdgesByType(
-    graph: GraphologyGraph,
-    node: GraphologyNode,
-    type: string,
-    direction: EdgeDirection,
-  ): Iterable<GraphologyEdge> {
-    for (const { edge, attributes } of graph[
-      direction === 'in'
-        ? 'inEdgeEntries'
-        : direction === 'out'
-          ? 'outEdgeEntries'
-          : 'edgeEntries'
-    ](node[nodeOrEdgeId])) {
-      if (attributes.type === type) {
-        yield this.convertEdge(edge, attributes);
-      }
-    }
-  }
-  *filterNodeEdges(
-    graph: GraphologyGraph,
-    node: GraphologyNode,
-    direction: EdgeDirection,
-    predicate?: (
-      src: GraphologyNode,
-      tgt: GraphologyNode,
-      edge: GraphologyEdge,
-    ) => boolean,
-  ): Iterable<GraphologyEdge> {
-    for (const edge of graph[
-      direction === 'in'
-        ? 'inEdgeEntries'
-        : direction === 'out'
-          ? 'outEdgeEntries'
-          : 'edgeEntries'
-    ](node[nodeOrEdgeId])) {
-      const converted = this.convertEdge(edge.edge, edge.attributes);
-      if (!predicate) {
-        yield converted;
-      } else {
-        const source = this.convertNode(edge.source, edge.sourceAttributes);
-        const target = this.convertNode(edge.target, edge.targetAttributes);
-        if (predicate(source, target, converted)) {
-          yield converted;
-        }
-      }
-    }
-  }
-
-  isConnected(
-    graph: GraphologyGraph,
-    node: GraphologyNode,
-    edge: GraphologyEdge,
-    direction: EdgeDirection,
-  ): boolean {
-    const edgeId = edge[nodeOrEdgeId];
-    return graph[
-      direction === 'in'
-        ? 'someInboundEdge'
-        : direction === 'out'
-          ? 'someOutboundEdge'
-          : 'someEdge'
-    ](node[nodeOrEdgeId], (e) => e === edgeId);
-  }
-  hasLabels(
-    graph: GraphologyGraph,
-    node: GraphologyNode,
-    labels: string[],
-  ): boolean {
-    return (node.labels ?? []).every((label) => labels.includes(label));
-  }
-  hasAnyType(
-    graph: GraphologyGraph,
-    edge: GraphologyEdge,
-    types: string[],
-  ): boolean {
-    return types.includes(edge.type);
-  }
-  getEdgeNode(
-    graph: GraphologyGraph,
-    edge: GraphologyEdge,
-    type: 'source' | 'target',
-  ): GraphologyNode {
-    const node = graph[type](edge[nodeOrEdgeId]);
-    return this.convertNode(node, graph.getNodeAttributes(node));
-  }
+  /**
+   * Return the type of an edge.
+   * @param graph The graph to query.
+   * @param edge The edge to check.
+   */
+  getType(graph: GraphType, edge: EdgeType): string;
 }

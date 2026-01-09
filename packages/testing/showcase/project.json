@@ -27,7 +27,7 @@
           "packages/testing/showcase/src/styles.scss",
           {
             "input": "node_modules/prismjs/themes/prism.min.css",
-            "inject": true,
+            "inject": false,
             "bundleName": "prism-light"
           },
           {
