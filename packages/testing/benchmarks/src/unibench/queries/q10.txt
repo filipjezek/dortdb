@@ -9,7 +9,7 @@ SELECT
   SUM(orders.TotalPrice) monetary,
   ARRAY(
     SELECT feedback FROM feedback
-    WHERE personId = orders.PersonId
+    WHERE personId = orders.PersonId::number
     LIMIT 10
   ) recentReviews
 FROM orders JOIN (

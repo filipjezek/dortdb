@@ -460,8 +460,10 @@ export class CypherLogicalPlanBuilder
     variables: ASTIdentifier[],
     res: PlanTupleOperator,
     graphName: ASTIdentifier,
+    fromI: number,
+    toI: number,
   ) {
-    for (let i = 1; i < chain.length; i += 2) {
+    for (let i = fromI; i <= toI; i += 2) {
       const edge = chain[i] as AST.RelPattern;
       if (edge.range) continue; // handled in addRecursion
       const edgeDir1 = edge.pointsLeft
@@ -491,15 +493,11 @@ export class CypherLogicalPlanBuilder
     }
 
     const edgeVars = variables.filter((_, i) => i % 2 === 1);
-    for (let i = 1; i < chain.length; i += 2) {
-      const args = edgeVars.slice(0, i / 2 + 1);
+    for (let i = fromI; i <= toI; i += 2) {
       const edge = chain[i] as AST.RelPattern;
       const recursive = !!edge.range;
-
-      if (recursive && !edge.pointsLeft && !edge.pointsRight) {
-        res = this.checkCorrectAnyRecursion(variables, graphName, i, res);
-      }
       if (i === 1 || recursive) continue;
+      const args = edgeVars.slice(0, i / 2 + 1);
 
       const fn = new plan.FnCall('cypher', args, (...args) => {
         const last = args.pop();
@@ -518,6 +516,26 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
+  protected checkAnyRecEdge(
+    srcNodes: unknown[],
+    tgtNodes: unknown[],
+    i: number,
+  ) {
+    if (
+      (srcNodes[i] === srcNodes[i - 1] || srcNodes[i] === tgtNodes[i - 1]) &&
+      (srcNodes[i] === srcNodes[i + 1] || srcNodes[i] === tgtNodes[i + 1]) &&
+      srcNodes[i] !== tgtNodes[i]
+    )
+      return false;
+    if (
+      (tgtNodes[i] === srcNodes[i - 1] || tgtNodes[i] === tgtNodes[i - 1]) &&
+      (tgtNodes[i] === srcNodes[i + 1] || tgtNodes[i] === tgtNodes[i + 1]) &&
+      srcNodes[i] !== tgtNodes[i]
+    )
+      return false;
+    return true;
+  }
+
   /**
    * If the recursive edge direction is 'any', we need to check that the first and last edge are
    * connected to the start and end nodes correctly.
@@ -534,31 +552,50 @@ export class CypherLogicalPlanBuilder
       'cypher',
       [variables[i - 1], variables[i], variables[i + 1]],
       (n1, e: unknown[], n2) => {
-        const e0Src = this.dataAdapter.getEdgeNode(graph, e[0], 'source');
-        if (e.length < 2) return (e0Src === n1) !== (e0Src === n2);
+        const sources = e.map((x) =>
+          this.dataAdapter.getEdgeNode(graph, x, 'source'),
+        );
+        const targets = e.map((x) =>
+          this.dataAdapter.getEdgeNode(graph, x, 'target'),
+        );
+
+        if (e.length === 1)
+          return (
+            (sources[0] === n1) !== (sources[0] === n2) ||
+            sources[0] === targets[0]
+          );
+
+        // still have to check these even though path starts are checked in recursion sources
+        // the ends are not checked
         if (
-          e0Src !== n1 &&
-          !this.dataAdapter.isConnected(graph, e0Src, e[1], 'any')
+          sources[0] !== n1 &&
+          sources[0] !== sources[1] &&
+          sources[0] !== targets[1]
         )
           return false;
-        const e0Tgt = this.dataAdapter.getEdgeNode(graph, e[0], 'target');
         if (
-          e0Tgt !== n1 &&
-          !this.dataAdapter.isConnected(graph, e0Tgt, e[1], 'any')
+          targets[0] !== n1 &&
+          targets[0] !== sources[1] &&
+          targets[0] !== targets[1]
         )
           return false;
-        const eLSrc = this.dataAdapter.getEdgeNode(graph, e.at(-1), 'source');
         if (
-          eLSrc !== n2 &&
-          !this.dataAdapter.isConnected(graph, eLSrc, e[1], 'any')
+          sources.at(-1) !== n2 &&
+          sources.at(-1) !== sources.at(-2) &&
+          sources.at(-1) !== targets.at(-2)
         )
           return false;
-        const eLTgt = this.dataAdapter.getEdgeNode(graph, e.at(-1), 'target');
         if (
-          eLTgt !== n2 &&
-          !this.dataAdapter.isConnected(graph, eLTgt, e[1], 'any')
+          targets.at(-1) !== n2 &&
+          targets.at(-1) !== sources.at(-2) &&
+          targets.at(-1) !== targets.at(-2)
         )
           return false;
+
+        for (let j = 1; j < e.length - 1; j++) {
+          if (!this.checkAnyRecEdge(sources, targets, j)) return false;
+        }
+
         return true;
       },
     );
@@ -652,6 +689,7 @@ export class CypherLogicalPlanBuilder
     const { variables, isRef, ctx, varPrefix } = setup;
     let res = setup.res;
 
+    let lastRecI = -1;
     let firstUnknown = isRef.findIndex((x) => !x);
     if (firstUnknown > -1) {
       if (!res) {
@@ -664,10 +702,20 @@ export class CypherLogicalPlanBuilder
         }) as PlanTupleOperator;
         firstUnknown++;
       }
+
       for (let i = firstUnknown; i < node.chain.length; i++) {
         if (isRef[i]) continue;
         const chainEl = node.chain[i];
         if (chainEl instanceof AST.RelPattern && chainEl.range) {
+          res = this.setupChainSelections(
+            node.chain,
+            variables,
+            res,
+            args.graphName,
+            lastRecI + 2,
+            i,
+          );
+          lastRecI = i;
           const tgt = this.processChainPart(node, i + 1, variables, args, ctx);
           res = this.addRecursion(res, tgt, node.chain, variables, i, {
             ...args,
@@ -680,8 +728,14 @@ export class CypherLogicalPlanBuilder
         res = new plan.ProjectionConcat('cypher', nextPart, false, res);
       }
     }
-
-    res = this.setupChainSelections(node.chain, variables, res, args.graphName);
+    res = this.setupChainSelections(
+      node.chain,
+      variables,
+      res,
+      args.graphName,
+      lastRecI + 2,
+      node.chain.length - 1,
+    );
     const cols = res.schema
       .filter((x) => x.parts[0] !== varPrefix)
       .map((col) => [col, col]) as Aliased<ASTIdentifier | plan.Calculation>[];
@@ -801,10 +855,12 @@ export class CypherLogicalPlanBuilder
   ) {
     const graph = this.db.getSource(args.graphName.parts);
     const mapping = this.createRecursionMapping(
-      variables[edgeI],
+      variables,
       graph,
       edgeDir,
       edgeSrc.clone(),
+      edgeI,
+      nodeI,
     );
 
     let source: PlanTupleOperator = new plan.ProjectionConcat(
@@ -891,7 +947,7 @@ export class CypherLogicalPlanBuilder
       args,
     );
 
-    return new plan.BidirectionalRecursion(
+    let res: PlanTupleOperator = new plan.BidirectionalRecursion(
       'cypher',
       min,
       max,
@@ -900,17 +956,53 @@ export class CypherLogicalPlanBuilder
       target,
       source,
     );
+    // because the bidi sources do not see each other
+    const uniqueChecker = new plan.FnCall(
+      'cypher',
+      [variables[edgeI]],
+      (edges: unknown[]) => {
+        // for arrays shorter than 100, a simple O(n^2) check is faster than using a Set
+        // these will usually be very short
+        for (let i = 0; i < edges.length; i++) {
+          for (let j = i + 1; j < edges.length; j++) {
+            if (edges[i] === edges[j]) return false;
+          }
+        }
+        return true;
+      },
+    );
+    res = new plan.Selection(
+      'cypher',
+      intermediateToCalc(uniqueChecker, this.calcBuilders, this.eqCheckers),
+      res,
+    );
+
+    if (edgeDir === 'any') {
+      res = this.checkCorrectAnyRecursion(
+        variables,
+        args.graphName,
+        edgeI,
+        res,
+      );
+    }
+
+    return res;
   }
   protected createRecursionMapping(
-    edgeVar: ASTIdentifier,
+    variables: ASTIdentifier[],
     graph: unknown,
     edgeDir: EdgeDirection,
     mapping: PlanTupleOperator,
+    edgeI: number,
+    nodeI: number,
   ): PlanTupleOperator {
+    const prevEdges = variables.slice(0, edgeI).filter((_, i) => i % 2);
     const mappingSrc = new plan.ItemFnSource(
       'cypher',
-      [edgeVar],
-      (edges: unknown[]) => {
+      edgeDir === 'any'
+        ? [variables[edgeI], variables[nodeI], ...prevEdges]
+        : [variables[edgeI], ...prevEdges],
+      (edges: unknown[], n: unknown, ...prevEdges: unknown[]) => {
         const nodes: unknown[] = [];
         if (edgeDir === 'any') {
           const srcNode = this.dataAdapter.getEdgeNode(
@@ -924,7 +1016,7 @@ export class CypherLogicalPlanBuilder
             'target',
           );
           if (edges.length === 1) {
-            nodes.push(srcNode, tgtNode);
+            nodes.push(srcNode === n ? tgtNode : srcNode);
           } else {
             if (
               this.dataAdapter.isConnected(graph, srcNode, edges.at(-2), 'any')
@@ -934,14 +1026,17 @@ export class CypherLogicalPlanBuilder
               nodes.push(srcNode);
             }
           }
-        } else if (edgeDir === 'in') {
-          nodes.push(
-            this.dataAdapter.getEdgeNode(graph, edges.at(-1), 'source'),
-          );
         } else {
-          nodes.push(
-            this.dataAdapter.getEdgeNode(graph, edges.at(-1), 'target'),
-          );
+          prevEdges.push(edges.at(-1));
+          if (edgeDir === 'in') {
+            nodes.push(
+              this.dataAdapter.getEdgeNode(graph, edges.at(-1), 'source'),
+            );
+          } else {
+            nodes.push(
+              this.dataAdapter.getEdgeNode(graph, edges.at(-1), 'target'),
+            );
+          }
         }
         return Iterator.from(nodes).flatMap((n) =>
           this.dataAdapter.filterNodeEdges(

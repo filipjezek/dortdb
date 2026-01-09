@@ -456,7 +456,9 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
   visitNullSource(operator: plan.NullSource, ctx: IdSet): IdSet {
-    return operator.schemaSet;
+    const external = operator.schemaSet.clone();
+    operator.clearSchema();
+    return external;
   }
   visitAggregate(operator: plan.AggregateCall, ctx: IdSet): IdSet {
     throw new Error('Method not implemented.');

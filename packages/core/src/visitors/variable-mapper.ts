@@ -85,15 +85,17 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     operator.source.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
     for (const attr of operator.attrs) {
-      const tgtTranslated = this.translate(attr[1], ctx, 1);
+      let tgtTranslated: ASTIdentifier;
       if (attr[0] instanceof ASTIdentifier) {
         const srcTranslated = this.translate(attr[0], ctx);
+        tgtTranslated = this.translate(attr[1], ctx, 1);
         operator.renames.delete(attr[0].parts);
         operator.renames.set(srcTranslated.parts, tgtTranslated.parts);
         operator.renamesInv.delete(attr[1].parts);
         operator.renamesInv.set(tgtTranslated.parts, srcTranslated.parts);
         attr[0] = srcTranslated;
       } else {
+        tgtTranslated = this.translate(attr[1], ctx, 1);
         this.visitCalculation(attr[0], ctx);
       }
       attr[1] = tgtTranslated;
@@ -332,9 +334,9 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     ctx: VariableMapperCtx,
   ): void {
     operator.source.accept(this.vmap, ctx);
-    const src = ctx.scopeStack.pop();
     operator.target.accept(this.vmap, ctx);
     const tgt = ctx.scopeStack.pop();
+    const src = ctx.scopeStack.pop();
     const sum = this.union(src, tgt);
     ctx.scopeStack.push(sum);
     ctx.translations.set(operator, sum);
@@ -345,16 +347,5 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
       operator[prop].accept(this.vmap, ctx);
       ctx.currentIndex -= ctx.scopeStack.pop().size;
     }
-
-    // operator.left.accept(this.vmap, ctx);
-    // const left = ctx.scopeStack.pop();
-    // operator.right.accept(this.vmap, ctx);
-    // const right = ctx.scopeStack.pop();
-    // const sum = this.union(right, left);
-    // ctx.scopeStack.push(sum);
-    // ctx.translations.set(operator, sum);
-    // ctx.currentIndex =
-    //   Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
-    //   1;
   }
 }

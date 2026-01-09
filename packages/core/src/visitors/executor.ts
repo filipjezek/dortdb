@@ -13,7 +13,8 @@ import { Trie } from '../data-structures/trie.js';
 import { SerializeFn } from '../lang-manager.js';
 import { Queue } from 'mnemonist';
 import { LinkedListNode } from '../data-structures/index.js';
-import { difference } from '../utils/trie.js';
+import { difference, union } from '../utils/trie.js';
+import { TransitiveDependencies } from './transitive-deps.js';
 
 /**
  * Convert a linked list of arrays into an array of arrays, collecting values for specified keys.
@@ -58,6 +59,16 @@ export function llToArray(
   return result;
 }
 
+export function makeRenamer(keys: number[], renames: number[]) {
+  return (item: unknown[]) => {
+    const result: unknown[] = [];
+    for (let i = 0; i < keys.length; i++) {
+      result[renames[i]] = item[keys[i]];
+    }
+    return result;
+  };
+}
+
 /**
  * Execute a query plan. Languages have to provide their own implementation of {@link generateTuplesFromValues}
  */
@@ -66,6 +77,7 @@ export abstract class Executor implements PlanVisitor<
   ExecutionContext
 > {
   protected serialize: SerializeFn;
+  protected tdeps: Record<string, TransitiveDependencies> = {};
 
   constructor(
     protected lang: Lowercase<string>,
@@ -76,6 +88,7 @@ export abstract class Executor implements PlanVisitor<
     protected db: DortDBAsFriend,
   ) {
     this.serialize = this.db.langMgr.getLang(this.lang).serialize;
+    this.tdeps = db.langMgr.getVisitorMap('transitiveDependencies');
   }
 
   public execute(
@@ -237,28 +250,25 @@ export abstract class Executor implements PlanVisitor<
     pathSize: number,
     getNextItems: (ctx: ExecutionContext) => Iterable<unknown[]>,
     ctx: ExecutionContext,
-    keys: number[],
-    renameMappedKeys: number[],
-    mappedKeys: number[],
     min: number,
     max: number,
+    keys: number[],
     initialKeys: number[],
-    allKeys: number[],
     isForward: boolean,
+    searchSpace?: Trie<unknown>,
   ) {
     const levelSize = frontier.size;
 
     for (let i = 0; i < levelSize; i++) {
       const item = frontier.dequeue();
       const arrayed = llToArray(item, keys, initialKeys);
-      ctx.setTuple(arrayed, allKeys);
+      ctx.setTuple(arrayed, keys);
+      ctx.setTuple(arrayed, initialKeys);
       for (const next of getNextItems(ctx)) {
-        const result = new LinkedListNode<unknown[]>([], item);
-        for (let i = 0; i < keys.length; i++) {
-          result.value[renameMappedKeys[i]] = next[mappedKeys[i]];
-        }
+        const result = new LinkedListNode<unknown[]>(next, item);
 
-        const joinVals = pickArr(result.value, keys);
+        const joinVals = pickArr(next, keys);
+        if (searchSpace && !searchSpace.has(joinVals)) continue;
         if (pathSize >= min) {
           const otherPaths = otherFrontier.get(joinVals);
           if (otherPaths) {
@@ -321,7 +331,6 @@ export abstract class Executor implements PlanVisitor<
     const keys = operator.mappingFwd.schema.map(
       (x) => translations.get(x.parts).parts[0] as number,
     );
-    const allKeys = ctx.getKeys(operator);
 
     const fwdRenames = ctx.getRenames(operator.mappingFwd, operator);
     const revRenames = ctx.getRenames(operator.mappingRev, operator);
@@ -333,19 +342,64 @@ export abstract class Executor implements PlanVisitor<
     const tgtKeys = ctx.getKeys(operator.target);
     const srcKeys = ctx.getKeys(operator.source);
 
+    const fwdRenamer = makeRenamer(fwdKeys, fwdRenames);
+    const revRenamer = makeRenamer(revKeys, revRenames);
+    const tgtRenamer = makeRenamer(tgtKeys, tgtRenames);
+    const srcRenamer = makeRenamer(srcKeys, srcRenames);
+
     return {
       keys,
       initialKeys,
-      fwdRenames,
-      revRenames,
-      tgtRenames,
-      allKeys,
-      fwdKeys,
-      revKeys,
-      tgtKeys,
-      srcKeys,
-      srcRenames,
+      fwdRenamer,
+      revRenamer,
+      tgtRenamer,
+      srcRenamer,
     };
+  }
+
+  /**
+   * The bidirectional recursion target may depend on the source. It is, however,
+   * more efficient to process as many target items at once as possible. This method
+   * returns groups of source items for which target items can be processed together.
+   */
+  protected getBidiGroups(
+    operator: plan.BidirectionalRecursion,
+    ctx: ExecutionContext,
+    srcRenamer: (row: unknown[]) => unknown[],
+  ): Queue<LinkedListNode<unknown[]>>[] {
+    const tgtDeps = operator.target.accept(this.tdeps);
+    const translations = ctx.translations.get(operator);
+    const tgtKeys = Array.from(tgtDeps).map(
+      (id) => translations.get(id).parts[0] as number,
+    );
+
+    if (tgtDeps.size === 0) {
+      const q = new Queue<LinkedListNode<unknown[]>>();
+      for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
+        unknown[]
+      >) {
+        const toQueue = new LinkedListNode<unknown[]>(srcRenamer(item));
+        q.enqueue(toQueue);
+      }
+      return [q];
+    }
+
+    const groups = new Trie<unknown, Queue<LinkedListNode<unknown[]>>>();
+    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
+      unknown[]
+    >) {
+      const toQueue = new LinkedListNode<unknown[]>(srcRenamer(item));
+      const joinVals = pickArr(toQueue.value, tgtKeys);
+      let q = groups.get(joinVals);
+      if (!q) {
+        q = Queue.of(toQueue);
+        groups.set(joinVals, q);
+      } else {
+        q.enqueue(toQueue);
+      }
+    }
+
+    return Array.from(groups.entries()).map(([_, q]) => q);
   }
 
   protected *initBidiFrontiers(
@@ -357,30 +411,19 @@ export abstract class Executor implements PlanVisitor<
     revVisited: Trie<unknown, LinkedListNode<unknown[]>[]>,
     keys: number[],
     initialKeys: number[],
-    tgtRenames: number[],
-    tgtKeys: number[],
-    srcRenames: number[],
-    srcKeys: number[],
-    allKeys: number[],
+    tgtRenamer: (row: unknown[]) => unknown[],
   ) {
-    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
-      unknown[]
-    >) {
-      const toQueue = new LinkedListNode<unknown[]>([]);
-      for (let i = 0; i < allKeys.length; i++) {
-        toQueue.value[srcRenames[i]] = item[srcKeys[i]];
-      }
-      fwdFrontier.enqueue(toQueue);
+    const first = fwdFrontier.peek();
+    ctx.setTuple(first.value, initialKeys);
+    ctx.setTuple(first.value, keys);
+    for (const toQueue of fwdFrontier) {
       const joinVals = pickArr(toQueue.value, keys);
       fwdVisited.get(joinVals, []).push(toQueue);
     }
     for (const item of operator.target.accept(this.vmap, ctx) as Iterable<
       unknown[]
     >) {
-      const toQueue = new LinkedListNode<unknown[]>([]);
-      for (let i = 0; i < allKeys.length; i++) {
-        toQueue.value[tgtRenames[i]] = item[tgtKeys[i]];
-      }
+      const toQueue = new LinkedListNode<unknown[]>(tgtRenamer(item));
       revFrontier.enqueue(toQueue);
       const joinVals = pickArr(toQueue.value, keys);
       revVisited.get(joinVals, []).push(toQueue);
@@ -397,6 +440,81 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  protected bfsCheckSide(
+    queue: Queue<LinkedListNode<unknown[]>>,
+    getNextItems: (ctx: ExecutionContext) => Iterable<unknown[]>,
+    ctx: ExecutionContext,
+    keys: number[],
+    initialKeys: number[],
+    max: number,
+    visitOnly?: Trie<unknown>,
+  ) {
+    const visited = new Trie<unknown>();
+    for (const item of queue) {
+      const joinVals = pickArr(item.value, keys);
+      if (visitOnly && !visitOnly.has(joinVals)) continue;
+      visited.add(joinVals);
+    }
+
+    let pathSize = 0;
+    while (queue.size > 0) {
+      const levelSize = queue.size;
+      pathSize++;
+      for (let i = 0; i < levelSize; i++) {
+        const item = queue.dequeue();
+        const arrayed = llToArray(item, keys, initialKeys);
+        ctx.setTuple(arrayed, keys);
+        ctx.setTuple(arrayed, initialKeys);
+        for (const next of getNextItems(ctx)) {
+          const result = new LinkedListNode<unknown[]>(next, item);
+
+          const joinVals = pickArr(next, keys);
+          if (visited.has(joinVals) || (visitOnly && !visitOnly.has(joinVals)))
+            continue;
+          if (pathSize <= max) {
+            queue.enqueue(result);
+            visited.add(joinVals);
+          }
+        }
+      }
+    }
+    return visited;
+  }
+
+  /**
+   * Checks if there are any nodes reachable from both frontiers within the remaining path length.
+   */
+  protected bfsCheck(
+    queueFwd: Queue<LinkedListNode<unknown[]>>,
+    queueRev: Queue<LinkedListNode<unknown[]>>,
+    getNextItemsFwd: (ctx: ExecutionContext) => Iterable<unknown[]>,
+    getNextItemsRev: (ctx: ExecutionContext) => Iterable<unknown[]>,
+    ctx: ExecutionContext,
+    keys: number[],
+    initialKeys: number[],
+    max: number,
+  ): Trie<unknown> {
+    const visitedFwd = this.bfsCheckSide(
+      queueFwd,
+      getNextItemsFwd,
+      ctx,
+      keys,
+      initialKeys,
+      max,
+    );
+    const visitedRev = this.bfsCheckSide(
+      queueRev,
+      getNextItemsRev,
+      ctx,
+      keys,
+      initialKeys,
+      max,
+      visitedFwd,
+    );
+
+    return visitedRev;
+  }
+
   *visitBidirectionalRecursion(
     operator: plan.BidirectionalRecursion,
     ctx: ExecutionContext,
@@ -405,91 +523,121 @@ export abstract class Executor implements PlanVisitor<
     const {
       keys,
       initialKeys,
-      fwdRenames,
-      revRenames,
-      tgtRenames,
-      allKeys,
-      fwdKeys,
-      revKeys,
-      tgtKeys,
-      srcRenames,
-      srcKeys,
+      fwdRenamer,
+      revRenamer,
+      tgtRenamer,
+      srcRenamer,
     } = this.getBidiKeys(operator, ctx);
-    const fwdFrontier = new Queue<LinkedListNode<unknown[]>>();
     const revFrontier = new Queue<LinkedListNode<unknown[]>>();
     let fwdVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
     let revVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
 
-    yield* this.initBidiFrontiers(
-      operator,
-      ctx,
-      fwdFrontier,
-      revFrontier,
-      fwdVisited,
-      revVisited,
-      keys,
-      initialKeys,
-      tgtRenames,
-      tgtKeys,
-      srcRenames,
-      srcKeys,
-      allKeys,
-    );
-    if (operator.max === 1) return;
+    const groups = this.getBidiGroups(operator, ctx, srcRenamer);
 
-    let pathSize = 1;
-    while (
-      (fwdFrontier.size && (revFrontier.size || revVisited.size)) ||
-      (revFrontier.size && (fwdFrontier.size || fwdVisited.size))
-    ) {
-      if (fwdFrontier.size > 0) {
-        pathSize++;
+    for (const fwdFrontier of groups) {
+      yield* this.initBidiFrontiers(
+        operator,
+        ctx,
+        fwdFrontier,
+        revFrontier,
+        fwdVisited,
+        revVisited,
+        keys,
+        initialKeys,
+        tgtRenamer,
+      );
+      if (operator.max === 1) return;
+
+      const getFwd = (ctx: ExecutionContext) =>
+        Iterator.from(
+          operator.mappingFwd.accept(this.vmap, ctx) as Iterable<unknown[]>,
+        ).map(fwdRenamer);
+      const getRev = (ctx: ExecutionContext) =>
+        Iterator.from(
+          operator.mappingRev.accept(this.vmap, ctx) as Iterable<unknown[]>,
+        ).map(revRenamer);
+
+      let searchSpace: Trie<unknown> = null;
+
+      // If the max depth is large, precompute the search space to avoid exploring impossible paths
+      if (operator.max > 4) {
         console.log(
-          `path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
+          new Date().toISOString(),
+          'Calculating bidirectional recursion search space...',
         );
-        fwdVisited = new Trie();
-        yield* this.expandBidiFrontier(
-          fwdFrontier,
-          revVisited,
-          fwdVisited,
-          pathSize,
-          (ctx) =>
-            operator.mappingFwd.accept(this.vmap, ctx) as Iterable<unknown[]>,
+        searchSpace = this.bfsCheck(
+          Queue.from(fwdFrontier),
+          Queue.from(revFrontier),
+          getFwd,
+          getRev,
           ctx,
           keys,
-          fwdRenames,
-          fwdKeys,
-          operator.min,
-          operator.max,
           initialKeys,
-          allKeys,
-          true,
+          operator.max,
         );
+        console.log(
+          new Date().toISOString(),
+          `Bidi recursion search space size: ${searchSpace.size}`,
+        );
+        if (searchSpace.size === 0) return;
       }
-      if (pathSize >= operator.max) break;
-      if (revFrontier.size > 0) {
-        pathSize++;
-        console.log(
-          `path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
-        );
-        revVisited = new Trie();
-        yield* this.expandBidiFrontier(
-          revFrontier,
-          fwdVisited,
-          revVisited,
-          pathSize,
-          (ctx) =>
-            operator.mappingRev.accept(this.vmap, ctx) as Iterable<unknown[]>,
-          ctx,
-          keys,
-          revRenames,
-          revKeys,
-          operator.min,
-          operator.max,
-          initialKeys,
-          allKeys,
-          false,
-        );
+
+      let pathSize = 1;
+      while (
+        (fwdFrontier.size && (revFrontier.size || revVisited.size)) ||
+        (revFrontier.size && (fwdFrontier.size || fwdVisited.size))
+      ) {
+        if (
+          fwdFrontier.size > 0 &&
+          (revFrontier.size === 0 || fwdFrontier.size <= revFrontier.size)
+        ) {
+          pathSize++;
+          console.log(
+            new Date().toISOString(),
+            `FWD path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
+          );
+          fwdVisited = new Trie();
+          yield* this.expandBidiFrontier(
+            fwdFrontier,
+            revVisited,
+            fwdVisited,
+            pathSize,
+            getFwd,
+            ctx,
+            operator.min,
+            operator.max,
+            keys,
+            initialKeys,
+            true,
+            searchSpace,
+          );
+        }
+        if (pathSize >= operator.max) break;
+        if (
+          revFrontier.size > 0 &&
+          (fwdFrontier.size === 0 || revFrontier.size <= fwdFrontier.size)
+        ) {
+          pathSize++;
+          console.log(
+            new Date().toISOString(),
+            `REV path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
+          );
+          revVisited = new Trie();
+          yield* this.expandBidiFrontier(
+            revFrontier,
+            fwdVisited,
+            revVisited,
+            pathSize,
+            getRev,
+            ctx,
+            operator.min,
+            operator.max,
+            keys,
+            initialKeys,
+            false,
+            searchSpace,
+          );
+        }
       }
     }
   }

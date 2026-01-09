@@ -892,7 +892,10 @@ export class GraphBuilder
           connection: { edgeType: 'djoin' },
         },
         operator.source.accept(this.vmap),
-        operator.target.accept(this.vmap),
+        {
+          ...operator.target.accept(this.vmap),
+          connection: { edgeType: 'djoin' },
+        },
         {
           ...operator.mappingFwd.accept(this.vmap),
           connection: { edgeType: 'djoin' },
