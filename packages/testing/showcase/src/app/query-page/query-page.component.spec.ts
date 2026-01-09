@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 vi.mock('@dortdb/lang-cypher', () => ({
   ConnectionIndex: {} as any,
   Cypher: () => ({ name: '', visitors: {} }) as any,
+  gaLabelsOrType: 'gaLabelsOrType',
+  GraphologyDataAdapter: class {},
 }));
 vi.mock('@dortdb/lang-sql', () => ({
   SQL: () => ({ name: '', visitors: {} }) as any,

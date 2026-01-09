@@ -1,3 +1,10 @@
+vi.mock('@dortdb/lang-cypher', () => ({
+  ConnectionIndex: {} as any,
+  Cypher: () => ({ name: '', visitors: {} }) as any,
+  gaLabelsOrType: 'gaLabelsOrType',
+  GraphologyDataAdapter: class {},
+}));
+
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DataSourcesDialogComponent } from './data-sources-dialog.component';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
