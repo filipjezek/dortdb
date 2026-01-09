@@ -1,7 +1,7 @@
 {
   "name": "@dortdb/lang-xquery",
   "type": "module",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "XQuery parser and executor for DortDB",
   "exports": {
     ".": "./dist/index.js",
