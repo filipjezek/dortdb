@@ -145,10 +145,9 @@ export class UnibenchService {
       ),
     };
     if (
-      !(
-        gaLabelsOrType in
-        result.socialNetwork.nodeEntries().next().value.attributes
-      )
+      !result.socialNetwork.nodeEntries().next().value.attributes[
+        gaLabelsOrType
+      ]
     ) {
       alert(
         'Warning: You seem to be using an old version of the Unibench data stored in IndexedDB.\n' +
