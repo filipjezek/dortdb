@@ -324,12 +324,11 @@ export abstract class Executor implements PlanVisitor<
     operator: plan.BidirectionalRecursion,
     ctx: ExecutionContext,
   ) {
-    const translations = ctx.translations.get(operator);
     const initialKeys = Array.from(
       difference(operator.schemaSet, operator.mappingFwd.schemaSet),
-    ).map((id) => translations.get(id).parts[0] as number);
-    const keys = operator.mappingFwd.schema.map(
-      (x) => translations.get(x.parts).parts[0] as number,
+    ).map((id) => ctx.getTranslation(operator, id));
+    const keys = operator.mappingFwd.schema.map((x) =>
+      ctx.getTranslation(operator, x.parts),
     );
 
     const fwdRenames = ctx.getRenames(operator.mappingFwd, operator);
@@ -368,9 +367,8 @@ export abstract class Executor implements PlanVisitor<
     srcRenamer: (row: unknown[]) => unknown[],
   ): Queue<LinkedListNode<unknown[]>>[] {
     const tgtDeps = operator.target.accept(this.tdeps);
-    const translations = ctx.translations.get(operator);
-    const tgtKeys = Array.from(tgtDeps).map(
-      (id) => translations.get(id).parts[0] as number,
+    const tgtKeys = Array.from(tgtDeps).map((id) =>
+      ctx.getTranslation(operator, id),
     );
 
     if (tgtDeps.size === 0) {
@@ -533,6 +531,7 @@ export abstract class Executor implements PlanVisitor<
     let revVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
 
     const groups = this.getBidiGroups(operator, ctx, srcRenamer);
+    console.log('groups: ', groups.length);
 
     for (const fwdFrontier of groups) {
       yield* this.initBidiFrontiers(
@@ -975,7 +974,9 @@ export abstract class Executor implements PlanVisitor<
       unknown[]
     >;
     const key = operator.key.parts[0] as number;
-    if (ctx.translations.get(operator).get([allAttrs])?.parts[0] === key) {
+    if (
+      ctx.translations.get(operator).scope.get([allAttrs])?.parts[0] === key
+    ) {
       yield* this.serialize(source, ctx, operator.source).data;
       return;
     }

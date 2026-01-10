@@ -10,7 +10,10 @@ import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 export type VariableMap = Trie<string | number | symbol, ASTIdentifier>;
 export interface VariableMapperCtx {
   scopeStack: VariableMap[];
-  translations: Map<PlanOperator, VariableMap>;
+  translations: Map<
+    PlanOperator,
+    { scope: VariableMap; external: VariableMap }
+  >;
   variableNames: ASTIdentifier[];
   currentIndex: number;
 }
@@ -60,20 +63,26 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     return newTranslation;
   }
 
-  protected union(a: VariableMap, b: VariableMap): VariableMap {
+  protected union(a: VariableMap, ...bs: VariableMap[]): VariableMap {
     const result: VariableMap = new Trie();
     for (const [key, value] of a.entries()) {
       result.set(key, value);
     }
-    for (const [key, value] of b.entries()) {
-      result.set(key, value);
+    for (const b of bs) {
+      for (const [key, value] of b.entries()) {
+        result.set(key, value);
+      }
     }
     return result;
   }
 
   protected setTranslations(operator: PlanOperator, ctx: VariableMapperCtx) {
-    const scope = ctx.scopeStack.at(-1);
-    ctx.translations.set(operator, scope);
+    ctx.translations.set(operator, {
+      external: this.union(
+        ...(ctx.scopeStack as [VariableMap, ...VariableMap[]]),
+      ),
+      scope: ctx.scopeStack.at(-1),
+    });
   }
 
   visitRecursion(operator: plan.Recursion, ctx: VariableMapperCtx): void {
@@ -109,7 +118,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitTupleSource(operator: plan.TupleSource, ctx: VariableMapperCtx): void {
     const scope: VariableMap = new Trie();
     ctx.scopeStack.push(scope);
-    ctx.translations.set(operator, scope);
+    this.setTranslations(operator, ctx);
 
     for (const attr of operator.schema) {
       ctx.variableNames[ctx.currentIndex] = attr;
@@ -146,7 +155,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     const right = ctx.scopeStack.pop();
     const sum = this.union(right, left);
     ctx.scopeStack.push(sum);
-    ctx.translations.set(operator, sum);
+    this.setTranslations(operator, ctx);
     ctx.currentIndex =
       Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
       1;
@@ -174,7 +183,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
       }
     }
     ctx.scopeStack.push(sum);
-    ctx.translations.set(operator, sum);
+    this.setTranslations(operator, ctx);
     ctx.currentIndex =
       Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
       1;
@@ -295,8 +304,8 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     ctx: VariableMapperCtx,
   ): void {
     const scope: VariableMap = new Trie();
-    ctx.translations.set(operator, scope);
     ctx.scopeStack.push(scope);
+    this.setTranslations(operator, ctx);
     for (let i = 0; i < operator.args.length; i++) {
       const arg = operator.args[i];
       if (arg instanceof ASTIdentifier) {
@@ -339,7 +348,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     const src = ctx.scopeStack.pop();
     const sum = this.union(src, tgt);
     ctx.scopeStack.push(sum);
-    ctx.translations.set(operator, sum);
+    this.setTranslations(operator, ctx);
     ctx.currentIndex =
       Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
       1;

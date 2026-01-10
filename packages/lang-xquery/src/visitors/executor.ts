@@ -28,7 +28,7 @@ export class XQueryExecutor
   }
 
   *visitTreeJoin(operator: TreeJoin, ctx: ExecutionContext): Iterable<unknown> {
-    const ts = ctx.translations.get(operator);
+    const ts = ctx.translations.get(operator).scope;
     const keys = operator.schema
       .filter((x) => !ctxCols.includes(x))
       .map((x) => ts.get(x.parts).parts[0] as number);

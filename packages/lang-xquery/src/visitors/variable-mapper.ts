@@ -9,7 +9,7 @@ export class XQueryVariableMapper
   visitTreeJoin(operator: TreeJoin, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
     const scope = ctx.scopeStack.at(-1);
-    ctx.translations.set(operator, scope);
+    this.setTranslations(operator, ctx);
     operator.step.accept(this.vmap, ctx);
     scope.set(DOT.parts, this.translate(DOT, ctx, 1));
     scope.set(POS.parts, this.translate(POS, ctx, 1));

@@ -6,7 +6,10 @@ export class ExecutionContext {
   public variableValues: unknown[] = [];
   /** same structure as {@link variableNames} */
   public variableNames: ASTIdentifier[] = [];
-  public translations: Map<PlanOperator, VariableMap> = new Map();
+  public translations: Map<
+    PlanOperator,
+    { scope: VariableMap; external: VariableMap }
+  > = new Map();
 
   /**
    * @param variable ASTIdentifier with a single numeric part
@@ -37,7 +40,19 @@ export class ExecutionContext {
   /** Get numeric keys for the schema of `operator` */
   public getKeys(operator: PlanTupleOperator): number[] {
     const ts = this.translations.get(operator);
-    return operator.schema.map((x) => ts.get(x.parts).parts[0] as number);
+    return operator.schema.map(
+      (x) =>
+        (ts.scope.get(x.parts)?.parts[0] ??
+          ts.external.get(x.parts).parts[0]) as number,
+    );
+  }
+
+  public getTranslation(
+    operator: PlanOperator,
+    key: (string | number | symbol)[],
+  ): number {
+    const ts = this.translations.get(operator);
+    return (ts.scope.get(key) ?? ts.external.get(key)).parts[0] as number;
   }
 
   /**
@@ -51,7 +66,11 @@ export class ExecutionContext {
     const targetTs = this.translations.get(targetOp);
     return sourceOp.schema.map(
       (x) =>
-        (targetTs.get(x.parts) ?? sourceTs.get(x.parts)).parts[0] as number,
+        (
+          targetTs.scope.get(x.parts) ??
+          sourceTs.scope.get(x.parts) ??
+          sourceTs.external.get(x.parts)
+        ).parts[0] as number,
     );
   }
 }

@@ -38,11 +38,11 @@ export class SQLExecutor
     operator: PlanTupleOperator,
     ctx: ExecutionContext,
   ) {
-    const varmap = ctx.translations.get(operator);
     const keys = operator.schema
       .filter((x) => x.parts[0] !== allAttrs)
-      .map((attr) => varmap.get(attr.parts).parts[0] as number);
-    const allAttrsKey = varmap.get([allAttrs])?.parts[0] as number;
+      .map((attr) => ctx.getTranslation(operator, attr.parts));
+    const allAttrsKey = ctx.translations.get(operator).scope.get([allAttrs])
+      ?.parts[0] as number;
     const accessors = [];
     for (let i = 0; i < keys.length; i++) {
       const ps = operator.schema[i].parts;
