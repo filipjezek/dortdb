@@ -1,6 +1,8 @@
 ## 1.1.1 (2026-01-10)
 
-This was a version bump only, there were no code changes.
+### 🩹 Fixes
+
+- fix executor not seeing external context identifiers ([a0193e3](https://github.com/filipjezek/dortdb/commit/a0193e3))
 
 ## 1.1.0 (2026-01-09)
 
