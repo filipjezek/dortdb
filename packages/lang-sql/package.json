@@ -1,7 +1,7 @@
 {
   "name": "@dortdb/lang-sql",
   "type": "module",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "SQL parser and executor for DortDB",
   "exports": {
     ".": "./dist/index.js",
