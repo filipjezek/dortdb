@@ -379,7 +379,7 @@ export abstract class Executor implements PlanVisitor<
         const toQueue = new LinkedListNode<unknown[]>(srcRenamer(item));
         q.enqueue(toQueue);
       }
-      return [q];
+      return q.size ? [q] : [];
     }
 
     const groups = new Trie<unknown, Queue<LinkedListNode<unknown[]>>>();
@@ -531,7 +531,10 @@ export abstract class Executor implements PlanVisitor<
     let revVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
 
     const groups = this.getBidiGroups(operator, ctx, srcRenamer);
-    console.log('groups: ', groups.length);
+    console.log(
+      'groups: ',
+      groups.map((g) => g.size),
+    );
 
     for (const fwdFrontier of groups) {
       yield* this.initBidiFrontiers(

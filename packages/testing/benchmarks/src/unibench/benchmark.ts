@@ -23,7 +23,7 @@ const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
 export interface Query {
   filename: string;
   lang: 'sql' | 'xquery' | 'cypher';
-  params?: Record<string, () => any>;
+  params?: Record<string, (prevParams: Record<string, any>) => any>;
 }
 
 const queries: Query[] = [
@@ -65,7 +65,13 @@ const queries: Query[] = [
     lang: 'sql',
     params: {
       customerId1: () => pickRandom(personIds),
-      customerId2: () => pickRandom(personIds),
+      customerId2: ({ customerId1 }) => {
+        let id2 = pickRandom(personIds);
+        while (id2 === customerId1) {
+          id2 = pickRandom(personIds);
+        }
+        return id2;
+      },
     },
   },
   {
@@ -188,6 +194,7 @@ export async function unibenchBenchmark(): Promise<void> {
 
   await registerDataSources(db, logger);
   for (const query of queries) {
+    if (query.filename !== 'q06.txt') continue;
     await runQuery(query, db, logger);
   }
 }
@@ -208,28 +215,38 @@ async function runQuery(
   // warmup
   const now = Date.now();
   while (Date.now() - now < 30 * 1000) {
+    const bp = Object.entries(query.params || {}).reduce(
+      (result, [key, value]) => {
+        result[key] = value(result);
+        return result;
+      },
+      {} as Record<string, any>,
+    );
     db.query(queryText, {
       mainLang: query.lang,
-      boundParams: Object.fromEntries(
-        Object.entries(query.params || {}).map(([key, value]) => [
-          key,
-          value(),
-        ]),
-      ),
+      boundParams: bp,
     });
   }
 
   for (let i = 0; i < 10; i++) {
-    console.log(i);
     gc();
-    const params = Object.fromEntries(
-      Object.entries(query.params || {}).map(([key, value]) => [key, value()]),
+    const params = Object.entries(query.params || {}).reduce(
+      (result, [key, value]) => {
+        result[key] = value(result);
+        return result;
+      },
+      {} as Record<string, any>,
+    );
+    logger.info(
+      { query: query.filename, iteration: i, params },
+      'Running query iteration',
     );
     if (i === 0)
       logger.info(
         { ...process.memoryUsage(), query: query.filename },
         'Memory usage before running query',
       );
+    await promiseTimeout(1000);
     performance.mark(`runQuery_${query.filename}_start`);
     db.query(queryText, {
       mainLang: query.lang,
@@ -246,7 +263,7 @@ async function runQuery(
         { ...process.memoryUsage(), query: query.filename },
         'Memory usage after running query',
       );
-    await promiseTimeout(10000);
+    // await promiseTimeout(10000);
   }
 }
 
