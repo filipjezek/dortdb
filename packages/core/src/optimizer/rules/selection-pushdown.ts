@@ -16,7 +16,12 @@ import {
   areDepsOnlyRenamed,
   RenamedDepsResult,
 } from '../../utils/projection.js';
-import { containsAll, restriction } from '../../utils/trie.js';
+import {
+  containsAll,
+  containsAny,
+  difference,
+  restriction,
+} from '../../utils/trie.js';
 import { AttributeRenameChecker } from '../../visitors/attribute-rename-checker.js';
 import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
@@ -348,7 +353,11 @@ export class PushdownSelections implements PatternRule<
     if (areRenamed === RenamedDepsResult.modified) return false;
     if (areRenamed === RenamedDepsResult.unchanged) return true;
 
-    if (this.renameCheckerVmap[s.condition.lang].canRename(s, p.renames)) {
+    if (
+      this.renameCheckerVmap[s.condition.lang].canRename(s.condition, p.renames)
+    ) {
+      const madeByProj = difference(tdeps, p.schemaSet);
+      if (containsAny(madeByProj, p.renames)) return false;
       if (toRenameContainer) {
         toRenameContainer.add(s);
       }

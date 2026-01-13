@@ -378,6 +378,66 @@ describe('PushdownSelections', () => {
       expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
     });
 
+    it('should push down a complex selection through a projection', () => {
+      const emptyFn = () => '';
+      const filterCalc = new plan.Calculation(
+        lang,
+        emptyFn,
+        [new plan.ItemFnSource(lang, [strToId('renamed')], emptyFn)],
+        [],
+      );
+      const projCalc = strToCalc('a');
+
+      const initialPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.Selection(
+          lang,
+          filterCalc.clone(),
+          new plan.Projection(
+            lang,
+            [
+              [strToId('x'), strToId('renamed')],
+              [projCalc.clone(), strToId('calculated')],
+            ],
+            new plan.Projection(
+              lang,
+              [[strToId('a'), strToId('x')]],
+              source.clone(),
+            ),
+          ),
+        ),
+      );
+
+      const optimized = db.optimizer.optimize(initialPlan);
+      const renamedCalc = new plan.Calculation(
+        lang,
+        emptyFn,
+        [new plan.ItemFnSource(lang, [strToId('a')], emptyFn)],
+        [],
+      );
+      const expectedPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.Projection(
+          lang,
+          [
+            [strToId('x'), strToId('renamed')],
+            [projCalc.clone(), strToId('calculated')],
+          ],
+          new plan.Projection(
+            lang,
+            [[strToId('a'), strToId('x')]],
+            new plan.Selection(lang, renamedCalc, source.clone()),
+          ),
+        ),
+      );
+
+      expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
+    });
+
     it('should not push down a selection through a projection creating the filtered columns', () => {
       const calc = strToCalc('calculated');
 
