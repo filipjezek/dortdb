@@ -54,6 +54,7 @@
   },
   "devDependencies": {
     "@types/lodash-es": "^4.17.12",
-    "graphology-types": "^0.24.8"
+    "graphology-types": "^0.24.8",
+    "peggy": "^5.0.6"
   }
 }

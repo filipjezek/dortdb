@@ -1329,26 +1329,24 @@ export class CypherLogicalPlanBuilder
     if (node.order?.length) {
       res = this.processOrderBy(node, res, { ...args, ctx: attrCtx });
     }
-    if (node.items === '*') {
-      res = new plan.Projection('cypher', originalSchema.map(toPair), res);
-    } else {
-      const cols: Aliased<plan.Calculation | ASTIdentifier>[] = node.items.map(
-        (item) => this.processAttr(item, { ...args, ctx: attrCtx }),
-      );
-      const aggrs = getAggregates(cols.map(retI0));
-      if (!node.order?.length && aggrs.length) {
-        res = this.processGroupBy(res, aggrs, cols);
-      }
-      res = new plan.Projection(
-        'cypher',
-        args.append
-          ? originalSchema
-              .map<Aliased<plan.Calculation | ASTIdentifier>>(toPair)
-              .concat(cols)
-          : cols,
-        res,
-      );
+    const cols: Aliased<plan.Calculation | ASTIdentifier>[] = [];
+    for (const item of node.items) {
+      if (item === '*') cols.push(...originalSchema.map(toPair));
+      else this.processAttr(item, { ...args, ctx: attrCtx });
     }
+    const aggrs = getAggregates(cols.map(retI0));
+    if (!node.order?.length && aggrs.length) {
+      res = this.processGroupBy(res, aggrs, cols);
+    }
+    res = new plan.Projection(
+      'cypher',
+      args.append
+        ? originalSchema
+            .map<Aliased<plan.Calculation | ASTIdentifier>>(toPair)
+            .concat(cols)
+        : cols,
+      res,
+    );
     if (node.distinct) {
       res = new plan.Distinct('cypher', allAttrs, res);
     }
@@ -1362,14 +1360,12 @@ export class CypherLogicalPlanBuilder
     res: PlanTupleOperator,
     args: DescentArgs & { append: boolean },
   ) {
-    let preSortCols: Aliased<plan.Calculation | ASTIdentifier>[];
-    if (node.items === '*') {
-      preSortCols = res.schema.map(toPair);
-    } else {
-      preSortCols = args.append ? res.schema.map(toPair) : [];
-      for (const item of node.items) {
-        preSortCols.push(this.processAttr(item, args));
-      }
+    const preSortCols: Aliased<plan.Calculation | ASTIdentifier>[] = args.append
+      ? res.schema.map(toPair)
+      : [];
+    for (const item of node.items) {
+      if (item === '*') preSortCols.push(...res.schema.map(toPair));
+      else preSortCols.push(this.processAttr(item, args));
     }
     const orders: plan.Order[] = [];
     for (const item of node.order) {

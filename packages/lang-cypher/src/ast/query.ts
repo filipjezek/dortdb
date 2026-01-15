@@ -155,7 +155,7 @@ export class DeleteClause implements ASTNode {
 
 export class ProjectionBody implements ASTNode {
   constructor(
-    public items: (ASTNode | Aliased<ASTNode>)[] | '*',
+    public items: (ASTNode | Aliased<ASTNode> | '*')[],
     public order?: OrderItem[],
     public skip?: ASTNode,
     public limit?: ASTNode,

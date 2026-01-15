@@ -253,10 +253,9 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     return node.detach ? ' DETACH ' + res : res;
   }
   visitProjectionBody(node: ProjectionBody): string {
-    let res =
-      node.items === '*'
-        ? '*'
-        : node.items.map(this.processNodeOrAttr).join(',');
+    let res = node.items
+      .map((x) => (x === '*' ? '*' : this.processNodeOrAttr(x)))
+      .join(',');
     if (node.distinct) res = 'DISTINCT ' + res;
     if (node.order) res += ' ORDER BY ' + node.order.map(this.processNode);
     if (node.skip) res += ' SKIP ' + node.skip.accept(this);

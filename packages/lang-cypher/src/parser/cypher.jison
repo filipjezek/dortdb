@@ -188,7 +188,7 @@ updating-clause:
   | delete-clause ;
 
 create-clause:
-  CREATE pattern ;
+  CREATE pattern { $$ = new yy.ast.CreateClause($2); } ;
 
 merge-clause:
   MERGE pattern-part merge-actions-list_opt { $$ = new yy.ast.MergeClause($2, $3); } ;
@@ -264,7 +264,7 @@ projection-body:
 
 projection-item-list:
   projection-item { $$ = [$1]; }
-  | STAR { $$ = $1; }
+  | STAR { $$ = [$1]; }
   | projection-item-list COMMA projection-item { $$ = $1; $$.push($3); } ;
 
 projection-item:
