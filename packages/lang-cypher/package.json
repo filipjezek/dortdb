@@ -17,7 +17,8 @@
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
-    "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs && node replace-parser.mjs"
+    "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs && node replace-parser.mjs",
+    "peggy": "peggy -c src/parser/peggy-config.mjs"
   },
   "author": "dortdb",
   "license": "ISC",

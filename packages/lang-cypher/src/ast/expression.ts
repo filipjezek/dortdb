@@ -44,7 +44,7 @@ export class QuantifiedExpr implements ASTNode {
     quantifier: string,
     public variable: CypherIdentifier,
     public expr: ASTNode,
-    public where?: ASTNode,
+    public where: ASTNode = null,
   ) {
     this.quantifier = quantifier.toLowerCase() as Quantifier;
   }
@@ -57,7 +57,7 @@ export class QuantifiedExpr implements ASTNode {
 export class PatternComprehension implements ASTNode {
   constructor(
     public pattern: PatternElChain,
-    public where: ASTNode | undefined,
+    public where: ASTNode,
     public expr: ASTNode,
   ) {}
 
@@ -70,8 +70,8 @@ export class ListComprehension implements ASTNode {
   constructor(
     public variable: CypherIdentifier,
     public source: ASTNode,
-    public where?: ASTNode,
-    public expr?: ASTNode,
+    public where: ASTNode = null,
+    public expr: ASTNode = null,
   ) {}
 
   accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {

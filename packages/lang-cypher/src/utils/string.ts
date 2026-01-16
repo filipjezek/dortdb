@@ -1,7 +1,7 @@
 export function parseStringLiteral(original: string): string {
   let value = '';
   const escRegex =
-    /^([bfnrt\\'"]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8}|[0-7]{1,3})/;
+    /^([bfnrt\\'"]|x[0-9a-f]{2}|u[0-9a-f]{4}|u[0-9a-f]{8}|[0-7]{1,3})/i;
   for (let i = 1; i < original.length - 1; i++) {
     const c = original[i];
     let match: RegExpMatchArray | null;
@@ -17,6 +17,7 @@ export function parseStringLiteral(original: string): string {
 
 export function interpretEscape(esc: string): string {
   let code: number;
+  esc = esc.toLowerCase();
   switch (esc[0]) {
     case 'b':
       return '\b';
@@ -34,7 +35,6 @@ export function interpretEscape(esc: string): string {
       code = parseInt(esc.slice(1), 16);
       return String.fromCharCode(code);
     case 'u':
-    case 'U':
       code = parseInt(esc.slice(1), 16);
       return String.fromCodePoint(code);
     default:

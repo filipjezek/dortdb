@@ -30,6 +30,22 @@
 
 {
   const ast = options.ast;
+
+  function makeOpSeq(
+    initial,
+    type,
+    others,
+  ) {
+    let result = initial;
+    const typeId =
+      typeof type === 'string'
+        ? new ast.CypherIdentifier(type.toLowerCase())
+        : type;
+    for (const node of others) {
+      result = new ast.ASTOperator('cypher', typeId, [result, node]);
+    }
+    return result;
+  }
 }
 
 Cypher = _? @Statement (_? ';')? _? !. ;
@@ -147,8 +163,8 @@ StandaloneCall = 'CALL'i _ proc:ProcedureInvocation y:(_? 'YIELD'i _ YieldOrStar
 } ;
 
 ProcedureInvocation = ExplicitProcedureInvocation
-                      / ImplicitProcedureInvocation
-                      ;
+  / ImplicitProcedureInvocation
+  ;
 
 YieldOrStar = '*' / YieldItems ;
 
@@ -167,12 +183,12 @@ ProjectionBody = dist:(_? @'DISTINCT'i)? _ items:ProjectionItems o:(_ @Order)? s
 } ;
 
 ProjectionItems = '*' items:(_? ',' _? @ProjectionItem)* { return ['*', ...items]; }
-                / ProjectionItem|1.., _? ',' _?|
-                ;
+  / ProjectionItem|1.., _? ',' _?|
+  ;
 
 ProjectionItem = @Expression _ 'AS'i _ @Variable
-               / Expression
-               ;
+  / Expression
+  ;
 
 Order = 'ORDER'i _ 'BY'i _ @SortItem|1.., _? ',' _?| ;
 
@@ -190,317 +206,419 @@ Where = 'WHERE'i _ @Expression ;
 Pattern = PatternPart|1.., _? ',' _?| ;
 
 PatternPart = v:Variable _? '=' _? part:AnonymousPatternPart { part.variable = v; return part; }
-            / AnonymousPatternPart
-            ;
+  / AnonymousPatternPart
+  ;
 
 AnonymousPatternPart = PatternElement ;
 
-PatternElement = NodePattern (_? PatternElementChain)*
-               / '(' @PatternElement ')'
-               ;
+PatternElement = np:NodePattern chain:(_? @PatternElementChain)* { return new ast.PatternElChain([np, chain].flat(Infinity)); }
+  / '(' @PatternElement ')'
+  ;
 
-RelationshipsPattern = NodePattern (_? PatternElementChain)+ ;
+RelationshipsPattern = @NodePattern @(_? @PatternElementChain)+ ;
 
-NodePattern = '(' _? (Variable _?)? (NodeLabels _?)? (Properties _?)? ')' ;
+NodePattern = '(' _? v:(@Variable _?)? labels:(@NodeLabels _?)? props:(@Properties _?)? ')' {
+  return new ast.NodePattern(v, labels ?? [], props);
+} ;
 
-PatternElementChain = RelationshipPattern _? NodePattern ;
+PatternElementChain = @RelationshipPattern _? @NodePattern ;
 
-RelationshipPattern = LeftArrowHead _? Dash _? RelationshipDetail? _? Dash _? RightArrowHead
-                    / LeftArrowHead _? Dash _? RelationshipDetail? _? Dash
-                    / Dash _? RelationshipDetail? _? Dash _? RightArrowHead
-                    / Dash _? RelationshipDetail? _? Dash
-                    ;
+RelationshipPattern = LeftArrowHead _? Dash _? rel:RelationshipDetail? _? Dash { rel ??= new ast.RelPattern(); rel.pointsLeft = true; return rel; }
+  / Dash _? rel:RelationshipDetail? _? Dash _? RightArrowHead { rel ??= new ast.RelPattern(); rel.pointsRight = true; return rel; }
+  / Dash _? rel:RelationshipDetail? _? Dash { return rel ?? new ast.RelPattern(); }
+  ;
 
-RelationshipDetail = '[' _? (Variable _?)? (RelationshipTypes _?)? RangeLiteral? (Properties _?)? ']' ;
+RelationshipDetail = '[' _? v:(@Variable _?)? types:(@RelationshipTypes _?)? range:RangeLiteral? props:(@Properties _?)? ']' {
+  return new ast.RelPattern(false, false, v, types ?? [], range, props);
+} ;
 
 Properties = MapLiteral
-           / Parameter
-           ;
+  / Parameter
+  ;
 
-RelationshipTypes = ':' _? RelTypeName (_? '|' ':'* _? RelTypeName)* ;
+RelationshipTypes = (':' _? @RelTypeName)|1.., _? '|' _?| ;
 
-NodeLabels = NodeLabel (_? NodeLabel)* ;
+NodeLabels = NodeLabel|1.., _?| ;
 
-NodeLabel = ':' _? LabelName ;
+NodeLabel = ':' _? @LabelName ;
 
-RangeLiteral = '*' _? (IntegerLiteral _?)? ('..' _? (IntegerLiteral _?)?)? ;
+RangeLiteral = '*' _? frst:(@$IntegerLiteral _?)? secW:(@'..' _? @(@$IntegerLiteral _?)?)? {
+  frst = frst === null ? undefined : new ast.ASTNumberLiteral(frst);
+  const sec = secW ? (secW[1] === null ? undefined : new ast.ASTNumberLiteral(secW[1])) : frst;
+  return [frst, sec];
+} ;
 
 LabelName = SchemaName ;
 
 RelTypeName = SchemaName ;
 
-PropertyExpression = Atom (_? PropertyLookup)+ ;
+PropertyExpression = a:Atom path:(_? @PropertyLookup)+ {
+  for (const p of path) {
+    a = new ast.PropLookup(a, p);
+  }
+  return a;
+} ;
 
 Expression = OrExpression ;
 
-OrExpression = XorExpression (_ 'OR'i _ XorExpression)* ;
+OrExpression = a:XorExpression bs:(_ 'OR'i _ @XorExpression)* { return makeOpSeq(a, 'or', bs); } ;
 
-XorExpression = AndExpression (_ 'XOR'i _ AndExpression)* ;
+XorExpression = a:AndExpression bs:(_ 'XOR'i _ @AndExpression)* { return makeOpSeq(a, 'xor', bs); } ;
 
-AndExpression = NotExpression (_ 'AND'i _ NotExpression)* ;
+AndExpression = a:NotExpression bs:(_ 'AND'i _ @NotExpression)* { return makeOpSeq(a, 'and', bs); } ;
 
-NotExpression = ('NOT'i _?)* ComparisonExpression ;
+NotExpression = nots:(@'NOT'i _?)* expr:ComparisonExpression {
+  for (let i = 0; i < nots.length; i++) {
+    expr = options.makeOp('not', [expr]);
+  }
+  return expr;
+} ;
 
-ComparisonExpression = StringListNullPredicateExpression (_? PartialComparisonExpression)* ;
+ComparisonExpression = a:StringListNullPredicateExpression bs:(_? @PartialComparisonExpression)* {
+  if (!bs.length) return a;
+  const [head, ...rest] = bs;
+  a = options.makeOp(head[0], [a, head[1]]);
+  for (const [op, expr] of rest) {
+    a = options.makeOp('and', [a, options.makeOp(op, [a.operands[1], expr])]);
+  }
+  return a;
+} ;
 
-PartialComparisonExpression = RelOp _? StringListNullPredicateExpression ;
+PartialComparisonExpression = @RelOp _? @StringListNullPredicateExpression ;
 
 RelOp = '='
-        / '<>'
-        / '<'
-        / '>'
-        / '<='
-        / '>='
-        ;
+  / '<>'
+  / '<'
+  / '>'
+  / '<='
+  / '>='
+  ;
 
-StringListNullPredicateExpression = AddOrSubtractExpression StringListNullPredicate* ;
+StringListNullPredicateExpression = a:AddOrSubtractExpression bs:StringListNullPredicate* {
+  for (const [op, expr] of bs) {
+    a = options.makeOp(op, expr ? [a, expr] : [a]);
+  }
+  return a;
+} ;
 
 StringListNullPredicate = StringPredicateExpression / ListPredicateExpression / NullPredicateExpression ;
 
-StringPredicateExpression = StringPredicate _? AddOrSubtractExpression ;
+StringPredicateExpression = @StringPredicate _? @AddOrSubtractExpression ;
 
-StringPredicate = _ 'STARTS'i _ 'WITH'i
-                / _ 'ENDS'i _ 'WITH'i
-                / _ 'CONTAINS'i
-                ;
+StringPredicate = _ 'STARTS'i _ 'WITH'i { return 'startswith'; }
+  / _ 'ENDS'i _ 'WITH'i { return 'endswith'; }
+  / _ @'CONTAINS'i
+  ;
 
-ListPredicateExpression = _ 'IN'i _? AddOrSubtractExpression ;
+ListPredicateExpression = _ @'IN'i _? @AddOrSubtractExpression ;
 
-NullPredicateExpression = _ 'IS'i _ 'NULL'i
-                        / _ 'IS'i _ 'NOT'i _ 'NULL'i
-                        ;
+NullPredicateExpression = _ 'IS'i _ 'NULL'i { return 'isnull'; }
+  / _ 'IS'i _ 'NOT'i _ 'NULL'i { return 'isnotnull'; }
+  ;
 
-AddOrSubtractExpression = MultiplyDivideModuloExpression (_? AddOp _? MultiplyDivideModuloExpression)* ;
+AddOrSubtractExpression = a:MultiplyDivideModuloExpression bs:(_? @AddOp _? @MultiplyDivideModuloExpression)* {
+  for (const [op, expr] of bs) {
+    a = options.makeOp(op, [a, expr]);
+  }
+  return a;
+} ;
 
 AddOp = '+' / '-' ;
 
-MultiplyDivideModuloExpression = PowerOfExpression (_? MulOp _? PowerOfExpression)* ;
+MultiplyDivideModuloExpression = a:PowerOfExpression bs:(_? @MulOp _? @PowerOfExpression)* {
+  for (const [op, expr] of bs) {
+    a = options.makeOp(op, [a, expr]);
+  }
+  return a;
+} ;
 
 MulOp = '*' / '/' / '%' ;
 
-PowerOfExpression = UnaryAddOrSubtractExpression (_? '^' _? UnaryAddOrSubtractExpression)* ;
+PowerOfExpression = a:UnaryAddOrSubtractExpression bs:(_? '^' _? @UnaryAddOrSubtractExpression)* {
+  return makeOpSeq(a, '^', bs);
+} ;
 
-UnaryAddOrSubtractExpression = NonArithmeticOperatorExpression
-                             / AddOp _? NonArithmeticOperatorExpression
-                             ;
+UnaryAddOrSubtractExpression = LabelledExpression
+  / op:AddOp _? expr:LabelledExpression { return options.makeOp(op, [expr]); }
+  ;
 
-LabelledExpression = NonArithmeticOperatorExpression (_? NodeLabels)? ;
+LabelledExpression = expr:NonArithmeticOperatorExpression labels:(_? @NodeLabels)? {
+  return labels ? new ast.LabelFilterExpr(expr, labels) : expr;
+} ;
 
 ListOrPropOp = ListOperatorExpression
-              / PropertyLookup
-              ;
+  / PropertyLookup
+  ;
 
-NonArithmeticOperatorExpression = Atom (_? ListOrPropOp)* ;
+NonArithmeticOperatorExpression = a:Atom bs:(_? @ListOrPropOp)* {
+  for (const b of bs) {
+    if (Array.isArray(b)) {
+      a = new ast.SubscriptExpr(a, b);
+    } else {
+      a = new ast.PropLookup(a, b);
+    }
+  }
+  return a;
+} ;
 
 
-ListOperatorExpression = '[' Expression ']'
-                       / '[' Expression? '..' Expression? ']'
-                       ;
+ListOperatorExpression = '[' expr:Expression ']' { return [expr]; }
+  / '[' @Expression? '..' @Expression? ']'
+  ;
 
-PropertyLookup = '.' _? PropertyKeyName ;
+PropertyLookup = '.' _? @PropertyKeyName ;
 
 Atom = Literal
-     / Parameter
-     / CaseExpression
-     / 'COUNT'i _? '(' _? '*' _? ')'
-     / ListComprehension
-     / PatternComprehension
-     / Quantifier
-     / PatternPredicate
-     / ParenthesizedExpression
-     / FunctionInvocation
-     / ExistentialSubquery
-     / Variable
-     ;
+  / Parameter
+  / CaseExpression
+  / 'COUNT'i _? '(' _? '*' _? ')' {
+    return options.wrapFn(ast.ASTIdentifier.fromParts(['count']), [ast.ASTIdentifier.fromParts([ast.allAttrs])])
+  }
+  / ListComprehension
+  / PatternComprehension
+  / Quantifier
+  / PatternPredicate
+  / ParenthesizedExpression
+  / FunctionInvocation
+  / ExistentialSubquery
+  / Variable
+  ;
 
-CaseExpression = 'CASE'i (_? CaseAlternative)+ (_? 'ELSE'i _? Expression)? _? 'END'i
-               / 'CASE'i _? Expression (_? CaseAlternative)+ (_? 'ELSE'i _? Expression)? _? 'END'i ;
+CaseExpression
+  = 'CASE'i wts:(_? @CaseAlternative)+ els:(_? 'ELSE'i _? @Expression)? _? 'END'i {
+    return new ast.CaseExpr(undefined, wts, els);
+  }
+  / 'CASE'i _? expr:Expression wts:(_? @CaseAlternative)+ els:(_? 'ELSE'i _? @Expression)? _? 'END'i {
+    return new ast.CaseExpr(expr, wts, els);
+  } ;
 
-CaseAlternative = 'WHEN'i _? Expression _? 'THEN'i _? Expression ;
+CaseAlternative = 'WHEN'i _? @Expression _? 'THEN'i _? @Expression ;
 
-ListComprehension = '[' _? FilterExpression (_? '|' _? Expression)? _? ']' ;
+ListComprehension = '[' _? filter:FilterExpression map:(_? '|' _? @Expression)? _? ']' {
+  return new ast.ListComprehension(filter.v, filter.expr, filter.where, map);
+} ;
 
-PatternComprehension = '[' _? (Variable _? '=' _?)? RelationshipsPattern _? (Where _?)? '|' _? Expression _? ']' ;
+PatternComprehension = '[' _? v:(@Variable _? '=' _?)? pattern:RelationshipsPattern _? where:(@Where _?)? '|' _? map:Expression _? ']' {
+  pattern = new ast.PatternElChain(pattern.flat(Infinity));
+  pattern.variable = v;
+  return new ast.PatternComprehension(pattern, where, map);
+} ;
 
-Quantifier = 'ALL'i _? '(' _? FilterExpression _? ')'
-           / 'ANY'i _? '(' _? FilterExpression _? ')'
-           / 'NONE'i _? '(' _? FilterExpression _? ')'
-           / 'SINGLE'i _? '(' _? FilterExpression _? ')'
-           ;
+Quantifier = t:QuantifierType _? '(' _? f:FilterExpression _? ')' {
+  return new ast.QuantifiedExpr(t.toLowerCase(), f.v, f.expr, f.where);
+} ;
 
-FilterExpression = IdInColl (_? Where)? ;
+QuantifierType = 'ALL'i
+  / 'ANY'i
+  / 'NONE'i
+  / 'SINGLE'i
+  ;
 
-PatternPredicate = RelationshipsPattern ;
+FilterExpression = idcol:IdInColl where:(_? @Where)? {
+  return { where, v: idcol[0], expr: idcol[1] };
+} ;
 
-ParenthesizedExpression = '(' _? Expression _? ')' ;
+PatternPredicate = pattern:RelationshipsPattern {
+  return new ast.PatternElChain(pattern.flat(Infinity));
+} ;
 
-IdInColl = Variable _ 'IN'i _ Expression ;
+ParenthesizedExpression = '(' _? @Expression _? ')' ;
 
-FunctionInvocation = FunctionName _? '(' _? ('DISTINCT'i _?)? (Expression _? (',' _? Expression _?)*)? ')' ;
+IdInColl = @Variable _ 'IN'i _ @Expression ;
 
-FunctionName = Namespace SymbolicName ;
+FunctionInvocation = name:FunctionName _? '(' _? distinct:(@'DISTINCT'i _?)? args:(@Expression|1.., _? ',' _?| _?)? ')' {
+  return options.wrapFn(name, args ?? [], !!distinct);
+} ;
 
-ExistentialSubquery = 'EXISTS'i _? '{' _? RegularQuery _? '}'
-                    / 'EXISTS'i _? '{' _? Pattern (_? Where)? _? '}' ;
+FunctionName = Namespace SymbolicName {
+  return new ast.CypherIdentifier(text());
+} ;
 
-ExplicitProcedureInvocation = ProcedureName _? '(' _? (Expression _? (',' _? Expression _?)*)? ')' ;
+ExistentialSubquery
+  = 'EXISTS'i _? '{' _? q:RegularQuery _? '}' { return new ast.ExistsSubquery(q); }
+  / 'EXISTS'i _? '{' _? p:Pattern w:(_? @Where)? _? '}' { return new ast.ExistsSubquery(null, p, w); } ;
 
-ImplicitProcedureInvocation = ProcedureName ;
+ExplicitProcedureInvocation = name:ProcedureName _? '(' _? args:(@Expression|1.., _? ',' _?| _?)? ')' {
+  const res = new options.wrapFn(name, args ?? []);
+  res.procedure = true;
+  return res;
+} ;
+
+ImplicitProcedureInvocation = name:ProcedureName {
+  const res = new options.wrapFn(name);
+  res.procedure = true;
+  return res;
+} ;
 
 ProcedureResultField = SymbolicName ;
 
-ProcedureName = Namespace SymbolicName ;
+ProcedureName = Namespace SymbolicName { return new ast.CypherIdentifier(text()); } ;
 
 Namespace = (SymbolicName '.')* ;
 
 Variable = SymbolicName ;
 
-Literal = BooleanLiteral
-        / 'NULL'i
-        / NumberLiteral
-        / StringLiteral
-        / ListLiteral
-        / MapLiteral
-        ;
+Literal = x:BooleanLiteral { return new ast.ASTBooleanLiteral(x); }
+  / x:'NULL'i { return new ast.ASTBooleanLiteral(x); }
+  / x:$NumberLiteral { return new ast.ASTNumberLiteral(x); }
+  / x:$StringLiteral { return new ast.ASTStringLiteral(x); }
+  / ListLiteral
+  / MapLiteral
+  ;
 
 BooleanLiteral = 'TRUE'i
-               / 'FALSE'i
-               ;
+  / 'FALSE'i
+  ;
 
 NumberLiteral = DoubleLiteral
-              / IntegerLiteral
-              ;
+  / IntegerLiteral
+  ;
 
 IntegerLiteral = HexInteger
-               / OctalInteger
-               / DecimalInteger
-               ;
+  / OctalInteger
+  / BinInteger
+  / DecimalInteger
+  ;
 
 HexInteger = '0x' HexDigit+ ;
 
 DecimalInteger = ZeroDigit
-               / NonZeroDigit Digit*
-               ;
+  / NonZeroDigit Digit*
+  ;
 
 OctalInteger = '0o' OctDigit+ ;
+
+BinInteger = '0b' [01]+ ;
 
 HexLetter = [a-f]i ;
 
 HexDigit = Digit
-         / HexLetter
-         ;
+  / HexLetter
+  ;
 
 Digit = ZeroDigit
-      / NonZeroDigit
-      ;
+  / NonZeroDigit
+  ;
 
 NonZeroDigit = NonZeroOctDigit
-             / [89]
-             ;
+  / [89]
+  ;
 
 NonZeroOctDigit = [1-7] ;
 
 OctDigit = ZeroDigit
-         / NonZeroOctDigit
-         ;
+  / NonZeroOctDigit
+  ;
 
 ZeroDigit = '0' ;
 
 DoubleLiteral = ExponentDecimalReal
-              / RegularDecimalReal
-              ;
+  / RegularDecimalReal
+  ;
 
-ExponentDecimalReal = (Digit+ / (Digit+ '.' Digit+) / ('.' Digit+)) 'E'i '-'? Digit+ ;
+ExponentDecimalReal
+  = Digit+  'E'i '-'? Digit+
+  / Digit* '.' Digit+  'E'i '-'? Digit+ ;
 
 RegularDecimalReal = Digit* '.' Digit+ ;
 
 StringLiteral = '"' ([^"\\] / EscapedChar)* '"'
-              / "'" ([^'\\] / EscapedChar)* "'"
-              ;
+  / "'" ([^'\\] / EscapedChar)* "'"
+  ;
 
-EscapedChar = '\\' ('\\' / "'" / '"' / [bfnrt]i / ('U'i HexDigit|4|) / ('U'i HexDigit|8|)) ;
+EscapedChar = '\\' . ;
 
-ListLiteral = '[' _? (Expression _? (',' _? Expression _?)*)? ']' ;
+ListLiteral = '[' _? items:(@Expression|1.., _? ',' _?| _?)? ']' {
+  return new ast.ASTListLiteral(items ?? []);
+} ;
 
-MapLiteral = '{' _? (PropertyKeyName _? ':' _? Expression _? (',' _? PropertyKeyName _? ':' _? Expression _?)*)? '}' ;
+MapLiteral = '{' _? props:(@(@PropertyKeyName _? ':' _? @Expression)|1.., _? ',' _?| _?)? '}' {
+  props ??= [];
+  return new ast.ASTMapLiteral(props.map(([k, v]) => [v, k]));
+} ;
 
 PropertyKeyName = SchemaName ;
 
-Parameter = '$' SymbolicName
-          / '$' DecimalInteger
-          ;
+Parameter
+  = '$' name:(SymbolicName / $DecimalInteger) {
+    const res = new ast.CypherIdentifier(name);
+    res.parts.unshift(ast.boundParam);
+    return res;
+  }
+  ;
 
 SchemaName = SymbolicName
-           / ReservedWord
-           ;
+  / name:ReservedWord { return new ast.CypherIdentifier(name); }
+  ;
 
-ReservedWord = 'ALL'i
-             / 'ASC'i
-             / 'ASCENDING'i
-             / 'BY'i
-             / 'CREATE'i
-             / 'DELETE'i
-             / 'DESC'i
-             / 'DESCENDING'i
-             / 'DETACH'i
-             / 'EXISTS'i
-             / 'LIMIT'i
-             / 'MATCH'i
-             / 'MERGE'i
-             / 'ON'i
-             / 'OPTIONAL'i
-             / 'ORDER'i
-             / 'REMOVE'i
-             / 'RETURN'i
-             / 'SET'i
-             / 'SKIP'i
-             / 'WHERE'i
-             / 'WITH'i
-             / 'UNION'i
-             / 'UNWIND'i
-             / 'AND'i
-             / 'AS'i
-             / 'CONTAINS'i
-             / 'DISTINCT'i
-             / 'ENDS'i
-             / 'IN'i
-             / 'IS'i
-             / 'NOT'i
-             / 'OR'i
-             / 'STARTS'i
-             / 'XOR'i
-             / 'FALSE'i
-             / 'TRUE'i
-             / 'NULL'i
-             / 'CONSTRAINT'i
-             / 'DO'i
-             / 'FOR'i
-             / 'REQUIRE'i
-             / 'UNIQUE'i
-             / 'CASE'i
-             / 'WHEN'i
-             / 'THEN'i
-             / 'ELSE'i
-             / 'END'i
-             / 'MANDATORY'i
-             / 'SCALAR'i
-             / 'OF'i
-             / 'ADD'i
-             / 'DROP'i
-             ;
+ReservedWord 
+  = 'ALL'i
+  / 'ASC'i
+  / 'ASCENDING'i
+  / 'BY'i
+  / 'CREATE'i
+  / 'DELETE'i
+  / 'DESC'i
+  / 'DESCENDING'i
+  / 'DETACH'i
+  / 'EXISTS'i
+  / 'LIMIT'i
+  / 'MATCH'i
+  / 'MERGE'i
+  / 'ON'i
+  / 'OPTIONAL'i
+  / 'ORDER'i
+  / 'REMOVE'i
+  / 'RETURN'i
+  / 'SET'i
+  / 'SKIP'i
+  / 'WHERE'i
+  / 'WITH'i
+  / 'UNION'i
+  / 'UNWIND'i
+  / 'AND'i
+  / 'AS'i
+  / 'CONTAINS'i
+  / 'DISTINCT'i
+  / 'ENDS'i
+  / 'IN'i
+  / 'IS'i
+  / 'NOT'i
+  / 'OR'i
+  / 'STARTS'i
+  / 'XOR'i
+  / 'FALSE'i
+  / 'TRUE'i
+  / 'NULL'i
+  / 'CONSTRAINT'i
+  / 'DO'i
+  / 'FOR'i
+  / 'REQUIRE'i
+  / 'UNIQUE'i
+  / 'CASE'i
+  / 'WHEN'i
+  / 'THEN'i
+  / 'ELSE'i
+  / 'END'i
+  / 'MANDATORY'i
+  / 'SCALAR'i
+  / 'OF'i
+  / 'ADD'i
+  / 'DROP'i
+  ;
 
-SymbolicName = UnescapedSymbolicName
-             / EscapedSymbolicName
-             / HexLetter
-             / 'COUNT'i
-             / 'FILTER'i
-             / 'EXTRACT'i
-             / 'ANY'i
-             / 'NONE'i
-             / 'SINGLE'i
-             ;
+SymbolicName
+  = ( UnescapedSymbolicName
+  / EscapedSymbolicName
+  / 'COUNT'i
+  / 'FILTER'i
+  / 'EXTRACT'i
+  / 'ANY'i
+  / 'NONE'i
+  / 'SINGLE'i ) { return new ast.CypherIdentifier(text()); }
+  ;
 
-UnescapedSymbolicName = IdentifierStart { IdentifierPart } ;
+UnescapedSymbolicName = IdentifierStart IdentifierPart* ;
 
 // (* Based on the unicode identifier and pattern syntax
 //  *   (http://www.unicode.org/reports/tr31/)
@@ -519,7 +637,7 @@ EscapedSymbolicName = ('`' [^`]* '`')+ ;
 
 _ = whitespace+ ;
 
-whitespace = [\s]
+whitespace = [\p{White_Space}]
            / Comment
            ;
 

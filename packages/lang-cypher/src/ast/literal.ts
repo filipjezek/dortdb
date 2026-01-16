@@ -3,18 +3,10 @@ import { CypherVisitor } from './visitor.js';
 import { parseStringLiteral } from '../utils/string.js';
 
 export class CypherIdentifier extends ASTIdentifier {
-  constructor(
-    public idOriginal: string,
-    public schemaOriginal?: string,
-  ) {
+  constructor(public idOriginal: string) {
     super();
-    if (!schemaOriginal) {
-      [this.idOriginal, this.schemaOriginal] = this.splitId(idOriginal);
-    }
-    this.parts.push(this.parseId(this.idOriginal));
-    if (this.schemaOriginal) {
-      this.parts.push(this.parseId(this.schemaOriginal));
-    }
+    const originalParts = this.splitId(idOriginal);
+    this.parts = originalParts.map((part) => this.parseId(part));
   }
 
   override accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
@@ -28,24 +20,24 @@ export class CypherIdentifier extends ASTIdentifier {
     return id;
   }
 
-  protected splitId(id: string): [string, string] {
+  protected splitId(id: string): string[] {
     if (id[0] !== '`') {
       const dot = id.indexOf('.');
       if (dot !== -1) {
-        return [id.slice(0, dot), id.slice(dot + 1)];
+        return [id.slice(0, dot), ...this.splitId(id.slice(dot + 1))];
       }
-      return [id, undefined];
+      return [id];
     }
     for (let i = 1; i < id.length - 1; i++) {
       if (id[i] === '`') {
         if (id[i + 1] === '`') {
           i++;
         } else {
-          return [id.slice(0, i), id.slice(i + 2)];
+          return [id.slice(0, i), ...this.splitId(id.slice(i + 2))];
         }
       }
     }
-    return [id, undefined];
+    return [id];
   }
 }
 

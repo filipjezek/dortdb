@@ -143,6 +143,7 @@ describe('AST Expressions', () => {
         'all',
         new astCypher.CypherIdentifier('x'),
         new astCypher.ASTNumberLiteral('1'),
+        null,
       );
       expect(result).toEqual(expected);
     });
@@ -221,7 +222,7 @@ describe('AST Expressions', () => {
       const expected = new astCypher.ListComprehension(
         new astCypher.CypherIdentifier('x'),
         new astCypher.CypherIdentifier('a'),
-        undefined,
+        null,
         new ASTOperator('cypher', new astCypher.CypherIdentifier('+'), [
           new astCypher.CypherIdentifier('x'),
           new astCypher.ASTNumberLiteral('1'),
@@ -245,11 +246,13 @@ describe('AST Expressions', () => {
     });
 
     it('should parse pattern comprehensions', () => {
-      const result = getRet('RETURN [(a) WHERE b | x + 1]');
+      const result = getRet('RETURN [(a)--(b) WHERE b | x + 1]');
       const expected = new astCypher.PatternComprehension(
-        new astCypher.PatternElChain(
+        new astCypher.PatternElChain([
           new astCypher.NodePattern(new astCypher.CypherIdentifier('a')),
-        ),
+          new astCypher.RelPattern(false, false),
+          new astCypher.NodePattern(new astCypher.CypherIdentifier('b')),
+        ]),
         new astCypher.CypherIdentifier('b'),
         new ASTOperator('cypher', new astCypher.CypherIdentifier('+'), [
           new astCypher.CypherIdentifier('x'),
@@ -260,11 +263,13 @@ describe('AST Expressions', () => {
     });
 
     it('should parse pattern comprehensions with variable', () => {
-      const result = getRet('RETURN [foo = (a) WHERE b | x + 1]');
+      const result = getRet('RETURN [foo = (a)--(b) WHERE b | x + 1]');
       const expected = new astCypher.PatternComprehension(
-        new astCypher.PatternElChain(
+        new astCypher.PatternElChain([
           new astCypher.NodePattern(new astCypher.CypherIdentifier('a')),
-        ),
+          new astCypher.RelPattern(false, false),
+          new astCypher.NodePattern(new astCypher.CypherIdentifier('b')),
+        ]),
         new astCypher.CypherIdentifier('b'),
         new ASTOperator('cypher', new astCypher.CypherIdentifier('+'), [
           new astCypher.CypherIdentifier('x'),
@@ -276,12 +281,14 @@ describe('AST Expressions', () => {
     });
 
     it('should parse pattern comprehensions without filter', () => {
-      const result = getRet('RETURN [(a) | x + 1]');
+      const result = getRet('RETURN [(a)--(b) | x + 1]');
       const expected = new astCypher.PatternComprehension(
-        new astCypher.PatternElChain(
+        new astCypher.PatternElChain([
           new astCypher.NodePattern(new astCypher.CypherIdentifier('a')),
-        ),
-        undefined,
+          new astCypher.RelPattern(false, false),
+          new astCypher.NodePattern(new astCypher.CypherIdentifier('b')),
+        ]),
+        null,
         new ASTOperator('cypher', new astCypher.CypherIdentifier('+'), [
           new astCypher.CypherIdentifier('x'),
           new astCypher.ASTNumberLiteral('1'),
@@ -384,7 +391,7 @@ describe('AST Expressions', () => {
     });
 
     it('should ignore block comments', () => {
-      const result = getRet('RETURN /* com /* 3 */ \nment */1');
+      const result = getRet('RETURN /* com /* 3 \nment */1');
       expect(result).toEqual(new astCypher.ASTNumberLiteral('1'));
     });
   });

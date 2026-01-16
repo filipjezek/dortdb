@@ -79,9 +79,9 @@ describe('AST patterns', () => {
       new astCypher.RelPattern(
         true,
         false,
-        undefined,
+        null,
         [],
-        undefined,
+        null,
         new astCypher.ASTMapLiteral([
           [
             new astCypher.ASTNumberLiteral('1'),
@@ -89,13 +89,13 @@ describe('AST patterns', () => {
           ],
         ]),
       ),
-      new astCypher.NodePattern(undefined, [
+      new astCypher.NodePattern(null, [
         new astCypher.CypherIdentifier('baz'),
         new astCypher.CypherIdentifier('gaz'),
       ]),
       new astCypher.RelPattern(true, false),
       new astCypher.NodePattern(
-        undefined,
+        null,
         [],
         new astCypher.ASTMapLiteral([
           [
@@ -122,7 +122,7 @@ describe('AST patterns', () => {
           new astCypher.CypherIdentifier('x'),
           new astCypher.CypherIdentifier('y'),
         ],
-        undefined,
+        null,
         new astCypher.ASTMapLiteral([
           [
             new astCypher.ASTNumberLiteral('3'),
@@ -134,7 +134,7 @@ describe('AST patterns', () => {
       new astCypher.RelPattern(
         true,
         false,
-        undefined,
+        null,
         [new astCypher.CypherIdentifier('z')],
         [
           new astCypher.ASTNumberLiteral('2'),
@@ -145,7 +145,7 @@ describe('AST patterns', () => {
       new astCypher.RelPattern(
         false,
         true,
-        undefined,
+        null,
         [new astCypher.CypherIdentifier('z')],
         [undefined, undefined],
         new astCypher.ASTMapLiteral([
@@ -159,7 +159,7 @@ describe('AST patterns', () => {
       new astCypher.RelPattern(
         false,
         true,
-        undefined,
+        null,
         [new astCypher.CypherIdentifier('z')],
         [
           new astCypher.ASTNumberLiteral('2'),

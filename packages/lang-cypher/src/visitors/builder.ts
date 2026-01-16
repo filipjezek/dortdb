@@ -302,9 +302,14 @@ export class CypherLogicalPlanBuilder
     node: AST.ExistsSubquery,
     args: DescentArgs,
   ): PlanOperator {
-    let res = node.query.accept(this, args) as PlanOperator;
-    if (!(res instanceof PlanTupleOperator)) {
-      res = new plan.MapFromItem('cypher', toId('exists'), res);
+    let res: PlanOperator;
+    if (node.query) {
+      res = node.query.accept(this, args);
+      if (!(res instanceof PlanTupleOperator)) {
+        res = new plan.MapFromItem('cypher', toId('exists'), res);
+      }
+    } else {
+      res = this.visitMatchClause(node, args);
     }
     res = new plan.Limit('cypher', 0, 1, res);
     const col = toId('count');
@@ -1238,16 +1243,19 @@ export class CypherLogicalPlanBuilder
     }
     return res;
   }
-  visitMatchClause(node: AST.MatchClause, args: DescentArgs): PlanOperator {
+  visitMatchClause(
+    node: AST.MatchClause | AST.ExistsSubquery,
+    args: DescentArgs,
+  ): PlanOperator {
     let res = this.visitPatternElChain(node.pattern[0], {
       ...args,
-      optional: node.optional,
+      optional: (node as AST.MatchClause).optional,
     });
     for (let i = 1; i < node.pattern.length; i++) {
       res = this.visitPatternElChain(node.pattern[i], {
         ...args,
         src: res,
-        optional: node.optional,
+        optional: (node as AST.MatchClause).optional,
       });
     }
     if (node.where) {

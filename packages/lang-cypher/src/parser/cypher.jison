@@ -508,13 +508,13 @@ existential-subquery:
   | EXISTS LCUR pattern where-clause_opt RCUR { $$ = new yy.ast.ExistsSubquery(); $$.pattern = $3; $$.where = $4; } ;
 
 explicit-procedure-invocation:
-  symbolic-name LPAR expression-list_opt RPAR { $$ = yy.wrapFn($1, $4, $3); $$.procedure = true; }
-  | SCHEMANAMELPAR expression-list_opt RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $3, $2); $$.procedure = true; } ;
+  symbolic-name LPAR expression-list_opt RPAR { $$ = yy.wrapFn($1, $3); $$.procedure = true; }
+  | SCHEMANAMELPAR expression-list_opt RPAR { $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.slice(0, -1)), $2); $$.procedure = true; } ;
 
 implicit-procedure-invocation:
   symbolic-name { $$ = yy.wrapFn($1); $$.procedure = true; }
   | symbolic-name DOT symbolic-name {
-    $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.idOriginal, $2.idOriginal));
+    $$ = yy.wrapFn(new yy.ast.CypherIdentifier($1.idOriginal + '.' + $3.idOriginal));
     $$.procedure = true;
   } ;
 
