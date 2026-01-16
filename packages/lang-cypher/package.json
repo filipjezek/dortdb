@@ -32,6 +32,11 @@
               "glob": "parser/cypher.cjs",
               "input": "{projectRoot}/src",
               "output": "."
+            },
+            {
+              "glob": "parser/cypher.peggy.{mjs,d.ts,mjs.map}",
+              "input": "{projectRoot}/src",
+              "output": "."
             }
           ]
         }

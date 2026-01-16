@@ -22,10 +22,6 @@ const langColors: Record<string, string> = {
   cypher: strToColor('cypherx'),
 };
 
-function sum(args: number[]) {
-  return args.reduce((a, b) => a + b, 0);
-}
-
 interface Branch {
   el: SVGGElement;
   edgeType?: string;
@@ -616,7 +612,6 @@ export class GraphBuilder
             },
           }))
           .map((x) => {
-            console.log(x);
             return x;
           }),
       ],

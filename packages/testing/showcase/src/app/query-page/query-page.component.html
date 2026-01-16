@@ -49,7 +49,9 @@
 @if (error) {
   <mat-card class="error-output">
     <mat-card-content>
-      <pre>{{ error.message }}</pre>
+      <pre>{{
+        $any(error).format?.([{ text: form.value.query }]) ?? error.message
+      }}</pre>
     </mat-card-content>
   </mat-card>
 }

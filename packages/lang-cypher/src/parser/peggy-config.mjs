@@ -7,7 +7,8 @@ export default {
   dts: true,
   input: import.meta.dirname + '/cypher.pegjs',
   returnTypes: {
-    Cypher: 'import("@dortdb/core").ASTNode',
+    Cypher: '{value: import("@dortdb/core").ASTNode, remainingInput: string}',
   },
   sourceMap: true,
+  cache: true,
 };

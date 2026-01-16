@@ -1,5 +1,5 @@
 import { ASTOperator, DortDB, LangSwitch } from '@dortdb/core';
-import { Cypher } from '../../src';
+import { Cypher } from '../../src/language/language.js';
 import * as astCypher from '../../src/ast/index.js';
 
 describe('AST langswitch', () => {

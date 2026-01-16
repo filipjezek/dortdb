@@ -1,4 +1,4 @@
-import { Aliased, ASTFunction, ASTNode, boundParam } from '@dortdb/core';
+import { Aliased, ASTFunction, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { CypherIdentifier } from './literal.js';
 import { PatternElChain } from './pattern.js';
@@ -20,11 +20,11 @@ export class FnCallWrapper implements ASTNode {
 }
 
 export class ExistsSubquery implements ASTNode {
-  public query: ASTNode;
-  public pattern: PatternElChain[];
-  public where: ASTNode;
-
-  constructor() {}
+  constructor(
+    public query: ASTNode,
+    public pattern: PatternElChain[],
+    public where: ASTNode,
+  ) {}
 
   accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitExistsSubquery(this, arg);

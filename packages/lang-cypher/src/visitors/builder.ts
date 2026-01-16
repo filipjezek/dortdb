@@ -1340,7 +1340,7 @@ export class CypherLogicalPlanBuilder
     const cols: Aliased<plan.Calculation | ASTIdentifier>[] = [];
     for (const item of node.items) {
       if (item === '*') cols.push(...originalSchema.map(toPair));
-      else this.processAttr(item, { ...args, ctx: attrCtx });
+      else cols.push(this.processAttr(item, { ...args, ctx: attrCtx }));
     }
     const aggrs = getAggregates(cols.map(retI0));
     if (!node.order?.length && aggrs.length) {

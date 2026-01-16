@@ -57,7 +57,6 @@ export class CodeInputComponent implements AfterViewInit, ControlValueAccessor {
   constructor() {
     this.cdRef.detach();
     effect(() => {
-      console.log('theme change');
       const dark = this.lightDarkS.isDarkTheme();
       if (this.editor) {
         this.editor.dispatch({

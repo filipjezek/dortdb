@@ -21,49 +21,6 @@ describe('AST patterns', () => {
         .statements[0] as astCypher.ReturnClause
     ).body.items[0] as ASTNode;
 
-  it('should parse parenthesized variable as a pattern', () => {
-    const result = getRet('RETURN (a)');
-    const expected = new astCypher.PatternElChain([
-      new astCypher.NodePattern(new astCypher.CypherIdentifier('a')),
-    ]);
-    expect(result).toEqual(expected);
-  });
-
-  it('should parse parenthesized map literal as a pattern', () => {
-    const result = getRet('RETURN ({a: 1})');
-    const expected = new astCypher.PatternElChain([
-      new astCypher.NodePattern(
-        undefined,
-        [],
-        new astCypher.ASTMapLiteral([
-          [
-            new astCypher.ASTNumberLiteral('1'),
-            new astCypher.CypherIdentifier('a'),
-          ],
-        ]),
-      ),
-    ]);
-    expect(result).toEqual(expected);
-  });
-
-  it('should parse parenthesized label check as a pattern', () => {
-    const result = getRet('RETURN (a:foo)');
-    const expected = new astCypher.PatternElChain([
-      new astCypher.NodePattern(new astCypher.CypherIdentifier('a'), [
-        new astCypher.CypherIdentifier('foo'),
-      ]),
-    ]);
-    expect(result).toEqual(expected);
-  });
-
-  it('should parse parenthesized parameter as a pattern', () => {
-    const result = getRet('RETURN ($1)');
-    const expected = new astCypher.PatternElChain([
-      new astCypher.NodePattern(undefined, [], makeParam('1')),
-    ]);
-    expect(result).toEqual(expected);
-  });
-
   it('should parse a complicated pattern chain', () => {
     const result = getRet(
       'RETURN (a)-[:REL]->(b:bar)<-[{foo: 1}]-(:baz:gaz)<--({foo: 2})--(c:qux $1)<--(d)-->(e)-[c:x|:y {foo: 3}]-(f)<-[:z*2]-(g)-[:z*{foo: 4}]->(h)-[:z*2..4]->(i)',

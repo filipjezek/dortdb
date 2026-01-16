@@ -48,7 +48,21 @@
   }
 }
 
-Cypher = _? @Statement (_? ';')? _? !. ;
+Cypher
+  = _? res:Statement (_? ';')? _? !. {
+    return { value: res, remainingInput: input.slice(location().end.offset) };
+  }
+  / _? res:Statement (_? ';')? _? & ScopeExit {
+    return { value: res, remainingInput: input.slice(location().end.offset) };
+  }
+  ;
+
+ScopeExit
+  =	'}'
+	/ ')'
+	/ ']'
+	/ "lang"i _ "exit"i
+  ;
 
 Statement = Query ;
 
@@ -56,7 +70,7 @@ Query = RegularQuery
   / StandaloneCall
   ;
 
-RegularQuery = from:FromClause? q:SingleQuery setops:(_? @Union)* { 
+RegularQuery = from:(@FromClause _)? q:SingleQuery setops:(_? @Union)* { 
   q.from = from;
   let curr = q;
   for (const [type, next] of setops) {
@@ -78,8 +92,8 @@ SingleQuery = SinglePartQuery
             / MultiPartQuery
             ;
 
-SinglePartQuery = read:ReadingClause|.., _?| ret:Return { read.push(ret); return new ast.Query(read); }
-  / read:ReadingClause|.., _?| upd:UpdatingClause|1.., _?| ret:(_? @Return)? {
+SinglePartQuery = read:ReadingClause|.., _?| _? ret:Return { read.push(ret); return new ast.Query(read); }
+  / read:ReadingClause|.., _?| _? upd:UpdatingClause|1.., _?| _? ret:(_? @Return)? {
   return new ast.Query([...read, ...upd, ret]);
 } ;
 
@@ -88,7 +102,7 @@ MultiPartQuery = wbs:WithQueryBlock+ spq:SinglePartQuery {
   return spq;
 } ;
 
-WithQueryBlock = read:ReadingClause|.., _?| upd:UpdatingClause|.., _?| w:With _? {
+WithQueryBlock = read:ReadingClause|.., _?| _? upd:UpdatingClause|.., _?| _? w:With _? {
   return [read, upd, w];
 } ;
 
@@ -369,6 +383,7 @@ ListOperatorExpression = '[' expr:Expression ']' { return [expr]; }
 PropertyLookup = '.' _? @PropertyKeyName ;
 
 Atom = Literal
+  / LangSwitch
   / Parameter
   / CaseExpression
   / 'COUNT'i _? '(' _? '*' _? ')' {
@@ -383,6 +398,25 @@ Atom = Literal
   / ExistentialSubquery
   / Variable
   ;
+
+LangSwitch = 'LANG'i _? name:$[0-9a-z_$]i+ {
+  name = name.toLowerCase();
+  const lang = options.langMgr.getLang(name);
+  if (!lang) {
+    throw new Error(`Unknown language: ${name}`);
+  }
+  const offset = location().end.offset;
+  const nestedParser = lang.createParser(options.langMgr);
+  const res = nestedParser.parse(input.slice(offset));
+  if (res instanceof Error) {
+    throw res;
+  }
+
+  input = input.slice(0, offset) + (
+    input.slice(offset, input.length - res.remainingInput.length).replace(/[^\n]/g, ' ')
+  ) + res.remainingInput;
+  return new ast.LangSwitch(name, res.value);
+} ;
 
 CaseExpression
   = 'CASE'i wts:(_? @CaseAlternative)+ els:(_? 'ELSE'i _? @Expression)? _? 'END'i {
@@ -436,7 +470,8 @@ FunctionName = Namespace SymbolicName {
 
 ExistentialSubquery
   = 'EXISTS'i _? '{' _? q:RegularQuery _? '}' { return new ast.ExistsSubquery(q); }
-  / 'EXISTS'i _? '{' _? p:Pattern w:(_? @Where)? _? '}' { return new ast.ExistsSubquery(null, p, w); } ;
+  / 'EXISTS'i _? '{' _? p:Pattern w:(_? @Where)? _? '}' { return new ast.ExistsSubquery(null, p, w); }
+  / 'EXISTS'i _? '{' _? ls:LangSwitch _? '}' { return new ast.ExistsSubquery(ls); } ;
 
 ExplicitProcedureInvocation = name:ProcedureName _? '(' _? args:(@Expression|1.., _? ',' _?| _?)? ')' {
   const res = new options.wrapFn(name, args ?? []);
