@@ -17,7 +17,6 @@
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
-    "jison": "ts-jison src/parser/cypher.jison src/parser/cypher.jisonlex -o src/parser/cypher.cjs && node replace-parser.mjs",
     "peggy": "peggy -c src/parser/peggy-config.mjs"
   },
   "author": "dortdb",
@@ -29,22 +28,12 @@
         "options": {
           "assets": [
             {
-              "glob": "parser/cypher.cjs",
-              "input": "{projectRoot}/src",
-              "output": "."
-            },
-            {
               "glob": "parser/cypher.peggy.{mjs,d.ts,mjs.map}",
               "input": "{projectRoot}/src",
               "output": "."
             }
           ]
         }
-      },
-      "jison": {
-        "outputs": [
-          "{projectRoot}/src/parser/cypher.cjs"
-        ]
       }
     }
   },
@@ -53,13 +42,11 @@
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",
-    "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "es-toolkit": "^1.43.0",
     "graphology": "^0.26.0",
     "tslib": "^2.6.2"
   },
   "devDependencies": {
-    "@types/lodash-es": "^4.17.12",
     "graphology-types": "^0.24.8",
     "peggy": "^5.0.6"
   }

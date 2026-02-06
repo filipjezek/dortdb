@@ -17,7 +17,7 @@
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
-    "jison": "ts-jison src/parser/xquery.jison src/parser/xquery.jisonlex -o src/parser/xquery.cjs"
+    "peggy": "peggy -c src/parser/peggy-config.mjs"
   },
   "author": "dortdb",
   "license": "ISC",
@@ -28,7 +28,7 @@
         "options": {
           "assets": [
             {
-              "glob": "parser/xquery.cjs",
+              "glob": "parser/xquery.peggy.{mjs,d.ts,mjs.map}",
               "input": "{projectRoot}/src",
               "output": "."
             }
@@ -49,5 +49,8 @@
     "@swc/helpers": "^0.5.15",
     "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "peggy": "^5.0.6"
   }
 }

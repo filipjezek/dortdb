@@ -9,7 +9,7 @@
     "lib": ["ES2024", "DOM"]
   },
   "include": ["src/**/*.ts"],
-  "files": ["src/parser/xquery.cjs"],
+  "files": ["src/parser/xquery.peggy.mjs"],
   "exclude": ["jest.config.ts", "src/**/*.spec.ts"],
   "references": [
     {

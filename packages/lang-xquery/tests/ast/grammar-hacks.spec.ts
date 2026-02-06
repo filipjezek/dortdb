@@ -75,7 +75,7 @@ describe('Grammar hacks', () => {
       ['+', astXQuery.Occurence.ONE_OR_MORE],
       ['*', astXQuery.Occurence.ZERO_OR_MORE],
     ] as const) {
-      const result = getExpr(`4 instance of item() ${token} - 5`);
+      const result = getExpr(`4 instance of item()${token} - 5`);
       const expected = new ASTOperator(
         'xquery',
         new astXQuery.XQueryIdentifier('-'),

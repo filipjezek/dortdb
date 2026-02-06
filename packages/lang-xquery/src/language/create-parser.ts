@@ -1,46 +1,30 @@
 import {
   ASTFunction,
   ASTLiteral,
+  ASTNode,
   ASTOperator,
   LangSwitch,
   LanguageManager,
   Parser as ParserInterface,
 } from '@dortdb/core';
-import { AdditionalTokens, Keywords } from '../parser/tokens.js';
-import { YyContext } from '../parser/yycontext.js';
 import { DOT } from '../utils/dot.js';
 import * as ast from '../ast/index.js';
-import {
-  xqueryLexer as Lexer,
-  xqueryParser as Parser,
-} from '../parser/xquery.cjs';
-
-const scopeExits = new Set([')', '}', ']']);
+import { interpretEscape } from '../utils/string.js';
+import { PeggyContext } from '../parser/peggy-context.js';
+import { parse as peggyParse } from '../parser/xquery.peggy.mjs';
 
 export function createParser(mgr: LanguageManager): ParserInterface {
-  let remainingInput = '';
-  const yy: YyContext = {
-    Keywords,
-    AdditionalTokens,
-    reportComment: () => {},
-    commentDepth: 0,
-    comment: '',
-    textContent: '',
+  const ctx: PeggyContext = {
     langMgr: mgr,
-    stringDelim: undefined,
-    elStack: [],
-
-    messageQueue: [],
-    saveRemainingInput: (input) => {
-      remainingInput = input;
-    },
     makeOp: (op, args) =>
-      new ASTOperator('xquery', new ast.XQueryIdentifier(op), args),
-    resetText: (yy) => {
-      const temp = yy.textContent;
-      yy.textContent = '';
-      return temp;
-    },
+      typeof op === 'string'
+        ? new ASTOperator(
+            'xquery',
+            new ast.XQueryIdentifier(op.toLowerCase()),
+            args,
+          )
+        : new ASTOperator('xquery', op, args),
+    interpretEscape,
     ast: {
       ...ast,
       ASTLiteral,
@@ -52,20 +36,25 @@ export function createParser(mgr: LanguageManager): ParserInterface {
     },
   };
 
-  const parser = new Parser(yy, new Lexer(yy));
   return {
     parse(input: string) {
-      const result: {
-        value: ast.Module;
-        scopeExit?: string;
-        error?: string;
-      } = parser.parse(input);
-      let remaining = remainingInput;
-      if (scopeExits.has(result.error)) remaining = result.error + remaining;
-      if (result.scopeExit) remaining = result.scopeExit + remaining;
+      const result = peggyParse(input, {
+        peg$library: true,
+        ...ctx,
+      }) as any as {
+        peg$result: { value: ASTNode; remainingInput: string };
+        peg$curPos: number;
+        peg$throw: () => void;
+        peg$FAILED: unknown;
+      };
+
+      if (result.peg$result === result.peg$FAILED) {
+        result.peg$throw();
+      }
+
       return {
-        value: [result.value],
-        remainingInput: remaining,
+        value: [result.peg$result.value],
+        remainingInput: result.peg$result.remainingInput,
       };
     },
     parseExpr(input: string) {

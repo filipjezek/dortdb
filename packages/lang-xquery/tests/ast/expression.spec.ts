@@ -241,7 +241,7 @@ describe('AST Expressions', () => {
 
   describe('comments', () => {
     it('should ignore block comments', () => {
-      const result = getExpr('(: com (: 3 :) \nment :)1');
+      const result = getExpr('(: com (: 3 \nment :)1');
       expect(result).toEqual(new astXQuery.ASTNumberLiteral('1'));
     });
   });

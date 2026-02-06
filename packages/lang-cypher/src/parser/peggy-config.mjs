@@ -1,5 +1,3 @@
-console.log(import.meta.dirname);
-
 export default {
   allowedStartRules: ['Cypher'],
   format: 'es',

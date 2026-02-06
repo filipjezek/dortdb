@@ -55,13 +55,15 @@ Cypher
   / _? res:Statement (_? ';')? _? & ScopeExit {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
+  / _? res:Statement (_? ';')? _? "lang"i _ "exit"i {
+    return { value: res, remainingInput: input.slice(location().end.offset) };
+  }
   ;
 
 ScopeExit
   =	'}'
 	/ ')'
 	/ ']'
-	/ "lang"i _ "exit"i
   ;
 
 Statement = Query ;
@@ -399,7 +401,7 @@ Atom = Literal
   / Variable
   ;
 
-LangSwitch = 'LANG'i _? name:$[0-9a-z_$]i+ {
+LangSwitch = 'LANG'i _ name:$[0-9a-z_$]i+ {
   name = name.toLowerCase();
   const lang = options.langMgr.getLang(name);
   if (!lang) {
@@ -407,10 +409,8 @@ LangSwitch = 'LANG'i _? name:$[0-9a-z_$]i+ {
   }
   const offset = location().end.offset;
   const nestedParser = lang.createParser(options.langMgr);
-  const res = nestedParser.parse(input.slice(offset));
-  if (res instanceof Error) {
-    throw res;
-  }
+  const locationFix = '\n'.repeat(location().end.line - 1) + ' '.repeat(location().end.column - 1);
+  const res = nestedParser.parse(locationFix + input.slice(offset));
 
   input = input.slice(0, offset) + (
     input.slice(offset, input.length - res.remainingInput.length).replace(/[^\n]/g, ' ')

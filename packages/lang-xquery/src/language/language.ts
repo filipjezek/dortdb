@@ -4,7 +4,6 @@ import {
   Fn,
   Language,
   Operator,
-  QueryResult,
   SerializeFn,
 } from '@dortdb/core';
 import { count } from '@dortdb/core/aggregates';

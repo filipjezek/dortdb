@@ -37,7 +37,7 @@ export class DirectCommentConstructor implements ASTNode {
 export class DirectPIConstructor implements ASTNode {
   constructor(
     public name: string,
-    public content?: string,
+    public content: string = null,
   ) {}
 
   accept<Ret, Arg>(visitor: XQueryVisitor<Ret, Arg>, arg?: Arg): Ret {
