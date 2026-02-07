@@ -696,7 +696,7 @@ FieldSelector
   ;
 
 TableAlias
-  = ('AS'i _)? id:ScopedId _? '(' _? cols:ColumnList _? ')' { return new ast.ASTTableAlias(id, cols); }
+  = ('AS'i _)? id:IdPart _? '(' _? cols:IdPart|1.., _? ',' _?| _? ')' { return new ast.ASTTableAlias(id, cols); }
   / ('AS'i _)? id:IdPart { return new ast.ASTTableAlias(id); }
   ;
 

@@ -12,4 +12,5 @@ export const collect: AggregateFn = {
     return state;
   },
   result: (state) => state,
+  includeNulls: true,
 };

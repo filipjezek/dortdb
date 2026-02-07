@@ -1,11 +1,12 @@
 import { Castable } from '../extension.js';
+import { shortcutNulls } from '../utils/shortcut-nulls.js';
 
 export const toStr: Castable = {
   name: 'string',
   pure: true,
-  convert(val) {
+  convert: shortcutNulls((val) => {
     return String(val);
-  },
+  }),
 };
 export const toNumber: Castable = {
   name: 'number',
@@ -25,18 +26,18 @@ export const toBool: Castable = {
 export const toDate: Castable = {
   name: 'date',
   pure: true,
-  convert(val) {
+  convert: shortcutNulls((val) => {
     const res = new Date(val);
     return isNaN(res.getTime()) ? null : res;
-  },
+  }),
 };
 export const toJson: Castable = {
   name: 'json',
-  convert(val) {
+  convert: shortcutNulls((val) => {
     try {
       return JSON.parse(val);
     } catch {
       return null;
     }
-  },
+  }),
 };

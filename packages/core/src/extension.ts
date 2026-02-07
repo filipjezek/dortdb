@@ -4,7 +4,7 @@ import * as castables from './castables/index.js';
 import * as operators from './operators/index.js';
 import * as fns from './functions/index.js';
 
-/** An operator used in queries. For example, math operators like +, -, *... */
+/** An operator used in queries. For example, math operators like +, -, *, ... */
 export interface Operator {
   name: string;
   impl: (...args: any[]) => any;
@@ -37,6 +37,8 @@ export interface AggregateFn {
   stepInverse?: (state: any, ...vals: any[]) => any;
   /** Receive the current state, should extract the aggregation result. */
   result: (state: any) => any;
+  /** By default, aggregates ignore nulls. Set this to true to include nulls in the operation. */
+  includeNulls?: boolean;
 }
 
 /** A keyword to cast values to a specific type. For example, in SQL's `CAST val AS date`, `date` is a castable. */

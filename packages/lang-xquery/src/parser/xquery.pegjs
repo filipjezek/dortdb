@@ -373,7 +373,8 @@ PrimaryExpr
   / StringLiteral
   / Variable
   / ParExpr
-  /'(' _? vals:Expr|2.., _? ',' _?| _? ')' { return new ast.SequenceConstructor(vals); }
+  / '(' _? ')' { return new ast.SequenceConstructor([]); }
+  / '(' _? vals:Expr|2.., _? ',' _?| _? ')' { return new ast.SequenceConstructor(vals); }
   / name:Name _? '(' _? args:ArgumentList _? ')' {
     if (args.includes(options.argPlaceholder)) {
       return new ast.BoundFunction(

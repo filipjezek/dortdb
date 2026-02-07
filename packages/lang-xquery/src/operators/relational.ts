@@ -2,6 +2,7 @@ import { Operator } from '@dortdb/core';
 import { generalComparison } from '../utils/general-comparison.js';
 import * as ops from '@dortdb/core/operators';
 import { XQueryOp } from '../language/language.js';
+import { shortcutNulls } from '@dortdb/core/utils';
 
 export const eq: Operator = {
   name: '=',
@@ -61,20 +62,20 @@ export const is: XQueryOp = {
 export const docLe: XQueryOp = {
   name: '<<',
   skipAtomization: true,
-  impl: (a, b) => {
+  impl: shortcutNulls((a, b) => {
     if (!(a instanceof Node && b instanceof Node)) {
       return false;
     }
     return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_PRECEDING;
-  },
+  }),
 };
 export const docGe: XQueryOp = {
   name: '>>',
   skipAtomization: true,
-  impl: (a, b) => {
+  impl: shortcutNulls((a, b) => {
     if (!(a instanceof Node && b instanceof Node)) {
       return false;
     }
     return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
-  },
+  }),
 };

@@ -300,7 +300,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     return res;
   }
   visitLiteral<U>(node: ASTLiteral<U>): string {
-    return node.value.toString();
+    return node.value?.toString() ?? 'NULL';
   }
   visitOperator(node: ASTOperator): string {
     return `${node.id.accept(this)}(${node.operands.map((x) =>

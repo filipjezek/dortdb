@@ -1085,6 +1085,9 @@ export abstract class Executor implements PlanVisitor<
     const originalAggAcepts = operator.aggs.map(
       (agg) => agg.postGroupSource.accept,
     );
+    // prepare the lambdas so that we do not have to rapidly create them for every item in the group
+    const checkNull = this.prepareAggNullChecks(operator, ctx);
+
     for (const [groupKey, group] of groups.size === 0 &&
     operator.keys.length === 0
       ? ([[[], []]] as [unknown[], unknown[][]][])
@@ -1108,11 +1111,13 @@ export abstract class Executor implements PlanVisitor<
             );
           }) as any;
         let state = agg.impl.init();
+        const skipNulls = !agg.impl.includeNulls;
         for (const item of agg.postGroupOp.accept(this.vmap, ctx)) {
-          state = agg.impl.step(
-            state,
-            ...agg.args.map((a) => this.processItem(a, ctx)),
-          );
+          const vals = agg.args.map((a) => this.processItem(a, ctx));
+          if (skipNulls && vals.some(checkNull[i])) {
+            continue;
+          }
+          state = agg.impl.step(state, ...vals);
         }
         result[agg.fieldName.parts[0] as number] = agg.impl.result(state);
       }
@@ -1122,6 +1127,30 @@ export abstract class Executor implements PlanVisitor<
       operator.aggs[i].postGroupSource.accept = originalAggAcepts[i];
     }
   }
+
+  protected prepareAggNullChecks(
+    operator: plan.GroupBy,
+    ctx: ExecutionContext,
+  ) {
+    const skipNullChecks = operator.aggs.map((agg) => {
+      const invTranslations: (string | symbol | number)[] = [];
+      for (const [id, num] of ctx.translations
+        .get(agg.postGroupSource)
+        .scope.entries()) {
+        invTranslations[num.parts[0] as number] = id.at(-1);
+      }
+      return agg.args.map(
+        (a) =>
+          a instanceof ASTIdentifier &&
+          invTranslations[a.parts[0] as number] === allAttrs,
+      );
+    });
+    return operator.aggs.map(
+      (agg, i) => (x: any, j: number) =>
+        (x === null || x === undefined) && !skipNullChecks[i][j],
+    );
+  }
+
   *visitLimit(operator: plan.Limit, ctx: ExecutionContext): Iterable<unknown> {
     const source = operator.source.accept(this.vmap, ctx);
     let count = 0;

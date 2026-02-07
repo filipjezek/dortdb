@@ -8,6 +8,14 @@ export const exists: Fn = {
       : items !== null && items !== undefined,
 };
 
+export const empty: Fn = {
+  name: 'empty',
+  impl: (items) =>
+    Array.isArray(items)
+      ? items.length === 0
+      : items === null || items === undefined,
+};
+
 export const data: Fn = {
   name: 'data',
   schema: 'fn',

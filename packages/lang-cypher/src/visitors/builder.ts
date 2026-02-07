@@ -50,6 +50,7 @@ import {
 } from '@dortdb/core/utils';
 import { collect } from '@dortdb/core/aggregates';
 import { eq } from '@dortdb/core/operators';
+import { shortcutNulls } from '@dortdb/core/utils';
 
 function idToPair(id: ASTIdentifier): [string, string] {
   return [id.parts.at(-1) as string, id.parts.at(-2) as string];
@@ -1191,7 +1192,7 @@ export class CypherLogicalPlanBuilder
           op: new plan.Literal('cypher', node.labels.map(firstPart)),
         },
       ],
-      this.dataAdapter.hasLabels,
+      shortcutNulls(this.dataAdapter.hasLabels),
     );
   }
   visitSubscriptExpr(node: AST.SubscriptExpr, args: DescentArgs): PlanOperator {
@@ -1202,9 +1203,11 @@ export class CypherLogicalPlanBuilder
     return new plan.FnCall(
       'cypher',
       indices,
-      node.subscript.length === 2
-        ? (e, f, t) => e.slice(f ?? 0, t ?? e.length)
-        : (e, i) => e[i],
+      shortcutNulls(
+        node.subscript.length === 2
+          ? (e, f, t) => e.slice(f ?? 0, t ?? e.length)
+          : (e, i) => e[i],
+      ),
     );
   }
   visitPropLookup(node: AST.PropLookup, args: DescentArgs): PlanOperator {
@@ -1467,10 +1470,11 @@ export class CypherLogicalPlanBuilder
     return new plan.Literal('cypher', node.value);
   }
   visitOperator(node: ASTOperator, args: DescentArgs): PlanOperator {
+    const op = this.db.langMgr.getOp(node.lang, ...idToPair(node.id));
     return new plan.FnCall(
       node.lang,
       node.operands.map((x) => ({ op: x.accept(this, args) })), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
-      this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
+      op.impl,
       true,
     );
   }

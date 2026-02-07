@@ -81,7 +81,7 @@ export function flat<T>(input: RecursiveArray<T>): T[] | T {
 
 export function propLookup(n: any, parts: any[]) {
   for (const part of parts) {
-    n = n[part];
+    n = n?.[part];
   }
   return n;
 }

@@ -1,8 +1,9 @@
 import { Operator } from '@dortdb/core';
+import { shortcutNulls } from '@dortdb/core/utils';
 
 export const to: Operator = {
   name: 'to',
-  impl: (a, b) => {
+  impl: shortcutNulls((a, b) => {
     a = +a;
     b = +b;
     const res: number[] = [];
@@ -10,5 +11,5 @@ export const to: Operator = {
       res.push(i);
     }
     return res;
-  },
+  }, []),
 };

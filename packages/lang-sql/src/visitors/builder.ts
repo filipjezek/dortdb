@@ -34,9 +34,10 @@ import {
   intermediateToCalc,
   overrideSource,
   schemaToTrie,
+  shortcutNulls,
 } from '@dortdb/core/utils';
 import { ret1, retI0 } from '@dortdb/core/internal-fns';
-import { inOp } from '../operators/basic.js';
+import { inOp, notInOp } from '../operators/basic.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { ilike, like } from '../operators/string.js';
 import { likeToRegex } from '../utils/string.js';
@@ -144,7 +145,13 @@ export class SQLLogicalPlanBuilder
     if (node.items instanceof ASTIdentifier) {
       return new plan.FnCall('sql', [node.items], ret1);
     }
-    const attrs = node.items.map(this.processAttr);
+    const attrs = node.items.map(
+      (alias) =>
+        [alias.expression.accept(this), toId(alias.alias)] as [
+          OpOrId,
+          ASTIdentifier,
+        ],
+    );
     return new plan.FnCall('sql', attrs.map(attrToOpArg), (...args) => {
       const res: Record<string | symbol, unknown> = {};
       for (let i = 0; i < args.length; i++) {
@@ -155,13 +162,15 @@ export class SQLLogicalPlanBuilder
   }
   visitCast(node: AST.ASTCast): PlanOperator {
     const impl = this.db.langMgr.getCast('sql', ...idToPair(node.type));
+    const convert = impl.convert;
     return new plan.FnCall(
       'sql',
       [{ op: node.expr.accept(this) }],
       node.isArray
-        ? (x) =>
-            Array.isArray(x) ? x.map(impl.convert) : Array.from(x, impl.convert)
-        : impl.convert,
+        ? shortcutNulls((x) =>
+            Array.isArray(x) ? x.map(convert) : Array.from(x, convert),
+          )
+        : convert,
       !node.isArray && impl.pure,
     );
   }
@@ -172,9 +181,14 @@ export class SQLLogicalPlanBuilder
       ? new plan.FnCall(
           'sql',
           [expr, index, this.processFnArg(node.to)],
-          (e, f, t) => e.slice(f, t),
+          shortcutNulls((e, f, t) => e.slice(f, t)),
         )
-      : new plan.FnCall('sql', [expr, index], (e, i) => e[i], true);
+      : new plan.FnCall(
+          'sql',
+          [expr, index],
+          shortcutNulls((e, i) => e[i]),
+          true,
+        );
   }
   visitExists(node: AST.ASTExists): PlanOperator {
     let res = node.query.accept(this) as PlanOperator;
@@ -251,6 +265,14 @@ export class SQLLogicalPlanBuilder
       src = toTuples(node.table.accept(this));
     }
     if (node.columns?.length) {
+      if (src.schema.find((x) => x.parts.at(-1) === toInfer)) {
+        const stringified = this.stringifier.visitTableAlias(
+          new AST.ASTTableAlias(node.nameOriginal, node.columnsOriginal),
+        );
+        throw new Error(
+          `Cannot alias columns of a relation with inferred schema: ${stringified}`,
+        );
+      }
       if (node.columns.length !== src.schema?.length)
         throw new Error(
           `Column count mismatch: ${
@@ -588,7 +610,7 @@ export class SQLLogicalPlanBuilder
         yield res;
       }
     });
-    res.schema = calcs[0].map((_, i) => toId('col' + i));
+    res.addToSchema(calcs[0].map((_, i) => toId('col' + i)));
     return res;
   }
   visitAggregate(node: AST.ASTAggregate): PlanOperator {
@@ -639,9 +661,10 @@ export class SQLLogicalPlanBuilder
       impl.impl,
       node.id,
     );
-    res.addToSchema(ASTIdentifier.fromParts([...node.id.parts, toInfer]));
     if (impl.outputSchema) {
       res.addToSchema(impl.outputSchema);
+    } else {
+      res.addToSchema(ASTIdentifier.fromParts([...node.id.parts, toInfer]));
     }
     if (node.withOrdinality)
       res = new plan.ProjectionIndex('sql', toId('ordinality'), res);
@@ -657,13 +680,18 @@ export class SQLLogicalPlanBuilder
     return new plan.Literal('sql', node.value);
   }
   visitOperator(node: ASTOperator): PlanOperator {
+    const op = this.db.langMgr.getOp(node.lang, ...idToPair(node.id));
     const result = new plan.FnCall(
       node.lang,
       node.operands.map(this.processFnArg), // identifiers should be processed into FnCalls, so that we can set pure=true without concerns
-      this.db.langMgr.getOp(node.lang, ...idToPair(node.id)).impl,
+      op.impl,
       true,
     );
-    if (result.impl === inOp.impl && 'op' in result.args[1]) {
+
+    if (
+      (op.impl === inOp.impl || op.impl === notInOp.impl) &&
+      'op' in result.args[1]
+    ) {
       result.args[1].acceptSequence = true;
     } else if (result.impl === like.impl || result.impl === ilike.impl) {
       // possibly precompute the regex for LIKE/ILIKE

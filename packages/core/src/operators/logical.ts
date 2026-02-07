@@ -1,4 +1,5 @@
 import { Operator } from '../extension.js';
+import { shortcutNulls } from '../utils/index.js';
 
 export const or: Operator = {
   name: 'or',
@@ -10,5 +11,5 @@ export const and: Operator = {
 };
 export const not: Operator = {
   name: 'not',
-  impl: (a) => !a,
+  impl: shortcutNulls((a) => !a),
 };
