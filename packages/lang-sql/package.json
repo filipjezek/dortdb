@@ -17,7 +17,7 @@
     "!**/*.tsbuildinfo"
   ],
   "scripts": {
-    "jison": "ts-jison src/parser/sql.jison src/parser/sql.jisonlex -o src/parser/sql.cjs"
+    "peggy": "peggy -c src/parser/peggy-config.mjs"
   },
   "author": "dortdb",
   "license": "ISC",
@@ -28,17 +28,12 @@
         "options": {
           "assets": [
             {
-              "glob": "parser/sql.cjs",
+              "glob": "parser/sql.peggy.{mjs,d.ts,mjs.map}",
               "input": "{projectRoot}/src",
               "output": "."
             }
           ]
         }
-      },
-      "jison": {
-        "outputs": [
-          "{projectRoot}/src/parser/sql.cjs"
-        ]
       }
     }
   },
@@ -47,7 +42,6 @@
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",
-    "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "es-toolkit": "^1.43.0",
     "tslib": "^2.6.2"
   }

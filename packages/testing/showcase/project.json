@@ -71,9 +71,7 @@
             "@dortdb/core",
             "@dortdb/lang-cypher",
             "@dortdb/lang-sql",
-            "@dortdb/lang-xquery",
-            "@ts-jison/parser",
-            "@ts-jison/lexer"
+            "@dortdb/lang-xquery"
           ]
         }
       },

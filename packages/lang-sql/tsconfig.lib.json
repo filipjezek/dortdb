@@ -9,7 +9,7 @@
     "lib": ["DOM", "ES2024"]
   },
   "include": ["src/**/*.ts"],
-  "files": ["src/parser/sql.cjs"],
+  "files": ["src/parser/sql.peggy.mjs"],
   "exclude": ["jest.config.ts", "src/**/*.spec.ts"],
   "references": [
     {

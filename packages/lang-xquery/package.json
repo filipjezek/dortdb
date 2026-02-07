@@ -34,11 +34,6 @@
             }
           ]
         }
-      },
-      "jison": {
-        "outputs": [
-          "{projectRoot}/src/parser/xquery.cjs"
-        ]
       }
     }
   },
@@ -47,7 +42,6 @@
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",
-    "@ts-jison/parser-generator": "^0.4.1-alpha.2",
     "tslib": "^2.6.2"
   },
   "devDependencies": {

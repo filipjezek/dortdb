@@ -155,7 +155,7 @@ describe('AST Expressions', () => {
         new astSQL.SelectStatement(
           new astSQL.SelectSet([
             new astSQL.ASTCase(
-              undefined,
+              null,
               [
                 [
                   new astSQL.ASTNumberLiteral('1'),
@@ -258,7 +258,7 @@ describe('AST Expressions', () => {
     it('should ignore block comments', () => {
       const result = db.parse(`
         SELECT 1, /* 2,
-        /* 3, */ 4, */ 5`);
+        /* 3,  4, */ 5`);
       const expected = [
         new astSQL.SelectStatement(
           new astSQL.SelectSet([

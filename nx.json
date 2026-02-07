@@ -18,7 +18,7 @@
     "build": {
       "executor": "@nx/js:swc",
       "cache": true,
-      "dependsOn": ["^build", "jison", "peggy"],
+      "dependsOn": ["^build", "peggy"],
       "inputs": ["production", "^production"],
       "outputs": ["{projectRoot}/dist"],
       "options": {
@@ -29,10 +29,6 @@
         "clean": false
       }
     },
-    "jison": {
-      "inputs": ["{projectRoot}/src/parser/*.jison(lex)?"],
-      "cache": true
-    },
     "peggy": {
       "inputs": ["{projectRoot}/src/parser/*.pegjs"],
       "outputs": ["{projectRoot}/src/parser/*.peggy.*"],
@@ -40,7 +36,7 @@
     },
     "test": {
       "executor": "@nx/vitest:test",
-      "dependsOn": ["^build", "jison", "peggy"],
+      "dependsOn": ["^build", "peggy"],
       "options": {
         "reporters": ["default"]
       }
