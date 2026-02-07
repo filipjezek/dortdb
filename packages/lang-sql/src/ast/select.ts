@@ -9,10 +9,10 @@ import { WindowSpec } from './window.js';
 export class SelectStatement implements ASTNode {
   constructor(
     public selectSet: SelectSet | ValuesClause,
-    public orderBy?: OrderByItem[],
-    public limit?: ASTNode,
-    public offset?: ASTNode,
-    public withQueries?: WithQuery[],
+    public orderBy: OrderByItem[] = null,
+    public limit: ASTNode = null,
+    public offset: ASTNode = null,
+    public withQueries: WithQuery[] = null,
   ) {}
 
   accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
@@ -25,12 +25,12 @@ export class SelectSet implements ASTNode {
 
   constructor(
     public items: ASTNode[],
-    public from?: ASTIdentifierClass | ASTTableAlias | JoinClause,
-    public where?: ASTNode,
-    public groupBy?: GroupByClause,
-    public having?: ASTNode,
+    public from: ASTIdentifierClass | ASTTableAlias | JoinClause = null,
+    public where: ASTNode = null,
+    public groupBy: GroupByClause = null,
+    public having: ASTNode = null,
     public distinct: boolean | ASTNode[] = false,
-    public windows?: Record<string, WindowSpec>,
+    public windows: Record<string, WindowSpec> = null,
   ) {}
 
   accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {

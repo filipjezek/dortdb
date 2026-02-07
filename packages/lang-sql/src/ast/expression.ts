@@ -143,7 +143,7 @@ export class ASTQuantifier implements ASTNode {
 
 export class ASTCase implements ASTNode {
   constructor(
-    public expr: ASTNode | undefined,
+    public expr: ASTNode,
     public whenThen: [ASTNode, ASTNode][],
     public elseExpr: ASTNode,
   ) {}

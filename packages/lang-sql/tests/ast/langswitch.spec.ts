@@ -1,5 +1,5 @@
 import { ASTOperator, DortDB, LangSwitch } from '@dortdb/core';
-import { SQL } from '../../src';
+import { SQL } from '../../src/index.js';
 import * as astSQL from '../../src/ast/index.js';
 
 describe('AST langswitch', () => {

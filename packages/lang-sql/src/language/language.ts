@@ -3,7 +3,7 @@ import { coalesce } from '../functions/coalesce.js';
 import { SQLLogicalPlanBuilder } from '../visitors/builder.js';
 import { SQLCalculationBuilder } from '../visitors/calculation-builder.js';
 import { ObjectDataAdapter, SQLDataAdapter } from './data-adapter.js';
-import { createParser } from './create-parser.js';
+import { createParser, createPeggyParser } from './create-parser.js';
 import { between, inOp, notInOp } from '../operators/basic.js';
 import { SQLEqualityChecker } from '../visitors/equality-checker.js';
 import { SQLExecutor } from '../visitors/executor.js';
@@ -46,7 +46,7 @@ export function SQL(config?: SQLConfig): SQLLanguage {
     aggregates: [],
     functions: [coalesce],
     castables: [],
-    createParser,
+    createParser: createPeggyParser,
     visitors: {
       logicalPlanBuilder: SQLLogicalPlanBuilder,
       calculationBuilder: SQLCalculationBuilder,
