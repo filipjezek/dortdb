@@ -749,7 +749,7 @@ export class XQueryLogicalPlanBuilder
       const el = this.dataAdapter.createElement(
         ns,
         qname,
-        args.slice(0, -node.attributes.length),
+        args.slice(0, -node.attributes.length || undefined),
       );
       for (let i = 0; i < node.attributes.length; i++) {
         const [id] = node.attributes[i];
