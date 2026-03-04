@@ -68,6 +68,7 @@ export class MergeProjections implements PatternRule<
     a: plan.Projection,
     b: plan.Projection,
   ): plan.Projection {
+    console.log('Merging projections', a.attrs, b.attrs);
     const projMap: ProjMap = new Trie();
     const calcInputDeps = new Map<plan.Calculation, IdSet>(
       a.attrs
