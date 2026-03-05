@@ -92,10 +92,16 @@ function infer(item: AST.ASTVariable, args: DescentArgs) {
   }
 }
 
-interface DescentArgs {
+export interface DescentArgs {
   src?: PlanTupleOperator;
   ctx: IdSet;
   inferred: IdSet;
+}
+
+export interface XQueryLangCtx {
+  prologOptions: {
+    namespaces: Map<string, string>;
+  };
 }
 
 export const xhtml = 'http://www.w3.org/1999/xhtml';
@@ -106,10 +112,10 @@ export class XQueryLogicalPlanBuilder
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
   protected eqCheckers: Record<string, EqualityChecker>;
   protected tdeps: Record<string, TransitiveDependencies>;
-  protected prologOptions = {
-    namespaces: new Map<string, string>([[undefined, xhtml]]),
-  };
-  protected prefixCounter = 0;
+  protected langCtx: Record<string, unknown> & { xquery: XQueryLangCtx };
+  /** copied to keep outer lang ctx clean */
+  protected localLangCtx: XQueryLangCtx;
+  protected static prefixCounter = 0;
   protected dataAdapter: XQueryDataAdapter<unknown>;
 
   constructor(protected db: DortDBAsFriend) {
@@ -121,7 +127,29 @@ export class XQueryLogicalPlanBuilder
     this.atomize = this.atomize.bind(this);
   }
 
-  buildPlan(node: ASTNode, ctx: IdSet) {
+  protected initLangCtx(): XQueryLangCtx {
+    return {
+      prologOptions: {
+        namespaces: new Map<string, string>([[undefined, xhtml]]),
+      },
+    };
+  }
+  protected cloneLangCtx(ctx: XQueryLangCtx): XQueryLangCtx {
+    return {
+      ...ctx,
+      prologOptions: {
+        ...ctx.prologOptions,
+        namespaces: new Map(ctx.prologOptions.namespaces),
+      },
+    };
+  }
+  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>) {
+    this.langCtx = langCtx as Record<string, unknown> & {
+      xquery: XQueryLangCtx;
+    };
+    this.langCtx['xquery'] ??= this.initLangCtx();
+    this.localLangCtx = this.cloneLangCtx(this.langCtx.xquery);
+
     const inferred = new Trie<string | symbol>();
     let res = node.accept(this, { ctx, inferred });
     if (res instanceof PlanTupleOperator && res.schema) {
@@ -200,7 +228,7 @@ export class XQueryLogicalPlanBuilder
     node: AST.DefaultNSDeclaration,
     args: DescentArgs,
   ): PlanOperator {
-    this.prologOptions.namespaces.set(undefined, node.uri.value);
+    this.localLangCtx.prologOptions.namespaces.set(undefined, node.uri.value);
     return null;
   }
   visitBaseURIDeclaration(
@@ -222,7 +250,7 @@ export class XQueryLogicalPlanBuilder
     throw new UnsupportedError('Empty order declaration not supported.');
   }
   visitNSDeclaration(node: AST.NSDeclaration, args: DescentArgs): PlanOperator {
-    this.prologOptions.namespaces.set(
+    this.localLangCtx.prologOptions.namespaces.set(
       node.prefix.parts[0] as string,
       node.uri.value,
     );
@@ -714,12 +742,12 @@ export class XQueryLogicalPlanBuilder
     if (schema && URL.canParse(schema)) {
       const prefix =
         (source && this.dataAdapter.lookupPrefix(source, schema)) ??
-        `pref${this.prefixCounter++}`;
+        `pref${XQueryLogicalPlanBuilder.prefixCounter++}`;
       return [schema, `${prefix}:${local}`];
     }
     const uri =
       (source && this.dataAdapter.lookupNSUri(source, schema)) ??
-      this.prologOptions.namespaces.get(schema);
+      this.localLangCtx.prologOptions.namespaces.get(schema);
     return [uri, schema ? `${schema}:${local}` : local];
   }
   protected processDirConstrContent(
@@ -1108,9 +1136,14 @@ export class XQueryLogicalPlanBuilder
     return this.processAggregateFn(node, dargs, impl);
   }
   visitLangSwitch(node: LangSwitch, args: DescentArgs): PlanOperator {
+    this.langCtx.xquery.prologOptions = this.localLangCtx.prologOptions;
     const nested = new (this.db.langMgr.getLang(
       node.lang,
-    ).visitors.logicalPlanBuilder)(this.db).buildPlan(node.node, args.ctx);
+    ).visitors.logicalPlanBuilder)(this.db).buildPlan(
+      node.node,
+      args.ctx,
+      this.langCtx,
+    );
     for (const item of nested.inferred) {
       args.inferred.add(item);
     }

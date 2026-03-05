@@ -62,6 +62,11 @@ function toTuples(op: PlanOperator): PlanTupleOperator {
     : new plan.MapFromItem('sql', defaultCol, op);
 }
 
+export interface SQLLangCtx {
+  ctes: Map<string, PlanTupleOperator>;
+  materializedCtes: Map<string, ASTIdentifier[]>;
+}
+
 export class SQLLogicalPlanBuilder
   implements SQLVisitor<PlanOperator>, LogicalPlanBuilder
 {
@@ -70,6 +75,10 @@ export class SQLLogicalPlanBuilder
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
   protected eqCheckers: Record<string, EqualityChecker>;
   protected renamers: Record<string, AttributeRenamer>;
+
+  protected langCtx: Record<string, unknown> & { sql: SQLLangCtx };
+  /** copied to keep outer lang ctx clean */
+  protected localLangCtx: SQLLangCtx;
 
   constructor(protected db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
@@ -84,7 +93,26 @@ export class SQLLogicalPlanBuilder
     this.processOrderItem = this.processOrderItem.bind(this);
   }
 
-  buildPlan(node: ASTNode, ctx: IdSet) {
+  protected initLangCtx(): SQLLangCtx {
+    return {
+      ctes: new Map<string, PlanTupleOperator>(),
+      materializedCtes: new Map<string, ASTIdentifier[]>(),
+    };
+  }
+  protected cloneLangCtx(ctx: SQLLangCtx): SQLLangCtx {
+    return {
+      ...ctx,
+      ctes: new Map(ctx.ctes),
+      materializedCtes: new Map(ctx.materializedCtes),
+    };
+  }
+  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>) {
+    this.langCtx = langCtx as Record<string, unknown> & {
+      sql: SQLLangCtx;
+    };
+    this.langCtx['sql'] ??= this.initLangCtx();
+    this.localLangCtx = this.cloneLangCtx(this.langCtx.sql);
+
     const [plan, inferred] = this.inferrerMap['sql'].inferSchema(
       node.accept(this),
       ctx,
@@ -730,6 +758,8 @@ export class SQLLogicalPlanBuilder
     );
   }
   visitLangSwitch(node: LangSwitch): PlanOperator {
-    return new PlanLangSwitch('sql', node);
+    this.langCtx.sql.ctes = this.localLangCtx.ctes;
+    this.langCtx.sql.materializedCtes = this.localLangCtx.materializedCtes;
+    return new PlanLangSwitch('sql', node, this.langCtx);
   }
 }

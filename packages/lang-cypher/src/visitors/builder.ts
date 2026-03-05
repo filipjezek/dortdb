@@ -87,6 +87,7 @@ export class CypherLogicalPlanBuilder
   protected eqCheckers: Record<string, EqualityChecker>;
   protected stringifier = new ASTDeterministicStringifier();
   protected dataAdapter: CypherDataAdaper;
+  protected langCtx: Record<string, unknown>;
 
   constructor(protected db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
@@ -161,7 +162,8 @@ export class CypherLogicalPlanBuilder
       : node.accept(this, args);
   }
 
-  buildPlan(node: ASTNode, ctx: IdSet) {
+  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>) {
+    this.langCtx = langCtx;
     const inferred = new Trie<string | symbol>();
     return {
       plan: node.accept(this, {
@@ -1484,7 +1486,11 @@ export class CypherLogicalPlanBuilder
   visitLangSwitch(node: LangSwitch, args: DescentArgs): PlanOperator {
     const nested = new (this.db.langMgr.getLang(
       node.lang,
-    ).visitors.logicalPlanBuilder)(this.db).buildPlan(node.node, args.ctx);
+    ).visitors.logicalPlanBuilder)(this.db).buildPlan(
+      node.node,
+      args.ctx,
+      this.langCtx,
+    );
     for (const item of nested.inferred) {
       args.inferred.add(item);
     }

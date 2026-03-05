@@ -74,7 +74,11 @@ export class DortDB<LangNames extends string = string> {
     const Visitor = this.langMgr.getLang(
       options?.mainLang ?? this.config.mainLang.name,
     ).visitors.logicalPlanBuilder;
-    const plan = new Visitor(this.friendInterface).buildPlan(query, new Trie());
+    const plan = new Visitor(this.friendInterface).buildPlan(
+      query,
+      new Trie(),
+      {},
+    );
     const optimized = this.optimizer.optimize(plan.plan);
     // varMappers[optimized.lang].mapVariables(optimized);
     return optimized;
@@ -172,6 +176,7 @@ export class DortDB<LangNames extends string = string> {
       const plan = new planBuilder(this.friendInterface).buildPlan(
         parsed.value[0],
         new Trie(options?.fromItemKey ? [options.fromItemKey] : []),
+        {},
       );
       const maybeProj = this.optimizer.optimize(plan.plan);
       const res =
