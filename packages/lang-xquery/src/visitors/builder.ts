@@ -18,6 +18,7 @@ import {
   toInfer,
   DortDBAsFriend,
   EqualityChecker,
+  TransitiveDependencies,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -104,6 +105,7 @@ export class XQueryLogicalPlanBuilder
 {
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
   protected eqCheckers: Record<string, EqualityChecker>;
+  protected tdeps: Record<string, TransitiveDependencies>;
   protected prologOptions = {
     namespaces: new Map<string, string>([[undefined, xhtml]]),
   };
@@ -672,9 +674,11 @@ export class XQueryLogicalPlanBuilder
     return res;
   }
   visitFilterExpr(node: AST.FilterExpr, args: DescentArgs): PlanTupleOperator {
-    let res = toTuples(node.expr.accept(this, args));
-    res = new plan.ProjectionIndex('xquery', POS, res);
-    res = new ProjectionSize('xquery', LEN, res);
+    let res = toTuples(this.maybeUnwind(node.expr, args));
+    if (!(res instanceof TreeJoin)) {
+      res = new plan.ProjectionIndex('xquery', POS, res);
+      res = new ProjectionSize('xquery', LEN, res);
+    }
     return this.visitPathPredicate(node.predicate, { ...args, src: res });
   }
   visitDynamicFunctionCall(
