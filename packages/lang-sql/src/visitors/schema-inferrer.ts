@@ -552,7 +552,11 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   visitLangSwitch(operator: LangSwitch, ctx: IdSet): IdSet {
     const nested = new (this.db.langMgr.getLang(
       operator.node.lang,
-    ).visitors.logicalPlanBuilder)(this.db).buildPlan(operator.node.node, ctx);
+    ).visitors.logicalPlanBuilder)(this.db).buildPlan(
+      operator.node.node,
+      ctx,
+      operator.langCtx,
+    );
     let res: PlanTupleOperator;
     if (nested.plan instanceof PlanTupleOperator && nested.plan.schema) {
       res = operator.alias

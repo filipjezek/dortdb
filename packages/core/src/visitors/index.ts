@@ -37,11 +37,14 @@ export interface LogicalPlanBuilder extends ASTVisitor<PlanOperator> {
    * Builds a logical plan from an AST node.
    * @param node The root node of the AST.
    * @param context The context to use for the plan.
+   * @param languageContext The per-language additional context. For example, SQL may use this
+   * to pass in definitions of CTEs created in an outer language switch.
    * @returns The plan operator, as well as the inferred context (@see {@link toInfer}).
    */
   buildPlan(
     node: ASTNode,
     context: IdSet,
+    languageContext: Record<string, unknown>,
   ): { plan: PlanOperator; inferred: IdSet };
 }
 /**
