@@ -86,7 +86,18 @@ export class ASTTuple implements ASTNode {
 }
 
 export class ASTRow implements ASTNode {
-  constructor(public items: ASTExpressionAlias[] | ASTIdentifier) {}
+  public items: ASTExpressionAlias[];
+  constructor(items: ASTNode[]) {
+    this.items = items.map((item, i) => {
+      if (item instanceof ASTExpressionAlias) {
+        return item;
+      } else if (item instanceof ASTIdentifier) {
+        return new ASTExpressionAlias(item, item.parts.at(-1) as string);
+      } else {
+        return new ASTExpressionAlias(item, `col${i + 1}`);
+      }
+    });
+  }
 
   accept<Ret, Arg>(visitor: SQLVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitRow(this, arg);

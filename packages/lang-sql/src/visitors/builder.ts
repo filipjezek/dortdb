@@ -36,11 +36,15 @@ import {
   schemaToTrie,
   shortcutNulls,
 } from '@dortdb/core/utils';
-import { ret1, retI0 } from '@dortdb/core/internal-fns';
+import { ret1, retI0, toPair } from '@dortdb/core/internal-fns';
 import { inOp, notInOp } from '../operators/basic.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { ilike, like } from '../operators/string.js';
 import { likeToRegex } from '../utils/string.js';
+import { SQLDataAdapter } from '../language/data-adapter.js';
+import { SQLLanguage } from '../language/language.js';
+import { collect } from '@dortdb/core/aggregates';
+import { unwind } from '@dortdb/core/fns';
 
 export const defaultCol = toId('value');
 export const nonlocalPrefix = 'nonlocal';
@@ -79,12 +83,16 @@ export class SQLLogicalPlanBuilder
   protected langCtx: Record<string, unknown> & { sql: SQLLangCtx };
   /** copied to keep outer lang ctx clean */
   protected localLangCtx: SQLLangCtx;
+  protected dataAdapter: SQLDataAdapter<unknown>;
 
   constructor(protected db: DortDBAsFriend) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.renamers = db.langMgr.getVisitorMap('attributeRenamer');
     this.inferrerMap['sql'] = new SchemaInferrer(this.inferrerMap, db);
+    this.dataAdapter = db.langMgr.getLang<'sql', SQLLanguage>(
+      'sql',
+    ).dataAdapter;
 
     this.processNode = this.processNode.bind(this);
     this.processAttr = this.processAttr.bind(this);
@@ -173,20 +181,21 @@ export class SQLLogicalPlanBuilder
     if (node.items instanceof ASTIdentifier) {
       return new plan.FnCall('sql', [node.items], ret1);
     }
-    const attrs = node.items.map(
-      (alias) =>
-        [alias.expression.accept(this), toId(alias.alias)] as [
-          OpOrId,
-          ASTIdentifier,
-        ],
+    const keys = node.items.map((alias) => alias.alias);
+    const values = node.items.map((alias) =>
+      this.processFnArg(alias.expression),
     );
-    return new plan.FnCall('sql', attrs.map(attrToOpArg), (...args) => {
-      const res: Record<string | symbol, unknown> = {};
-      for (let i = 0; i < args.length; i++) {
-        res[attrs[i][1].parts[0]] = args[i];
-      }
-      return res;
-    });
+
+    return new plan.FnCall(
+      'sql',
+      [
+        { op: new plan.Literal('sql', keys) },
+        {
+          op: new plan.FnCall('sql', values, Array.of),
+        },
+      ],
+      this.dataAdapter.createRow.bind(this.dataAdapter),
+    );
   }
   visitCast(node: AST.ASTCast): PlanOperator {
     const impl = this.db.langMgr.getCast('sql', ...idToPair(node.type));
@@ -360,8 +369,11 @@ export class SQLLogicalPlanBuilder
     };
   }
   visitSelectStatement(node: AST.SelectStatement) {
-    if (node.withQueries?.length)
-      throw new UnsupportedError('With queries not supported');
+    const withCtes: PlanTupleOperator[] = [];
+    for (const cte of node.withQueries ?? []) {
+      const subq = cte.accept(this) as PlanTupleOperator;
+      if (subq) withCtes.push(subq);
+    }
 
     const orders = node.orderBy ? node.orderBy.map(this.processOrderItem) : [];
     const aggs = getAggregates(orders.map(plan.getKey));
@@ -376,6 +388,15 @@ export class SQLLogicalPlanBuilder
     }
     if (node.limit || node.offset) {
       op = this.buildLimit(node, op);
+    }
+    if (withCtes.length) {
+      let res = withCtes[0];
+      for (let i = 1; i < withCtes.length; i++) {
+        res = new plan.ProjectionConcat('sql', withCtes[i], false, res);
+      }
+      const schema = op.schema;
+      op = new plan.ProjectionConcat('sql', op, false, res);
+      op = new plan.Projection('sql', schema.map(toPair), op);
     }
     return op;
   }
@@ -547,6 +568,26 @@ export class SQLLogicalPlanBuilder
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [PlanTupleOperator, ASTIdentifier] {
     if (node instanceof ASTIdentifier) {
+      if (this.localLangCtx.ctes.has(node.parts[0] as string)) {
+        return [
+          this.localLangCtx.ctes.get(node.parts[0] as string).clone(),
+          node,
+        ];
+      } else if (
+        this.localLangCtx.materializedCtes.has(node.parts[0] as string)
+      ) {
+        const schema = this.localLangCtx.materializedCtes.get(
+          node.parts[0] as string,
+        );
+        const src = new plan.TupleFnSource(
+          'sql',
+          [node],
+          unwind.impl,
+          toId('unwind'),
+        );
+        src.addToSchema(schema);
+        return [src, node];
+      }
       const src = new plan.TupleSource('sql', node);
       src.addToSchema(ASTIdentifier.fromParts([...node.parts, toInfer]));
       return [src, node];
@@ -702,8 +743,56 @@ export class SQLLogicalPlanBuilder
     throw new UnsupportedError('Rows from not supported.');
   }
   visitWithQuery(node: AST.WithQuery): PlanOperator {
-    throw new UnsupportedError('With queries not supported');
+    if (node.recursive) {
+      throw new UnsupportedError('Recursive with queries not supported');
+    }
+    let subq = node.query.accept(this) as PlanTupleOperator;
+    if (node.colNames?.length) {
+      subq = new plan.Projection(
+        'sql',
+        subq.schema.map((x, i) => [
+          x,
+          ASTIdentifier.fromParts([
+            ...node.name.parts,
+            ...node.colNames[i].parts,
+          ]),
+        ]),
+        subq,
+      );
+    } else {
+      subq = new plan.Projection(
+        'sql',
+        subq.schema.map((x) => [x, overrideSource(node.name, x)]),
+        subq,
+      );
+    }
+
+    if (!node.materialized) {
+      this.localLangCtx.ctes.set(node.name.parts[0] as string, subq);
+      return null;
+    }
+
+    return this.materializeCte(node, subq);
   }
+
+  protected materializeCte(node: AST.WithQuery, subq: PlanTupleOperator) {
+    const schema = subq.schema;
+    const rowConstr = new AST.ASTRow(schema);
+    const rowCol = toId(Symbol('row'));
+    subq = new plan.Projection('sql', [[this.toCalc(rowConstr), rowCol]], subq);
+    subq = new plan.GroupBy(
+      'sql',
+      [],
+      [new plan.AggregateCall('sql', [rowCol], collect, node.name)],
+      subq,
+    );
+    this.localLangCtx.materializedCtes.set(
+      node.name.parts[0] as string,
+      schema,
+    );
+    return subq;
+  }
+
   visitLiteral<U>(node: ASTLiteral<U>): PlanOperator {
     return new plan.Literal('sql', node.value);
   }

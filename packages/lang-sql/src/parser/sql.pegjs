@@ -133,9 +133,9 @@ TableFunctionCall
   ;
 
 WithClause
-  = 'WITH'i rec:(_ 'RECURSIVE'i)? qs:WithQueryCycleList {
+  = 'WITH'i rec:(_ 'RECURSIVE'i)? _ qs:WithQueryCycleList {
     rec = !!rec;
-    for (q of qs) {
+    for (const q of qs) {
       q.recursive = rec;
     }
     return qs;
@@ -143,8 +143,8 @@ WithClause
   ;
 
 WithQueryName
-  = name:Identifier cols:(_? '(' _? @ColumnList _? ')')? _ 'AS'i _ mat:(Materialized _)? '(' sq:Subquery ')' {
-    return new ast.WithQuery(name, cols ?? [], sq, !!mat); 
+  = name:Identifier cols:(_? '(' _? @ColumnList _? ')')? _ 'AS'i _ mat:(Materialized _)? '(' _? sq:Subquery _? ')' {
+    return new ast.WithQuery(name, cols ?? [], sq, mat); 
   }
   ;
 
