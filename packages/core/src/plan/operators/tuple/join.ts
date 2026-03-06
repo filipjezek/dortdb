@@ -19,7 +19,9 @@ export class CartesianProduct extends PlanTupleOperator {
     this.lang = lang;
     this.schema =
       left.schema && right.schema
-        ? left.schema.concat(right.schema)
+        ? left.schema
+            .filter((x) => !right.schemaSet.has(x.parts))
+            .concat(right.schema)
         : left.schema || right.schema || [];
     this.schemaSet = schemaToTrie(this.schema);
     left.parent = this;
