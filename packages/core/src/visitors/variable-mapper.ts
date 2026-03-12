@@ -93,21 +93,23 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitProjection(operator: plan.Projection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
+
+    // first tranlate all sources, so that the translation does not use the new translations being set in this operator
     for (const attr of operator.attrs) {
-      let tgtTranslated: ASTIdentifier;
       if (attr[0] instanceof ASTIdentifier) {
-        const srcTranslated = this.translate(attr[0], ctx);
-        tgtTranslated = this.translate(attr[1], ctx, 1);
         operator.renames.delete(attr[0].parts);
-        operator.renames.set(srcTranslated.parts, tgtTranslated.parts);
         operator.renamesInv.delete(attr[1].parts);
-        operator.renamesInv.set(tgtTranslated.parts, srcTranslated.parts);
-        attr[0] = srcTranslated;
+        attr[0] = this.translate(attr[0], ctx);
       } else {
-        tgtTranslated = this.translate(attr[1], ctx, 1);
         this.visitCalculation(attr[0], ctx);
       }
-      attr[1] = tgtTranslated;
+    }
+    for (const attr of operator.attrs) {
+      attr[1] = this.translate(attr[1], ctx, 1);
+      if (attr[0] instanceof ASTIdentifier) {
+        operator.renames.set(attr[0].parts, attr[1].parts);
+        operator.renamesInv.set(attr[1].parts, attr[0].parts);
+      }
     }
   }
   visitSelection(operator: plan.Selection, ctx: VariableMapperCtx): void {

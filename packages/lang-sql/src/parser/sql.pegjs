@@ -193,7 +193,7 @@ WithQueryCycle
 WithQueryCycleList = WithQueryCycle|1.., _? ',' _?| ;
 
 ValuesClause
-  = 'VALUES'i _ exprs:ExpressionListOptList { return new ast.ValuesClause(exprs); }
+  = 'VALUES'i _? exprs:ExpressionListOptList { return new ast.ValuesClause(exprs); }
   ;
 
 TableItem

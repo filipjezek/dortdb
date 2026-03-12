@@ -1,8 +1,12 @@
-import { containsAll, schemaToTrie, union } from '../../../utils/trie.js';
+import { ASTIdentifier } from '../../../ast.js';
+import { schemaToTrie } from '../../../utils/trie.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Recursion extends PlanTupleOperator {
+  /** If set, the recursion will only consider distinct combinations of these keys */
+  public distinctKeys: (Calculation | ASTIdentifier)[] = null;
+
   constructor(
     lang: Lowercase<string>,
     public min: number,
@@ -50,6 +54,9 @@ export class Recursion extends PlanTupleOperator {
 }
 
 export class IndexedRecursion extends PlanTupleOperator {
+  /** If set, the recursion will only consider distinct combinations of these keys */
+  public distinctKeys: (Calculation | ASTIdentifier)[] = null;
+
   constructor(
     lang: Lowercase<string>,
     public min: number,

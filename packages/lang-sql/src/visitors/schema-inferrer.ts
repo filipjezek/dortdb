@@ -474,8 +474,23 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
           ? operator.name
           : operator.name[1];
       let hasRenamedAttrs = false;
+      const unwound =
+        n.parts[0] === 'unwind' &&
+        operator.args.length === 1 &&
+        operator.args[0] instanceof ASTIdentifier;
+
       for (const attr of operator.schema.slice()) {
-        if (attr.parts.length > 1 && !isTableAttr(attr, n)) {
+        if (
+          attr.parts.length > 1 &&
+          !(
+            isTableAttr(attr, n) ||
+            (unwound &&
+              (operator.args[0] as ASTIdentifier).parts.every(
+                (p, i) => p === attr.parts[i],
+              ))
+          )
+        ) {
+          console.log('removing', attr.parts, n, isTableAttr(attr, n));
           operator.removeFromSchema(attr);
           external.add(attr.parts);
         } else if (

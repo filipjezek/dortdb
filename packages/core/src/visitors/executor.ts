@@ -136,6 +136,16 @@ export abstract class Executor implements PlanVisitor<
     return result;
   }
 
+  protected distinctIfKeys(
+    stream: Iterable<unknown[]>,
+    keys: (plan.Calculation | ASTIdentifier)[],
+    seen: Trie<unknown>,
+    ctx: ExecutionContext,
+  ) {
+    if (!keys?.length) return stream;
+    return this.distinctStream(stream, keys, seen, ctx);
+  }
+
   *visitRecursion(
     operator: plan.Recursion,
     ctx: ExecutionContext,
@@ -144,9 +154,13 @@ export abstract class Executor implements PlanVisitor<
     const queue = new Queue<LinkedListNode<unknown[]>>();
     const items: unknown[][] = [];
     const keys = ctx.getKeys(operator);
-    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
-      unknown[]
-    >) {
+    const seen = new Trie<unknown>();
+    for (const item of this.distinctIfKeys(
+      operator.source.accept(this.vmap, ctx) as Iterable<unknown[]>,
+      operator.distinctKeys,
+      seen,
+      ctx,
+    )) {
       items.push(item);
       const toQueue = new LinkedListNode<unknown[]>([]);
       for (const key of keys) {
@@ -190,6 +204,7 @@ export abstract class Executor implements PlanVisitor<
       }
     }
   }
+
   *visitIndexedRecursion(
     operator: plan.IndexedRecursion,
     ctx: ExecutionContext,
@@ -226,8 +241,8 @@ export abstract class Executor implements PlanVisitor<
         >) {
           if (level >= operator.min) {
             const arrayed = llToArray(item, keys);
-            for (const key of keys) {
-              arrayed[key].push(next[renameMappedKeys[key]]);
+            for (let i = 0; i < keys.length; i++) {
+              arrayed[keys[i]].push(next[renameMappedKeys[i]]);
             }
             yield ctx.setTuple(arrayed, keys);
           }
@@ -1256,28 +1271,37 @@ export abstract class Executor implements PlanVisitor<
       }
     }
   }
-  *visitDistinct(
-    operator: plan.Distinct,
+
+  /**
+   * Create a wrapper around a stream of tuples that ensures only distinct combinations of values for the specified keys are produced.
+   */
+  protected *distinctStream(
+    stream: Iterable<unknown[]>,
+    keys: (plan.Calculation | ASTIdentifier)[],
+    seen: Trie<unknown>,
     ctx: ExecutionContext,
-  ): Iterable<unknown> {
-    const seen = new Trie<unknown>();
-    const keys = ctx.getKeys(operator);
-    const getValues =
-      operator.attrs === allAttrs
-        ? (item: unknown[]) => keys.map((key) => item[key])
-        : () =>
-            (operator.attrs as (plan.Calculation | ASTIdentifier)[]).map(
-              (attr) => this.processItem(attr, ctx),
-            );
-    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
-      unknown[]
-    >) {
-      const values = getValues(item);
+  ): Iterable<unknown[]> {
+    const getValues = () => keys.map((attr) => this.processItem(attr, ctx));
+    for (const item of stream) {
+      const values = getValues();
       if (!seen.has(values)) {
         seen.add(values);
         yield item;
       }
     }
+  }
+
+  visitDistinct(
+    operator: plan.Distinct,
+    ctx: ExecutionContext,
+  ): Iterable<unknown> {
+    const seen = new Trie<unknown>();
+    const src = operator.source.accept(this.vmap, ctx) as Iterable<unknown[]>;
+    const keys =
+      operator.attrs === allAttrs
+        ? ctx.getKeys(operator).map((x) => ASTIdentifier.fromParts([x]))
+        : operator.attrs;
+    return this.distinctStream(src, keys, seen, ctx);
   }
   visitNullSource(
     operator: plan.NullSource,

@@ -568,12 +568,16 @@ export class SQLLogicalPlanBuilder
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [PlanTupleOperator, ASTIdentifier] {
     if (node instanceof ASTIdentifier) {
-      if (this.localLangCtx.ctes.has(node.parts[0] as string)) {
+      if (
+        node.parts.length === 1 &&
+        this.localLangCtx.ctes.has(node.parts[0] as string)
+      ) {
         return [
           this.localLangCtx.ctes.get(node.parts[0] as string).clone(),
           node,
         ];
       } else if (
+        node.parts.length === 1 &&
         this.localLangCtx.materializedCtes.has(node.parts[0] as string)
       ) {
         const schema = this.localLangCtx.materializedCtes.get(
@@ -743,12 +747,25 @@ export class SQLLogicalPlanBuilder
     throw new UnsupportedError('Rows from not supported.');
   }
   visitWithQuery(node: AST.WithQuery): PlanOperator {
+    let subq: PlanTupleOperator;
     if (node.recursive) {
-      throw new UnsupportedError('Recursive with queries not supported');
+      subq = this.handleRecursion(node);
+    } else {
+      subq = node.query.accept(this) as PlanTupleOperator;
     }
-    let subq = node.query.accept(this) as PlanTupleOperator;
+    subq = this.renameWithQuery(node, subq);
+
+    if (!node.materialized) {
+      this.localLangCtx.ctes.set(node.name.parts[0] as string, subq);
+      return null;
+    }
+
+    return this.materializeCte(node, subq);
+  }
+
+  protected renameWithQuery(node: AST.WithQuery, subq: PlanTupleOperator) {
     if (node.colNames?.length) {
-      subq = new plan.Projection(
+      return new plan.Projection(
         'sql',
         subq.schema.map((x, i) => [
           x,
@@ -760,19 +777,70 @@ export class SQLLogicalPlanBuilder
         subq,
       );
     } else {
-      subq = new plan.Projection(
+      return new plan.Projection(
         'sql',
         subq.schema.map((x) => [x, overrideSource(node.name, x)]),
         subq,
       );
     }
+  }
 
-    if (!node.materialized) {
-      this.localLangCtx.ctes.set(node.name.parts[0] as string, subq);
-      return null;
+  protected handleRecursion(node: AST.WithQuery): PlanTupleOperator {
+    if (
+      !(node.query instanceof AST.SelectStatement) ||
+      !(node.query.selectSet instanceof AST.SelectSet) ||
+      !node.query.selectSet.setOp ||
+      node.query.selectSet.setOp.type !== AST.SelectSetOpType.UNION
+    ) {
+      throw new Error(
+        'Recursive with query must be a union of a base and a recursive part',
+      );
     }
+    const setOp = node.query.selectSet.setOp as AST.SelectSetOp;
+    node.query.selectSet.setOp = null; // we'll handle the set op ourselves
+    let basePart = node.query.selectSet.accept(this) as PlanTupleOperator;
+    basePart = this.renameWithQuery(node, basePart);
+    const normalizedAttrs = basePart.schema.map(
+      (x) =>
+        [
+          intermediateToCalc(
+            new plan.FnCall('sql', [x], (y) => y.at(-1)),
+            this.calcBuilders,
+            this.eqCheckers,
+          ),
+          x,
+        ] as Aliased<plan.Calculation>,
+    );
+    const recSrc = new plan.Projection(
+      'sql',
+      normalizedAttrs.concat(
+        normalizedAttrs.map(([calc, alias]) => [
+          calc.clone(),
+          toId(alias.parts.at(-1) as string),
+        ]),
+      ),
+      new plan.NullSource('sql'),
+    );
 
-    return this.materializeCte(node, subq);
+    this.localLangCtx.ctes.set(node.name.parts[0] as string, recSrc);
+    let recursivePart = setOp.next.accept(this) as PlanTupleOperator;
+    this.localLangCtx.ctes.delete(node.name.parts[0] as string);
+    recursivePart = this.renameWithQuery(node, recursivePart);
+
+    let res: PlanTupleOperator = new plan.IndexedRecursion(
+      'sql',
+      1,
+      Infinity,
+      recursivePart,
+      basePart,
+    );
+    res = new plan.Projection(
+      'sql',
+      normalizedAttrs.map(([calc, alias]) => [calc.clone(), alias]),
+      res,
+    );
+
+    return res;
   }
 
   protected materializeCte(node: AST.WithQuery, subq: PlanTupleOperator) {
