@@ -82,6 +82,11 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
 
   visitRecursion(operator: plan.Recursion, renames: plan.RenameMap): void {
     operator.source.accept(this.vmap, renames);
+    this.processArray(
+      operator.distinctKeys ?? [],
+      operator.dependencies,
+      renames,
+    );
     operator.condition.accept(this.vmap, renames);
   }
   visitProjection(operator: plan.Projection, renames: plan.RenameMap): void {
@@ -241,6 +246,11 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
     renames: plan.RenameMap,
   ): void {
     operator.source.accept(this.vmap, renames);
+    this.processArray(
+      operator.distinctKeys ?? [],
+      operator.dependencies,
+      renames,
+    );
     this.processItem(operator, 'mapping', operator.dependencies, renames);
   }
   visitBidirectionalRecursion(

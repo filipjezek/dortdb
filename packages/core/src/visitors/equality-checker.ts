@@ -102,6 +102,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       a.min === b.min &&
       a.max === b.max &&
       this.processItem(a.condition, { ...args, other: b.condition }) &&
+      this.processArray(a.distinctKeys ?? [], b.distinctKeys ?? [], args) &&
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
@@ -345,6 +346,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     return (
       a.min === b.min &&
       a.max === b.max &&
+      this.processArray(a.distinctKeys ?? [], b.distinctKeys ?? [], args) &&
       this.processItem(a.mapping, { ...args, other: b.mapping }) &&
       this.processItem(a.source, { ...args, other: b.source })
     );

@@ -155,19 +155,24 @@ export abstract class Executor implements PlanVisitor<
     const items: unknown[][] = [];
     const keys = ctx.getKeys(operator);
     const seen = new Trie<unknown>();
-    for (const item of this.distinctIfKeys(
-      operator.source.accept(this.vmap, ctx) as Iterable<unknown[]>,
-      operator.distinctKeys,
-      seen,
-      ctx,
-    )) {
+    const distKeys =
+      operator.distinctKeys?.length &&
+      operator.distinctKeys.map((k) => this.processItem(k, ctx));
+    for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
+      unknown[]
+    >) {
       items.push(item);
       const toQueue = new LinkedListNode<unknown[]>([]);
       for (const key of keys) {
         toQueue.value[key] = item[key];
       }
+      let arrayed: unknown[][];
+      if (operator.distinctKeys?.length) {
+        arrayed ??= llToArray(toQueue, keys);
+      }
       if (operator.min <= 1) {
-        yield ctx.setTuple(llToArray(toQueue, keys), keys);
+        arrayed ??= llToArray(toQueue, keys);
+        yield ctx.setTuple(arrayed, keys);
       }
       if (operator.max > 1) {
         queue.enqueue(toQueue);

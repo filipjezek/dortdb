@@ -91,7 +91,13 @@ export class AttributeRenameChecker implements PlanVisitor<
         operator.condition,
         operator.source.schemaSet,
         renamesInv,
-      ) && operator.source.accept(this.vmap, renamesInv)
+      ) &&
+      this.checkHorizontalArray(
+        operator.distinctKeys,
+        operator.source.schemaSet,
+        renamesInv,
+      ) &&
+      operator.source.accept(this.vmap, renamesInv)
     );
   }
   visitProjection(
@@ -321,7 +327,13 @@ export class AttributeRenameChecker implements PlanVisitor<
         operator.mapping,
         operator.source.schemaSet,
         renamesInv,
-      ) && operator.source.accept(this.vmap, renamesInv)
+      ) &&
+      this.checkHorizontalArray(
+        operator.distinctKeys ?? [],
+        operator.source.schemaSet,
+        renamesInv,
+      ) &&
+      operator.source.accept(this.vmap, renamesInv)
     );
   }
   visitBidirectionalRecursion(

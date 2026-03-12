@@ -1,4 +1,5 @@
 import { ASTIdentifier } from '../../../ast.js';
+import { cloneIfPossible, isCalc } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
@@ -33,6 +34,12 @@ export class Recursion extends PlanTupleOperator {
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
+    for (let i = 0; i < this.distinctKeys?.length; i++) {
+      if (this.distinctKeys[i] === current) {
+        this.distinctKeys[i] = replacement as Calculation;
+        return;
+      }
+    }
     if (current === this.condition) {
       this.condition = replacement as Calculation;
     } else {
@@ -40,16 +47,22 @@ export class Recursion extends PlanTupleOperator {
     }
   }
   getChildren(): PlanOperator[] {
-    return [this.source, this.condition];
+    return [
+      this.source,
+      this.condition,
+      ...(this.distinctKeys ?? []).filter(isCalc),
+    ];
   }
   clone(): Recursion {
-    return new Recursion(
+    const res = new Recursion(
       this.lang,
       this.min,
       this.max,
       this.condition.clone(),
       this.source.clone(),
     );
+    res.distinctKeys = this.distinctKeys?.map(cloneIfPossible);
+    return res;
   }
 }
 
@@ -81,6 +94,12 @@ export class IndexedRecursion extends PlanTupleOperator {
 
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
+    for (let i = 0; i < this.distinctKeys?.length; i++) {
+      if (this.distinctKeys[i] === current) {
+        this.distinctKeys[i] = replacement as Calculation;
+        return;
+      }
+    }
     if (current === this.mapping) {
       this.mapping = replacement as PlanTupleOperator;
     } else {
@@ -88,16 +107,22 @@ export class IndexedRecursion extends PlanTupleOperator {
     }
   }
   getChildren(): PlanOperator[] {
-    return [this.source, this.mapping];
+    return [
+      this.source,
+      this.mapping,
+      ...(this.distinctKeys ?? []).filter(isCalc),
+    ];
   }
   clone(): IndexedRecursion {
-    return new IndexedRecursion(
+    const res = new IndexedRecursion(
       this.lang,
       this.min,
       this.max,
       this.mapping.clone(),
       this.source.clone(),
     );
+    res.distinctKeys = this.distinctKeys?.map(cloneIfPossible);
+    return res;
   }
 }
 

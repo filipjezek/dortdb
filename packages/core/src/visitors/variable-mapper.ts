@@ -1,5 +1,6 @@
 import { Trie } from '../data-structures/trie.js';
 import {
+  OpOrId,
   PlanOperator,
   PlanTupleOperator,
   PlanVisitor,
@@ -63,6 +64,17 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     return newTranslation;
   }
 
+  protected translateArray(array: OpOrId[], ctx: VariableMapperCtx) {
+    for (let i = 0; i < array.length; i++) {
+      const k = array[i];
+      if (k instanceof ASTIdentifier) {
+        array[i] = this.translate(k, ctx);
+      } else {
+        k.accept(this.vmap, ctx);
+      }
+    }
+  }
+
   protected union(a: VariableMap, ...bs: VariableMap[]): VariableMap {
     const result: VariableMap = new Trie();
     for (const [key, value] of a.entries()) {
@@ -88,6 +100,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitRecursion(operator: plan.Recursion, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
+    this.translateArray(operator.distinctKeys ?? [], ctx);
     this.visitCalculation(operator.condition, ctx);
   }
   visitProjection(operator: plan.Projection, ctx: VariableMapperCtx): void {
@@ -135,14 +148,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     throw new Error('Method not implemented.');
   }
   visitCalculation(operator: plan.Calculation, ctx: VariableMapperCtx): void {
-    for (let i = 0; i < operator.args.length; i++) {
-      const arg = operator.args[i];
-      if (arg instanceof ASTIdentifier) {
-        operator.args[i] = this.translate(arg, ctx);
-      } else {
-        arg.accept(this.vmap, ctx);
-      }
-    }
+    this.translateArray(operator.args, ctx);
   }
   visitConditional(operator: plan.Conditional, ctx: VariableMapperCtx): void {
     throw new Error('Method not implemented.');
@@ -337,6 +343,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   ): void {
     operator.source.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
+    this.translateArray(operator.distinctKeys ?? [], ctx);
     operator.mapping.accept(this.vmap, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
   }

@@ -37,7 +37,10 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
   visitRecursion(operator: plan.Recursion): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const horizontal = this.onlyExternal(
-      this.visitCalculation(operator.condition),
+      union(
+        this.visitCalculation(operator.condition),
+        ...(operator.distinctKeys?.filter(isCalc).map(this.processNode) ?? []),
+      ),
       operator,
     );
     const result = union(horizontal, operator.source.accept(this.vmap));
@@ -275,7 +278,10 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
   visitIndexedRecursion(operator: plan.IndexedRecursion): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const horizontal = this.onlyExternal(
-      operator.mapping.accept(this.vmap),
+      union(
+        operator.mapping.accept(this.vmap),
+        ...(operator.distinctKeys?.filter(isCalc).map(this.processNode) ?? []),
+      ),
       operator,
     );
     const result = union(horizontal, operator.source.accept(this.vmap));
