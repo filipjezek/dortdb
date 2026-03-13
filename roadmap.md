@@ -5,7 +5,6 @@ _in no particular order_
 - hash join instead of nested loop join
 - IN optimization
 - XQuery path indices
-- adaptive bidirectional recursion (delay bfs check)
 - optional schema detection for sources
 - window plan operator
 - duplicate optimizations in showcase GUI

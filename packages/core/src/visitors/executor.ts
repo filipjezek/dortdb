@@ -614,35 +614,34 @@ export abstract class Executor implements PlanVisitor<
         ).map(revRenamer);
 
       let searchSpace: Trie<unknown> = null;
-
-      // If the max depth is large, precompute the search space to avoid exploring impossible paths
-      if (operator.max > 4) {
-        console.log(
-          new Date().toISOString(),
-          'Calculating bidirectional recursion search space...',
-        );
-        searchSpace = this.bfsCheck(
-          Queue.from(fwdFrontier),
-          Queue.from(revFrontier),
-          getFwd,
-          getRev,
-          ctx,
-          keys,
-          initialKeys,
-          operator.max,
-        );
-        console.log(
-          new Date().toISOString(),
-          `Bidi recursion search space size: ${searchSpace.size}`,
-        );
-        if (searchSpace.size === 0) return;
-      }
-
       let pathSize = 1;
       while (
-        (fwdFrontier.size && (revFrontier.size || revVisited.size)) ||
-        (revFrontier.size && (fwdFrontier.size || fwdVisited.size))
+        ((fwdFrontier.size && (revFrontier.size || revVisited.size)) ||
+          (revFrontier.size && (fwdFrontier.size || fwdVisited.size))) &&
+        pathSize < operator.max
       ) {
+        if (pathSize >= 4 && !searchSpace) {
+          // If the depth is large, precompute the search space to avoid exploring impossible paths
+          console.log(
+            new Date().toISOString(),
+            'Calculating bidirectional recursion search space...',
+          );
+          searchSpace = this.bfsCheck(
+            Queue.from(fwdFrontier),
+            Queue.from(revFrontier),
+            getFwd,
+            getRev,
+            ctx,
+            keys,
+            initialKeys,
+            operator.max,
+          );
+          console.log(
+            new Date().toISOString(),
+            `Bidi recursion search space size: ${searchSpace.size}`,
+          );
+          if (searchSpace.size === 0) return;
+        }
         if (
           fwdFrontier.size > 0 &&
           (revFrontier.size === 0 || fwdFrontier.size <= revFrontier.size)
@@ -667,8 +666,8 @@ export abstract class Executor implements PlanVisitor<
             true,
             searchSpace,
           );
+          continue;
         }
-        if (pathSize >= operator.max) break;
         if (
           revFrontier.size > 0 &&
           (fwdFrontier.size === 0 || revFrontier.size <= fwdFrontier.size)
