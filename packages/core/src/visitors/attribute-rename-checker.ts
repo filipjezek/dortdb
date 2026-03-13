@@ -329,7 +329,7 @@ export class AttributeRenameChecker implements PlanVisitor<
         renamesInv,
       ) &&
       this.checkHorizontalArray(
-        operator.distinctKeys ?? [],
+        operator.distinctKeys,
         operator.source.schemaSet,
         renamesInv,
       ) &&

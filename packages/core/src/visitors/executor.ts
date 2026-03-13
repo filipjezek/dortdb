@@ -59,6 +59,12 @@ export function llToArray(
   return result;
 }
 
+/**
+ * Rename the context item produced by operator A to be usable in operator B.
+ * @param keys keys of the operator A
+ * @param renames addresses of operator A keys in operator B scope
+ * @returns A function that takes an item from operator A and produces an item usable in operator B
+ */
 export function makeRenamer(keys: number[], renames: number[]) {
   return (item: unknown[]) => {
     const result: unknown[] = [];
@@ -136,16 +142,6 @@ export abstract class Executor implements PlanVisitor<
     return result;
   }
 
-  protected distinctIfKeys(
-    stream: Iterable<unknown[]>,
-    keys: (plan.Calculation | ASTIdentifier)[],
-    seen: Trie<unknown>,
-    ctx: ExecutionContext,
-  ) {
-    if (!keys?.length) return stream;
-    return this.distinctStream(stream, keys, seen, ctx);
-  }
-
   *visitRecursion(
     operator: plan.Recursion,
     ctx: ExecutionContext,
@@ -154,25 +150,30 @@ export abstract class Executor implements PlanVisitor<
     const queue = new Queue<LinkedListNode<unknown[]>>();
     const items: unknown[][] = [];
     const keys = ctx.getKeys(operator);
+    const srcKeys = ctx.getKeys(operator.source);
+    const tgtRenamer = makeRenamer(
+      srcKeys,
+      ctx.getRenames(operator.source, operator),
+    );
     const seen = new Trie<unknown>();
-    const distKeys =
-      operator.distinctKeys?.length &&
-      operator.distinctKeys.map((k) => this.processItem(k, ctx));
+    const checkDistinct = operator.distinctKeys.length > 0;
+
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
     >) {
       items.push(item);
       const toQueue = new LinkedListNode<unknown[]>([]);
-      for (const key of keys) {
+      for (const key of srcKeys) {
         toQueue.value[key] = item[key];
       }
-      let arrayed: unknown[][];
-      if (operator.distinctKeys?.length) {
-        arrayed ??= llToArray(toQueue, keys);
-      }
-      if (operator.min <= 1) {
-        arrayed ??= llToArray(toQueue, keys);
-        yield ctx.setTuple(arrayed, keys);
+      if (operator.min <= 1 || checkDistinct) {
+        const arrayed = ctx.setTuple(llToArray(toQueue, srcKeys), srcKeys);
+        if (
+          checkDistinct &&
+          !this.distinctCheck(operator.distinctKeys, seen, ctx)
+        )
+          continue;
+        if (operator.min <= 1) yield ctx.setTuple(tgtRenamer(arrayed), keys);
       }
       if (operator.max > 1) {
         queue.enqueue(toQueue);
@@ -186,21 +187,29 @@ export abstract class Executor implements PlanVisitor<
       for (let i = 0; i < levelSize; i++) {
         const item = queue.dequeue();
         for (const next of items) {
-          const arrayed = llToArray(item, keys);
-          for (const key of keys) {
+          const arrayed = llToArray(item, srcKeys);
+          for (const key of srcKeys) {
             ctx.variableValues[key] = [arrayed[key], next[key]];
           }
           if (!this.visitCalculation(operator.condition, ctx)[0]) continue;
-
-          if (level >= operator.min) {
-            for (const key of keys) {
+          if (level >= operator.min || checkDistinct) {
+            for (const key of srcKeys) {
               arrayed[key].push(next[key]);
             }
-            yield ctx.setTuple(arrayed, keys);
+            ctx.setTuple(arrayed, srcKeys);
+            if (
+              checkDistinct &&
+              !this.distinctCheck(operator.distinctKeys, seen, ctx)
+            ) {
+              continue;
+            }
+            if (level >= operator.min)
+              yield ctx.setTuple(tgtRenamer(arrayed), keys);
           }
+
           if (level < operator.max) {
             const result = new LinkedListNode<unknown[]>([], item);
-            for (const key of keys) {
+            for (const key of srcKeys) {
               result.value[key] = next[key];
             }
             queue.enqueue(result);
@@ -217,17 +226,35 @@ export abstract class Executor implements PlanVisitor<
     if (operator.min > operator.max || operator.max === 0) return;
     const queue = new Queue<LinkedListNode<unknown[]>>();
     const keys = ctx.getKeys(operator);
-    const renameMappedKeys = ctx.getRenames(operator, operator.mapping);
+    const srcKeys = ctx.getKeys(operator.source);
+    const renameMappedKeys = ctx.getRenames(operator.source, operator.mapping);
+    const tgtRenamer = makeRenamer(
+      srcKeys,
+      ctx.getRenames(operator.source, operator),
+    );
+    const checkDistinct = operator.distinctKeys.length > 0;
+    const seen = new Trie<unknown>();
 
     for (const item of operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
     >) {
       const toQueue = new LinkedListNode<unknown[]>([]);
-      for (const key of keys) {
-        toQueue.value[key] = item[key];
+      for (const k of srcKeys) {
+        toQueue.value[k] = item[k];
       }
-      if (operator.min <= 1) {
-        yield ctx.setTuple(llToArray(toQueue, keys), keys);
+      if (operator.min <= 1 || checkDistinct) {
+        const arrayed = ctx.setTuple(
+          tgtRenamer(llToArray(toQueue, srcKeys)),
+          keys,
+        );
+        if (
+          checkDistinct &&
+          !this.distinctCheck(operator.distinctKeys, seen, ctx)
+        )
+          continue;
+        if (operator.min <= 1) {
+          yield arrayed;
+        }
       }
       if (operator.max > 1) {
         queue.enqueue(toQueue);
@@ -240,21 +267,28 @@ export abstract class Executor implements PlanVisitor<
       const levelSize = queue.size;
       for (let i = 0; i < levelSize; i++) {
         const item = queue.dequeue();
-        ctx.setTuple(llToArray(item, keys), keys);
+        ctx.setTuple(llToArray(item, srcKeys), srcKeys);
         for (const next of operator.mapping.accept(this.vmap, ctx) as Iterable<
           unknown[]
         >) {
-          if (level >= operator.min) {
-            const arrayed = llToArray(item, keys);
-            for (let i = 0; i < keys.length; i++) {
-              arrayed[keys[i]].push(next[renameMappedKeys[i]]);
+          if (level >= operator.min || checkDistinct) {
+            let arrayed = llToArray(item, srcKeys);
+            for (let i = 0; i < srcKeys.length; i++) {
+              arrayed[srcKeys[i]].push(next[renameMappedKeys[i]]);
             }
-            yield ctx.setTuple(arrayed, keys);
+            arrayed = ctx.setTuple(tgtRenamer(arrayed), keys) as unknown[][];
+            if (
+              checkDistinct &&
+              !this.distinctCheck(operator.distinctKeys, seen, ctx)
+            ) {
+              continue;
+            }
+            if (level >= operator.min) yield arrayed;
           }
           if (level < operator.max) {
             const result = new LinkedListNode<unknown[]>([], item);
-            for (let i = 0; i < keys.length; i++) {
-              result.value[keys[i]] = next[renameMappedKeys[i]];
+            for (let i = 0; i < srcKeys.length; i++) {
+              result.value[srcKeys[i]] = next[renameMappedKeys[i]];
             }
             queue.enqueue(result);
           }
@@ -1286,14 +1320,26 @@ export abstract class Executor implements PlanVisitor<
     seen: Trie<unknown>,
     ctx: ExecutionContext,
   ): Iterable<unknown[]> {
-    const getValues = () => keys.map((attr) => this.processItem(attr, ctx));
     for (const item of stream) {
-      const values = getValues();
-      if (!seen.has(values)) {
-        seen.add(values);
-        yield item;
-      }
+      if (this.distinctCheck(keys, seen, ctx)) yield item;
     }
+  }
+
+  /**
+   * Check if an item loaded in the current context is included in the distinct output for the specified keys.
+   * If so, it is added to the seen set.
+   */
+  protected distinctCheck(
+    keys: (plan.Calculation | ASTIdentifier)[],
+    seen: Trie<unknown>,
+    ctx: ExecutionContext,
+  ): boolean {
+    const values = keys.map((attr) => this.processItem(attr, ctx));
+    if (seen.has(values)) {
+      return false;
+    }
+    seen.add(values);
+    return true;
   }
 
   visitDistinct(

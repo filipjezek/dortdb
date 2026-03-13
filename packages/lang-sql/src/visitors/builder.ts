@@ -785,7 +785,7 @@ export class SQLLogicalPlanBuilder
     }
   }
 
-  protected handleRecursion(node: AST.WithQuery): PlanTupleOperator {
+  protected checkRecursionValidity(node: AST.WithQuery): AST.SelectSet {
     if (
       !(node.query instanceof AST.SelectStatement) ||
       !(node.query.selectSet instanceof AST.SelectSet) ||
@@ -796,9 +796,34 @@ export class SQLLogicalPlanBuilder
         'Recursive with query must be a union of a base and a recursive part',
       );
     }
-    const setOp = node.query.selectSet.setOp as AST.SelectSetOp;
-    node.query.selectSet.setOp = null; // we'll handle the set op ourselves
-    let basePart = node.query.selectSet.accept(this) as PlanTupleOperator;
+    if (
+      node.cycleCols?.length ||
+      node.cycleMarkDefault ||
+      node.cycleMarkName ||
+      node.cyclePathName ||
+      node.cycleMarkVal
+    ) {
+      throw new UnsupportedError(
+        'Cycle detection in recursive queries not supported',
+      );
+    }
+    if (
+      node.searchCols?.length ||
+      node.searchName ||
+      node.searchType !== AST.SearchType.BFS
+    ) {
+      throw new UnsupportedError(
+        'Search strategies in recursive queries not supported',
+      );
+    }
+    return node.query.selectSet;
+  }
+
+  protected handleRecursion(node: AST.WithQuery): PlanTupleOperator {
+    const sset = this.checkRecursionValidity(node);
+    const setOp = sset.setOp as AST.SelectSetOp;
+    sset.setOp = null; // we'll handle the set op ourselves
+    let basePart = sset.accept(this) as PlanTupleOperator;
     basePart = this.renameWithQuery(node, basePart);
     const normalizedAttrs = basePart.schema.map(
       (x) =>
@@ -834,6 +859,12 @@ export class SQLLogicalPlanBuilder
       recursivePart,
       basePart,
     );
+    if (setOp.distinct) {
+      console.log('DISTINCT');
+      (res as plan.IndexedRecursion).distinctKeys = normalizedAttrs.map(
+        ([calc]) => calc.clone(),
+      );
+    }
     res = new plan.Projection(
       'sql',
       normalizedAttrs.map(([calc, alias]) => [calc.clone(), alias]),

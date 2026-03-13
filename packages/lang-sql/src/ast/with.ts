@@ -3,15 +3,15 @@ import { SQLVisitor } from './visitor.js';
 import { SQLIdentifier } from './expression.js';
 
 export enum SearchType {
-  DFS = 'bfs',
-  BFS = 'dfs',
+  DFS = 'dfs',
+  BFS = 'bfs',
 }
 
 export class WithQuery implements ASTNode {
   public recursive = false;
 
   public searchCols: SQLIdentifier[];
-  public searchType: SearchType;
+  public searchType = SearchType.BFS;
   public searchName: SQLIdentifier;
 
   public cycleCols: SQLIdentifier[];

@@ -1,13 +1,11 @@
 import { ASTIdentifier } from '../../../ast.js';
 import { cloneIfPossible, isCalc } from '../../../internal-fns/index.js';
+import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 export class Recursion extends PlanTupleOperator {
-  /** If set, the recursion will only consider distinct combinations of these keys */
-  public distinctKeys: (Calculation | ASTIdentifier)[] = null;
-
   constructor(
     lang: Lowercase<string>,
     public min: number,
@@ -15,6 +13,8 @@ export class Recursion extends PlanTupleOperator {
     /** any referenced attributes of the input tuples will be resolved as `[[collected,...], next]` */
     public condition: Calculation,
     public source: PlanTupleOperator,
+    /** If set, the recursion will only consider distinct combinations of these keys */
+    public distinctKeys: (Calculation | ASTIdentifier)[] = [],
   ) {
     super();
     this.lang = lang;
@@ -24,6 +24,7 @@ export class Recursion extends PlanTupleOperator {
       condition.parent = this;
     }
     source.parent = this;
+    arrSetParent(this.distinctKeys, this);
   }
 
   accept<Ret, Arg>(
@@ -34,7 +35,7 @@ export class Recursion extends PlanTupleOperator {
   }
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
-    for (let i = 0; i < this.distinctKeys?.length; i++) {
+    for (let i = 0; i < this.distinctKeys.length; i++) {
       if (this.distinctKeys[i] === current) {
         this.distinctKeys[i] = replacement as Calculation;
         return;
@@ -47,35 +48,29 @@ export class Recursion extends PlanTupleOperator {
     }
   }
   getChildren(): PlanOperator[] {
-    return [
-      this.source,
-      this.condition,
-      ...(this.distinctKeys ?? []).filter(isCalc),
-    ];
+    return [this.source, this.condition, ...this.distinctKeys.filter(isCalc)];
   }
   clone(): Recursion {
-    const res = new Recursion(
+    return new Recursion(
       this.lang,
       this.min,
       this.max,
       this.condition.clone(),
       this.source.clone(),
+      this.distinctKeys.map(cloneIfPossible),
     );
-    res.distinctKeys = this.distinctKeys?.map(cloneIfPossible);
-    return res;
   }
 }
 
 export class IndexedRecursion extends PlanTupleOperator {
-  /** If set, the recursion will only consider distinct combinations of these keys */
-  public distinctKeys: (Calculation | ASTIdentifier)[] = null;
-
   constructor(
     lang: Lowercase<string>,
     public min: number,
     public max: number,
     public mapping: PlanTupleOperator,
     public source: PlanTupleOperator,
+    /** If set, the recursion will only consider distinct combinations of these keys */
+    public distinctKeys: (Calculation | ASTIdentifier)[] = [],
   ) {
     super();
     this.lang = lang;
@@ -83,6 +78,7 @@ export class IndexedRecursion extends PlanTupleOperator {
     this.schemaSet = source.schemaSet;
     mapping.parent = this;
     source.parent = this;
+    arrSetParent(this.distinctKeys, this);
   }
 
   accept<Ret, Arg>(
@@ -94,7 +90,7 @@ export class IndexedRecursion extends PlanTupleOperator {
 
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
-    for (let i = 0; i < this.distinctKeys?.length; i++) {
+    for (let i = 0; i < this.distinctKeys.length; i++) {
       if (this.distinctKeys[i] === current) {
         this.distinctKeys[i] = replacement as Calculation;
         return;
@@ -107,22 +103,17 @@ export class IndexedRecursion extends PlanTupleOperator {
     }
   }
   getChildren(): PlanOperator[] {
-    return [
-      this.source,
-      this.mapping,
-      ...(this.distinctKeys ?? []).filter(isCalc),
-    ];
+    return [this.source, this.mapping, ...this.distinctKeys.filter(isCalc)];
   }
   clone(): IndexedRecursion {
-    const res = new IndexedRecursion(
+    return new IndexedRecursion(
       this.lang,
       this.min,
       this.max,
       this.mapping.clone(),
       this.source.clone(),
+      this.distinctKeys.map(cloneIfPossible),
     );
-    res.distinctKeys = this.distinctKeys?.map(cloneIfPossible);
-    return res;
   }
 }
 

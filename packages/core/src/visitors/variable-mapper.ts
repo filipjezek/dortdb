@@ -41,17 +41,22 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     return ctx;
   }
 
+  /**
+   * Translates an identifier into a numerical index.
+   * Sometimes it may be necessary to specify depth as 1 and shadow existing translations.
+   * Other times, it may be necessary to first add new scope and THEN set depth to 1 (and
+   * force a new translation). For example, when a projection writes new content into an
+   * existing variable, this might conflict with, e.g., projection concats upstream that
+   * depend on that variable
+   */
   protected translate(
     attr: ASTIdentifier,
     ctx: VariableMapperCtx,
     depth = ctx.scopeStack.length,
   ): ASTIdentifier {
     const isBoundParam = attr.parts[0] === boundParam;
-    for (
-      let i = isBoundParam ? 0 : ctx.scopeStack.length - 1;
-      i >= ctx.scopeStack.length - depth;
-      i--
-    ) {
+    const iMin = Math.max(0, ctx.scopeStack.length - depth);
+    for (let i = isBoundParam ? 0 : ctx.scopeStack.length - 1; i >= iMin; i--) {
       const scope = ctx.scopeStack[i];
       const translated = scope.get(attr.parts);
       if (translated !== undefined) {
@@ -100,12 +105,14 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitRecursion(operator: plan.Recursion, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
-    this.translateArray(operator.distinctKeys ?? [], ctx);
+    this.translateArray(operator.distinctKeys, ctx);
     this.visitCalculation(operator.condition, ctx);
+    for (const attr of operator.schema) {
+      this.translate(attr, ctx, 0);
+    }
   }
   visitProjection(operator: plan.Projection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
-    this.setTranslations(operator, ctx);
 
     // first tranlate all sources, so that the translation does not use the new translations being set in this operator
     for (const attr of operator.attrs) {
@@ -117,13 +124,27 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
         this.visitCalculation(attr[0], ctx);
       }
     }
+
+    ctx.scopeStack.push(new Trie());
+
     for (const attr of operator.attrs) {
-      attr[1] = this.translate(attr[1], ctx, 1);
+      attr[1] = this.translate(
+        attr[1],
+        ctx,
+        attr[0] instanceof ASTIdentifier && attr[0].equals(attr[1]) ? 2 : 1,
+      );
       if (attr[0] instanceof ASTIdentifier) {
         operator.renames.set(attr[0].parts, attr[1].parts);
         operator.renamesInv.set(attr[1].parts, attr[0].parts);
       }
     }
+    const curr = ctx.scopeStack.pop();
+    const sum = this.union(ctx.scopeStack.pop(), curr);
+    ctx.currentIndex =
+      Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
+      1;
+    ctx.scopeStack.push(sum);
+    this.setTranslations(operator, ctx);
   }
   visitSelection(operator: plan.Selection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
@@ -342,15 +363,28 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     ctx: VariableMapperCtx,
   ): void {
     operator.source.accept(this.vmap, ctx);
-    this.setTranslations(operator, ctx);
-    this.translateArray(operator.distinctKeys ?? [], ctx);
     operator.mapping.accept(this.vmap, ctx);
     ctx.currentIndex -= ctx.scopeStack.pop().size;
+    ctx.scopeStack.push(new Trie());
+    for (const attr of operator.schema) {
+      this.translate(attr, ctx, 1);
+    }
+    this.translateArray(operator.distinctKeys, ctx);
+    const curr = ctx.scopeStack.pop();
+    const sum = this.union(ctx.scopeStack.pop(), curr);
+    ctx.currentIndex =
+      Math.max(...Array.from(sum.entries(), (x) => x[1].parts[0] as number)) +
+      1;
+    ctx.scopeStack.push(sum);
+    this.setTranslations(operator, ctx);
   }
   visitBidirectionalRecursion(
     operator: plan.BidirectionalRecursion,
     ctx: VariableMapperCtx,
   ): void {
+    // There will probably be a bug with overwriting source or target variables by the result
+    // (similary to how it was in indexed recursion or projection), but so far I have not
+    // found a query that triggers it, and it is not trivial to fix, so I will leave it for now
     operator.source.accept(this.vmap, ctx);
     operator.target.accept(this.vmap, ctx);
     const tgt = ctx.scopeStack.pop();

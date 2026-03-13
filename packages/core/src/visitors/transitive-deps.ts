@@ -39,7 +39,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     const horizontal = this.onlyExternal(
       union(
         this.visitCalculation(operator.condition),
-        ...(operator.distinctKeys?.filter(isCalc).map(this.processNode) ?? []),
+        ...(operator.distinctKeys.filter(isCalc).map(this.processNode) ?? []),
       ),
       operator,
     );
@@ -280,7 +280,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     const horizontal = this.onlyExternal(
       union(
         operator.mapping.accept(this.vmap),
-        ...(operator.distinctKeys?.filter(isCalc).map(this.processNode) ?? []),
+        ...(operator.distinctKeys.filter(isCalc).map(this.processNode) ?? []),
       ),
       operator,
     );
