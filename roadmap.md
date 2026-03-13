@@ -7,7 +7,6 @@ _in no particular order_
 - XQuery path indices
 - adaptive bidirectional recursion (delay bfs check)
 - optional schema detection for sources
-- SQL with clause
 - window plan operator
 - duplicate optimizations in showcase GUI
 - proper docs
