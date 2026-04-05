@@ -1,0 +1,9 @@
+{
+  "label": "Core",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Core",
+    "description": "Architecture, extensions, indices, optimizer notes, and the generated API for @dortdb/core."
+  }
+}

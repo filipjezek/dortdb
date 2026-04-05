@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "ESNext.Iterator", "DOM"],
+    "baseUrl": "../../"
+  },
+  "include": [
+    "../../packages/core/src/**/*.ts",
+    "../../packages/lang-sql/src/**/*.ts",
+    "../../packages/lang-sql/src/**/*.peggy.mjs",
+    "../../packages/lang-xquery/src/**/*.ts",
+    "../../packages/lang-xquery/src/**/*.peggy.mjs",
+    "../../packages/lang-cypher/src/**/*.ts",
+    "../../packages/lang-cypher/src/**/*.peggy.mjs"
+  ],
+  "exclude": ["../../**/*.spec.ts", "../../packages/core/src/testing/**/*.ts"]
+}

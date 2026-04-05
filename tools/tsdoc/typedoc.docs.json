@@ -1,0 +1,21 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "../../packages/core/src/index.ts",
+    "../../packages/lang-sql/src/index.ts",
+    "../../packages/lang-xquery/src/index.ts",
+    "../../packages/lang-cypher/src/index.ts"
+  ],
+  "tsconfig": "./tsconfig.typedoc.json",
+  "plugin": ["typedoc-plugin-markdown"],
+  "out": "../../packages/docs/docs/api",
+  "readme": "none",
+  "entryFileName": "README",
+  "hideGenerator": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "sort": ["source-order"],
+  "groupOrder": ["Classes", "Interfaces", "Functions", "Variables", "*"],
+  "cleanOutputDir": true
+}

@@ -135,7 +135,8 @@ export class DortDB<LangNames extends string = string> {
    * @param source - Qualified name of the source. The tokens start from the most general to the most specific.
    * @param data - The data structure to register. Can be anything, but the languages need to be configured with
    * suitable data adapters.
-   * @example ```ts
+   * @example
+   * ```ts
    * db.registerSource(['schema', 'table'], myTable);
    * ```
    */
@@ -149,10 +150,12 @@ export class DortDB<LangNames extends string = string> {
    * @param expressions - Expressions to index. Some indices may support multi-level indexing. Each expression
    * is applied to the data source after being parsed with the specified language.
    * @param indexCls - The index type to use.
-   * @example ```ts
+   * @example
+   * ```ts
    * db.createIndex(['schema', 'table'], ['col1 + 3'], MapIndex, { mainLang: 'sql' });
    * ```
-   * @example ```ts
+   * @example
+   * ```ts
    * db.createIndex(['itemStream'], ['val + 3'], MapIndex, { mainLang: 'xquery', fromItemKey: 'val' });
    * ```
    */

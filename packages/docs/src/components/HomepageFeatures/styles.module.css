@@ -1,0 +1,51 @@
+.features {
+  padding: 1rem 0 4rem;
+  width: 100%;
+}
+
+.featureColumn {
+  display: flex;
+}
+
+.featureCard {
+  background: linear-gradient(180deg, #fffdf8 0%, #f5f2e7 100%);
+  border: 1px solid rgba(23, 39, 31, 0.08);
+  border-radius: 1.4rem;
+  box-shadow: 0 14px 38px rgba(31, 53, 42, 0.06);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.4rem;
+}
+
+.featureCard h3 {
+  color: #17271f;
+  font-size: 1.35rem;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.featureCard p {
+  color: #53685b;
+  line-height: 1.65;
+  margin: 0;
+}
+
+.featureEyebrow {
+  color: #1d6f47;
+  font-size: 0.83rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.featureLink {
+  color: #17271f;
+  font-weight: 700;
+  margin-top: auto;
+}
+
+.featureLink:hover {
+  text-decoration: none;
+}

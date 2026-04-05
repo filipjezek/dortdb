@@ -1,0 +1,9 @@
+{
+  "label": "SQL",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "title": "SQL",
+    "description": "Guide docs for @dortdb/lang-sql, plus generated API reference for the exported SQL package surface."
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "label": "XQuery",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "title": "XQuery",
+    "description": "Guide docs for @dortdb/lang-xquery, plus generated API reference for the exported XQuery package surface."
+  }
+}

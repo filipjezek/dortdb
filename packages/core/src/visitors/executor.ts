@@ -18,15 +18,21 @@ import { TransitiveDependencies } from './transitive-deps.js';
 
 /**
  * Convert a linked list of arrays into an array of arrays, collecting values for specified keys.
- * @param row Linked list containing the current values
- * @param keys keys to extract
- * @param initialKeys keys contained only in the initial row (will not be wrapped in arrays)
- * @returns Array of arrays representing the collected values for each key
+ * @param row Linked list containing the current values.
+ * @param keys Keys to extract into collected arrays.
+ * @returns Array-like output containing the collected values for each requested key.
  */
 export function llToArray(
   row: LinkedListNode<unknown[]>,
   keys: number[],
 ): unknown[][];
+/**
+ * Convert a linked list of arrays into an array of arrays, collecting values for specified keys.
+ * @param row Linked list containing the current values.
+ * @param keys Keys to extract into collected arrays.
+ * @param initialKeys Keys contained only in the initial row. Their values are copied directly instead of being wrapped in arrays.
+ * @returns Array-like output containing the collected values for each requested key.
+ */
 export function llToArray(
   row: LinkedListNode<unknown[]>,
   keys: number[],
