@@ -38,8 +38,8 @@ jobs:
           wget https://github.com/chenglou/pretext/blob/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.build.json
           wget https://github.com/chenglou/pretext/blob/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.json
           ls -la
-          npx tsc@6.0.2 --version
-          npx tsc@6.0.2 -p tsconfig.build.json
+          npx typescript@6.0.2 tsc --version
+          npx typescript@6.0.2 tsc -p tsconfig.build.json
 
       - name: Build prerequisites
         run: npx nx run-many -t build
