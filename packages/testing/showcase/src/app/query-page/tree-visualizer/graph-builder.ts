@@ -139,9 +139,6 @@ export class GraphBuilder
           stroke: var(--mat-sys-surface) !important;
           filter: none !important;
         }
-        .groupby-content polygon {
-          visibility: hidden !important;
-        }
         polygon {
           visibility: hidden;
         }
@@ -785,6 +782,7 @@ export class GraphBuilder
     grect.setAttribute('height', grectH + '');
     groupbyWrapper.appendChild(treeContainer);
     treeContainer.firstElementChild.classList.add('groupby-content');
+    treeContainer.querySelector('polygon').remove();
 
     parentTree.data.el.parentElement.setAttribute(
       'transform',

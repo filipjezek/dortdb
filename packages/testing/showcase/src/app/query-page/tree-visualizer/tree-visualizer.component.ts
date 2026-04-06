@@ -87,10 +87,8 @@ export class TreeVisualizerComponent implements AfterViewInit {
   private removeInlineShadows(svgNode: SVGSVGElement) {
     if (!svgNode.classList.contains('shadows')) return;
     svgNode.querySelectorAll('rect').forEach((rect) => {
-      rect.removeAttribute('filter');
-      rect.removeAttribute('stroke');
-      delete rect.style.stroke;
-      delete rect.style.filter;
+      rect.style.stroke = null;
+      rect.style.filter = null;
     });
   }
 
