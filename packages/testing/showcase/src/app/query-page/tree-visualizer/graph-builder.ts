@@ -91,82 +91,89 @@ export class GraphBuilder
   ) {
     this.container.innerHTML = `
       <style>
-        svg {
-          &.shadows {
-            rect {
-              filter: drop-shadow(0 0 5px var(--lang-color));
-              stroke: var(--lang-color);
-            }
-          }
-          &.triangles {
-            polygon {
-              fill: var(--lang-color);
-            }
-          }
+        svg.shadows rect {
+          filter: drop-shadow(0 0 5px var(--lang-color));
+          stroke: var(--lang-color);
+        }
+        svg.triangles polygon {
+          visibility: visible;
         }
         svg * {
           paint-order: stroke;
           font-family: Georgia, Times, 'Times New Roman', serif;
           font-size: ${GraphBuilder.FONT_SIZE}px;
-
-          &:not(text) {
-            stroke-width: ${GraphBuilder.STROKE * 2}px;
-          }
+        }
+        svg *:not(text) {
+          stroke-width: ${GraphBuilder.STROKE * 2}px;
         }
         svg text, svg tspan {
           stroke-width: 0;
         }
         .text-container {
           fill: var(--mat-sys-on-surface);
-
-          &.source-tuple {
-            font-weight: bold;
-          }
-          &.source-item {
-            font-weight: bold;
-            font-style: italic;
-          }
-          .placeholder {
-            fill: #546be8;
-            font-weight: bold;
-          }
-          &.groupby .placeholder {
-            fill: #a65d1e;
-          }
-          .schema text, .schema tspan {
-            font-size: ${GraphBuilder.SCHEMA_FONT_SIZE}px;
-            fill: var(--mat-sys-outline);
-            font-weight: normal;
-          }
+        }
+        .text-container.source-tuple {
+          font-weight: bold;
+        }
+        .text-container.source-item {
+          font-weight: bold;
+          font-style: italic;
+        }
+        .text-container .placeholder {
+          fill: #546be8;
+          font-weight: bold;
+        }
+        .text-container.groupby .placeholder {
+          fill: #a65d1e;
+        }
+        .text-container .schema text, .text-container .schema tspan {
+          font-size: ${GraphBuilder.SCHEMA_FONT_SIZE}px;
+          fill: var(--mat-sys-outline);
+          font-weight: normal;
         }
         rect {
           fill: var(--mat-sys-surface);
           stroke: var(--mat-sys-outline);
-
-          &:has(~ foreignObject > .groupby) {
-            stroke: var(--mat-sys-surface) !important;
-            filter: none !important;
-          }
+        }
+        .groupby-content rect {
+          stroke: var(--mat-sys-surface) !important;
+          filter: none !important;
+        }
+        .groupby-content polygon {
+          visibility: hidden !important;
         }
         polygon {
-          fill: transparent;
-
-          &:has(~ foreignObject > .groupby) {
-            fill: transparent !important;
-          }
+          visibility: hidden;
         }
         line {
           stroke: #888888;
           stroke-width: 2px;
-
-          &.djoin {
-            stroke-dasharray: 3;
-          }
-          &.group-op {
-            stroke: #a65d1e;
-          }
+        }
+        line.djoin {
+          stroke-dasharray: 3;
+        }
+        line.group-op {
+          stroke: #a65d1e;
         }
       </style>
+      <defs>
+        ${Object.entries(langColors)
+          .map(
+            ([lang, color]) => `
+            <filter id="shadow-${lang}">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="${color}" />
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          `,
+          )
+          .join('')}
+      </defs>
       <g id="drawing-container"></g>
       <g id="tree-container"></g>
     `;
@@ -317,11 +324,11 @@ export class GraphBuilder
     }
 
     const result = this.markup<SVGGElement>(`
-    <g style="--lang-color: ${langColors[operator.lang]}">
+    <g style="--lang-color: ${langColors[operator.lang]}" data-lang="${operator.lang}">
       <rect width="${textBBox.width + GraphBuilder.PADDING * 2}" height="${
         textBBox.height + GraphBuilder.PADDING * 2
       }" />
-      <polygon points="0,0 0,10 10,0" />
+      <polygon points="0,0 0,10 10,0" fill="${langColors[operator.lang]}" />
     </g>
     `);
     result.appendChild(nodeEl);
@@ -760,8 +767,8 @@ export class GraphBuilder
     this.layout(parentTree);
 
     const groupbyWrapper = this
-      .markup<SVGGElement>(`<g style="--lang-color: ${langColors[operator.lang]}"><rect
-    ></rect><polygon points="0,0 0,10 10,0" /></g>`);
+      .markup<SVGGElement>(`<g style="--lang-color: ${langColors[operator.lang]}" data-lang="${operator.lang}"><rect
+    ></rect><polygon points="0,0 0,10 10,0" fill="${langColors[operator.lang]}" /></g>`);
 
     const treeContainer = this.getG();
     this.treeContainer.appendChild(treeContainer);
@@ -777,6 +784,7 @@ export class GraphBuilder
     grect.setAttribute('width', grectW + '');
     grect.setAttribute('height', grectH + '');
     groupbyWrapper.appendChild(treeContainer);
+    treeContainer.firstElementChild.classList.add('groupby-content');
 
     parentTree.data.el.parentElement.setAttribute(
       'transform',

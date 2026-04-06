@@ -75,15 +75,48 @@ export class TreeVisualizerComponent implements AfterViewInit {
     this.zoom = this.initZoom();
   }
 
+  private inlineShadows(svgNode: SVGSVGElement) {
+    if (!svgNode.classList.contains('shadows')) return;
+    svgNode.querySelectorAll('rect').forEach((rect) => {
+      const compStyle = getComputedStyle(rect);
+      rect.style.filter = `url(#shadow-${rect.parentElement.dataset['lang']})`;
+      rect.style.stroke = compStyle.stroke;
+    });
+  }
+
+  private removeInlineShadows(svgNode: SVGSVGElement) {
+    if (!svgNode.classList.contains('shadows')) return;
+    svgNode.querySelectorAll('rect').forEach((rect) => {
+      rect.removeAttribute('filter');
+      rect.removeAttribute('stroke');
+      delete rect.style.stroke;
+      delete rect.style.filter;
+    });
+  }
+
+  private removeLightDark(color: string, isDark: boolean): string {
+    const regex = /light-dark\(([^,]+),([^)]+)\)/;
+    const match = color.match(regex);
+    if (match) {
+      return isDark ? match[2] : match[1];
+    }
+    return color;
+  }
+
   saveImage(svgNode: SVGSVGElement) {
     const compStyle = getComputedStyle(svgNode);
-    for (const prop of this.graphBuilder.cssVariables) {
-      svgNode.style.setProperty(prop, compStyle.getPropertyValue(prop));
-    }
-    const svgString = new XMLSerializer().serializeToString(svgNode);
-    for (const prop of this.graphBuilder.cssVariables) {
-      svgNode.style.removeProperty(prop);
-    }
+    this.inlineShadows(svgNode);
+
+    let svgString = new XMLSerializer().serializeToString(svgNode);
+    const isDark = document.body.classList.contains('dark');
+    svgString = svgString.replaceAll(/var\(--[^)]+\)/g, (match) => {
+      const value = compStyle.getPropertyValue(match.slice(4, -1).trim());
+      if (!value) return match;
+      return this.removeLightDark(value, isDark);
+    });
+    svgString = svgString.replace(/svg\.shadows rect {.+?}/s, '');
+
+    this.removeInlineShadows(svgNode);
     const svgBlob = new Blob([svgString], {
       type: 'image/svg+xml;charset=utf-8',
     });
