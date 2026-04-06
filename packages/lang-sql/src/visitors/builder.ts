@@ -36,7 +36,7 @@ import {
   schemaToTrie,
   shortcutNulls,
 } from '@dortdb/core/utils';
-import { ret1, retI0, toPair } from '@dortdb/core/internal-fns';
+import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { inOp, notInOp } from '../operators/basic.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { ilike, like } from '../operators/string.js';
@@ -763,23 +763,45 @@ export class SQLLogicalPlanBuilder
     return this.materializeCte(node, subq);
   }
 
+  /**
+   * Rename with query according to the with query name. If column names are provided, use them.
+   * Additionally, provide schemaless aliases for all columns.
+   */
   protected renameWithQuery(node: AST.WithQuery, subq: PlanTupleOperator) {
     if (node.colNames?.length) {
       return new plan.Projection(
         'sql',
-        subq.schema.map((x, i) => [
-          x,
-          ASTIdentifier.fromParts([
-            ...node.name.parts,
-            ...node.colNames[i].parts,
-          ]),
-        ]),
+        subq.schema
+          .map(
+            (x, i) =>
+              [
+                x,
+                ASTIdentifier.fromParts([
+                  ...node.name.parts,
+                  ...node.colNames[i].parts,
+                ]),
+              ] as Aliased,
+          )
+          .concat(subq.schema.map((x, i) => [x, node.colNames[i]])),
         subq,
       );
     } else {
+      const overridden = subq.schema.map(
+        (x) => [x, overrideSource(node.name, x)] as Aliased,
+      );
       return new plan.Projection(
         'sql',
-        subq.schema.map((x) => [x, overrideSource(node.name, x)]),
+        overridden.concat(
+          overridden.map(
+            ([x, alias]) =>
+              [
+                x,
+                ASTIdentifier.fromParts(
+                  alias.parts.slice(node.name.parts.length),
+                ),
+              ] as Aliased,
+          ),
+        ),
         subq,
       );
     }
@@ -824,6 +846,7 @@ export class SQLLogicalPlanBuilder
     const setOp = sset.setOp as AST.SelectSetOp;
     sset.setOp = null; // we'll handle the set op ourselves
     let basePart = sset.accept(this) as PlanTupleOperator;
+    sset.setOp = setOp; // restore to avoid modifying the original AST
     basePart = this.renameWithQuery(node, basePart);
     const normalizedAttrs = basePart.schema.map(
       (x) =>
@@ -838,19 +861,22 @@ export class SQLLogicalPlanBuilder
     );
     const recSrc = new plan.Projection(
       'sql',
-      normalizedAttrs.concat(
-        normalizedAttrs.map(([calc, alias]) => [
-          calc.clone(),
-          toId(alias.parts.at(-1) as string),
-        ]),
-      ),
+      normalizedAttrs,
       new plan.NullSource('sql'),
     );
 
     this.localLangCtx.ctes.set(node.name.parts[0] as string, recSrc);
     let recursivePart = setOp.next.accept(this) as PlanTupleOperator;
     this.localLangCtx.ctes.delete(node.name.parts[0] as string);
-    recursivePart = this.renameWithQuery(node, recursivePart);
+    recursivePart = this.renameWithQuery(
+      {
+        ...node,
+        colNames: node.colNames?.length
+          ? node.colNames
+          : normalizedAttrs.slice(normalizedAttrs.length / 2).map(retI1),
+      } as AST.WithQuery,
+      recursivePart,
+    );
 
     let res: PlanTupleOperator = new plan.IndexedRecursion(
       'sql',
@@ -858,11 +884,17 @@ export class SQLLogicalPlanBuilder
       Infinity,
       recursivePart,
       basePart,
-      setOp.distinct ? normalizedAttrs.map(([calc]) => calc.clone()) : [],
+      setOp.distinct
+        ? normalizedAttrs
+            .slice(0, normalizedAttrs.length / 2) // the second half of normalizedAttrs are the ones with overridden sources
+            .map(([calc]) => calc.clone())
+        : [],
     );
     res = new plan.Projection(
       'sql',
-      normalizedAttrs.map(([calc, alias]) => [calc.clone(), alias]),
+      normalizedAttrs
+        .slice(0, normalizedAttrs.length / 2)
+        .map(([calc, alias]) => [calc.clone(), alias]),
       res,
     );
 
