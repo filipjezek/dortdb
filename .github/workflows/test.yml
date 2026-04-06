@@ -35,8 +35,8 @@ jobs:
         shell: bash
         run: |
           cd node_modules/@chenglou/pretext
-          wget https://raw.githubusercontent.com/chenglou/pretext/blob/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.build.json
-          wget https://raw.githubusercontent.com/chenglou/pretext/blob/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.json
+          wget https://raw.githubusercontent.com/chenglou/pretext/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.build.json
+          wget https://raw.githubusercontent.com/chenglou/pretext/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.json
           ls -la
           npx --package typescript@6.0.2 tsc --version
           npx --package typescript@6.0.2 tsc -p tsconfig.build.json
