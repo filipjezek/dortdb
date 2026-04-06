@@ -89,30 +89,12 @@ export class TreeVisualizerComponent implements AfterViewInit {
     });
 
     const url = URL.createObjectURL(svgBlob);
-
-    const image = new Image();
-    image.width = svgNode.width.baseVal.value;
-    image.height = svgNode.height.baseVal.value;
-    image.src = url;
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width * 2;
-      canvas.height = image.height * 2;
-
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0, image.width * 2, image.height * 2);
-      URL.revokeObjectURL(url);
-
-      const imgURI = canvas
-        .toDataURL('image/png')
-        .replace('image/png', 'image/octet-stream');
-      this.triggerDownload(imgURI);
-    };
+    this.triggerDownload(url);
   }
 
   private triggerDownload(imgURI: string) {
     const a = document.createElement('a');
-    a.download = 'tree.png';
+    a.download = 'tree.svg';
     a.target = '_blank';
     a.href = imgURI;
 

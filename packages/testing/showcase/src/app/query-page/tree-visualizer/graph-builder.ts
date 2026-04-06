@@ -6,7 +6,7 @@ import {
   PlanTupleOperator,
   PlanVisitor,
 } from '@dortdb/core';
-import { retI1 } from '@dortdb/core/internal-fns';
+import { isCalc, retI1 } from '@dortdb/core/internal-fns';
 import * as plan from '@dortdb/core/plan';
 import {
   ProjectionSize,
@@ -15,6 +15,16 @@ import {
 } from '@dortdb/lang-xquery';
 import { strToColor } from '../../utils/str-to-color';
 import { flextree, FlextreeNode } from 'd3-flextree';
+import {
+  materializeRichInlineLineRange,
+  measureRichInlineStats,
+  PreparedRichInline,
+  prepareRichInline,
+  RichInlineFragment,
+  RichInlineItem,
+  RichInlineStats,
+  walkRichInlineLineRanges,
+} from '@chenglou/pretext/rich-inline';
 
 const langColors: Record<string, string> = {
   xquery: strToColor('xquery'),
@@ -22,12 +32,12 @@ const langColors: Record<string, string> = {
   cypher: strToColor('cypherx'),
 };
 
-interface Branch {
-  el: SVGGElement;
-  edgeType?: string;
-  src?: SVGGraphicsElement;
+interface RichInlineItemMeta {
+  title?: string;
+  className?: string;
+  /** overrides join string */
+  joinAfter?: string;
 }
-
 export interface NodeData {
   el: SVGGraphicsElement;
   bbox: { width: number; height: number };
@@ -44,11 +54,17 @@ export class GraphBuilder
   public static readonly STROKE = 1;
   public static readonly PADDING = 8;
   public static readonly CHILD_OFFSET = 30;
+  public static readonly SCHEMA_FONT_SIZE = 12;
+  public static readonly FONT_SIZE = 15;
+  public static readonly TEXT_MAX_WIDTH = 140;
+  public static readonly LINE_HEIGHT = 1.2;
+  public static readonly SCHEMA_OFFSET = 4;
 
   protected readonly drawingContainer: SVGGElement;
   protected readonly treeContainer: SVGGElement;
   protected readonly textContainer = document.createElement('p');
   public readonly cssVariables: ReadonlySet<string>;
+  protected readonly font: string;
   public get width() {
     return this._width;
   }
@@ -89,17 +105,19 @@ export class GraphBuilder
           }
         }
         svg * {
-          stroke-width: ${GraphBuilder.STROKE * 2}px;
           paint-order: stroke;
           font-family: Georgia, Times, 'Times New Roman', serif;
-          font-size: 15px;
+          font-size: ${GraphBuilder.FONT_SIZE}px;
+
+          &:not(text) {
+            stroke-width: ${GraphBuilder.STROKE * 2}px;
+          }
         }
-        foreignObject div {
-          max-width: 140px;
-          word-wrap: break-word;
-          width: fit-content;
-          text-align: center;
-          color: var(--mat-sys-on-surface);
+        svg text, svg tspan {
+          stroke-width: 0;
+        }
+        .text-container {
+          fill: var(--mat-sys-on-surface);
 
           &.source-tuple {
             font-weight: bold;
@@ -109,25 +127,17 @@ export class GraphBuilder
             font-style: italic;
           }
           .placeholder {
-            color: #546be8;
+            fill: #546be8;
             font-weight: bold;
           }
           &.groupby .placeholder {
-            color: #a65d1e;
+            fill: #a65d1e;
           }
-          .schema {
-            font-size: 12px;
-            color: var(--mat-sys-outline);
+          .schema text, .schema tspan {
+            font-size: ${GraphBuilder.SCHEMA_FONT_SIZE}px;
+            fill: var(--mat-sys-outline);
             font-weight: normal;
-            margin: 0 auto 4px;
-
-            span[title] {
-              font-size: inherit;
-            }
           }
-        }
-        foreignObject > div {
-          padding: 1px 0;
         }
         rect {
           fill: var(--mat-sys-surface);
@@ -167,17 +177,85 @@ export class GraphBuilder
       ),
     );
     this.drawingContainer = this.container.querySelector('#drawing-container');
+    this.font = getComputedStyle(this.container).font;
     this.treeContainer = this.container.querySelector('#tree-container');
   }
 
-  protected getSchemaTemplate(operator: PlanOperator) {
-    return (
-      operator instanceof PlanTupleOperator &&
-      operator.schema &&
-      `<div class="schema">[${operator.schema
-        .map((id) => this.stringifyId(id))
-        .join(', ')}]</div>`
+  protected joinRichItems(
+    items: (RichInlineItem & RichInlineItemMeta)[],
+    joinText: string,
+  ): (RichInlineItem & RichInlineItemMeta)[] {
+    const joined: (RichInlineItem & RichInlineItemMeta)[] = [];
+    items.forEach((item, i) => {
+      joined.push(item);
+      if (i < items.length - 1) {
+        joined.push({ text: item.joinAfter ?? joinText, font: this.font });
+      }
+    });
+    return joined;
+  }
+
+  protected richInlineItemToSVG(
+    item: RichInlineFragment,
+    meta: RichInlineItemMeta,
+  ): string {
+    let text = this.escapeHtml(item.text);
+    if (meta.title) text = `<title>${meta.title}</title>` + text;
+    text = `<tspan${meta.className ? ` class="${meta.className}"` : ''} dx="${item.gapBefore}">${text}</tspan>`;
+    return text;
+  }
+
+  protected richInlineItemsToSVG(
+    items: (RichInlineItem & RichInlineItemMeta)[],
+    maxWidth: number,
+    fontSize = GraphBuilder.FONT_SIZE,
+  ): [string, PreparedRichInline, RichInlineStats] {
+    const prepared = prepareRichInline(items);
+    const stats = measureRichInlineStats(prepared, maxWidth);
+    let lineIndex = 0;
+    let svg = '';
+    walkRichInlineLineRanges(prepared, maxWidth, (lineR) => {
+      lineIndex++;
+      const y =
+        GraphBuilder.LINE_HEIGHT * fontSize * lineIndex -
+        ((GraphBuilder.LINE_HEIGHT - 1) / 2) * fontSize;
+      svg += `<text
+        y="${y}px"
+        x="${(stats.maxLineWidth - lineR.width) / 2}px"
+      >`;
+      const line = materializeRichInlineLineRange(prepared, lineR);
+      for (const fragment of line.fragments) {
+        const item = items[fragment.itemIndex];
+        svg += this.richInlineItemToSVG(fragment, item);
+      }
+      svg += '</text>';
+    });
+
+    return [svg, prepared, stats];
+  }
+
+  protected getSchemaTemplate(operator: PlanOperator): string {
+    if (!(operator instanceof PlanTupleOperator && operator.schema)) return '';
+    const stringified = this.joinRichItems(
+      operator.schema.map((id) => this.stringifyId(id)),
+      ', ',
     );
+    stringified.unshift({ text: '[', font: this.font });
+    stringified.push({ text: ']', font: this.font });
+    stringified.forEach(
+      (item) =>
+        (item.font = item.font.replace(
+          /\d+px/,
+          GraphBuilder.SCHEMA_FONT_SIZE + 'px',
+        )),
+    );
+
+    const [svg] = this.richInlineItemsToSVG(
+      stringified,
+      GraphBuilder.TEXT_MAX_WIDTH,
+      GraphBuilder.SCHEMA_FONT_SIZE,
+    );
+    return `<g class="schema">${svg}</g>`;
   }
 
   protected markup<T extends Element>(template: string): T {
@@ -186,31 +264,57 @@ export class GraphBuilder
   }
 
   protected drawNode(
-    text: string,
+    name: string | (RichInlineItem & RichInlineItemMeta),
+    attrs: (RichInlineItem & RichInlineItemMeta)[][] | null,
     operator: PlanOperator,
     textClass = '',
   ): SVGGElement {
     const schemaTemplate = this.getSchemaTemplate(operator);
 
-    const foEl = this
-      .markup(`<foreignObject height="2000" width="200" xmlns="http://www.w3.org/1999/xhtml">
-      <div class="${textClass}">
-        ${schemaTemplate || ''}
-        ${text}
-      </div>
-    </foreignObject>`);
-    const textEl = foEl.firstElementChild as HTMLElement;
-    const textBBox = textEl.getBoundingClientRect();
-    foEl.setAttribute('width', textBBox.width + '');
-    foEl.setAttribute('height', textBBox.height + '');
-    foEl.setAttribute(
-      'y',
-      (textBBox.height - textBBox.height) / 2 + GraphBuilder.PADDING + '',
+    const mainTextParts = attrs
+      ? attrs.flatMap((subgroup) => this.joinRichItems(subgroup, ', '))
+      : [];
+    if (attrs) {
+      mainTextParts.unshift({ text: '(', font: this.font });
+      mainTextParts.push({ text: ')', font: this.font });
+    }
+    mainTextParts.unshift(
+      typeof name === 'string' ? { text: name, font: this.font } : name,
     );
-    foEl.setAttribute(
-      'x',
-      (textBBox.width - textBBox.width) / 2 + GraphBuilder.PADDING + '',
+    const [mainText] = this.richInlineItemsToSVG(
+      mainTextParts,
+      GraphBuilder.TEXT_MAX_WIDTH,
     );
+
+    const nodeEl = this.markup(`<g class="text-container ${textClass}">
+        ${schemaTemplate}
+        <g class="main-text">${mainText}</g>
+      </g>`);
+    const textEl = nodeEl;
+    let textBBox = textEl.getBoundingClientRect();
+    nodeEl.setAttribute(
+      'transform',
+      `translate(${GraphBuilder.PADDING}, ${GraphBuilder.PADDING})`,
+    );
+    const schemaEl = nodeEl.querySelector<SVGGElement>('.schema');
+    const mainTextEl = nodeEl.querySelector('.main-text');
+
+    if (schemaEl) {
+      const schemaBBox = schemaEl.getBoundingClientRect();
+      schemaEl.setAttribute(
+        'transform',
+        `translate(${(textBBox.width - schemaBBox.width) / 2}, 0)`,
+      );
+      const mainTextBBox = mainTextEl.getBoundingClientRect();
+      mainTextEl.setAttribute(
+        'transform',
+        `translate(
+          ${(textBBox.width - mainTextBBox.width) / 2},
+          ${schemaBBox.height + GraphBuilder.SCHEMA_OFFSET}
+        )`,
+      );
+      textBBox = textEl.getBoundingClientRect();
+    }
 
     const result = this.markup<SVGGElement>(`
     <g style="--lang-color: ${langColors[operator.lang]}">
@@ -220,7 +324,7 @@ export class GraphBuilder
       <polygon points="0,0 0,10 10,0" />
     </g>
     `);
-    result.appendChild(foEl);
+    result.appendChild(nodeEl);
     return result;
   }
 
@@ -234,35 +338,43 @@ export class GraphBuilder
   protected escapeAttr(text: string) {
     return text.replace(/"/g, '&quot;');
   }
-  protected stringifyId(id: ASTIdentifier) {
+  protected stringifyId(
+    id: ASTIdentifier,
+  ): RichInlineItem & RichInlineItemMeta {
     const full = id.parts
       .map((x) =>
-        typeof x === 'string'
-          ? this.escapeHtml(x)
-          : x === allAttrs
-            ? '*'
-            : x?.toString(),
+        typeof x === 'string' ? x : x === allAttrs ? '*' : x?.toString(),
       )
       .join('.');
     if (full.length < 19) {
-      return full;
+      return { text: full, font: this.font };
     }
-    return `<span title="${this.escapeAttr(full)}">${full.slice(
-      0,
-      16,
-    )}&hellip;</span>`;
+    const truncated = full.slice(0, 16);
+    return {
+      text: truncated + '…',
+      font: this.font,
+      title: full,
+    };
   }
 
   protected processAttr(
     [attr, alias]: Aliased<ASTIdentifier | plan.Calculation>,
     counter: { i: number },
-  ): string {
+  ): (RichInlineItem & RichInlineItemMeta)[] {
     const aliasStr = this.stringifyId(alias);
     if (attr instanceof ASTIdentifier) {
       const attrStr = this.stringifyId(attr);
-      return attrStr === aliasStr ? attrStr : `${aliasStr}=${attrStr}`;
+      return attrStr.text === aliasStr.text
+        ? [attrStr]
+        : [{ ...aliasStr, joinAfter: '=' }, attrStr];
     }
-    return `<span class="placeholder placeholder-${counter.i++}">${aliasStr}</span>`;
+    return [
+      {
+        ...aliasStr,
+        className: `placeholder placeholder-${counter.i++}`,
+        font: 'bold ' + aliasStr.font,
+      },
+    ];
   }
 
   public drawTree(plan: PlanOperator): void {
@@ -353,11 +465,8 @@ export class GraphBuilder
   visitProjection(operator: plan.Projection): NodeData {
     const src = operator.source.accept(this.vmap);
     const calcI = { i: 0 };
-    const attrs = operator.attrs.map((a) => this.processAttr(a, calcI));
-    const parent = this.drawNode(
-      `&pi;(${attrs.map((a) => a).join(', ')})`,
-      operator,
-    );
+    const attrs = operator.attrs.flatMap((a) => this.processAttr(a, calcI));
+    const parent = this.drawNode('π', [attrs], operator);
     const bbox = parent.getBBox();
     const calcs = operator.attrs
       .filter((a) => a[0] instanceof plan.Calculation)
@@ -379,16 +488,20 @@ export class GraphBuilder
   protected processArg(
     arg: ASTIdentifier | PlanOperator,
     counter: { i: number },
-  ) {
+  ): RichInlineItem & RichInlineItemMeta {
     return arg instanceof ASTIdentifier
       ? this.stringifyId(arg)
-      : `<span class="placeholder placeholder-${counter.i++}">_</span>`;
+      : {
+          text: '_',
+          className: `placeholder placeholder-${counter.i++}`,
+          font: 'bold ' + this.font,
+        };
   }
 
   visitSelection(operator: plan.Selection): NodeData {
     const src = operator.source.accept(this.vmap);
     const arg = this.processArg(operator.condition, { i: 0 });
-    const parent = this.drawNode(`&sigma;(${arg})`, operator);
+    const parent = this.drawNode('σ', [[arg]], operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -408,16 +521,26 @@ export class GraphBuilder
     const name =
       operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
-        : this.processAttr(operator.name, { i: 0 });
-    const parent = this.drawNode(name, operator, 'source-tuple');
+        : this.processAttr(operator.name, { i: 0 })[0];
+    const parent = this.drawNode(
+      { ...name, font: 'bold ' + name.font },
+      null,
+      operator,
+      'source-tuple',
+    );
     return { el: parent, bbox: parent.getBBox(), children: [] };
   }
   visitItemSource(operator: plan.ItemSource): NodeData {
     const name =
       operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
-        : this.processAttr(operator.name, { i: 0 });
-    const parent = this.drawNode(name, operator, 'source-item');
+        : this.processAttr(operator.name, { i: 0 })[0];
+    const parent = this.drawNode(
+      { ...name, font: 'italic bold ' + name.font },
+      null,
+      operator,
+      'source-item',
+    );
     return { el: parent, bbox: parent.getBBox(), children: [] };
   }
   visitFnCall(operator: plan.FnCall): NodeData {
@@ -429,7 +552,7 @@ export class GraphBuilder
   visitCalculation(operator: plan.Calculation): NodeData {
     const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
-    const parent = this.drawNode(`calc(${args.join(', ')})`, operator);
+    const parent = this.drawNode('calc', [args], operator);
     const bbox = parent.getBBox();
     const ops = operator.args
       .filter((a) => !(a instanceof ASTIdentifier))
@@ -450,7 +573,7 @@ export class GraphBuilder
     throw new Error('Method not implemented.');
   }
   visitCartesianProduct(operator: plan.CartesianProduct): NodeData {
-    const parent = this.drawNode('&times;', operator);
+    const parent = this.drawNode('×', null, operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -464,9 +587,8 @@ export class GraphBuilder
     const opI = { i: 0 };
     const conditions = operator.conditions.map((c) => this.processArg(c, opI));
     const parent = this.drawNode(
-      `${operator.leftOuter ? '&deg;' : ''}&bowtie;${
-        operator.rightOuter ? '&deg;' : ''
-      }(${conditions.join(', ')})`,
+      `${operator.leftOuter ? '°' : ''}⋈${operator.rightOuter ? '°' : ''}`,
+      [conditions],
       operator,
     );
     const bbox = parent.getBBox();
@@ -492,7 +614,8 @@ export class GraphBuilder
   }
   visitProjectionConcat(operator: plan.ProjectionConcat): NodeData {
     const parent = this.drawNode(
-      (operator.outer ? '&deg;' : '') + '&bowtie;&#x0362;',
+      (operator.outer ? '°' : '') + '⋈͢',
+      null,
       operator,
     );
     const bbox = parent.getBBox();
@@ -512,7 +635,8 @@ export class GraphBuilder
   }
   visitMapToItem(operator: plan.MapToItem): NodeData {
     const parent = this.drawNode(
-      `toItem(${this.stringifyId(operator.key)})`,
+      'toItem',
+      [[this.stringifyId(operator.key)]],
       operator,
     );
     return {
@@ -523,7 +647,8 @@ export class GraphBuilder
   }
   visitMapFromItem(operator: plan.MapFromItem): NodeData {
     const parent = this.drawNode(
-      `fromItem(${this.stringifyId(operator.key)})`,
+      'fromItem',
+      [[this.stringifyId(operator.key)]],
       operator,
     );
     return {
@@ -534,7 +659,8 @@ export class GraphBuilder
   }
   visitProjectionIndex(operator: plan.ProjectionIndex): NodeData {
     const parent = this.drawNode(
-      `index(${this.stringifyId(operator.indexCol)})`,
+      'index',
+      [[this.stringifyId(operator.indexCol)]],
       operator,
     );
     return {
@@ -545,10 +671,14 @@ export class GraphBuilder
   }
   visitOrderBy(operator: plan.OrderBy): NodeData {
     const opI = { i: 0 };
-    const args = operator.orders.map(
-      (o) => this.processArg(o.key, opI) + (o.ascending ? '' : '&darr;'),
-    );
-    const parent = this.drawNode(`&tau;(${args.join(', ')})`, operator);
+    const args = operator.orders.map((o) => {
+      const arg = this.processArg(o.key, opI);
+      if (!o.ascending) {
+        arg.text += '↓';
+      }
+      return arg;
+    });
+    const parent = this.drawNode('τ', [args], operator);
     const bbox = parent.getBBox();
     return {
       el: parent,
@@ -572,16 +702,21 @@ export class GraphBuilder
   }
   visitGroupBy(operator: plan.GroupBy): NodeData {
     const opI = { i: 0 };
-    const keys = operator.keys.map((k) => this.processAttr(k, opI));
+    const keys = operator.keys.flatMap((k) => this.processAttr(k, opI));
     const kChildren = opI.i;
-    const aggs = operator.aggs.map(
-      (a) =>
-        `<span class="placeholder placeholder-${opI.i++}">${this.stringifyId(
-          a.fieldName,
-        )}</span>`,
-    );
+    const aggs = operator.aggs.map((a) => ({
+      ...this.stringifyId(a.fieldName),
+      className: `placeholder placeholder-${opI.i++}`,
+    }));
     const parent = this.drawNode(
-      `&gamma;([${keys.join(', ')}]; [${aggs.join(', ')}])`,
+      'γ',
+      [
+        [{ text: '[', font: this.font }],
+        keys,
+        [{ text: ']; [', font: this.font }],
+        aggs,
+        [{ text: ']', font: this.font }],
+      ],
       operator,
       'groupby',
     );
@@ -656,7 +791,8 @@ export class GraphBuilder
   }
   visitLimit(operator: plan.Limit): NodeData {
     const parent = this.drawNode(
-      `limit(${operator.limit}, ${operator.skip})`,
+      'limit',
+      [[{ text: `${operator.limit}, ${operator.skip}`, font: this.font }]],
       operator,
     );
     return {
@@ -666,7 +802,7 @@ export class GraphBuilder
     };
   }
   visitUnion(operator: plan.Union): NodeData {
-    const parent = this.drawNode('&cup;', operator);
+    const parent = this.drawNode('∪', null, operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -677,7 +813,7 @@ export class GraphBuilder
     };
   }
   visitIntersection(operator: plan.Intersection): NodeData {
-    const parent = this.drawNode('&cap;', operator);
+    const parent = this.drawNode('∩', null, operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -688,7 +824,7 @@ export class GraphBuilder
     };
   }
   visitDifference(operator: plan.Difference): NodeData {
-    const parent = this.drawNode('&setminus;', operator);
+    const parent = this.drawNode('∖', null, operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -700,7 +836,7 @@ export class GraphBuilder
   }
   visitDistinct(operator: plan.Distinct): NodeData {
     if (operator.attrs === allAttrs) {
-      const parent = this.drawNode('&delta;(*)', operator);
+      const parent = this.drawNode('δ(*)', null, operator);
       return {
         el: parent,
         bbox: parent.getBBox(),
@@ -709,7 +845,7 @@ export class GraphBuilder
     }
     const opI = { i: 0 };
     const args = operator.attrs.map((a) => this.processArg(a, opI));
-    const parent = this.drawNode(`&delta;(${args.join(', ')})`, operator);
+    const parent = this.drawNode('δ', [args], operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -732,7 +868,8 @@ export class GraphBuilder
   }
   visitNullSource(operator: plan.NullSource): NodeData {
     const parent = this.drawNode(
-      '&square;',
+      { text: '□', font: 'bold ' + this.font },
+      null,
       { lang: operator.lang } as PlanOperator, // do not draw schema
       'source-tuple',
     );
@@ -751,13 +888,16 @@ export class GraphBuilder
   ): NodeData {
     const opI = { i: 0 };
     const args = operator.args.map((a) => this.processArg(a, opI));
+    const fontPrefix =
+      operator instanceof plan.ItemFnSource ? 'italic bold ' : 'bold ';
     const name = operator.name
       ? operator.name instanceof ASTIdentifier
         ? this.stringifyId(operator.name)
-        : this.processAttr(operator.name, { i: 0 })
-      : 'function';
+        : this.processAttr(operator.name, { i: 0 })[0]
+      : { text: 'function', font: this.font };
     const parent = this.drawNode(
-      `${name}(${args.join(', ')})`,
+      { ...name, font: fontPrefix + name.font },
+      [args.map((x) => ({ ...x, font: fontPrefix + x.font }))],
       operator,
       'source-' + (operator instanceof plan.ItemFnSource ? 'item' : 'tuple'),
     );
@@ -786,7 +926,7 @@ export class GraphBuilder
   }
 
   visitTreeJoin(operator: TreeJoin): NodeData {
-    const parent = this.drawNode('TreeJoin', operator);
+    const parent = this.drawNode('TreeJoin', null, operator);
     return {
       el: parent,
       bbox: parent.getBBox(),
@@ -802,7 +942,8 @@ export class GraphBuilder
 
   visitProjectionSize(operator: ProjectionSize): NodeData {
     const parent = this.drawNode(
-      `size(${this.stringifyId(operator.sizeCol)})`,
+      'size',
+      [[this.stringifyId(operator.sizeCol)]],
       operator,
     );
     return {
@@ -814,9 +955,17 @@ export class GraphBuilder
 
   visitRecursion(operator: plan.Recursion): NodeData {
     const src = operator.source.accept(this.vmap);
-    const arg = this.processArg(operator.condition, { i: 0 });
+    const opI = { i: 0 };
+    const arg = this.processArg(operator.condition, opI);
+    const dedupKeys = operator.distinctKeys.map((k) => this.processArg(k, opI));
     const parent = this.drawNode(
-      `&phi;(${operator.min}, ${operator.max}, ${arg})`,
+      'φ',
+      [
+        [{ text: `${operator.min}, ${operator.max}`, font: this.font }, arg],
+        [{ text: '; [', font: this.font }],
+        dedupKeys,
+        [{ text: ']', font: this.font }],
+      ],
       operator,
     );
     return {
@@ -831,6 +980,15 @@ export class GraphBuilder
             src: parent.querySelector<SVGGraphicsElement>('.placeholder-0'),
           },
         },
+        ...operator.distinctKeys.filter(isCalc).map((k, i) => ({
+          ...k.accept(this.vmap),
+          connection: {
+            src: parent.querySelector<SVGGraphicsElement>(
+              `.placeholder-${i + 1}`,
+            ),
+            edgeType: 'djoin',
+          },
+        })),
       ],
     };
   }
@@ -838,7 +996,13 @@ export class GraphBuilder
   visitIndexScan(operator: plan.IndexScan): NodeData {
     const arg = this.processArg(operator.access, { i: 0 });
     const parent = this.drawNode(
-      `indexScan(${this.stringifyId(operator.name as ASTIdentifier)}, ${arg})`,
+      { text: 'indexScan', font: 'bold ' + this.font },
+      [
+        [this.stringifyId(operator.name as ASTIdentifier), arg].map((x) => ({
+          ...x,
+          font: 'bold ' + x.font,
+        })),
+      ],
       operator,
       'source-tuple',
     );
@@ -857,8 +1021,15 @@ export class GraphBuilder
   }
 
   visitIndexedRecursion(operator: plan.IndexedRecursion): NodeData {
+    const opI = { i: 0 };
+    const dedupKeys = operator.distinctKeys.map((k) => this.processArg(k, opI));
     const parent = this.drawNode(
-      `&phi;&#x20EF; (${operator.min}, ${operator.max})`,
+      'φ⃯',
+      [
+        [{ text: `${operator.min}, ${operator.max}; [`, font: this.font }],
+        dedupKeys,
+        [{ text: `]`, font: this.font }],
+      ],
       operator,
     );
     return {
@@ -870,12 +1041,22 @@ export class GraphBuilder
           ...operator.mapping.accept(this.vmap),
           connection: { edgeType: 'djoin' },
         },
+        ...operator.distinctKeys.filter(isCalc).map((k, i) => ({
+          ...k.accept(this.vmap),
+          connection: {
+            src: parent.querySelector<SVGGraphicsElement>(
+              `.placeholder-${i + 1}`,
+            ),
+            edgeType: 'djoin',
+          },
+        })),
       ],
     };
   }
   visitBidirectionalRecursion(operator: plan.BidirectionalRecursion): NodeData {
     const parent = this.drawNode(
-      `&phi;&#x034D; (${operator.min}, ${operator.max})`,
+      'φ͍',
+      [[{ text: `${operator.min}, ${operator.max}`, font: this.font }]],
       operator,
     );
     return {

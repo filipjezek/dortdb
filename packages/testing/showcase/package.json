@@ -7,6 +7,10 @@
     "type": "git",
     "url": "git+https://github.com/filipjezek/dortdb.git"
   },
+  "scripts": {
+    "comment:build-deps": "Does not work, because tsconfig is not included in the installed package. Download it from GitHub first.",
+    "build-deps": "cd ../../../node_modules/@chenglou/pretext && npm run build:package"
+  },
   "private": true,
   "author": "dortdb",
   "license": "ISC",
@@ -28,6 +32,7 @@
     "@angular/platform-browser": "^21.0.1",
     "@angular/platform-browser-dynamic": "^21.0.1",
     "@angular/router": "^21.0.1",
+    "@chenglou/pretext": "github:chenglou/pretext#a52268864195edc76d5f382d264dafb33f6be462",
     "@swc/helpers": "^0.5.15",
     "@zip.js/zip.js": "^2.7.62",
     "codemirror": "^6.0.2",
