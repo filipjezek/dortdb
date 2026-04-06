@@ -858,13 +858,8 @@ export class SQLLogicalPlanBuilder
       Infinity,
       recursivePart,
       basePart,
+      setOp.distinct ? normalizedAttrs.map(([calc]) => calc.clone()) : [],
     );
-    if (setOp.distinct) {
-      console.log('DISTINCT');
-      (res as plan.IndexedRecursion).distinctKeys = normalizedAttrs.map(
-        ([calc]) => calc.clone(),
-      );
-    }
     res = new plan.Projection(
       'sql',
       normalizedAttrs.map(([calc, alias]) => [calc.clone(), alias]),

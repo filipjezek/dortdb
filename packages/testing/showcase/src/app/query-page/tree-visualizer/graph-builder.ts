@@ -1052,9 +1052,7 @@ export class GraphBuilder
         ...operator.distinctKeys.filter(isCalc).map((k, i) => ({
           ...k.accept(this.vmap),
           connection: {
-            src: parent.querySelector<SVGGraphicsElement>(
-              `.placeholder-${i + 1}`,
-            ),
+            src: parent.querySelector<SVGGraphicsElement>(`.placeholder-${i}`),
             edgeType: 'djoin',
           },
         })),
