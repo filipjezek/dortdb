@@ -84,6 +84,22 @@ export class TreeVisualizerComponent implements AfterViewInit {
     });
   }
 
+  private hideTriangles(svgNode: SVGSVGElement) {
+    if (svgNode.classList.contains('triangles')) return;
+    svgNode.querySelectorAll('polygon').forEach((poly) => {
+      poly.dataset['originalFill'] = poly.getAttribute('fill');
+      poly.setAttribute('fill', 'none');
+    });
+  }
+
+  private restoreTriangles(svgNode: SVGSVGElement) {
+    if (svgNode.classList.contains('triangles')) return;
+    svgNode.querySelectorAll('polygon').forEach((poly) => {
+      poly.setAttribute('fill', poly.dataset['originalFill']);
+      poly.dataset['originalFill'] = undefined;
+    });
+  }
+
   private removeInlineShadows(svgNode: SVGSVGElement) {
     if (!svgNode.classList.contains('shadows')) return;
     svgNode.querySelectorAll('rect').forEach((rect) => {
@@ -104,6 +120,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
   saveImage(svgNode: SVGSVGElement) {
     const compStyle = getComputedStyle(svgNode);
     this.inlineShadows(svgNode);
+    this.hideTriangles(svgNode);
 
     let svgString = new XMLSerializer().serializeToString(svgNode);
     const isDark = document.body.classList.contains('dark');
@@ -114,6 +131,7 @@ export class TreeVisualizerComponent implements AfterViewInit {
     });
     svgString = svgString.replace(/svg\.shadows rect {.+?}/s, '');
 
+    this.restoreTriangles(svgNode);
     this.removeInlineShadows(svgNode);
     const svgBlob = new Blob([svgString], {
       type: 'image/svg+xml;charset=utf-8',
