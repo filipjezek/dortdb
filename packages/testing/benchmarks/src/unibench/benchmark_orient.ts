@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pickRandom } from '../utils/random.js';
-import { logger as parentLogger } from '../logger.js';
-import pino from 'pino';
-import { promiseTimeout } from '../utils/promise-timeout.js';
 import orientjs from 'orientjs';
+import { isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
+import { workerLog } from '../utils/worker-log.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
 
@@ -102,8 +102,7 @@ const productIds = [
   3393, 6107, 1679, 4055, 7603, 7878,
 ];
 
-export async function unibenchBenchmarkOrient(): Promise<void> {
-  const logger = parentLogger.child({ name: 'unibench' });
+async function prepareEnv(measureInit: boolean): Promise<orientjs.Db> {
   const dbserver = orientjs({
     host: 'localhost',
     port: 2424,
@@ -114,41 +113,71 @@ export async function unibenchBenchmarkOrient(): Promise<void> {
     password: 'pass',
   });
 
-  for (const query of queries) {
-    await runQuery(query, db, logger);
-  }
+  workerLog({}, 'Finished preparing environment');
+  return db;
 }
 
 async function runQuery(
   query: Query,
   db: orientjs.Db,
-  logger: pino.Logger,
+  /** in seconds */
+  totalTimeout: number,
+  runs: number,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, query.filename),
     'utf-8',
   ).replaceAll('\r\n', '\n');
 
-  for (let i = 0; i < 10; i++) {
-    const params = Object.fromEntries(
-      Object.entries(query.params || {}).map(([key, value]) => [key, value()]),
-    );
-    performance.mark('query-start');
-    const result = db.query(queryText, { params });
-    await result.all();
-    performance.mark('query-end');
-    logger.info(
-      {
-        query: query.filename,
-        params,
-        durationNode: performance.measure(
-          `query-${query.filename}-node`,
-          'query-start',
-          'query-end',
-        ).duration,
-      },
-      'Executed query successfully',
-    );
-    await promiseTimeout(100);
+  const now = Date.now();
+  for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
+    await measureQueryRun(query, queryText, db, i, false, i === 0);
   }
+}
+
+async function measureQueryRun(
+  query: Query,
+  queryText: string,
+  db: orientjs.Db,
+  iteration: number,
+  isWarmup: boolean,
+  measureMemory: boolean,
+) {
+  const params = Object.fromEntries(
+    Object.entries(query.params || {}).map(([key, value]) => [key, value()]),
+  );
+  performance.mark('query-start');
+  const result = db.query(queryText, { params });
+  await result.all();
+  performance.mark('query-end');
+  workerLog(
+    {
+      query: query.filename,
+      params,
+      iteration,
+      isWarmup,
+      durationNode: performance.measure(
+        `query-${query.filename}-node`,
+        'query-start',
+        'query-end',
+      ).duration,
+    },
+    'Executed query successfully',
+  );
+}
+
+export default async function unibenchBenchmarkOrient(
+  options: BenchmarkWorkerOptions,
+) {
+  const db = await prepareEnv(options.measureInit);
+  await runQuery(
+    queries[options.query - 1],
+    db,
+    options.softTimeout,
+    options.runs,
+  );
+}
+
+if (!isMainThread) {
+  await unibenchBenchmarkOrient(workerData as BenchmarkWorkerOptions);
 }

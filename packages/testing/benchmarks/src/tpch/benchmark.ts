@@ -2,25 +2,24 @@ import { datetime, DortDB, MapIndex } from '@dortdb/core';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { SQL } from '@dortdb/lang-sql';
 import { resolve } from 'node:path';
-import pino from 'pino';
-import { logger as parentLogger } from '../logger.js';
 import { readFileSync } from 'node:fs';
-import { promiseTimeout } from '../utils/promise-timeout.js';
 import { prepareData } from './prepare-data.js';
 import { PerformanceMeasure } from 'node:perf_hooks';
+import { isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { workerLog } from '../utils/worker-log.js';
+import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
-export async function tpchBenchmark(): Promise<void> {
+async function prepareEnv(measureInit: boolean): Promise<DortDB> {
   const db = new DortDB({
     mainLang: SQL(),
     extensions: [datetime],
     optimizer: { rules: defaultRules },
   });
-  const logger = parentLogger.child({ module: 'tpch' });
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
-      logger.info(
+      workerLog(
         {
           duration: entry.duration,
           name: entry.name,
@@ -32,17 +31,17 @@ export async function tpchBenchmark(): Promise<void> {
   });
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
-  await registerDataSources(db, logger);
-  for (let i = 22; i >= 21; i--) {
-    if (i === 15 || i === 13) continue;
-    await runQuery(i, db, logger);
-  }
+  await registerDataSources(db, measureInit);
+  workerLog({}, 'Finished preparing environment');
+  return db;
 }
 
 async function runQuery(
   query: number,
   db: DortDB,
-  logger: pino.Logger,
+  /** in seconds */
+  totalTimeout: number,
+  runs: number,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, `tpch-q${query}.sql`),
@@ -52,34 +51,50 @@ async function runQuery(
   console.log(`Running query: tpch-q${query}.sql`);
   console.log(queryText);
 
+  // warmup
   const now = Date.now();
-  for (let i = 0; i < 10 && Date.now() - now < 15 * 60 * 1000; i++) {
-    console.log(i);
-    gc();
-    if (i === 0)
-      logger.info(
-        { ...process.memoryUsage(), query },
-        'Memory usage before running query',
-      );
-    performance.mark(`runQuery_${query}_start`);
-    db.query(queryText);
+  for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
+    await measureQueryRun(query, queryText, db, i, true, i === 0);
+  }
 
-    performance.mark(`runQuery_${query}_end`);
-    performance.measure(`runQuery_${query}`, {
-      detail: { q: query },
-      start: `runQuery_${query}_start`,
-      end: `runQuery_${query}_end`,
-    });
-    if (i === 0)
-      logger.info(
-        { ...process.memoryUsage(), query },
-        'Memory usage after running query',
-      );
-    await promiseTimeout(1000);
+  for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
+    await measureQueryRun(query, queryText, db, i, false, i === 0);
   }
 }
 
-async function registerDataSources(db: DortDB, logger: pino.Logger) {
+async function measureQueryRun(
+  query: number,
+  queryText: string,
+  db: DortDB,
+  iteration: number,
+  isWarmup: boolean,
+  measureMemory: boolean,
+) {
+  gc();
+  if (measureMemory) {
+    workerLog(
+      { ...process.memoryUsage(), query, iteration, isWarmup },
+      'Memory usage before running query',
+    );
+  }
+  performance.mark(`runQuery_${query}_start`);
+  db.query(queryText);
+
+  performance.mark(`runQuery_${query}_end`);
+  performance.measure(`runQuery_${query}`, {
+    detail: { q: query, iteration, isWarmup },
+    start: `runQuery_${query}_start`,
+    end: `runQuery_${query}_end`,
+  });
+  if (measureMemory) {
+    workerLog(
+      { ...process.memoryUsage(), query, iteration, isWarmup },
+      'Memory usage after running query',
+    );
+  }
+}
+
+async function registerDataSources(db: DortDB, measureInit: boolean) {
   const data = await prepareData();
 
   db.registerSource(['customer'], data.customer);
@@ -106,4 +121,13 @@ async function registerDataSources(db: DortDB, logger: pino.Logger) {
   db.createIndex(['region'], ['regionkey'], MapIndex);
   db.createIndex(['supplier'], ['suppkey'], MapIndex);
   db.createIndex(['supplier'], ['nationkey'], MapIndex);
+}
+
+export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
+  const db = await prepareEnv(options.measureInit);
+  await runQuery(options.query, db, options.softTimeout, options.runs);
+}
+
+if (!isMainThread) {
+  await tpchBenchmark(workerData as BenchmarkWorkerOptions);
 }
