@@ -15,6 +15,7 @@ import {
 import { idToCalculation } from './utils/calculation.js';
 import { toArray } from './internal-fns/index.js';
 import { Aliased, PlanOperator } from './plan/visitor.js';
+import { ExecutorConfig } from './visitors/executor.js';
 
 /**
  * The main database class.
@@ -29,6 +30,7 @@ export class DortDB<LangNames extends string = string> {
     optimizer: null,
     getSource: (source) => this.registeredSources.get(source),
     indices: this.indices,
+    config: null,
   };
 
   constructor(protected config: DortDBConfig<LangNames>) {
@@ -45,6 +47,7 @@ export class DortDB<LangNames extends string = string> {
     this.optimizer = new Optimizer(config.optimizer, this.friendInterface);
     this.friendInterface.optimizer = this.optimizer;
     this.config.extensions?.forEach((e) => this.langMgr.registerExtension(e));
+    this.friendInterface.config = config;
   }
 
   /**
@@ -302,6 +305,7 @@ export interface DortDBConfig<LangNames extends string> {
   additionalLangs?: Language<LangNames>[];
   extensions?: Extension<LangNames>[];
   optimizer: OptimizerConfig;
+  executor?: ExecutorConfig;
 }
 
 /** Interface used by modules extending the framework. It exposes some of the internal DortDB
@@ -312,4 +316,5 @@ export interface DortDBAsFriend {
   getSource(source: (symbol | string | number)[]): unknown;
   optimizer: Optimizer;
   indices: Trie<symbol | string | number, Index[]>;
+  config: DortDBConfig<string>;
 }

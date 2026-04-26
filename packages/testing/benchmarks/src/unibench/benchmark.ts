@@ -161,15 +161,19 @@ Object.defineProperty(Document.prototype, 'createTreeWalker', {
   value: createTreeWalker,
 });
 
-async function prepareEnv(measureInit: boolean): Promise<DortDB> {
+async function prepareEnv(
+  secondaryIndices: boolean,
+  measureInit: boolean,
+): Promise<DortDB> {
   const db = new DortDB({
     mainLang: SQL(),
     additionalLangs: [
-      XQuery({ adapter: new DomDataAdapter(new Document()) }),
+      XQuery({ adapter: new DomDataAdapter(new Document() as any) }),
       Cypher({ defaultGraph: 'defaultGraph' }),
     ],
     extensions: [datetime],
     optimizer: { rules: defaultRules },
+    executor: { hashJoinIndices: [MapIndex] },
   });
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
@@ -185,7 +189,7 @@ async function prepareEnv(measureInit: boolean): Promise<DortDB> {
   });
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
-  await registerDataSources(db, measureInit);
+  await registerDataSources(db, secondaryIndices, measureInit);
   workerLog({}, 'Finished preparing environment');
   return db;
 }
@@ -262,7 +266,11 @@ async function measureQueryRun(
   }
 }
 
-async function registerDataSources(db: DortDB, measure = false) {
+async function registerDataSources(
+  db: DortDB,
+  secondaryIndices: boolean,
+  measure = false,
+) {
   if (measure) {
     gc();
     workerLog(
@@ -302,15 +310,19 @@ async function registerDataSources(db: DortDB, measure = false) {
   db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);
   db.createIndex(['customers'], ['id'], MapIndex);
   db.createIndex(['products'], ['productId'], MapIndex);
-  db.createIndex(['products'], ['brand'], MapIndex);
-  db.createIndex(['products'], ['asin'], MapIndex);
-  db.createIndex(['feedback'], ['productAsin'], MapIndex);
-  db.createIndex(['feedback'], ['personId'], MapIndex);
-  db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
-  db.createIndex(['brandProducts'], ['brandName'], MapIndex);
   db.createIndex(['vendors'], ['id'], MapIndex);
   db.createIndex(['posts'], ['id'], MapIndex);
-  db.createIndex(['orders'], ['PersonId'], MapIndex);
+  db.createIndex(['orders'], ['OrderId'], MapIndex);
+
+  if (secondaryIndices) {
+    db.createIndex(['products'], ['brand'], MapIndex);
+    db.createIndex(['products'], ['asin'], MapIndex);
+    db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
+    db.createIndex(['brandProducts'], ['brandName'], MapIndex);
+    db.createIndex(['feedback'], ['productAsin'], MapIndex);
+    db.createIndex(['feedback'], ['personId'], MapIndex);
+    db.createIndex(['orders'], ['PersonId'], MapIndex);
+  }
 
   if (measure) {
     performance.mark('registerIndices_end');
@@ -327,7 +339,7 @@ async function registerDataSources(db: DortDB, measure = false) {
 export default async function unibenchBenchmark(
   options: BenchmarkWorkerOptions,
 ) {
-  const db = await prepareEnv(options.measureInit);
+  const db = await prepareEnv(options.secondaryIndices, options.measureInit);
   await runQuery(
     queries[options.query - 1],
     db,

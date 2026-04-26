@@ -13,6 +13,7 @@ export interface BenchmarkWorkerOptions {
   softTimeout: number;
   runs: number;
   snapshotInterval: number;
+  secondaryIndices: boolean;
 }
 
 export interface BenchmarkWorkerLogMessage {

@@ -45,7 +45,7 @@ export async function parseUnibenchData(): Promise<UnibenchData> {
   const result = (await extractArchive(
     archiveStream,
     unibenchFiles,
-    new DOMParser(),
+    new DOMParser() as any,
     'socialNetwork',
     unibenchGraphTables,
   )) as any as UnibenchData;

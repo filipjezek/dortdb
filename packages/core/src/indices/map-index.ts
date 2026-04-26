@@ -5,12 +5,12 @@ import { PlanVisitor } from '../plan/visitor.js';
 import { intermediateToCalc } from '../utils/calculation.js';
 import { CalculationParams } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
-import { Index, IndexFillInput, IndexMatchInput } from './index.js';
+import { HashJoinIndex, IndexFillInput, IndexMatchInput } from './index.js';
 
 /**
  * A simple secondary index based on JavaScript Maps.
  */
-export class MapIndex implements Index {
+export class MapIndex implements HashJoinIndex {
   protected map: Map<unknown, unknown[]> = new Map();
   protected eqCheckers: Record<string, EqualityChecker>;
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
@@ -27,6 +27,7 @@ export class MapIndex implements Index {
   }
 
   reindex(values: Iterable<IndexFillInput>): void {
+    this.map.clear();
     for (const {
       keys: [key],
       value,
@@ -59,6 +60,11 @@ export class MapIndex implements Index {
     return null;
   }
 
+  static canIndex(expressions: IndexMatchInput[]): number[] | null {
+    const i = expressions.findIndex((e) => e.containingFn.impl === eq.impl);
+    return i === -1 ? null : [i];
+  }
+
   createAccessor(expressions: IndexMatchInput[]): Calculation {
     const eqFn = expressions[0].containingFn;
     const otherArg = eqFn.args.find(
@@ -74,5 +80,11 @@ export class MapIndex implements Index {
       this.calcBuilders,
       this.eqCheckers,
     );
+  }
+
+  *allValues(): Iterable<unknown[]> {
+    for (const values of this.map.values()) {
+      yield* values as unknown[][];
+    }
   }
 }

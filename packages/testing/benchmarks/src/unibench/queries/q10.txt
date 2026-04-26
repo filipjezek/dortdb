@@ -21,5 +21,5 @@ FROM orders JOIN (
   MATCH (cust)-[:hasInterest]->(tag)
   RETURN cust.id AS custId, collect(tag.id) AS interests
 ) topPosters
-ON orders.PersonId = topPosters.custId
+ON orders.PersonId::number = topPosters.custId
 GROUP BY orders.PersonId, topPosters.interests

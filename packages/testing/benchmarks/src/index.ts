@@ -1,9 +1,6 @@
 import { logger } from './logger.js';
 import { parseArgs } from './parse-args.js';
-import {
-  BenchmarkWorkerOptions,
-  runBenchmarkWorker,
-} from './run-benchmark-worker.js';
+import { runBenchmarkWorker } from './run-benchmark-worker.js';
 
 const args = parseArgs();
 
@@ -21,7 +18,9 @@ for (const db of args.database) {
         softTimeout: args.softTimeout,
         runs: args.runs,
         snapshotInterval: args.snapshotInterval,
-      } satisfies BenchmarkWorkerOptions);
+        secondaryIndices:
+          args.benchmark === 'unibench' && args.unibench.secondaryIndices,
+      });
     } catch (err) {
       logger.error(
         {

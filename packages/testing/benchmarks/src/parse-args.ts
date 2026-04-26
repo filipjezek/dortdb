@@ -9,6 +9,9 @@ export interface BenchmarkArgs {
   softTimeout: number;
   hardTimeout: number;
   snapshotInterval: number;
+  unibench: {
+    secondaryIndices: boolean;
+  };
 }
 
 export function parseArgs(): BenchmarkArgs {
@@ -62,6 +65,12 @@ export function parseArgs(): BenchmarkArgs {
       default: 0,
       defaultDescription: 'disabled',
     })
+    .option('unibench-secondary-indices', {
+      type: 'boolean',
+      description:
+        'Whether to create secondary indices for the Unibench benchmark. The original Unibench paper uses only primary indices.',
+      default: false,
+    })
     .parseSync();
   return {
     benchmark: argv.benchmark as 'tpch' | 'unibench',
@@ -77,5 +86,8 @@ export function parseArgs(): BenchmarkArgs {
     softTimeout: argv['soft-timeout'],
     hardTimeout: argv.timeout,
     snapshotInterval: argv['snapshot-interval'],
+    unibench: {
+      secondaryIndices: argv['unibench-secondary-indices'],
+    },
   };
 }

@@ -37,7 +37,7 @@ export async function parseTPCHData(): Promise<TPCHData> {
               },
         columns: options.columns,
         delimiter: options.separator,
-      }),
+      }) as any,
     );
     result[tpchFiles[file].key as keyof TPCHData] = await toArray(data);
   }

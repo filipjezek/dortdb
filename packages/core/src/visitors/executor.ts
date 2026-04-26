@@ -8,13 +8,20 @@ import { ExecutionContext } from '../execution-context.js';
 import { DortDBAsFriend } from '../db.js';
 import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 import { VariableMapperCtx } from './variable-mapper.js';
-import { pickArr, toArray } from '../internal-fns/index.js';
+import { pickArr, ret1, toArray } from '../internal-fns/index.js';
 import { Trie } from '../data-structures/trie.js';
 import { SerializeFn } from '../lang-manager.js';
 import { Queue } from 'mnemonist';
 import { LinkedListNode } from '../data-structures/index.js';
-import { difference, union } from '../utils/trie.js';
+import { containsAny, difference } from '../utils/trie.js';
 import { TransitiveDependencies } from './transitive-deps.js';
+import { HashJoinIndexStatic, IndexMatchInput } from '../indices/index.js';
+import { intermediateToCalc } from '../utils/calculation.js';
+import { CalculationParams, EqualityChecker } from './index.js';
+
+export interface ExecutorConfig {
+  hashJoinIndices: HashJoinIndexStatic[];
+}
 
 /**
  * Convert a linked list of arrays into an array of arrays, collecting values for specified keys.
@@ -84,6 +91,13 @@ export abstract class Executor implements PlanVisitor<
 > {
   protected serialize: SerializeFn;
   protected tdeps: Record<string, TransitiveDependencies> = {};
+  protected calcBuilders: Record<string, PlanVisitor<CalculationParams, never>>;
+  protected eqCheckers: Record<string, EqualityChecker>;
+
+  protected indexCache: Map<
+    PlanTupleOperator,
+    [plan.Calculation[], IndexMatchInput[], HashJoinIndexStatic]
+  > = new Map();
 
   constructor(
     protected lang: Lowercase<string>,
@@ -95,6 +109,8 @@ export abstract class Executor implements PlanVisitor<
   ) {
     this.serialize = this.db.langMgr.getLang(this.lang).serialize;
     this.tdeps = db.langMgr.getVisitorMap('transitiveDependencies');
+    this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
   }
 
   public execute(
@@ -116,6 +132,7 @@ export abstract class Executor implements PlanVisitor<
     ctx.translations = varMapperCtx.translations;
     ctx.variableNames = varMapperCtx.variableNames;
     const result = plan.accept(this.vmap, ctx);
+    this.indexCache.clear();
     return { result, ctx };
   }
 
@@ -795,77 +812,63 @@ export abstract class Executor implements PlanVisitor<
   }
   *visitJoin(operator: plan.Join, ctx: ExecutionContext): Iterable<unknown> {
     if (!operator.leftOuter && !operator.rightOuter) {
-      const rightItems = toArray(
-        operator.right.accept(this.vmap, ctx),
-      ) as unknown[][];
-      const rightKeys = ctx.getKeys(operator.right);
-      const leftItems = operator.left.accept(this.vmap, ctx) as Iterable<
-        unknown[]
-      >;
-      const leftKeys = ctx.getKeys(operator.left);
-      const renameRightKeys = ctx.getRenames(operator.right, operator);
-      const resultKeys = ctx.getKeys(operator);
-
-      for (const leftItem of leftItems) {
-        yield* this.validateSingleValue(
-          operator,
-          Iterator.from(rightItems)
-            .map((rightItem) => {
-              const result: unknown[] = [];
-              for (const key of leftKeys) {
-                result[key] = leftItem[key];
-              }
-              for (let i = 0; i < rightKeys.length; i++) {
-                result[renameRightKeys[i]] = rightItem[rightKeys[i]];
-              }
-              ctx.setTuple(result, resultKeys);
-              if (
-                operator.conditions.every(
-                  (c) => this.visitCalculation(c, ctx)[0],
-                )
-              ) {
-                return result;
-              }
-              return undefined;
-            })
-            .filter((x) => x),
-        );
-      }
+      yield* this.visitInnerJoin(operator, ctx);
     } else if (operator.leftOuter && !operator.rightOuter) {
-      yield* this.visitLeftJoin(
-        operator.conditions,
-        operator.left,
-        operator.right,
-        operator,
-        ctx,
-      );
+      yield* this.visitLeftJoin(operator.left, operator.right, operator, ctx);
     } else if (!operator.leftOuter && operator.rightOuter) {
-      yield* this.visitLeftJoin(
-        operator.conditions,
-        operator.right,
-        operator.left,
-        operator,
-        ctx,
-      );
+      yield* this.visitLeftJoin(operator.right, operator.left, operator, ctx);
     } else {
       yield* this.visitFullJoin(operator, ctx);
     }
   }
+  protected *visitInnerJoin(
+    operator: plan.Join,
+    ctx: ExecutionContext,
+  ): Iterable<unknown> {
+    const rightKeys = ctx.getKeys(operator.right);
+    const leftKeys = ctx.getKeys(operator.left);
+    const renameRightKeys = ctx.getRenames(operator.right, operator);
+    const resultKeys = ctx.getKeys(operator);
+    const [conditions, pairs] = this.joinValues(
+      operator.left,
+      operator.right,
+      operator,
+      ctx,
+    );
+
+    for (const [leftItem, rightItems] of pairs) {
+      yield* this.validateSingleValue(
+        operator,
+        Iterator.from(rightItems)
+          .map((rightItem) => {
+            const result: unknown[] = [];
+            for (const key of leftKeys) {
+              result[key] = leftItem[key];
+            }
+            for (let i = 0; i < rightKeys.length; i++) {
+              result[renameRightKeys[i]] = rightItem[rightKeys[i]];
+            }
+            return ctx.setTuple(result, resultKeys);
+          })
+          .filter(() =>
+            conditions.every((c) => this.visitCalculation(c, ctx)[0]),
+          ),
+      );
+    }
+  }
   protected *visitLeftJoin(
-    conditions: plan.Calculation[],
     left: PlanTupleOperator,
     right: PlanTupleOperator,
     op: plan.Join,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    const rightItems = toArray(right.accept(this.vmap, ctx)) as unknown[][];
     const rightKeys = ctx.getKeys(right);
-    const leftItems = left.accept(this.vmap, ctx) as Iterable<unknown[]>;
     const leftKeys = ctx.getKeys(left);
     const renameRightKeys = ctx.getRenames(right, op);
     const resultKeys = ctx.getKeys(op);
+    const [conditions, pairs] = this.joinValues(left, right, op, ctx);
 
-    for (const leftItem of leftItems) {
+    for (const [leftItem, rightItems] of pairs) {
       let joined = false;
       yield* this.validateSingleValue(
         op,
@@ -904,19 +907,23 @@ export abstract class Executor implements PlanVisitor<
     operator: plan.Join,
     ctx: ExecutionContext,
   ): Iterable<unknown> {
-    const right = toArray(operator.right.accept(this.vmap, ctx)) as unknown[][];
     const rightKeys = ctx.getKeys(operator.right);
-    const left = operator.left.accept(this.vmap, ctx) as unknown[][];
     const leftKeys = ctx.getKeys(operator.left);
     const renameRightKeys = ctx.getRenames(operator.right, operator);
     const resultKeys = ctx.getKeys(operator);
-    const rightSet = new Set(right);
+    const [conditions, pairs, rightAllItems] = this.joinValues(
+      operator.left,
+      operator.right,
+      operator,
+      ctx,
+    );
+    const rightSet = new Set(rightAllItems);
 
-    for (const leftItem of left) {
+    for (const [leftItem, rightItems] of pairs) {
       let joined = false;
       yield* this.validateSingleValue(
         operator,
-        Iterator.from(right)
+        Iterator.from(rightItems)
           .map((rightItem) => {
             const result: unknown[] = [];
             for (const key of leftKeys) {
@@ -926,9 +933,7 @@ export abstract class Executor implements PlanVisitor<
               result[renameRightKeys[i]] = rightItem[rightKeys[i]];
             }
             ctx.setTuple(result, resultKeys);
-            if (
-              operator.conditions.every((c) => this.visitCalculation(c, ctx)[0])
-            ) {
+            if (conditions.every((c) => this.visitCalculation(c, ctx)[0])) {
               joined = true;
               rightSet.delete(rightItem);
               return result;
@@ -959,6 +964,214 @@ export abstract class Executor implements PlanVisitor<
       }
       yield ctx.setTuple(result, resultKeys);
     }
+  }
+
+  /**
+   * Joins can be executed in different ways depending on the join conditions.
+   * This method determines the best way to execute the join and returns the remaining conditions to check and values.
+   * @param iterOnce the branch that is the outer iteration loop
+   * @param iterPerRow the branch that is the inner iteration loop
+   * @param op the join operator
+   * @returns [remaining conditions, iterable of [outer item, array of matching inner items], all inner items]
+   */
+  protected joinValues(
+    iterOnce: PlanTupleOperator,
+    iterPerRow: PlanTupleOperator,
+    op: plan.Join,
+    ctx: ExecutionContext,
+  ): [
+    plan.Calculation[],
+    Iterable<[unknown[], unknown[][]]>,
+    Iterable<unknown[]>,
+  ] {
+    const bestIndex = this.getBestJoinIndex(iterOnce, iterPerRow, op, ctx);
+    if (bestIndex) {
+      return this.hashJoinValues(iterOnce, iterPerRow, op, ctx, ...bestIndex);
+    }
+
+    return [
+      op.conditions,
+      ...this.nestedLoopJoinValues(iterOnce, iterPerRow, ctx),
+    ];
+  }
+
+  protected hashJoinValues(
+    iterOnce: PlanTupleOperator,
+    iterPerRow: PlanTupleOperator,
+    op: plan.Join,
+    ctx: ExecutionContext,
+    indexInputCalcs: plan.Calculation[],
+    indexMatchInputs: IndexMatchInput[],
+    idxCls: HashJoinIndexStatic,
+  ): [
+    plan.Calculation[],
+    Iterable<[unknown[], unknown[][]]>,
+    Iterable<unknown[]>,
+  ] {
+    const idx = new idxCls(indexInputCalcs, this.db);
+    const accessor = idx.createAccessor(indexMatchInputs);
+    accessor.args.forEach((arg, i) => {
+      if (arg instanceof ASTIdentifier) {
+        accessor.args[i] = ASTIdentifier.fromParts([
+          ctx.getTranslation(op, arg.parts),
+        ]);
+      }
+    });
+
+    const conds = op.conditions.filter(
+      (c) => !indexMatchInputs.some((imi) => imi.containingFn === c.original),
+    );
+
+    const iterPerRowIter = Iterator.from(
+      iterPerRow.accept(this.vmap, ctx) as Iterable<unknown[]>,
+    );
+    idx.reindex(
+      iterPerRowIter.map((row) => ({
+        value: row,
+        keys: indexInputCalcs.map((c) => this.visitCalculation(c, ctx)[0]),
+      })),
+    );
+
+    const iterOnceIter = Iterator.from(
+      iterOnce.accept(this.vmap, ctx) as Iterable<unknown[]>,
+    );
+    return [
+      conds,
+      iterOnceIter.map((onceItem) => {
+        const accessed = this.visitCalculation(accessor, ctx)[0] as unknown[][];
+        return [onceItem, accessed];
+      }),
+      idx.allValues(),
+    ];
+  }
+
+  /**
+   * Get all function calls with at least one argument that does not depend on the iterOnce side of the join.
+   */
+  protected getIndexMatchInputs(
+    iterOnce: PlanTupleOperator,
+    op: plan.Join,
+  ): (IndexMatchInput & { i: number })[] {
+    return op.conditions
+      .filter((c) => c.original instanceof plan.FnCall)
+      .flatMap((c) =>
+        (c.original as plan.FnCall).args.map((arg, i) => ({
+          expr: arg instanceof ASTIdentifier ? arg : arg.op,
+          containingFn: c.original as plan.FnCall,
+          i,
+        })),
+      )
+      .filter(({ expr }) => {
+        if (expr instanceof ASTIdentifier)
+          return !iterOnce.schemaSet.has(expr.parts);
+        return !containsAny(iterOnce.schemaSet, expr.accept(this.tdeps));
+      });
+  }
+
+  /**
+   * From the potentially indexable expressions, find those that can be indexed by an available index.
+   * Futhermore, verify that the non-indexable parts of the condition do not depend on the iterPerRow side
+   */
+  protected findIndexableExpressions(
+    indexMatchInputs: (IndexMatchInput & { i: number })[],
+    iterPerRow: PlanTupleOperator,
+  ) {
+    return this.db.config.executor?.hashJoinIndices
+      .map((idx) => {
+        let matches = idx.canIndex(indexMatchInputs);
+        matches = matches?.filter((mi) => {
+          const fn = indexMatchInputs[mi].containingFn;
+          for (let ai = 0; ai < fn.args.length; ai++) {
+            if (
+              matches.some(
+                (imii) =>
+                  indexMatchInputs[imii].i === ai &&
+                  indexMatchInputs[imii].containingFn === fn,
+              )
+            )
+              continue;
+            const arg = fn.args[ai];
+            if (arg instanceof ASTIdentifier) {
+              if (iterPerRow.schemaSet.has(arg.parts)) return false;
+            } else {
+              if (containsAny(iterPerRow.schemaSet, arg.op.accept(this.tdeps)))
+                return false;
+            }
+          }
+          return true;
+        });
+        return [matches ?? [], idx] as const;
+      })
+      .filter(([matches]) => matches.length > 0);
+  }
+
+  protected getBestJoinIndex(
+    iterOnce: PlanTupleOperator,
+    iterPerRow: PlanTupleOperator,
+    op: plan.Join,
+    ctx: ExecutionContext,
+  ): [plan.Calculation[], IndexMatchInput[], HashJoinIndexStatic] {
+    if (this.indexCache.has(op)) return this.indexCache.get(op);
+    if (this.db.config.executor?.hashJoinIndices === undefined) return null;
+
+    const indexMatchInputs = this.getIndexMatchInputs(iterOnce, op);
+
+    const indexable = this.findIndexableExpressions(
+      indexMatchInputs,
+      iterPerRow,
+    );
+
+    if (!indexable?.length) return null;
+    let best = indexable[0];
+    for (let i = 1; i < indexable.length; i++) {
+      if (indexable[i][0].length > best[0].length) {
+        best = indexable[i];
+      }
+    }
+
+    const calcs = best[0].map((imi) => {
+      const expr = indexMatchInputs[imi].expr;
+      return intermediateToCalc(
+        expr instanceof ASTIdentifier
+          ? new plan.FnCall(op.lang, [expr], ret1)
+          : expr,
+        this.calcBuilders,
+        this.eqCheckers,
+      );
+    });
+    for (const calc of calcs) {
+      calc.args.forEach((arg, i) => {
+        if (arg instanceof ASTIdentifier) {
+          calc.args[i] = ASTIdentifier.fromParts([
+            ctx.getTranslation(op, arg.parts),
+          ]);
+        }
+      });
+    }
+    const res = [calcs, best[0].map((i) => indexMatchInputs[i]), best[1]] as [
+      plan.Calculation[],
+      IndexMatchInput[],
+      HashJoinIndexStatic,
+    ];
+    this.indexCache.set(op, res);
+    return res;
+  }
+
+  protected nestedLoopJoinValues(
+    iterOnce: PlanTupleOperator,
+    iterPerRow: PlanTupleOperator,
+    ctx: ExecutionContext,
+  ): [Iterable<[unknown[], unknown[][]]>, Iterable<unknown[]>] {
+    const iterPerRowItems = toArray(
+      iterPerRow.accept(this.vmap, ctx),
+    ) as unknown[][];
+    const iterOnceIter = Iterator.from(
+      iterOnce.accept(this.vmap, ctx) as Iterable<unknown[]>,
+    );
+    return [
+      iterOnceIter.map((onceItem) => [onceItem, iterPerRowItems]),
+      iterPerRowItems,
+    ];
   }
 
   *visitProjectionConcat(
@@ -1007,6 +1220,7 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  /** Validates that an operator returns only a single value */
   protected validateSingleValue<T>(
     operator: { validateSingleValue: boolean },
     items: Iterable<T>,

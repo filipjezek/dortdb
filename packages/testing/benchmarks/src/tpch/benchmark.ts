@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { prepareData } from './prepare-data.js';
 import { PerformanceMeasure } from 'node:perf_hooks';
-import { isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 
@@ -16,6 +16,7 @@ async function prepareEnv(measureInit: boolean): Promise<DortDB> {
     mainLang: SQL(),
     extensions: [datetime],
     optimizer: { rules: defaultRules },
+    executor: { hashJoinIndices: [MapIndex] },
   });
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {

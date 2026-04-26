@@ -107,6 +107,9 @@ export class QueryPageComponent {
     optimizer: {
       rules: [],
     },
+    executor: {
+      hashJoinIndices: [MapIndex],
+    },
     extensions: [datetime],
   });
   private queryHistory = new History<string>(20);

@@ -122,11 +122,11 @@ WHERE brandProducts.brandName = 'Reebok' AND feedback.feedback[1]::number < 4 AN
   let $now := date('2024-12-31') (: the data is static :)
   let $recent := $Invoices/Invoices/Invoice.xml[ 
     date(OrderDate) gt date:sub($now, interval('6 months'))
-  ][Orderline/asin = $brandProducts.productAsin]
+  ][Orderline/asin = $brandProducts:productAsin]
   let $old := $Invoices/Invoices/Invoice.xml[ 
     date(OrderDate) le date:sub($now, interval('6 months')) and
     date(OrderDate) gt date:sub($now, interval('12 months'))
-  ][Orderline/asin = $brandProducts.productAsin]
+  ][Orderline/asin = $brandProducts:productAsin]
   return fn:count($recent) lt fn:count($old)
 )`,
     lang: 'sql',
@@ -244,7 +244,7 @@ FROM orders JOIN (
   MATCH (cust)-[:hasInterest]->(tag)
   RETURN cust.id AS custId, collect(tag.id) AS interests
 ) topPosters
-ON orders.PersonId = topPosters.custId
+ON orders.PersonId::number = topPosters.custId
 GROUP BY orders.PersonId, topPosters.interests`,
     lang: 'sql',
   },
