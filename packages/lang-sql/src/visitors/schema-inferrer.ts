@@ -372,6 +372,10 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
     if (proj instanceof plan.Projection) {
       // otherwise it's a set op or an aggregate
+
+      // visiting a tuplesource might create a new renaming projection above it
+      // so we add all the attrs to the schema even though it might be redundant
+      proj.source.addToSchema(tempSchema.schema);
       const external = operator.source.accept(this.vmap, ctx);
       const parent = operator.parent;
       const parentProj = new plan.Projection(
@@ -393,6 +397,16 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         parent instanceof PlanTupleOperator &&
         parent.schema === operator.schema
       ) {
+        proj.schema = proj.schema.slice();
+        proj.schemaSet = schemaToTrie(proj.schema);
+        for (
+          let op = proj.parent as PlanTupleOperator;
+          op !== parentProj;
+          op = op.parent as PlanTupleOperator
+        ) {
+          op.schema = proj.schema;
+          op.schemaSet = proj.schemaSet;
+        }
         linkSchemaToParent(parentProj);
       }
 
@@ -490,7 +504,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
               ))
           )
         ) {
-          console.log('removing', attr.parts, n, isTableAttr(attr, n));
           operator.removeFromSchema(attr);
           external.add(attr.parts);
         } else if (
