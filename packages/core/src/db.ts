@@ -83,7 +83,7 @@ export class DortDB<LangNames extends string = string> {
       {},
     );
     const optimized = this.optimizer.optimize(plan.plan);
-    // varMappers[optimized.lang].mapVariables(optimized);
+    // console.log(varMappers[optimized.lang].mapVariables(optimized));
     return optimized;
   }
 
