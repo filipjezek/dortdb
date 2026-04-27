@@ -36,6 +36,8 @@ function getUnd(): undefined {
   return undefined;
 }
 
+const maybeAmbiguous = Symbol('maybeAmbiguous');
+
 /**
  * Infers the schema of a logical plan.
  * Each method returns external references.
@@ -50,10 +52,20 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     operator: PlanOperator,
     ctx: IdSet,
   ): [PlanOperator, IdSet] {
+    // return [operator, new Trie()];
     const tempHead = new plan.Limit('sql', 0, 1, operator);
     const external = operator.accept(this.vmap, ctx);
     for (const item of external.keys([boundParam])) {
       external.delete(item);
+    }
+    const maybeAmbiguousKeys = Array.from(external.keys([maybeAmbiguous]));
+    const ambiguous = maybeAmbiguousKeys.filter((key) =>
+      external.has(key.slice(1)),
+    );
+    if (ambiguous.length > 0) {
+      throw new Error(
+        `Ambiguous column names: ${ambiguous.map((x) => x[1].toString()).join(', ')}`,
+      );
     }
     return [tempHead.source, external];
   }
@@ -90,7 +102,8 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   }
   visitSelection(operator: plan.Selection, ctx: IdSet): IdSet {
     this.processArg(operator, operator.condition, union(ctx, operator.schema));
-    return operator.source.accept(this.vmap, ctx);
+    const res = operator.source.accept(this.vmap, ctx);
+    return res;
   }
   visitRecursion(operator: plan.Recursion, ctx: IdSet): IdSet {
     if (operator.condition) {
@@ -270,15 +283,17 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
     for (const item of operator.schema.slice()) {
       if (item.parts.length === 1) {
-        if (
-          operator.left.schemaSet.has(item.parts) ===
-          operator.right.schemaSet.has(item.parts)
-        ) {
-          throw new Error(
-            `Ambiguous column name: ${item.parts[0]?.toString()}`,
-          );
+        const leftContains = operator.left.schemaSet.has(item.parts);
+        const rightContains = operator.right.schemaSet.has(item.parts);
+        if (leftContains !== rightContains) {
+          continue;
         }
-        continue;
+        if (!leftContains) {
+          external.add([maybeAmbiguous, item.parts[0]]);
+          external.add(item.parts);
+          continue;
+        }
+        throw new Error(`Ambiguous column name: ${item.parts[0]?.toString()}`);
       }
       if (isTableAttr(item, leftNames)) {
         if (item.parts.at(-1) === toInfer) {
@@ -331,6 +346,15 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     operator.source.addToSchema(horizontal);
     operator.source.addToSchema(extra);
     const vertical = operator.source.accept(this.vmap, ctx);
+    for (const item of difference(
+      operator.schemaSet,
+      union(operator.source.schema, operator.mapping.schema),
+    )) {
+      vertical.add(item);
+    }
+    for (const item of difference(horizontal, operator.source.schemaSet)) {
+      vertical.add(item);
+    }
     operator.clearSchema();
     operator.addToSchema(
       operator.source.schema.concat(operator.mapping.schema),
@@ -440,9 +464,16 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       this.processArg(operator.source, agg.postGroupOp, ctx);
     }
     const external = operator.source.accept(this.vmap, ctx);
+    const fieldNames = operator.aggs.map((x) => x.fieldName);
+    for (const extra of difference(
+      operator.schemaSet,
+      union(operator.source.schemaSet, fieldNames),
+    )) {
+      external.add(extra);
+    }
     operator.clearSchema();
     operator.addToSchema(operator.source.schema);
-    operator.addToSchema(operator.aggs.map((x) => x.fieldName));
+    operator.addToSchema(fieldNames);
     return external;
   }
 

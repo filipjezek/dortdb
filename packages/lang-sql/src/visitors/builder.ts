@@ -601,7 +601,8 @@ export class SQLLogicalPlanBuilder
         unwind.impl,
         toId('unwind'),
       );
-      src.addToSchema(schema);
+      // this actually breaks schema inference
+      // src.addToSchema(schema);
       return [src, name];
     }
     const src = new plan.TupleSource('sql', name);
