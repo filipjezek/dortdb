@@ -497,7 +497,17 @@ export class SQLLogicalPlanBuilder
         'sql',
       );
     }
-    op = new plan.Projection('sql', items, op);
+    // `(subq) setop (subq)` results in Projection(*, Projection(...)) otherwise
+    if (
+      !(
+        node.items.length === 1 &&
+        node.items[0] instanceof ASTIdentifier &&
+        node.items[0].parts[0] === allAttrs &&
+        (op instanceof plan.Projection || op instanceof PlanLangSwitch)
+      )
+    ) {
+      op = new plan.Projection('sql', items, op);
+    }
     if (node.distinct) {
       op = new plan.Distinct(
         'sql',
