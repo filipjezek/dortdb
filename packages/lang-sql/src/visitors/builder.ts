@@ -296,8 +296,7 @@ export class SQLLogicalPlanBuilder
   visitTableAlias(node: AST.ASTTableAlias): PlanTupleOperator {
     let src: PlanTupleOperator;
     if (node.table instanceof ASTIdentifier) {
-      src = new plan.TupleSource('sql', node.table);
-      src.addToSchema(ASTIdentifier.fromParts([...node.table.parts, toInfer]));
+      [src] = this.idToTupleSource(node.table);
     } else {
       src = toTuples(node.table.accept(this));
     }
@@ -574,37 +573,47 @@ export class SQLLogicalPlanBuilder
     return res;
   }
 
+  /**
+   * Also handles CTEs and materialized CTEs
+   * @param name name of the tuple source
+   */
+  protected idToTupleSource(
+    name: ASTIdentifier,
+  ): [PlanTupleOperator, ASTIdentifier] {
+    if (
+      name.parts.length === 1 &&
+      this.localLangCtx.ctes.has(name.parts[0] as string)
+    ) {
+      return [
+        this.localLangCtx.ctes.get(name.parts[0] as string).clone(),
+        name,
+      ];
+    } else if (
+      name.parts.length === 1 &&
+      this.localLangCtx.materializedCtes.has(name.parts[0] as string)
+    ) {
+      const schema = this.localLangCtx.materializedCtes.get(
+        name.parts[0] as string,
+      );
+      const src = new plan.TupleFnSource(
+        'sql',
+        [name],
+        unwind.impl,
+        toId('unwind'),
+      );
+      src.addToSchema(schema);
+      return [src, name];
+    }
+    const src = new plan.TupleSource('sql', name);
+    src.addToSchema(ASTIdentifier.fromParts([...name.parts, toInfer]));
+    return [src, name];
+  }
+
   protected getTableName(
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [PlanTupleOperator, ASTIdentifier] {
     if (node instanceof ASTIdentifier) {
-      if (
-        node.parts.length === 1 &&
-        this.localLangCtx.ctes.has(node.parts[0] as string)
-      ) {
-        return [
-          this.localLangCtx.ctes.get(node.parts[0] as string).clone(),
-          node,
-        ];
-      } else if (
-        node.parts.length === 1 &&
-        this.localLangCtx.materializedCtes.has(node.parts[0] as string)
-      ) {
-        const schema = this.localLangCtx.materializedCtes.get(
-          node.parts[0] as string,
-        );
-        const src = new plan.TupleFnSource(
-          'sql',
-          [node],
-          unwind.impl,
-          toId('unwind'),
-        );
-        src.addToSchema(schema);
-        return [src, node];
-      }
-      const src = new plan.TupleSource('sql', node);
-      src.addToSchema(ASTIdentifier.fromParts([...node.parts, toInfer]));
-      return [src, node];
+      return this.idToTupleSource(node);
     }
     const src = node.accept(this) as PlanTupleOperator;
     if (node instanceof AST.JoinClause) return [src, null];

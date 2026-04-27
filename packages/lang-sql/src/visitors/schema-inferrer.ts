@@ -270,7 +270,15 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
     for (const item of operator.schema.slice()) {
       if (item.parts.length === 1) {
-        throw new Error(`Ambiguous column name: ${item.parts[0]?.toString()}`);
+        if (
+          operator.left.schemaSet.has(item.parts) ===
+          operator.right.schemaSet.has(item.parts)
+        ) {
+          throw new Error(
+            `Ambiguous column name: ${item.parts[0]?.toString()}`,
+          );
+        }
+        continue;
       }
       if (isTableAttr(item, leftNames)) {
         if (item.parts.at(-1) === toInfer) {
