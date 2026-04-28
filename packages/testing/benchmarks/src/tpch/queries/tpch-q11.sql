@@ -8,7 +8,7 @@
 
 select
 	ps.partkey,
-	sum(ps.supplycost * ps.availqty) as value
+	sum(ps.supplycost * ps.availqty) as val
 from
 	partsupp ps,
 	supplier s,
@@ -32,4 +32,4 @@ group by
 				and n.name = 'UNITED KINGDOM'
 		)
 order by
-	value desc;
+	val desc;

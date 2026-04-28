@@ -51,7 +51,7 @@ const queries: Query[] = [
   },
   {
     filename: 'q04.txt',
-    lang: 'cypher',
+    lang: 'sql',
   },
   {
     filename: 'q05.txt',
@@ -99,6 +99,10 @@ const queries: Query[] = [
   {
     filename: 'q10.txt',
     lang: 'sql',
+  },
+  {
+    filename: 'q04_naive.txt',
+    lang: 'cypher',
   },
 ];
 

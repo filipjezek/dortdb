@@ -8,6 +8,7 @@ import { PerformanceMeasure } from 'node:perf_hooks';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
+import { promiseTimeout } from '../utils/promise-timeout.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -78,6 +79,7 @@ async function measureQueryRun(
       'Memory usage before running query',
     );
   }
+  await promiseTimeout(1000);
   performance.mark(`runQuery_${query}_start`);
   db.query(queryText);
 

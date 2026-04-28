@@ -79,20 +79,18 @@ export async function runBenchmarkWorker(
 
     if (timeoutMs > 0) {
       timeoutId = setTimeout(() => {
-        worker
-          .terminate()
-          .then(() => {
-            finish(() => {
-              reject(
-                new Error(
-                  `Worker timed out after ${options.hardTimeout}s (${options.benchmark}/${options.database}, q${options.query})`,
-                ),
-              );
-            });
-          })
-          .catch((error: unknown) => {
-            finish(() => reject(error));
-          });
+        // finish will be called automatically by the 'exit' event
+        logger.error(
+          {
+            benchmark: options.benchmark,
+            database: options.database,
+            query: options.query,
+          },
+          `Worker timed out after ${options.hardTimeout}s`,
+        );
+        worker.terminate().catch((error: unknown) => {
+          finish(() => reject(error));
+        });
       }, timeoutMs);
     }
 

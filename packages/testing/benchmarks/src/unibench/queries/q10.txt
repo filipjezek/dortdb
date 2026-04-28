@@ -16,7 +16,7 @@ FROM orders JOIN (
   LANG cypher
   MATCH (cust)<-[:hasCreator]-(post)
   WHERE post.creationDate > date.sub(date('2011-12-31'), interval('1 year'))
-  WITH DISTINCT cust, count(post) AS postCount
+  WITH cust, count(post) AS postCount
   ORDER BY postCount DESC LIMIT 10
   MATCH (cust)-[:hasInterest]->(tag)
   RETURN cust.id AS custId, collect(tag.id) AS interests

@@ -5,9 +5,10 @@ import alasql from 'alasql';
 import { substr } from '@dortdb/core/fns';
 import { datetime } from '@dortdb/core';
 import { PerformanceMeasure } from 'node:perf_hooks';
-import { isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
+import { promiseTimeout } from '../utils/promise-timeout.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -56,6 +57,7 @@ async function runQuery(
     'utf-8',
   )
     .replaceAll('\r\n', '\n')
+    .replaceAll('materialized', '')
     .replaceAll('date.add', 'date_add')
     .replaceAll('date.sub', 'date_sub')
     .replaceAll('date.extract', 'date_extract')
@@ -88,6 +90,7 @@ async function measureQueryRun(
       'Memory usage before running query',
     );
   }
+  await promiseTimeout(1000);
   performance.mark(`runQuery_${query}_start`);
   db(queryText);
 

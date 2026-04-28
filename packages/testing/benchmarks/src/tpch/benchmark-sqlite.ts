@@ -6,6 +6,7 @@ import { PerformanceMeasure } from 'node:perf_hooks';
 import { isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
+import { promiseTimeout } from '../utils/promise-timeout.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -60,6 +61,7 @@ async function measureQueryRun(
   isWarmup: boolean,
   measureMemory: boolean,
 ) {
+  await promiseTimeout(1000);
   performance.mark(`runQuery_${query}_start`);
   db.exec(queryText);
 
@@ -193,6 +195,7 @@ CREATE INDEX idx_lineitem_partkey_suppkey ON lineitem(partkey, suppkey);
     }
     stmt.free();
   }
+  workerLog({}, 'Finished registering data sources');
 }
 
 export default async function tpchBenchmarkSQLite(

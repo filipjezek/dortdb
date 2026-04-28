@@ -8,3 +8,5 @@ test-package
 .nx/cache
 .nx/workspace-data
 vitest.config.*.timestamp*
+
+.venv

@@ -12,6 +12,7 @@ export interface BenchmarkArgs {
   unibench: {
     secondaryIndices: boolean;
   };
+  output?: string;
 }
 
 export function parseArgs(): BenchmarkArgs {
@@ -71,6 +72,13 @@ export function parseArgs(): BenchmarkArgs {
         'Whether to create secondary indices for the Unibench benchmark. The original Unibench paper uses only primary indices.',
       default: false,
     })
+    .option('output', {
+      type: 'string',
+      alias: 'o',
+      description: 'Output file name',
+      default: undefined,
+      defaultDescription: 'based on other parameters',
+    })
     .parseSync();
   return {
     benchmark: argv.benchmark as 'tpch' | 'unibench',
@@ -89,5 +97,6 @@ export function parseArgs(): BenchmarkArgs {
     unibench: {
       secondaryIndices: argv['unibench-secondary-indices'],
     },
+    output: argv.output,
   };
 }

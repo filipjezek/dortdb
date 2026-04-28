@@ -5,6 +5,7 @@ import { BenchmarkArgs, parseArgs } from './parse-args.js';
 export const LOG_DIR = resolve(import.meta.dirname, '../dist/logs');
 
 const LOG_FILENAME = (args: BenchmarkArgs) => {
+  if (args.output) return args.output;
   const dbs = args.database.join('-');
   const queries = args.query.join('-');
   return `${args.benchmark}_${dbs}_${queries}.log`;
