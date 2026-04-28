@@ -56,22 +56,33 @@ AND EXISTS (
     lang: 'sql',
   },
   {
-    query: `// three-hop common friends of the two top spenders
-//
-// these two are actually not connected in the sample data
+    query: `-- three-hop common friends of the two top spenders
+--
+-- these two are actually not connected in the sample data
 
-UNWIND (
-  LANG sql
+WITH toptwo(results) AS MATERIALIZED (
+  SELECT ARRAY(
     SELECT PersonId::number
     FROM orders
     GROUP BY PersonId
     ORDER BY sum(TotalPrice) DESC
     LIMIT 2
-) AS toptwo
-WITH collect(toptwo) AS toptwo
-MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
-RETURN foaf`,
-    lang: 'cypher',
+  )
+)
+(
+  LANG cypher
+  WITH (LANG sql SELECT results[0] FROM toptwo) AS topfrst
+  MATCH (:person {id: topfrst})-[:knows *..3]->(foaf)
+  RETURN foaf
+)
+INTERSECT
+(
+  LANG cypher
+  WITH (LANG sql SELECT results[1] FROM toptwo) AS topsnd
+  MATCH (:person {id: topsnd})-[:knows *..3]->(foaf)
+  RETURN foaf
+)`,
+    lang: 'sql',
   },
   {
     query: `// what did the friends of CUSTOMER which bought BRAND products post about?
