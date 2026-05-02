@@ -7,14 +7,14 @@
 
 
 select
-	s.acctbal,
-	s.name,
-	n.name,
-	p.partkey,
-	p.mfgr,
-	s.address,
-	s.phone,
-	s.comment
+	s.acctbal as acctbal,
+	s.name as "s.name",
+	n.name as "n.name",
+	p.partkey as partkey,
+	p.mfgr as mfgr,
+	s.address as address,
+	s.phone as phone,
+	s.comment as comment
 from
 	part p,
 	supplier s,

@@ -7,9 +7,9 @@
 
 
 select
-	p.brand,
-	p.type,
-	p.size,
+	p.brand as brand,
+	p.type as type,
+	p.size as size,
 	count(distinct ps.suppkey) as supplier_cnt
 from
 	partsupp ps,

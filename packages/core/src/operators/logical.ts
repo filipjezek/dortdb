@@ -13,3 +13,7 @@ export const not: Operator = {
   name: 'not',
   impl: shortcutNulls((a) => !a),
 };
+export const neg: Operator = {
+  name: 'neg',
+  impl: (a) => !a,
+};

@@ -35,6 +35,7 @@ import {
   overrideSource,
   schemaToTrie,
   shortcutNulls,
+  splitAnds,
 } from '@dortdb/core/utils';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { inOp, notInOp } from '../operators/basic.js';
@@ -45,6 +46,8 @@ import { SQLDataAdapter } from '../language/data-adapter.js';
 import { SQLLanguage } from '../language/language.js';
 import { collect } from '@dortdb/core/aggregates';
 import { unwind } from '@dortdb/core/fns';
+import { toBool } from '@dortdb/core/castables';
+import { TableAlias } from '../plan/table-alias.js';
 
 export const defaultCol = toId('value');
 export const nonlocalPrefix = 'nonlocal';
@@ -98,6 +101,7 @@ export class SQLLogicalPlanBuilder
     this.processAttr = this.processAttr.bind(this);
     this.processFnArg = this.processFnArg.bind(this);
     this.toCalc = this.toCalc.bind(this);
+    this.opToCalc = this.opToCalc.bind(this);
     this.processOrderItem = this.processOrderItem.bind(this);
   }
 
@@ -147,6 +151,9 @@ export class SQLLogicalPlanBuilder
     if (intermediate instanceof plan.AggregateCall)
       return intermediate.fieldName;
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
+  }
+  protected opToCalc(op: PlanOperator): plan.Calculation {
+    return intermediateToCalc(op, this.calcBuilders, this.eqCheckers);
   }
 
   visitStringLiteral(node: AST.ASTStringLiteral): PlanOperator {
@@ -227,25 +234,16 @@ export class SQLLogicalPlanBuilder
           true,
         );
   }
+
   visitExists(node: AST.ASTExists): PlanOperator {
-    let res = node.query.accept(this) as PlanOperator;
-    res = new plan.Limit('sql', 0, 1, res);
-    const col = toId('count');
-    res = new plan.GroupBy(
+    let res = toTuples(node.query.accept(this));
+    res = new plan.Projection(
       'sql',
-      [],
-      [
-        new plan.AggregateCall(
-          'sql',
-          [toId(allAttrs)],
-          this.db.langMgr.getAggr('sql', 'count'),
-          col,
-        ),
-      ],
-      res as plan.Limit,
+      [[this.opToCalc(new plan.Literal('sql', true)), toId('1')]],
+      res,
     );
-    res = new plan.MapToItem('sql', col, res as plan.GroupBy);
-    return new plan.FnCall('sql', [{ op: res }], ret1);
+    res = new plan.Limit('sql', 0, 1, res);
+    return new plan.FnCall('sql', [{ op: res }], toBool.convert);
   }
 
   visitQuantifier(node: AST.ASTQuantifier): PlanOperator {
@@ -326,29 +324,12 @@ export class SQLLogicalPlanBuilder
         src,
       );
     }
-    if (src instanceof plan.TupleFnSource) {
-      const n = ASTIdentifier.fromParts([node.name]);
-      src.removeFromSchema(
-        src.schema.filter((x) => x.parts.at(-1) === toInfer),
-      );
-      src.addToSchema(ASTIdentifier.fromParts([...n.parts, toInfer]));
-      src.name = src.name ? [src.name as ASTIdentifier, n] : n;
-      return src;
-    }
-    if (src instanceof plan.TupleSource) {
-      src.name = [
-        src.name as ASTIdentifier,
-        ASTIdentifier.fromParts([node.name]),
-      ];
-      src.removeFromSchema(
-        src.schema.filter((x) => x.parts.at(-1) === toInfer),
-      );
-      src.addToSchema(ASTIdentifier.fromParts([node.name, toInfer]));
-      return src;
-    }
-    if (src instanceof PlanLangSwitch) {
-      src.alias = node.name;
-      return src;
+    if (
+      src instanceof plan.TupleSource ||
+      src instanceof plan.TupleFnSource ||
+      src instanceof PlanLangSwitch
+    ) {
+      return new TableAlias('sql', toId(node.name), src);
     }
     return new plan.Projection(
       'sql',
@@ -554,22 +535,7 @@ export class SQLLogicalPlanBuilder
         );
       attrs = (node.items as ASTNode[]).map(this.processAttr);
     }
-    for (const aggr of aggregates) {
-      const schemaToReplace = aggr.postGroupSource.schema;
-      for (
-        let step = aggr.postGroupSource.parent as PlanTupleOperator;
-        step?.schema === schemaToReplace;
-        step = step.parent as PlanTupleOperator
-      ) {
-        step.schema = src.schema;
-        step.schemaSet = src.schemaSet;
-      }
-    }
     const res = new plan.GroupBy('sql', attrs, aggregates, src);
-    for (const aggr of res.aggs) {
-      aggr.postGroupSource.schema = res.source.schema;
-      aggr.postGroupSource.schemaSet = res.source.schemaSet;
-    }
     return res;
   }
 
@@ -636,7 +602,9 @@ export class SQLLogicalPlanBuilder
         'sql',
         left,
         right,
-        node.condition ? [this.toCalc(node.condition) as plan.Calculation] : [],
+        node.condition
+          ? splitAnds(node.condition.accept(this)).map(this.opToCalc)
+          : [],
       );
       (op as plan.Join).leftOuter =
         node.joinType === AST.JoinType.LEFT ||

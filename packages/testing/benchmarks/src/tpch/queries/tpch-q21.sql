@@ -7,7 +7,7 @@
 
 
 select
-	s.name,
+	s.name as name,
 	count(*) as numwait
 from
 	supplier s,

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { prepareData } from './prepare-data.js';
 import initSqlJs, { Database } from 'sql.js';
 import { PerformanceMeasure } from 'node:perf_hooks';
-import { isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { promiseTimeout } from '../utils/promise-timeout.js';
@@ -63,7 +63,8 @@ async function measureQueryRun(
 ) {
   await promiseTimeout(1000);
   performance.mark(`runQuery_${query}_start`);
-  db.exec(queryText);
+  const res = db.exec(queryText);
+  console.log(res);
 
   performance.mark(`runQuery_${query}_end`);
   performance.measure(`runQuery_${query}`, {
@@ -136,7 +137,7 @@ CREATE TABLE orders (
     custkey INTEGER NOT NULL,
     orderstatus TEXT,
     totalprice REAL,
-    orderdate INTEGER,
+    orderdate TEXT,
     orderpriority TEXT,
     clerk TEXT,
     shippriority INTEGER,
@@ -154,9 +155,9 @@ CREATE TABLE lineitem (
     tax REAL,
     returnflag TEXT,
     linestatus TEXT,
-    shipdate INTEGER,
-    commitdate INTEGER,
-    receiptdate INTEGER,
+    shipdate TEXT,
+    commitdate TEXT,
+    receiptdate TEXT,
     shipinstruct TEXT,
     shipmode TEXT,
     comment TEXT,
@@ -188,7 +189,8 @@ CREATE INDEX idx_lineitem_partkey_suppkey ON lineitem(partkey, suppkey);
       stmt.run(
         columns.map((col) => {
           const val = row[col];
-          if (val instanceof Date) return val.getTime();
+          if (val instanceof Date)
+            return `${val.getFullYear()}-${(val.getMonth() + 1).toString().padStart(2, '0')}-${val.getDate().toString().padStart(2, '0')}`;
           return val;
         }),
       );

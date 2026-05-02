@@ -1,0 +1,877 @@
+[
+  {
+    "nation": "ALGERIA",
+    "year": 1998,
+    "sum_profit": 2483831.2129
+  },
+  {
+    "nation": "ALGERIA",
+    "year": 1997,
+    "sum_profit": 3305844.7361
+  },
+  {
+    "nation": "ALGERIA",
+    "year": 1996,
+    "sum_profit": 3905061.9156
+  },
+  {
+    "nation": "ALGERIA",
+    "year": 1995,
+    "sum_profit": 3804392.2779
+  },
+  {
+    "nation": "ALGERIA",
+    "year": 1994,
+    "sum_profit": 3622987.8651
+  },
+  {
+    "nation": "ALGERIA",
+    "year": 1993,
+    "sum_profit": 4481638.7564
+  },
+  {
+    "nation": "ALGERIA",
+    "year": 1992,
+    "sum_profit": 3655126.4148
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1998,
+    "sum_profit": 2279857.6679
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1997,
+    "sum_profit": 4022137.4540999997
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1996,
+    "sum_profit": 3889134.9599
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1995,
+    "sum_profit": 4038452.7387
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1994,
+    "sum_profit": 3358241.9453
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1993,
+    "sum_profit": 3371405.3413
+  },
+  {
+    "nation": "ARGENTINA",
+    "year": 1992,
+    "sum_profit": 4067678.2132
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1998,
+    "sum_profit": 2255059.7423
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1997,
+    "sum_profit": 4768431.6128
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1996,
+    "sum_profit": 4344148.666
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1995,
+    "sum_profit": 4734034.4645
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1994,
+    "sum_profit": 4224799.7919
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1993,
+    "sum_profit": 4277720.4134
+  },
+  {
+    "nation": "BRAZIL",
+    "year": 1992,
+    "sum_profit": 4292799.828199999
+  },
+  {
+    "nation": "CANADA",
+    "year": 1998,
+    "sum_profit": 2112087.1007
+  },
+  {
+    "nation": "CANADA",
+    "year": 1997,
+    "sum_profit": 3704297.7768
+  },
+  {
+    "nation": "CANADA",
+    "year": 1996,
+    "sum_profit": 3683698.4816
+  },
+  {
+    "nation": "CANADA",
+    "year": 1995,
+    "sum_profit": 4335724.801
+  },
+  {
+    "nation": "CANADA",
+    "year": 1994,
+    "sum_profit": 4342561.8415
+  },
+  {
+    "nation": "CANADA",
+    "year": 1993,
+    "sum_profit": 3795086.6834
+  },
+  {
+    "nation": "CANADA",
+    "year": 1992,
+    "sum_profit": 4657832.9727
+  },
+  {
+    "nation": "CHINA",
+    "year": 1998,
+    "sum_profit": 3106776.1995
+  },
+  {
+    "nation": "CHINA",
+    "year": 1997,
+    "sum_profit": 5552474.3220999995
+  },
+  {
+    "nation": "CHINA",
+    "year": 1996,
+    "sum_profit": 5622214.996499999
+  },
+  {
+    "nation": "CHINA",
+    "year": 1995,
+    "sum_profit": 5669745.3113
+  },
+  {
+    "nation": "CHINA",
+    "year": 1994,
+    "sum_profit": 5849622.5724
+  },
+  {
+    "nation": "CHINA",
+    "year": 1993,
+    "sum_profit": 5146358.2793
+  },
+  {
+    "nation": "CHINA",
+    "year": 1992,
+    "sum_profit": 6292779.2062
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1998,
+    "sum_profit": 2074988.3210999998
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1997,
+    "sum_profit": 4703433.3347
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1996,
+    "sum_profit": 4823341.8297999995
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1995,
+    "sum_profit": 4218738.9911
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1994,
+    "sum_profit": 3710205.3841
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1993,
+    "sum_profit": 4078177.3576999996
+  },
+  {
+    "nation": "EGYPT",
+    "year": 1992,
+    "sum_profit": 4845484.7635
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1998,
+    "sum_profit": 1829834.3725
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1997,
+    "sum_profit": 3128414.6698
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1996,
+    "sum_profit": 3231216.3222
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1995,
+    "sum_profit": 3747581.0845
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1994,
+    "sum_profit": 3104244.1994
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1993,
+    "sum_profit": 3097984.9675
+  },
+  {
+    "nation": "ETHIOPIA",
+    "year": 1992,
+    "sum_profit": 3120746.2728999997
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1998,
+    "sum_profit": 2241686.3789
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1997,
+    "sum_profit": 4262551.1919
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1996,
+    "sum_profit": 3160999.1994
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1995,
+    "sum_profit": 3980421.2846
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1994,
+    "sum_profit": 3715108.0681
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1993,
+    "sum_profit": 3418171.8222
+  },
+  {
+    "nation": "FRANCE",
+    "year": 1992,
+    "sum_profit": 3603647.6565
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1998,
+    "sum_profit": 2980729.9085999997
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1997,
+    "sum_profit": 4961252.056299999
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1996,
+    "sum_profit": 4931304.8947
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1995,
+    "sum_profit": 5201745.0202
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1994,
+    "sum_profit": 5472006.2913999995
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1993,
+    "sum_profit": 5397521.7833
+  },
+  {
+    "nation": "GERMANY",
+    "year": 1992,
+    "sum_profit": 4528095.1172
+  },
+  {
+    "nation": "INDIA",
+    "year": 1998,
+    "sum_profit": 3369127.5951
+  },
+  {
+    "nation": "INDIA",
+    "year": 1997,
+    "sum_profit": 5802017.9627
+  },
+  {
+    "nation": "INDIA",
+    "year": 1996,
+    "sum_profit": 5868565.2384
+  },
+  {
+    "nation": "INDIA",
+    "year": 1995,
+    "sum_profit": 5823822.3078
+  },
+  {
+    "nation": "INDIA",
+    "year": 1994,
+    "sum_profit": 4712590.1651
+  },
+  {
+    "nation": "INDIA",
+    "year": 1993,
+    "sum_profit": 5206022.697
+  },
+  {
+    "nation": "INDIA",
+    "year": 1992,
+    "sum_profit": 5487560.1537
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1998,
+    "sum_profit": 3345002.2542
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1997,
+    "sum_profit": 5411439.528
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1996,
+    "sum_profit": 5254499.9478
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1995,
+    "sum_profit": 4836321.6317
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1994,
+    "sum_profit": 5337364.4015999995
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1993,
+    "sum_profit": 5373060.5687
+  },
+  {
+    "nation": "INDONESIA",
+    "year": 1992,
+    "sum_profit": 4914733.8235
+  },
+  {
+    "nation": "IRAN",
+    "year": 1998,
+    "sum_profit": 2713238.2526
+  },
+  {
+    "nation": "IRAN",
+    "year": 1997,
+    "sum_profit": 3886227.4697
+  },
+  {
+    "nation": "IRAN",
+    "year": 1996,
+    "sum_profit": 4186382.6519
+  },
+  {
+    "nation": "IRAN",
+    "year": 1995,
+    "sum_profit": 4099938.8185
+  },
+  {
+    "nation": "IRAN",
+    "year": 1994,
+    "sum_profit": 4365941.5509
+  },
+  {
+    "nation": "IRAN",
+    "year": 1993,
+    "sum_profit": 4137953.4121
+  },
+  {
+    "nation": "IRAN",
+    "year": 1992,
+    "sum_profit": 4085827.0485
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1998,
+    "sum_profit": 3413467.0453999997
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1997,
+    "sum_profit": 5023629.3437
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1996,
+    "sum_profit": 4960552.7277999995
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1995,
+    "sum_profit": 5090443.5867
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1994,
+    "sum_profit": 5339685.5342999995
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1993,
+    "sum_profit": 4587902.4876
+  },
+  {
+    "nation": "IRAQ",
+    "year": 1992,
+    "sum_profit": 5425875.3799
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1998,
+    "sum_profit": 2600329.5233
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1997,
+    "sum_profit": 4520039.8091
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1996,
+    "sum_profit": 4214866.4703
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1995,
+    "sum_profit": 4802697.1871
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1994,
+    "sum_profit": 4259908.032
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1993,
+    "sum_profit": 4927922.7238
+  },
+  {
+    "nation": "JAPAN",
+    "year": 1992,
+    "sum_profit": 5254402.2952
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1998,
+    "sum_profit": 2180305.2265
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1997,
+    "sum_profit": 2701369.3105
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1996,
+    "sum_profit": 3346863.786
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1995,
+    "sum_profit": 2669424.6804
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1994,
+    "sum_profit": 2541956.3893
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1993,
+    "sum_profit": 2914358.9778
+  },
+  {
+    "nation": "JORDAN",
+    "year": 1992,
+    "sum_profit": 2960357.6927
+  },
+  {
+    "nation": "KENYA",
+    "year": 1998,
+    "sum_profit": 2529932.0859
+  },
+  {
+    "nation": "KENYA",
+    "year": 1997,
+    "sum_profit": 3371382.2925
+  },
+  {
+    "nation": "KENYA",
+    "year": 1996,
+    "sum_profit": 3639647.027
+  },
+  {
+    "nation": "KENYA",
+    "year": 1995,
+    "sum_profit": 3518213.9673
+  },
+  {
+    "nation": "KENYA",
+    "year": 1994,
+    "sum_profit": 3409813.8698
+  },
+  {
+    "nation": "KENYA",
+    "year": 1993,
+    "sum_profit": 3254602.3426
+  },
+  {
+    "nation": "KENYA",
+    "year": 1992,
+    "sum_profit": 3712558.6661
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1998,
+    "sum_profit": 2172942.1607999997
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1997,
+    "sum_profit": 4469702.4045
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1996,
+    "sum_profit": 4373552.323
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1995,
+    "sum_profit": 4298481.0265
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1994,
+    "sum_profit": 4113331.9625
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1993,
+    "sum_profit": 3607073.1014
+  },
+  {
+    "nation": "MOROCCO",
+    "year": 1992,
+    "sum_profit": 3764052.6034
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1998,
+    "sum_profit": 2224356.6058
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1997,
+    "sum_profit": 3495641.9931
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1996,
+    "sum_profit": 3012783.3917
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1995,
+    "sum_profit": 3958921.8444999997
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1994,
+    "sum_profit": 3040439.7766
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1993,
+    "sum_profit": 3536938.4521999997
+  },
+  {
+    "nation": "MOZAMBIQUE",
+    "year": 1992,
+    "sum_profit": 3653754.4646
+  },
+  {
+    "nation": "PERU",
+    "year": 1998,
+    "sum_profit": 2636287.1676
+  },
+  {
+    "nation": "PERU",
+    "year": 1997,
+    "sum_profit": 3842756.4603999997
+  },
+  {
+    "nation": "PERU",
+    "year": 1996,
+    "sum_profit": 4172006.7777
+  },
+  {
+    "nation": "PERU",
+    "year": 1995,
+    "sum_profit": 3888383.2488
+  },
+  {
+    "nation": "PERU",
+    "year": 1994,
+    "sum_profit": 3267810.1659999997
+  },
+  {
+    "nation": "PERU",
+    "year": 1993,
+    "sum_profit": 3613448.4913999997
+  },
+  {
+    "nation": "PERU",
+    "year": 1992,
+    "sum_profit": 3301575.1006
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1998,
+    "sum_profit": 2407069.9829
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1997,
+    "sum_profit": 3341972.5946
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1996,
+    "sum_profit": 3710258.3648
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1995,
+    "sum_profit": 3996396.6338
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1994,
+    "sum_profit": 4454476.9311
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1993,
+    "sum_profit": 3498965.3596
+  },
+  {
+    "nation": "ROMANIA",
+    "year": 1992,
+    "sum_profit": 3147168.7144
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1998,
+    "sum_profit": 3315075.6558
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1997,
+    "sum_profit": 4530842.6701
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1996,
+    "sum_profit": 5335065.2136
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1995,
+    "sum_profit": 4806684.5769
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1994,
+    "sum_profit": 4980954.0358
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1993,
+    "sum_profit": 4909647.7578
+  },
+  {
+    "nation": "RUSSIA",
+    "year": 1992,
+    "sum_profit": 4610026.4199
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1998,
+    "sum_profit": 3158813.2098
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1997,
+    "sum_profit": 4595977.6129
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1996,
+    "sum_profit": 4906821.8867
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1995,
+    "sum_profit": 4730748.6962
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1994,
+    "sum_profit": 5595601.5494
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1993,
+    "sum_profit": 5150865.9029
+  },
+  {
+    "nation": "SAUDI ARABIA",
+    "year": 1992,
+    "sum_profit": 4460203.3032
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1998,
+    "sum_profit": 2816827.2630999996
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1997,
+    "sum_profit": 4712981.4737
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1996,
+    "sum_profit": 4010919.6707
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1995,
+    "sum_profit": 4511948.3996
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1994,
+    "sum_profit": 4985980.2151999995
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1993,
+    "sum_profit": 4516200.9177
+  },
+  {
+    "nation": "UNITED KINGDOM",
+    "year": 1992,
+    "sum_profit": 4103757.5175
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1998,
+    "sum_profit": 3050724.3961
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1997,
+    "sum_profit": 4806505.5088
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1996,
+    "sum_profit": 4702364.8816
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1995,
+    "sum_profit": 4488930.4597
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1994,
+    "sum_profit": 4259807.2694
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1993,
+    "sum_profit": 4594664.6459
+  },
+  {
+    "nation": "UNITED STATES",
+    "year": 1992,
+    "sum_profit": 4591123.1306
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1998,
+    "sum_profit": 2503832.343
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1997,
+    "sum_profit": 4086210.5335
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1996,
+    "sum_profit": 3180124.8163
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1995,
+    "sum_profit": 4329181.2242
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1994,
+    "sum_profit": 4464267.8558
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1993,
+    "sum_profit": 4574008.5912999995
+  },
+  {
+    "nation": "VIETNAM",
+    "year": 1992,
+    "sum_profit": 4636129.5671
+  }
+]

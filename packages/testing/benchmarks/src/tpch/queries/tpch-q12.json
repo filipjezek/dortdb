@@ -1,0 +1,4 @@
+[
+  { "shipmode": "FOB", "high_line_count": 627, "low_line_count": 940 },
+  { "shipmode": "TRUCK", "high_line_count": 604, "low_line_count": 943 }
+]

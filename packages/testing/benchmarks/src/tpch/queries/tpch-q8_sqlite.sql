@@ -15,7 +15,7 @@ select
 from
 	(
 		select
-			strftime('%Y', o.orderdate) as year,
+			cast (strftime('%Y', o.orderdate) as integer) as year,
 			l.extendedprice * (1 - l.discount) as volume,
 			n2.name as nation
 		from

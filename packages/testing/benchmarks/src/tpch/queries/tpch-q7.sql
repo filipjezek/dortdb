@@ -7,9 +7,9 @@
 
 
 select
-	shipping.supp_nation,
-	shipping.cust_nation,
-	shipping.year,
+	shipping.supp_nation as supp_nation,
+	shipping.cust_nation as cust_nation,
+	shipping.year as year,
 	sum(shipping.volume) as revenue
 from
 	(

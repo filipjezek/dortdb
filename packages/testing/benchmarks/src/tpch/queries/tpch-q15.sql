@@ -18,11 +18,11 @@ with revenue0 (supplier_no, total_revenue) as materialized (
     l.suppkey
 )
 select
-  s.suppkey,
-  s.name,
-  s.address,
-  s.phone,
-  r.total_revenue
+  s.suppkey as suppkey,
+  s.name as name,
+  s.address as address,
+  s.phone as phone,
+  r.total_revenue as total_revenue
 from
   supplier s,
   revenue0 r

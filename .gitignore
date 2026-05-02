@@ -10,3 +10,5 @@ test-package
 vitest.config.*.timestamp*
 
 .venv
+
+packages/testing/showcase/public/*.zip

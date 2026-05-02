@@ -12,6 +12,7 @@ export interface BenchmarkArgs {
   unibench: {
     secondaryIndices: boolean;
   };
+  skipWarmup: boolean;
   output?: string;
 }
 
@@ -79,6 +80,11 @@ export function parseArgs(): BenchmarkArgs {
       default: undefined,
       defaultDescription: 'based on other parameters',
     })
+    .option('skip-warmup', {
+      type: 'boolean',
+      description: 'Skip warmup runs',
+      default: false,
+    })
     .parseSync();
   return {
     benchmark: argv.benchmark as 'tpch' | 'unibench',
@@ -98,5 +104,6 @@ export function parseArgs(): BenchmarkArgs {
       secondaryIndices: argv['unibench-secondary-indices'],
     },
     output: argv.output,
+    skipWarmup: argv['skip-warmup'],
   };
 }

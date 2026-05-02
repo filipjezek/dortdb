@@ -7,14 +7,14 @@
 
 
 select
-	c.custkey,
-	c.name,
+	c.custkey as custkey,
+	c.name as name,
 	sum(l.extendedprice * (1 - l.discount)) as revenue,
-	c.acctbal,
-	n.name,
-	c.address,
-	c.phone,
-	c.comment
+	c.acctbal as acctbal,
+	n.name as name,
+	c.address as address,
+	c.phone as phone,
+	c.comment as comment
 from
 	customer c,
 	orders o,

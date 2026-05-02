@@ -18,6 +18,33 @@ export const interval: Fn = {
   pure: true,
 };
 
+const dayMs = 24 * 60 * 60 * 1000;
+
+/**
+ * Sometimes adding days can result in "extra hours" due to daylight saving time changes.
+ * This function trims those extra hours differences when the original date is at midnight
+ * and the interval being added is a whole number of days
+ */
+export function trimExtraHours(
+  origDate: Date,
+  newDate: Date,
+  interval: Interval,
+): Date {
+  if (
+    +origDate % dayMs === 0 &&
+    +newDate % dayMs !== 0 &&
+    !interval.hours &&
+    !interval.minutes &&
+    !interval.seconds
+  ) {
+    newDate = new Date(
+      +newDate -
+        (newDate.getTimezoneOffset() - origDate.getTimezoneOffset()) * 60_000,
+    );
+  }
+  return newDate;
+}
+
 export const dateAdd: Fn = {
   name: 'add',
   schema: 'date',
@@ -36,7 +63,7 @@ export const dateAdd: Fn = {
 
       return add(b, a);
     }
-    return add(a, b as Interval);
+    return trimExtraHours(a, add(a, b as Interval), b as Interval);
   },
 };
 
@@ -54,7 +81,7 @@ export const dateSub: Fn = {
       res.seconds = a.seconds - b.seconds;
       return res;
     }
-    return sub(a, b);
+    return trimExtraHours(a, sub(a, b), b);
   },
 };
 
@@ -81,7 +108,7 @@ function postgresInterval(repr: string): Interval | null {
     days: /(?<val>[+-]?\s*\b\d+)\s*d(ay)?s?\b/,
     hours: /(?<val>[+-]?\s*\b\d+)\s*h((ou)?r)?s?\b/,
     minutes: /(?<val>[+-]?\s*\b\d+)\s*((min(ute)?s?)|m)\b/,
-    seconds: /(?<val>[+-]?\s*\b\d+(\.\d+)?)\s*((sec(ond)?)?s?|s)\b/,
+    seconds: /(?<val>[+-]?\s*\b\d+(\.\d+)?)\s*((sec(ond)?)s?|s)\b/,
   })) {
     const match = repr.match(regexp);
     if (match) {

@@ -1,0 +1,37 @@
+[
+  {
+    "cntrycode": "10",
+    "numcust": 94,
+    "totacctbal": 726864.49
+  },
+  {
+    "cntrycode": "17",
+    "numcust": 96,
+    "totacctbal": 722560.15
+  },
+  {
+    "cntrycode": "18",
+    "numcust": 97,
+    "totacctbal": 728012.19
+  },
+  {
+    "cntrycode": "24",
+    "numcust": 89,
+    "totacctbal": 660560.82
+  },
+  {
+    "cntrycode": "27",
+    "numcust": 95,
+    "totacctbal": 695290.63
+  },
+  {
+    "cntrycode": "28",
+    "numcust": 95,
+    "totacctbal": 735049.16
+  },
+  {
+    "cntrycode": "29",
+    "numcust": 84,
+    "totacctbal": 627694.27
+  }
+]

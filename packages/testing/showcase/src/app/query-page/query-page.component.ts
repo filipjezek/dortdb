@@ -192,6 +192,7 @@ export class QueryPageComponent {
       });
 
     this.registerDataSources();
+    this.registerTPCH();
   }
 
   parse() {

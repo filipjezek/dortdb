@@ -10,8 +10,8 @@ export const count: AggregateFn = {
 
 export const sum: AggregateFn = {
   name: 'sum',
-  init: () => 0,
-  step: (state: number, val: number) => state + val,
+  init: () => null,
+  step: (state: number, val: number) => (state === null ? val : state + val),
   stepInverse: (state: number, val: number) => state - val,
   result: (state: number) => state,
 };
@@ -29,7 +29,8 @@ export const avg: AggregateFn = {
     state.count--;
     return state;
   },
-  result: (state: { sum: number; count: number }) => state.sum / state.count,
+  result: (state: { sum: number; count: number }) =>
+    state.count === 0 ? null : state.sum / state.count,
 };
 
 export const min: AggregateFn = {

@@ -51,6 +51,7 @@ async function runQuery(
   /** in seconds */
   totalTimeout: number,
   runs: number,
+  skipWarmup: boolean,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, `tpch-q${query}.sql`),
@@ -67,8 +68,10 @@ async function runQuery(
   console.log(queryText);
 
   const now = Date.now();
-  for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
-    await measureQueryRun(query, queryText, db, i, true, i === 0);
+  if (!skipWarmup) {
+    for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
+      await measureQueryRun(query, queryText, db, i, true, i === 0);
+    }
   }
 
   for (let i = 0; i < runs && Date.now() - now < totalTimeout * 1000; i++) {
@@ -244,7 +247,13 @@ export default async function tpchBenchmarkAlaSQL(
   options: BenchmarkWorkerOptions,
 ) {
   const db = await prepareEnv(options.measureInit);
-  await runQuery(options.query, db, options.softTimeout, options.runs);
+  await runQuery(
+    options.query,
+    db,
+    options.softTimeout,
+    options.runs,
+    options.skipWarmup,
+  );
 }
 
 if (!isMainThread) {

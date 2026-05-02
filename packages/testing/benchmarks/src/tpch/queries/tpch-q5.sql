@@ -7,7 +7,7 @@
 
 
 select
-	n.name,
+	n.name as name,
 	sum(l.extendedprice * (1 - l.discount)) as revenue
 from
 	customer c,

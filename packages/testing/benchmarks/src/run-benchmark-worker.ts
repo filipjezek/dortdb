@@ -14,6 +14,7 @@ export interface BenchmarkWorkerOptions {
   runs: number;
   snapshotInterval: number;
   secondaryIndices: boolean;
+  skipWarmup: boolean;
 }
 
 export interface BenchmarkWorkerLogMessage {

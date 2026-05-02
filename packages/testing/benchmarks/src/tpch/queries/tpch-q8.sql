@@ -7,7 +7,7 @@
 
 
 select
-	all_nations.year,
+	all_nations.year as year,
 	sum(case
 		when all_nations.nation = 'BRAZIL' then all_nations.volume
 		else 0

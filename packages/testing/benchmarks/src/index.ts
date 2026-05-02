@@ -20,6 +20,7 @@ for (const db of args.database) {
         snapshotInterval: args.snapshotInterval,
         secondaryIndices:
           args.benchmark === 'unibench' && args.unibench.secondaryIndices,
+        skipWarmup: args.skipWarmup,
       });
     } catch (err) {
       logger.error(

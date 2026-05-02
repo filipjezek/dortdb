@@ -8,7 +8,8 @@
     "packages/testing/*"
   ],
   "scripts": {
-    "watch": "nx watch -p showcase -d -- nx run-many -t build -p %NX_PROJECT_NAME% --exclude=showcase"
+    "watch": "nx watch -p showcase -d -- nx run-many -t build -p %NX_PROJECT_NAME% --exclude=showcase",
+    "nx-daemon": "rm .nx/workspace-data/d/disabled && nx daemon --start"
   },
   "author": "dortdb",
   "license": "ISC",

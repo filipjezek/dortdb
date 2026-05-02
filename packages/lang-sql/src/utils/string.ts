@@ -65,7 +65,7 @@ export function parseIdentifier(original: string): string {
 
 export function likeToRegex(like: string, caseSensitive = true): RegExp {
   return new RegExp(
-    like.replace(/%/g, '.*').replace(/_/g, '.'),
+    '^' + like.replace(/%/g, '.*').replace(/_/g, '.') + '$',
     caseSensitive ? undefined : 'i',
   );
 }

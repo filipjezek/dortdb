@@ -7,7 +7,7 @@
 
 
 select
-	l.shipmode,
+	l.shipmode as shipmode,
 	sum(case
 		when o.orderpriority = '1-URGENT'
 			or o.orderpriority = '2-HIGH'

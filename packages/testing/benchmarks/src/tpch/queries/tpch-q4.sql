@@ -7,7 +7,7 @@
 
 
 select
-	o.orderpriority,
+	o.orderpriority as orderpriority,
 	count(*) as order_count
 from
 	orders o

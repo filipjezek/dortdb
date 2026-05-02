@@ -9,6 +9,9 @@ import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { promiseTimeout } from '../utils/promise-timeout.js';
+import { deepEqual } from '../utils/deep-equal.js';
+import { diff } from '@vitest/utils/diff';
+import { getExpectedResult } from './get-expected.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -33,6 +36,7 @@ async function prepareEnv(measureInit: boolean): Promise<DortDB> {
   });
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
+  workerLog({}, 'Preparing environment');
   await registerDataSources(db, measureInit);
   workerLog({}, 'Finished preparing environment');
   return db;
@@ -44,23 +48,42 @@ async function runQuery(
   /** in seconds */
   totalTimeout: number,
   runs: number,
+  skipWarmup: boolean,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, `tpch-q${query}.sql`),
     'utf-8',
   ).replaceAll('\r\n', '\n');
+  const expectedResult = getExpectedResult(query);
   console.log(new Date());
   console.log(`Running query: tpch-q${query}.sql`);
   console.log(queryText);
 
-  // warmup
   const now = Date.now();
-  for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
-    await measureQueryRun(query, queryText, db, i, true, i === 0);
+  if (!skipWarmup) {
+    for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
+      await measureQueryRun(
+        query,
+        queryText,
+        db,
+        i,
+        true,
+        i === 0,
+        expectedResult,
+      );
+    }
   }
 
   for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
-    await measureQueryRun(query, queryText, db, i, false, i === 0);
+    await measureQueryRun(
+      query,
+      queryText,
+      db,
+      i,
+      false,
+      i === 0,
+      expectedResult,
+    );
   }
 }
 
@@ -71,6 +94,7 @@ async function measureQueryRun(
   iteration: number,
   isWarmup: boolean,
   measureMemory: boolean,
+  expectedResult?: any,
 ) {
   gc();
   if (measureMemory) {
@@ -81,7 +105,7 @@ async function measureQueryRun(
   }
   await promiseTimeout(1000);
   performance.mark(`runQuery_${query}_start`);
-  db.query(queryText);
+  const res = db.query(queryText);
 
   performance.mark(`runQuery_${query}_end`);
   performance.measure(`runQuery_${query}`, {
@@ -94,6 +118,32 @@ async function measureQueryRun(
       { ...process.memoryUsage(), query, iteration, isWarmup },
       'Memory usage after running query',
     );
+  }
+
+  if (expectedResult) {
+    if (deepEqual(res.data, expectedResult)) {
+      workerLog(
+        { query, iteration, isWarmup },
+        'Query result matches expected result',
+      );
+    } else {
+      workerLog(
+        {
+          query,
+          iteration,
+          isWarmup,
+          expected: expectedResult,
+          actual: res.data,
+        },
+        'Query result does NOT match expected result',
+      );
+      console.log(
+        diff(expectedResult, res.data, {
+          aAnnotation: 'expected',
+          bAnnotation: 'actual',
+        }),
+      );
+    }
   }
 }
 
@@ -128,7 +178,13 @@ async function registerDataSources(db: DortDB, measureInit: boolean) {
 
 export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
   const db = await prepareEnv(options.measureInit);
-  await runQuery(options.query, db, options.softTimeout, options.runs);
+  await runQuery(
+    options.query,
+    db,
+    options.softTimeout,
+    options.runs,
+    options.skipWarmup,
+  );
 }
 
 if (!isMainThread) {

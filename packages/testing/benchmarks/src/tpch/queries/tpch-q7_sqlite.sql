@@ -16,7 +16,7 @@ from
 		select
 			n1.name as supp_nation,
 			n2.name as cust_nation,
-			strftime('%Y', l.shipdate) as year,
+			cast (strftime('%Y', l.shipdate) as integer) as year,
 			l.extendedprice * (1 - l.discount) as volume
 		from
 			supplier s,

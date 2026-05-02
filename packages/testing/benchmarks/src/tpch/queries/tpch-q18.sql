@@ -5,14 +5,16 @@
 -- Function Query Definition
 -- Approved February 1998
 
+-- TODO: selection pushdown through groupby keys
+
 
 select
-	c.name,
-	c.custkey,
-	o.orderkey,
-	o.orderdate,
-	o.totalprice,
-	sum(l.quantity)
+	c.name as name,
+	c.custkey as custkey,
+	o.orderkey as orderkey,
+	o.orderdate as orderdate,
+	o.totalprice as totalprice,
+	sum(l.quantity) as sum_qty
 from
 	customer c,
 	orders o,
@@ -25,7 +27,7 @@ where
 			lineitem l
 		group by
 			l.orderkey having
-				sum(l.quantity) > 313
+				sum(l.quantity) > 300 -- originally 313, but that had no results
 	)
 	and c.custkey = o.custkey
 	and o.orderkey = l.orderkey

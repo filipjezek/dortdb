@@ -44,10 +44,16 @@ export function exprToSelection(
   return source;
 }
 
-function splitAnds(expr: PlanOperator, andsContainer: PlanOperator[]) {
+/**
+ * Splits a logical plan expression by AND operators
+ */
+export function splitAnds(
+  expr: PlanOperator,
+  andsContainer: PlanOperator[] = [],
+): PlanOperator[] {
   if (!(expr instanceof FnCall) || expr.impl !== and.impl) {
     andsContainer.push(expr);
-    return;
+    return andsContainer;
   }
   splitAnds(
     expr.args[0] instanceof ASTIdentifier
@@ -61,4 +67,5 @@ function splitAnds(expr: PlanOperator, andsContainer: PlanOperator[]) {
       : expr.args[1].op,
     andsContainer,
   );
+  return andsContainer;
 }

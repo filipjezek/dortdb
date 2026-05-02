@@ -7,8 +7,8 @@
 
 
 select
-	s.name,
-	s.address
+	s.name as name,
+	s.address as address
 from
 	supplier s,
 	nation n

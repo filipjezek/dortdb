@@ -12,7 +12,7 @@ import {
   PerformanceMeasure,
   PerformanceObserver,
 } from 'node:perf_hooks';
-import { isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { isMainThread, workerData } from 'node:worker_threads';
 import { Attr, Document, Element, Node } from 'slimdom';
 import { createTreeWalker } from 'tasty-treewalker/src/TreeWalker-polyfill.js';
 import { promiseTimeout } from '../utils/promise-timeout.js';
@@ -204,6 +204,7 @@ async function runQuery(
   /** in seconds */
   totalTimeout: number,
   runs: number,
+  skipWarmup: boolean,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, query.filename),
@@ -213,10 +214,11 @@ async function runQuery(
   console.log(`Running query: ${query.filename} (${query.lang})`);
   console.log(queryText);
 
-  // warmup
   const now = Date.now();
-  for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
-    await measureQueryRun(query, queryText, db, i, true, i === 0);
+  if (!skipWarmup) {
+    for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
+      await measureQueryRun(query, queryText, db, i, true, i === 0);
+    }
   }
 
   for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
@@ -349,6 +351,7 @@ export default async function unibenchBenchmark(
     db,
     options.softTimeout,
     options.runs,
+    options.skipWarmup,
   );
 }
 

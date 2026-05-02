@@ -41,8 +41,8 @@ export class JoinIndices implements PatternRule<
   match(node: plan.Join): PatternRuleMatchResult<JoinIndicesBindings> {
     for (const side of ['right', 'left'] as const) {
       if (
-        (side === 'left' && node.rightOuter) ||
-        (side === 'right' && node.leftOuter)
+        (side === 'left' && node.leftOuter) ||
+        (side === 'right' && node.rightOuter)
       )
         continue;
       const tRes = this.traverseSide(node[side]);
@@ -240,7 +240,7 @@ export class JoinIndices implements PatternRule<
     const djoin = new plan.ProjectionConcat(
       node.lang,
       node[bindings.side],
-      node[`${bindings.side}Outer`],
+      node[`${bindings.side === 'left' ? 'right' : 'left'}Outer`],
       proj,
     );
 
