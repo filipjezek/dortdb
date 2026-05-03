@@ -25,7 +25,7 @@ export function exprToSelection(
   if (expr instanceof ASTIdentifier) {
     andsContainer.push(new FnCall(lang, [expr], ret1));
   } else {
-    splitAnds(expr, andsContainer);
+    splitByOp(expr, and, andsContainer);
   }
   for (const andExpr of andsContainer) {
     let calcParams = andExpr.accept(calcBuilders);
@@ -45,27 +45,30 @@ export function exprToSelection(
 }
 
 /**
- * Splits a logical plan expression by AND operators
+ * Splits a logical plan expression by `op` operators
  */
-export function splitAnds(
+export function splitByOp(
   expr: PlanOperator,
-  andsContainer: PlanOperator[] = [],
+  op: { impl: (...args: any[]) => any },
+  opsContainer: PlanOperator[] = [],
 ): PlanOperator[] {
-  if (!(expr instanceof FnCall) || expr.impl !== and.impl) {
-    andsContainer.push(expr);
-    return andsContainer;
+  if (!(expr instanceof FnCall) || expr.impl !== op.impl) {
+    opsContainer.push(expr);
+    return opsContainer;
   }
-  splitAnds(
+  splitByOp(
     expr.args[0] instanceof ASTIdentifier
       ? new FnCall(expr.lang, [expr.args[0]], ret1)
       : expr.args[0].op,
-    andsContainer,
+    op,
+    opsContainer,
   );
-  splitAnds(
+  splitByOp(
     expr.args[1] instanceof ASTIdentifier
       ? new FnCall(expr.lang, [expr.args[1]], ret1)
       : expr.args[1].op,
-    andsContainer,
+    op,
+    opsContainer,
   );
-  return andsContainer;
+  return opsContainer;
 }

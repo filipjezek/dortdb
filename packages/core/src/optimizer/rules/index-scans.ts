@@ -1,11 +1,13 @@
 import { ASTIdentifier } from '../../ast.js';
 import { Trie } from '../../data-structures/trie.js';
 import { DortDBAsFriend } from '../../db.js';
+import { CalculationParams, EqualityChecker } from '../../index.js';
 import {
   fromItemIndexKey,
   Index,
   IndexMatchInput,
 } from '../../indices/index.js';
+import { ret1 } from '../../internal-fns/index.js';
 import {
   Calculation,
   FnCall,
@@ -16,7 +18,9 @@ import {
   Selection,
   TupleSource,
 } from '../../plan/operators/index.js';
-import { PlanOperator } from '../../plan/visitor.js';
+import { PlanOperator, PlanVisitor } from '../../plan/visitor.js';
+import { intermediateToCalc } from '../../utils/calculation.js';
+import { getIMIAlternatives } from '../../utils/indices.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 
 export interface IndexScansBindings {
@@ -30,7 +34,13 @@ export interface IndexScansBindings {
  * Finds selections that can be satisfied by an index scan and replaces them with an index scan operator.
  */
 export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
-  constructor(protected db: DortDBAsFriend) {}
+  protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  protected eqCheckers: Record<string, EqualityChecker>;
+
+  constructor(protected db: DortDBAsFriend) {
+    this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
+    this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
+  }
 
   match(node: Selection): PatternRuleMatchResult<IndexScansBindings> {
     if (node.parent.constructor === Selection) return null; // already handled
@@ -74,18 +84,67 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
     }
 
     for (const index of indices) {
-      const match = index.match(candidates, renameMap);
+      const match = this.matchIndex(index, candidates, renameMap);
       if (match) {
-        candidates = candidates.filter((_, i) => match.includes(i));
-        bindings.selections = bindings.selections.filter(
-          (s, i) => candidates.find((c) => c.sIndex === i) !== undefined,
+        candidates = match.candidates;
+        bindings.selections = bindings.selections.filter((s, i) =>
+          candidates.some((c) => c.sIndex === i),
         );
         bindings.index = index;
-        bindings.accessor = index.createAccessor(candidates);
+        bindings.accessor = match.accessor;
         return {
           bindings,
         };
       }
+    }
+    return null;
+  }
+
+  protected matchIndex(
+    index: Index,
+    candidates: (IndexMatchInput & { sIndex: number })[],
+    renameMap: RenameMap,
+  ) {
+    const origMatch = index.match(candidates, renameMap);
+    if (origMatch) {
+      candidates = candidates.filter((_, i) => origMatch.includes(i));
+      return { candidates, accessor: index.createAccessor(candidates) };
+    }
+
+    const { alternatives } = getIMIAlternatives(candidates);
+
+    for (const [topOr, alternativeGroup] of alternatives) {
+      const matches = alternativeGroup.map((alternatives) =>
+        index.match(alternatives, renameMap),
+      );
+      if (!matches.every(ret1)) continue;
+      const accessors = matches.map((g, gi) => {
+        return index.createAccessor(g.map((i) => alternativeGroup[gi][i]));
+      });
+
+      const combinedAccessor = new FnCall(
+        accessors[0].lang,
+        accessors.map((a) => ({ op: a.original ?? a })),
+        function* (...iters) {
+          const seen = new Trie<unknown>();
+          for (const iter of iters) {
+            for (const item of iter) {
+              if (!seen.has([item])) {
+                seen.add([item]);
+                yield item;
+              }
+            }
+          }
+        },
+      );
+      return {
+        accessor: intermediateToCalc(
+          combinedAccessor,
+          this.calcBuilders,
+          this.eqCheckers,
+        ),
+        candidates: candidates.filter((c) => c.containingFn === topOr),
+      };
     }
     return null;
   }

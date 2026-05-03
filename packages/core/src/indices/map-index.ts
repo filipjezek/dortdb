@@ -1,5 +1,5 @@
 import { DortDBAsFriend } from '../db.js';
-import { eq } from '../operators/relational.js';
+import { eq, isOp } from '../operators/relational.js';
 import { Calculation, FnCall, RenameMap } from '../plan/operators/index.js';
 import { PlanVisitor } from '../plan/visitor.js';
 import { intermediateToCalc } from '../utils/calculation.js';
@@ -47,8 +47,9 @@ export class MapIndex implements HashJoinIndex {
   ): number[] | null {
     const eqChecker = this.eqCheckers[this.expressions[0].lang];
     for (let i = 0; i < expressions.length; i++) {
+      const fn = expressions[i].containingFn.impl;
       if (
-        expressions[i].containingFn.impl === eq.impl &&
+        (fn === eq.impl || fn === isOp.impl) &&
         eqChecker.areEqual(this.expressions[0].original, expressions[i].expr, {
           ignoreLang: true,
           renameMap,
@@ -61,7 +62,10 @@ export class MapIndex implements HashJoinIndex {
   }
 
   static canIndex(expressions: IndexMatchInput[]): number[] | null {
-    const i = expressions.findIndex((e) => e.containingFn.impl === eq.impl);
+    const i = expressions.findIndex(
+      (e) =>
+        e.containingFn.impl === eq.impl || e.containingFn.impl === isOp.impl,
+    );
     return i === -1 ? null : [i];
   }
 

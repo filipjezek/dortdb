@@ -35,7 +35,7 @@ import {
   overrideSource,
   schemaToTrie,
   shortcutNulls,
-  splitAnds,
+  splitByOp,
 } from '@dortdb/core/utils';
 import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { inOp, notInOp } from '../operators/basic.js';
@@ -46,6 +46,7 @@ import { SQLDataAdapter } from '../language/data-adapter.js';
 import { SQLLanguage } from '../language/language.js';
 import { collect } from '@dortdb/core/aggregates';
 import { unwind } from '@dortdb/core/fns';
+import { and, eq, isOp, or } from '@dortdb/core/operators';
 import { toBool } from '@dortdb/core/castables';
 import { TableAlias } from '../plan/table-alias.js';
 
@@ -603,7 +604,7 @@ export class SQLLogicalPlanBuilder
         left,
         right,
         node.condition
-          ? splitAnds(node.condition.accept(this)).map(this.opToCalc)
+          ? splitByOp(node.condition.accept(this), and).map(this.opToCalc)
           : [],
       );
       (op as plan.Join).leftOuter =
@@ -910,6 +911,44 @@ export class SQLLogicalPlanBuilder
   visitLiteral<U>(node: ASTLiteral<U>): PlanOperator {
     return new plan.Literal('sql', node.value);
   }
+
+  protected optimizeInOp(
+    expr: plan.PlanOpAsArg | ASTIdentifier,
+    subq: PlanOperator,
+  ): PlanOperator {
+    // the unique id is important because of naming collisions
+    // we want to make sure that the selection we add
+    // can be pushed down to the source and converted into an index scan if possible
+    const uniqId = toId(Symbol('inNeedle'));
+    let res = toTuples(subq);
+    const subqCol = res.schema[0];
+    const orNull = new plan.FnCall(
+      'sql',
+      [
+        { op: new plan.FnCall('sql', [uniqId, subqCol], eq.impl) },
+        {
+          op: new plan.FnCall(
+            'sql',
+            [subqCol, { op: new plan.Literal('sql', null) }],
+            isOp.impl,
+          ),
+        },
+      ],
+      or.impl,
+    );
+    res = new plan.Selection('sql', this.opToCalc(orNull), res);
+
+    const exprCalc =
+      expr instanceof ASTIdentifier ? expr : this.opToCalc(expr.op);
+    const uniqSrc = new plan.Projection(
+      'sql',
+      [[exprCalc, uniqId]],
+      new plan.NullSource('sql'),
+    );
+    res = new plan.ProjectionConcat('sql', res, false, uniqSrc);
+    return new plan.MapToItem('sql', subqCol, res);
+  }
+
   visitOperator(node: ASTOperator): PlanOperator {
     const op = this.db.langMgr.getOp(node.lang, ...idToPair(node.id));
     const result = new plan.FnCall(
@@ -923,6 +962,12 @@ export class SQLLogicalPlanBuilder
       (op.impl === inOp.impl || op.impl === notInOp.impl) &&
       'op' in result.args[1]
     ) {
+      if (!(plan.CalcIntermediate in result.args[1].op)) {
+        result.args[1].op = this.optimizeInOp(
+          result.args[0],
+          result.args[1].op,
+        );
+      }
       result.args[1].acceptSequence = true;
     } else if (result.impl === like.impl || result.impl === ilike.impl) {
       // possibly precompute the regex for LIKE/ILIKE

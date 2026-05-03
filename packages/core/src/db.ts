@@ -162,7 +162,9 @@ export class DortDB<LangNames extends string = string> {
   public createIndex(
     source: (symbol | string | number)[],
     expressions: string[],
-    indexCls: { new (expressions: Calculation[], db: DortDBAsFriend): Index },
+    indexCls: {
+      new (expressions: Calculation[], db: DortDBAsFriend): Index;
+    },
     options?: QueryOptions<LangNames> & {
       /** If the source is supposed to be an {@link ItemSource},
        * what is the key we are looking for in the expression? */
