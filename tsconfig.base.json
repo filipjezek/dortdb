@@ -5,7 +5,7 @@
     "declarationMap": true,
     "forceConsistentCasingInFileNames": true,
     "importHelpers": true,
-    "lib": ["ESNext", "ESNext.Iterator"],
+    "lib": ["ESNext", "ESNext.Iterator", "DOM"], // DOM is needed for console (!?)
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noImplicitReturns": true,

@@ -1,13 +1,18 @@
+import { ASTIdentifier } from '../../ast.js';
+import { Trie } from '../../data-structures/trie.js';
 import { DortDBAsFriend } from '../../db.js';
+import { retI1 } from '../../internal-fns/index.js';
 import {
   CartesianProduct,
   Difference,
   Distinct,
+  GroupBy,
   Intersection,
   Join,
   OrderBy,
   Projection,
   ProjectionConcat,
+  RenameMap,
   Selection,
   Union,
 } from '../../plan/operators/index.js';
@@ -21,6 +26,7 @@ import {
   containsAny,
   difference,
   restriction,
+  schemaToTrie,
 } from '../../utils/trie.js';
 import { AttributeRenameChecker } from '../../visitors/attribute-rename-checker.js';
 import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
@@ -86,18 +92,28 @@ export class PushdownSelections implements PatternRule<
       return this.matchProjection(bindings);
     }
     if (
-      (bindings.source.constructor === Join &&
-        !(bindings.source as Join).leftOuter &&
-        !(bindings.source as Join).rightOuter) ||
+      bindings.source.constructor === Join ||
       bindings.source.constructor === CartesianProduct
     ) {
       return this.matchJoins(bindings);
     }
-    if (
-      bindings.source.constructor === ProjectionConcat &&
-      !(bindings.source as ProjectionConcat).outer
-    ) {
+    if (bindings.source.constructor === ProjectionConcat) {
       return this.matchProjectionConcat(bindings);
+    }
+    if (bindings.source.constructor === GroupBy) {
+      return this.matchGroupBy(bindings);
+    }
+    return null;
+  }
+
+  protected matchGroupBy(bindings: PushdownSelectionsBindings) {
+    const src = bindings.source as GroupBy;
+    const keySet = schemaToTrie(src.keys.map(retI1));
+    for (const s of bindings.selections) {
+      const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
+      if (containsAll(keySet, tdeps)) {
+        return { bindings };
+      }
     }
     return null;
   }
@@ -107,8 +123,8 @@ export class PushdownSelections implements PatternRule<
     for (const s of bindings.selections) {
       const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
       if (
-        containsAll(src.left.schemaSet, tdeps) ||
-        containsAll(src.right.schemaSet, tdeps)
+        (!(src as Join).rightOuter && containsAll(src.left.schemaSet, tdeps)) ||
+        (!(src as Join).leftOuter && containsAll(src.right.schemaSet, tdeps))
       ) {
         return { bindings };
       }
@@ -121,7 +137,7 @@ export class PushdownSelections implements PatternRule<
       const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
       if (
         containsAll(src.source.schemaSet, tdeps) ||
-        containsAll(src.mapping.schemaSet, tdeps)
+        (!src.outer && containsAll(src.mapping.schemaSet, tdeps))
       ) {
         return { bindings };
       }
@@ -154,16 +170,22 @@ export class PushdownSelections implements PatternRule<
       return this.tranformSetOp(source as any, node, last, selections);
     }
     if (source.constructor === Projection) {
-      return this.transformProjection(source as any, selections);
+      return this.transformProjection(source as Projection, selections);
     }
     if (
       source.constructor === CartesianProduct ||
       source.constructor === Join
     ) {
-      return this.transformJoin(source as any, selections);
+      return this.transformJoin(source as CartesianProduct, selections);
     }
     if (source.constructor === ProjectionConcat) {
-      return this.transformProjectionConcat(source as any, selections);
+      return this.transformProjectionConcat(
+        source as ProjectionConcat,
+        selections,
+      );
+    }
+    if (source.constructor === GroupBy) {
+      return this.transformGroupBy(source as GroupBy, selections);
     }
     return node;
   }
@@ -178,6 +200,66 @@ export class PushdownSelections implements PatternRule<
     source.source = first;
     first.parent = source;
     return source;
+  }
+
+  protected transformGroupBy(source: GroupBy, selections: Selection[]) {
+    const canPushdown: Selection[] = [];
+    const mustStay: Selection[] = [];
+    const toRename = new Set<Selection>();
+    const keySet = schemaToTrie(source.keys.map(retI1));
+    const renamesInv = new Trie() as RenameMap;
+    for (const [orig, alias] of source.keys) {
+      if (orig instanceof ASTIdentifier && !orig.equals(alias)) {
+        renamesInv.set(alias.parts, orig.parts);
+      }
+    }
+
+    for (const s of selections) {
+      const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
+      if (containsAll(keySet, tdeps)) {
+        canPushdown.push(s);
+        if (renamesInv.size && containsAny(renamesInv, tdeps)) {
+          toRename.add(s);
+        }
+      } else {
+        mustStay.push(s);
+      }
+    }
+
+    for (let i = 0; i < mustStay.length - 1; i++) {
+      mustStay[i].source = mustStay[i + 1];
+      mustStay[i + 1].parent = mustStay[i];
+    }
+    for (let i = 0; i < canPushdown.length - 1; i++) {
+      const curr = canPushdown[i];
+      curr.source = canPushdown[i + 1];
+      canPushdown[i + 1].parent = curr;
+      if (toRename.has(curr)) {
+        this.renamerVmap[curr.lang].rename(curr.condition, renamesInv);
+      }
+    }
+
+    for (const s of canPushdown) {
+      s.schema = source.source.schema.slice();
+      s.schemaSet = source.source.schemaSet.clone();
+    }
+
+    const lastCP = canPushdown.at(-1);
+    lastCP.source = source.source;
+    source.source.parent = lastCP;
+    source.source = canPushdown[0];
+    canPushdown[0].parent = source;
+    if (toRename.has(lastCP)) {
+      this.renamerVmap[lastCP.lang].rename(lastCP.condition, renamesInv);
+    }
+
+    if (mustStay.length) {
+      mustStay.at(-1).source = source;
+      source.parent = mustStay.at(-1);
+      return mustStay[0];
+    } else {
+      return source;
+    }
   }
 
   protected tranformSetOp(
@@ -260,11 +342,17 @@ export class PushdownSelections implements PatternRule<
     for (const s of selections) {
       const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
       let used = false;
-      if (containsAll(source.left.schemaSet, tdeps)) {
+      if (
+        !(source as Join).rightOuter &&
+        containsAll(source.left.schemaSet, tdeps)
+      ) {
         lefts.push(s);
         used = true;
       }
-      if (containsAll(source.right.schemaSet, tdeps)) {
+      if (
+        !(source as Join).leftOuter &&
+        containsAll(source.right.schemaSet, tdeps)
+      ) {
         if (used) {
           rights.push(this.cloneSelection(s));
         } else {
@@ -303,7 +391,7 @@ export class PushdownSelections implements PatternRule<
     for (const s of selections) {
       let used = false;
       const tdeps = restriction(this.getSelectionDeps(s), source.schemaSet);
-      if (containsAll(source.mapping.schemaSet, tdeps)) {
+      if (!source.outer && containsAll(source.mapping.schemaSet, tdeps)) {
         horizs.push(s);
         used = true;
       }

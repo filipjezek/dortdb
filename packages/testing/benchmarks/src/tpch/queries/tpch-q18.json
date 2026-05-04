@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Customer#000001639",
+    "custkey": 1639,
+    "orderkey": 502886,
+    "orderdate": "1994-04-12",
+    "totalprice": 456423.88,
+    "sum_qty": 312
+  },
+  {
+    "name": "Customer#000006655",
+    "custkey": 6655,
+    "orderkey": 29158,
+    "orderdate": "1995-10-21",
+    "totalprice": 452805.02,
+    "sum_qty": 305
+  },
+  {
+    "name": "Customer#000014110",
+    "custkey": 14110,
+    "orderkey": 565574,
+    "orderdate": "1995-09-24",
+    "totalprice": 425099.85,
+    "sum_qty": 301
+  },
+  {
+    "name": "Customer#000001775",
+    "custkey": 1775,
+    "orderkey": 6882,
+    "orderdate": "1997-04-09",
+    "totalprice": 408368.1,
+    "sum_qty": 303
+  },
+  {
+    "name": "Customer#000011459",
+    "custkey": 11459,
+    "orderkey": 551136,
+    "orderdate": "1993-05-19",
+    "totalprice": 386812.74,
+    "sum_qty": 308
+  }
+]

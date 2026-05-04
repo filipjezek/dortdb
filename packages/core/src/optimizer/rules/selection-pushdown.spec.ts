@@ -7,6 +7,7 @@ import { PushdownSelections } from './selection-pushdown.js';
 import { intermediateToCalc } from '../../utils/calculation.js';
 import { CalculationBuilder } from '../../visitors/calculation-builder.js';
 import { PlanTupleOperator } from '../../plan/visitor.js';
+import { count } from '../../aggregates/math.js';
 
 function strToId(...strs: (string | symbol)[]): ASTIdentifier {
   return ASTIdentifier.fromParts(strs);
@@ -117,6 +118,80 @@ describe('PushdownSelections', () => {
         new plan.Selection(lang, calc.clone(), source.clone()),
       ),
     );
+    expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
+  });
+
+  it('should push down a selection through a groupby if it depends on grouping keys', () => {
+    const calc = strToCalc('aa');
+    const agg = new plan.AggregateCall(
+      lang,
+      [strToId('b')],
+      count,
+      strToId('count'),
+    );
+    const initialPlan = new plan.Limit(
+      lang,
+      10,
+      10,
+      new plan.Selection(
+        lang,
+        calc.clone(),
+        new plan.GroupBy(
+          lang,
+          [[strToId('a'), strToId('aa')]],
+          [agg.clone()],
+          source.clone(),
+        ),
+      ),
+    );
+
+    const optimized = db.optimizer.optimize(initialPlan);
+
+    const expectedCalc = strToCalc('a');
+    expectedCalc.impl = calc.impl;
+    (expectedCalc.original as plan.FnCall).impl = (
+      calc.original as plan.FnCall
+    ).impl;
+    const expectedPlan = new plan.Limit(
+      lang,
+      10,
+      10,
+      new plan.GroupBy(
+        lang,
+        [[strToId('a'), strToId('aa')]],
+        [agg.clone()],
+        new plan.Selection(lang, expectedCalc, source.clone()),
+      ),
+    );
+    expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
+  });
+
+  it('should not push down a selection through a groupby if it depends on aggregated keys', () => {
+    const calc = strToCalc('count', [['aa']]);
+    const agg = new plan.AggregateCall(
+      lang,
+      [strToId('b')],
+      count,
+      strToId('count'),
+    );
+    const initialPlan = new plan.Limit(
+      lang,
+      10,
+      10,
+      new plan.Selection(
+        lang,
+        calc.clone(),
+        new plan.GroupBy(
+          lang,
+          [[strToId('a'), strToId('aa')]],
+          [agg.clone()],
+          source.clone(),
+        ),
+      ),
+    );
+
+    const optimized = db.optimizer.optimize(initialPlan);
+    const expectedPlan = initialPlan.clone();
     expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
   });
 
@@ -311,7 +386,7 @@ describe('PushdownSelections', () => {
       });
     }
 
-    it('should not push down a selection through an outer join', () => {
+    it('should not push down a selection through the mapping of an outer projection concat', () => {
       const calc = strToCalc('a');
 
       const initialPlan = new plan.Limit(
@@ -331,6 +406,89 @@ describe('PushdownSelections', () => {
       );
 
       const expectedPlan = initialPlan.clone();
+      const optimized = db.optimizer.optimize(initialPlan);
+      expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
+    });
+
+    it('should push down a selection through the source of an outer projection concat', () => {
+      const calc = strToCalc('c');
+
+      const initialPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.Selection(
+          lang,
+          calc.clone(),
+          new plan.ProjectionConcat(
+            lang,
+            source.clone(),
+            true,
+            source2.clone(),
+          ),
+        ),
+      );
+
+      const expectedPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.ProjectionConcat(
+          lang,
+          source.clone(),
+          true,
+          new plan.Selection(lang, calc.clone(), source2.clone()),
+        ),
+      );
+
+      // const expectedPlan = initialPlan.clone();
+      const optimized = db.optimizer.optimize(initialPlan);
+      expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
+    });
+
+    it('should not push down a selection through an outer join', () => {
+      const calc = strToCalc('a');
+
+      const join = new plan.Join(lang, source.clone(), source2.clone(), []);
+      join.rightOuter = true;
+
+      const initialPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.Selection(lang, calc.clone(), join),
+      );
+
+      const expectedPlan = initialPlan.clone();
+      const optimized = db.optimizer.optimize(initialPlan);
+      expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
+    });
+
+    it('should push down a selection through the other side of an outer join', () => {
+      const calc = strToCalc('a');
+
+      const join = new plan.Join(lang, source.clone(), source2.clone(), []);
+      join.leftOuter = true;
+
+      const initialPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.Selection(lang, calc.clone(), join),
+      );
+
+      const expectedPlan = new plan.Limit(
+        lang,
+        10,
+        10,
+        new plan.Join(
+          lang,
+          new plan.Selection(lang, calc.clone(), source.clone()),
+          source2.clone(),
+          [],
+        ),
+      );
+      (expectedPlan.source as plan.Join).leftOuter = true;
       const optimized = db.optimizer.optimize(initialPlan);
       expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
     });

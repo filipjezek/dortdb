@@ -7,8 +7,8 @@
 
 
 select
-	profit.nation,
-	profit.year,
+	profit.nation as nation,
+	profit.year as year,
 	sum(profit.amount) as sum_profit
 from
 	(

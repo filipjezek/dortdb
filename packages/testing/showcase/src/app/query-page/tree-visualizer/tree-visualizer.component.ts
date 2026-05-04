@@ -75,44 +75,75 @@ export class TreeVisualizerComponent implements AfterViewInit {
     this.zoom = this.initZoom();
   }
 
+  private inlineShadows(svgNode: SVGSVGElement) {
+    if (!svgNode.classList.contains('shadows')) return;
+    svgNode.querySelectorAll('rect').forEach((rect) => {
+      const compStyle = getComputedStyle(rect);
+      rect.style.filter = `url(#shadow-${rect.parentElement.dataset['lang']})`;
+      rect.style.stroke = compStyle.stroke;
+    });
+  }
+
+  private hideTriangles(svgNode: SVGSVGElement) {
+    if (svgNode.classList.contains('triangles')) return;
+    svgNode.querySelectorAll('polygon').forEach((poly) => {
+      poly.dataset['originalFill'] = poly.getAttribute('fill');
+      poly.setAttribute('fill', 'none');
+    });
+  }
+
+  private restoreTriangles(svgNode: SVGSVGElement) {
+    if (svgNode.classList.contains('triangles')) return;
+    svgNode.querySelectorAll('polygon').forEach((poly) => {
+      poly.setAttribute('fill', poly.dataset['originalFill']);
+      poly.dataset['originalFill'] = undefined;
+    });
+  }
+
+  private removeInlineShadows(svgNode: SVGSVGElement) {
+    if (!svgNode.classList.contains('shadows')) return;
+    svgNode.querySelectorAll('rect').forEach((rect) => {
+      rect.style.stroke = null;
+      rect.style.filter = null;
+    });
+  }
+
+  private removeLightDark(color: string, isDark: boolean): string {
+    const regex = /light-dark\(([^,]+),([^)]+)\)/;
+    const match = color.match(regex);
+    if (match) {
+      return isDark ? match[2] : match[1];
+    }
+    return color;
+  }
+
   saveImage(svgNode: SVGSVGElement) {
     const compStyle = getComputedStyle(svgNode);
-    for (const prop of this.graphBuilder.cssVariables) {
-      svgNode.style.setProperty(prop, compStyle.getPropertyValue(prop));
-    }
-    const svgString = new XMLSerializer().serializeToString(svgNode);
-    for (const prop of this.graphBuilder.cssVariables) {
-      svgNode.style.removeProperty(prop);
-    }
+    this.inlineShadows(svgNode);
+    this.hideTriangles(svgNode);
+
+    let svgString = new XMLSerializer().serializeToString(svgNode);
+    const isDark = document.body.classList.contains('dark');
+    svgString = svgString.replaceAll(/var\(--[^)]+\)/g, (match) => {
+      const value = compStyle.getPropertyValue(match.slice(4, -1).trim());
+      if (!value) return match;
+      return this.removeLightDark(value, isDark);
+    });
+    svgString = svgString.replace(/svg\.shadows rect {.+?}/s, '');
+
+    this.restoreTriangles(svgNode);
+    this.removeInlineShadows(svgNode);
     const svgBlob = new Blob([svgString], {
       type: 'image/svg+xml;charset=utf-8',
     });
 
     const url = URL.createObjectURL(svgBlob);
-
-    const image = new Image();
-    image.width = svgNode.width.baseVal.value;
-    image.height = svgNode.height.baseVal.value;
-    image.src = url;
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width * 2;
-      canvas.height = image.height * 2;
-
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(image, 0, 0, image.width * 2, image.height * 2);
-      URL.revokeObjectURL(url);
-
-      const imgURI = canvas
-        .toDataURL('image/png')
-        .replace('image/png', 'image/octet-stream');
-      this.triggerDownload(imgURI);
-    };
+    this.triggerDownload(url);
   }
 
   private triggerDownload(imgURI: string) {
     const a = document.createElement('a');
-    a.download = 'tree.png';
+    a.download = 'tree.svg';
     a.target = '_blank';
     a.href = imgURI;
 

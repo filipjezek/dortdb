@@ -34,6 +34,7 @@ import {
 import { Trie } from '@dortdb/core/data-structures';
 import { isMatch } from 'es-toolkit/compat';
 import {
+  cloneIfPossible,
   createMapLiteral,
   propLookup,
   ret1,
@@ -1334,32 +1335,34 @@ export class CypherLogicalPlanBuilder
   }
   visitProjectionBody(
     node: AST.ProjectionBody,
-    args: DescentArgs & { append: boolean },
+    args: DescentArgs,
   ): PlanTupleOperator {
     let res = args.src ?? new plan.NullSource('cypher');
     const originalSchema = res.schema;
     const attrCtx = union(args.ctx, res.schema);
-    if (node.order?.length) {
-      res = this.processOrderBy(node, res, { ...args, ctx: attrCtx });
-    }
     const cols: Aliased<plan.Calculation | ASTIdentifier>[] = [];
     for (const item of node.items) {
       if (item === '*') cols.push(...originalSchema.map(toPair));
       else cols.push(this.processAttr(item, { ...args, ctx: attrCtx }));
     }
     const aggrs = getAggregates(cols.map(retI0));
+    const bodyChangesCardinality = node.distinct || aggrs.length > 0;
+
+    if (node.order?.length) {
+      res = this.processOrderBy(node, res, {
+        ...args,
+        ctx: attrCtx,
+        bodyChangesCardinality,
+        bodyAttrs: cols,
+      });
+    }
     if (!node.order?.length && aggrs.length) {
       res = this.processGroupBy(res, aggrs, cols);
     }
-    res = new plan.Projection(
-      'cypher',
-      args.append
-        ? originalSchema
-            .map<Aliased<plan.Calculation | ASTIdentifier>>(toPair)
-            .concat(cols)
-        : cols,
-      res,
-    );
+    if (!bodyChangesCardinality || !node.order?.length) {
+      // for bodies that change cardinality, this is handled in processOrderBy
+      res = new plan.Projection('cypher', cols, res);
+    }
     if (node.distinct) {
       res = new plan.Distinct('cypher', allAttrs, res);
     }
@@ -1371,16 +1374,16 @@ export class CypherLogicalPlanBuilder
   protected processOrderBy(
     node: AST.ProjectionBody,
     res: PlanTupleOperator,
-    args: DescentArgs & { append: boolean },
+    args: DescentArgs & {
+      bodyChangesCardinality: boolean;
+      bodyAttrs: Aliased<plan.Calculation | ASTIdentifier>[];
+    },
   ) {
-    const preSortCols: Aliased<plan.Calculation | ASTIdentifier>[] = args.append
-      ? res.schema.map(toPair)
-      : [];
-    for (const item of node.items) {
-      if (item === '*') preSortCols.push(...res.schema.map(toPair));
-      else preSortCols.push(this.processAttr(item, args));
-    }
+    const preSortCols: Aliased<plan.Calculation | ASTIdentifier>[] =
+      args.bodyChangesCardinality ? [] : res.schema.map(toPair);
+    preSortCols.push(...args.bodyAttrs.map(cloneIfPossible));
     const orders: plan.Order[] = [];
+
     for (const item of node.order) {
       const col = this.toCalc(item.expr, args);
       if (col instanceof plan.Calculation) {
@@ -1398,9 +1401,14 @@ export class CypherLogicalPlanBuilder
     const aggrs = getAggregates(preSortCols.map(retI0));
     if (aggrs.length) {
       res = this.processGroupBy(res, aggrs, preSortCols);
-    } else {
+    } else if (!args.bodyChangesCardinality) {
       res = new plan.Projection('cypher', preSortCols, res);
     }
+    if (args.bodyChangesCardinality) {
+      // we need to rename aliased aggregate results in case they are used in order by
+      res = new plan.Projection('cypher', args.bodyAttrs, res);
+    }
+
     return new plan.OrderBy('cypher', orders, res);
   }
   protected processGroupBy(
@@ -1413,7 +1421,7 @@ export class CypherLogicalPlanBuilder
     for (const col of allCols) {
       if (col[0] instanceof ASTIdentifier) {
         if (!aggrSet.has(col[0].parts)) {
-          groupByCols.push(col);
+          groupByCols.push(col.slice() as Aliased<ASTIdentifier>);
         }
       } else {
         if (!col[0].aggregates.length) {
@@ -1450,7 +1458,7 @@ export class CypherLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
   visitWithClause(node: AST.WithClause, args: DescentArgs): PlanOperator {
-    let res = this.visitProjectionBody(node.body, { ...args, append: false });
+    let res = this.visitProjectionBody(node.body, { ...args });
     if (node.where) {
       res = exprToSelection(
         this.processNode(node.where, {
@@ -1466,7 +1474,7 @@ export class CypherLogicalPlanBuilder
     return res;
   }
   visitReturnClause(node: AST.ReturnClause, args: DescentArgs): PlanOperator {
-    return this.visitProjectionBody(node.body, { ...args, append: false });
+    return this.visitProjectionBody(node.body, { ...args });
   }
   visitLiteral<T>(node: ASTLiteral<T>, args: DescentArgs): PlanOperator {
     return new plan.Literal('cypher', node.value);

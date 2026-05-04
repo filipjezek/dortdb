@@ -8,8 +8,8 @@
 
 select
 	s.acctbal,
-	s.name,
-	n.name,
+	s.name as "s.name",
+	n.name as "n.name",
 	p.partkey,
 	p.mfgr,
 	s.address,

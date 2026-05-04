@@ -1,0 +1,26 @@
+[
+  {
+    "supp_nation": "BRAZIL",
+    "cust_nation": "ROMANIA",
+    "year": 1995,
+    "revenue": 5555654.9470999995
+  },
+  {
+    "supp_nation": "BRAZIL",
+    "cust_nation": "ROMANIA",
+    "year": 1996,
+    "revenue": 5384147.6716
+  },
+  {
+    "supp_nation": "ROMANIA",
+    "cust_nation": "BRAZIL",
+    "year": 1995,
+    "revenue": 3808032.5787
+  },
+  {
+    "supp_nation": "ROMANIA",
+    "cust_nation": "BRAZIL",
+    "year": 1996,
+    "revenue": 4667742.1169
+  }
+]

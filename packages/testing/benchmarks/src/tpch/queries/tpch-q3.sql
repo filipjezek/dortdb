@@ -7,10 +7,10 @@
 
 
 select
-	l.orderkey,
+	l.orderkey as orderkey,
 	sum(l.extendedprice * (1 - l.discount)) as revenue,
-	o.orderdate,
-	o.shippriority
+	o.orderdate as orderdate,
+	o.shippriority as shippriority
 from
 	customer c,
 	orders o,

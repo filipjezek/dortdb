@@ -56,22 +56,33 @@ AND EXISTS (
     lang: 'sql',
   },
   {
-    query: `// three-hop common friends of the two top spenders
-//
-// these two are actually not connected in the sample data
+    query: `-- three-hop common friends of the two top spenders
+--
+-- these two are actually not connected in the sample data
 
-UNWIND (
-  LANG sql
+WITH toptwo(results) AS MATERIALIZED (
+  SELECT ARRAY(
     SELECT PersonId::number
     FROM orders
     GROUP BY PersonId
     ORDER BY sum(TotalPrice) DESC
     LIMIT 2
-) AS toptwo
-WITH collect(toptwo) AS toptwo
-MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
-RETURN foaf`,
-    lang: 'cypher',
+  )
+)
+(
+  LANG cypher
+  WITH (LANG sql SELECT results[0] FROM toptwo) AS topfrst
+  MATCH (:person {id: topfrst})-[:knows *..3]->(foaf)
+  RETURN foaf
+)
+INTERSECT
+(
+  LANG cypher
+  WITH (LANG sql SELECT results[1] FROM toptwo) AS topsnd
+  MATCH (:person {id: topsnd})-[:knows *..3]->(foaf)
+  RETURN foaf
+)`,
+    lang: 'sql',
   },
   {
     query: `// what did the friends of CUSTOMER which bought BRAND products post about?
@@ -122,11 +133,11 @@ WHERE brandProducts.brandName = 'Reebok' AND feedback.feedback[1]::number < 4 AN
   let $now := date('2024-12-31') (: the data is static :)
   let $recent := $Invoices/Invoices/Invoice.xml[ 
     date(OrderDate) gt date:sub($now, interval('6 months'))
-  ][Orderline/asin = $brandProducts.productAsin]
+  ][Orderline/asin = $brandProducts:productAsin]
   let $old := $Invoices/Invoices/Invoice.xml[ 
     date(OrderDate) le date:sub($now, interval('6 months')) and
     date(OrderDate) gt date:sub($now, interval('12 months'))
-  ][Orderline/asin = $brandProducts.productAsin]
+  ][Orderline/asin = $brandProducts:productAsin]
   return fn:count($recent) lt fn:count($old)
 )`,
     lang: 'sql',
@@ -239,12 +250,12 @@ FROM orders JOIN (
   LANG cypher
   MATCH (cust)<-[:hasCreator]-(post)
   WHERE post.creationDate > date.sub(date('2011-12-31'), interval('1 year'))
-  WITH DISTINCT cust, count(post) AS postCount
+  WITH cust, count(post) AS postCount
   ORDER BY postCount DESC LIMIT 10
   MATCH (cust)-[:hasInterest]->(tag)
   RETURN cust.id AS custId, collect(tag.id) AS interests
 ) topPosters
-ON orders.PersonId = topPosters.custId
+ON orders.PersonId::number = topPosters.custId
 GROUP BY orders.PersonId, topPosters.interests`,
     lang: 'sql',
   },

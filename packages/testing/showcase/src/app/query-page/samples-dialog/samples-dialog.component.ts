@@ -63,6 +63,29 @@ WHERE interests.p->'id' IN (
       query,
     })),
     {
+      lang: 'cypher',
+      name: 'Query 4 (naive)',
+      tags: ['unibench'],
+      query: `// naive version of Unibench query 4
+// more intuitive but much worse performance
+
+// three-hop common friends of the two top spenders
+//
+// these two are actually not connected in the sample data
+
+UNWIND (
+  LANG sql
+    SELECT PersonId::number
+    FROM orders
+    GROUP BY PersonId
+    ORDER BY sum(TotalPrice) DESC
+    LIMIT 2
+) AS toptwo
+WITH collect(toptwo) AS toptwo
+MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
+RETURN foaf`,
+    },
+    {
       lang: 'sql',
       name: 'Schema inference',
       tags: [],

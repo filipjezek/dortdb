@@ -6,7 +6,12 @@ import {
   PlanTupleOperator,
   PlanVisitor,
 } from '@dortdb/core';
-import { LangSwitch, SQLPlanVisitor, Using } from '../plan/index.js';
+import {
+  LangSwitch,
+  SQLPlanVisitor,
+  TableAlias,
+  Using,
+} from '../plan/index.js';
 import { SQLLanguage } from '../language/language.js';
 
 export class SQLExecutor
@@ -30,6 +35,12 @@ export class SQLExecutor
     throw new Error('Method not implemented.');
   }
   visitUsing(operator: Using, ctx: ExecutionContext): Iterable<unknown> {
+    throw new Error('Method not implemented.');
+  }
+  visitTableAlias(
+    operator: TableAlias,
+    ctx: ExecutionContext,
+  ): Iterable<unknown> {
     throw new Error('Method not implemented.');
   }
 

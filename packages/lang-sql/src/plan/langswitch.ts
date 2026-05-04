@@ -9,8 +9,6 @@ import { SQLLangCtx } from '../visitors/builder.js';
  * This operator is a temporary operator which is replaced in {@link SchemaInferrer}.
  */
 export class LangSwitch extends PlanTupleOperator {
-  public alias: string;
-
   constructor(
     lang: Lowercase<string>,
     public node: ASTLangSwitch,
@@ -38,7 +36,6 @@ export class LangSwitch extends PlanTupleOperator {
   }
   clone(): LangSwitch {
     const res = new LangSwitch(this.lang, this.node, this.langCtx);
-    res.alias = this.alias;
     res.schema = this.schema.slice();
     res.schemaSet = this.schemaSet.clone();
     return res;

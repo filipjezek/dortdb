@@ -107,6 +107,9 @@ export class QueryPageComponent {
     optimizer: {
       rules: [],
     },
+    executor: {
+      hashJoinIndices: [MapIndex],
+    },
     extensions: [datetime],
   });
   private queryHistory = new History<string>(20);
@@ -189,6 +192,7 @@ export class QueryPageComponent {
       });
 
     this.registerDataSources();
+    // this.registerTPCH();
   }
 
   parse() {

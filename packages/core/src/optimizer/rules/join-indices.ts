@@ -1,10 +1,10 @@
 import { ASTIdentifier } from '../../ast.js';
 import { Trie } from '../../data-structures/trie.js';
 import { DortDBAsFriend } from '../../db.js';
-import { fromItemIndexKey } from '../../indices/index.js';
+import { fromItemIndexKey, Index } from '../../indices/index.js';
 import * as plan from '../../plan/operators/index.js';
 import { IdSet, PlanOperator } from '../../plan/visitor.js';
-import { containsAll } from '../../utils/trie.js';
+import { getIMIAlternatives } from '../../utils/indices.js';
 import { AttributeRenameChecker } from '../../visitors/attribute-rename-checker.js';
 import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
@@ -41,8 +41,8 @@ export class JoinIndices implements PatternRule<
   match(node: plan.Join): PatternRuleMatchResult<JoinIndicesBindings> {
     for (const side of ['right', 'left'] as const) {
       if (
-        (side === 'left' && node.rightOuter) ||
-        (side === 'right' && node.leftOuter)
+        (side === 'left' && node.leftOuter) ||
+        (side === 'right' && node.rightOuter)
       )
         continue;
       const tRes = this.traverseSide(node[side]);
@@ -71,17 +71,10 @@ export class JoinIndices implements PatternRule<
       }
 
       for (const index of indices) {
-        const match = index.match(
-          candidates.map(([i, j]) => {
-            const containingFn = node.conditions[i].original as plan.FnCall;
-            return {
-              containingFn,
-              expr:
-                containingFn.args[j] instanceof ASTIdentifier
-                  ? containingFn.args[j]
-                  : containingFn.args[j].op,
-            };
-          }),
+        const match = this.matchIndex(
+          index,
+          candidates,
+          node.conditions,
           matchingRMap,
         );
         if (match) {
@@ -110,6 +103,40 @@ export class JoinIndices implements PatternRule<
       }
     }
     return renameMap;
+  }
+
+  protected matchIndex(
+    index: Index,
+    candidates: [number, number][],
+    conditions: plan.Calculation[],
+    renameMap: plan.RenameMap,
+  ): number[] | null {
+    const imis = candidates.map(([i, j]) => {
+      const containingFn = conditions[i].original as plan.FnCall;
+      return {
+        containingFn,
+        expr:
+          containingFn.args[j] instanceof ASTIdentifier
+            ? containingFn.args[j]
+            : containingFn.args[j].op,
+      };
+    });
+    const match = index.match(imis, renameMap);
+    if (match) return match;
+
+    const { alternatives } = getIMIAlternatives(imis);
+
+    for (const [topOrFn, alternativeGroup] of alternatives) {
+      if (
+        alternativeGroup.every((alternatives) =>
+          index.match(alternatives, renameMap),
+        )
+      ) {
+        const i = imis.findIndex((expr) => expr.containingFn === topOrFn);
+        return [i, i + 1];
+      }
+    }
+    return match;
   }
 
   /**
@@ -146,15 +173,9 @@ export class JoinIndices implements PatternRule<
           if (args[j] instanceof ASTIdentifier) {
             if (schema.has((args[j] as ASTIdentifier).parts)) {
               candidates.push([i, j]);
-              break;
             }
           } else {
-            const tdeps = (args[j] as plan.PlanOpAsArg).op.accept(
-              this.tdepsVmap,
-            );
-            if (containsAll(schema, tdeps)) {
-              candidates.push([i, j]);
-            }
+            candidates.push([i, j]);
           }
         }
       }
@@ -217,7 +238,7 @@ export class JoinIndices implements PatternRule<
       bindings.source instanceof plan.TupleSource
         ? bindings.source
         : (bindings.source.parent as plan.MapFromItem);
-    for (const i of bindings.indexMatch) {
+    for (const i of new Set(bindings.indexMatch)) {
       const cond = node.conditions[i];
       if (bindings.renameMap) {
         this.renamerVmap[cond.lang].rename(cond, bindings.renameMap);
@@ -240,7 +261,7 @@ export class JoinIndices implements PatternRule<
     const djoin = new plan.ProjectionConcat(
       node.lang,
       node[bindings.side],
-      node[`${bindings.side}Outer`],
+      node[`${bindings.side === 'left' ? 'right' : 'left'}Outer`],
       proj,
     );
 

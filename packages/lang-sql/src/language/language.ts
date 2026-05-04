@@ -10,6 +10,7 @@ import { SQLExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 import { objAccess, objMatch } from '../operators/json.js';
 import { concat, ilike, like } from '../operators/string.js';
+import { substr } from '../functions/string.js';
 
 /**
  * Configuration for the SQL language.
@@ -44,7 +45,7 @@ export function SQL(config?: SQLConfig): SQLLanguage {
       between,
     ],
     aggregates: [],
-    functions: [coalesce],
+    functions: [coalesce, substr],
     castables: [],
     createParser,
     visitors: {

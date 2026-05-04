@@ -1,5 +1,7 @@
+import { DortDBAsFriend } from '../db.js';
 import { Calculation, FnCall, RenameMap } from '../plan/operators/index.js';
 import { OpOrId } from '../plan/visitor.js';
+import { Executor } from '../visitors/executor.js';
 
 export interface IndexMatchInput {
   expr: OpOrId;
@@ -40,6 +42,23 @@ export interface Index {
    * @returns - a calculation returning iterable of matched values
    */
   createAccessor(expressions: IndexMatchInput[]): Calculation;
+}
+
+/** Used in hash join in {@link Executor} */
+export interface HashJoinIndexStatic {
+  /**
+   * Determines if the index can be used to index the given expressions.
+   * @param expressions - expressions to check
+   * @returns - ordered indices of the expressions that can be indexed, or null if none can be indexed
+   */
+  canIndex(expressions: IndexMatchInput[]): number[] | null;
+
+  new (expressions: Calculation[], db: DortDBAsFriend): HashJoinIndex;
+}
+
+export interface HashJoinIndex extends Index {
+  /** Iterate over all stored values. Used in full outer joins. */
+  allValues(): Iterable<unknown[]>;
 }
 
 export * from './map-index.js';

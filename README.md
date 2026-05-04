@@ -2,14 +2,14 @@
 
 # DortDB
 
-DortDB is a framework for querying JavaScript data structures.
+DortDB is a modular framework for querying JavaScript data structures.
 
 ## Main features
 
-- highly modular architecture
-- configurable query languages
-- multilanguage queries
-- extensible query optimizer
+- Highly modular architecture
+- Configurable query languages
+- Multi-language queries
+- Extensible query optimizer
 
 See the live [demo](https://filipjezek.github.io/dortdb/)!
 
@@ -21,9 +21,9 @@ Install the core package:
 npm i @dortdb/core
 ```
 
-Install your languages of choice:
+Install the language packages you need:
 
-### Currently implemented languages
+### Available languages
 
 - [SQL](https://github.com/filipjezek/dortdb/tree/main/packages/lang-sql) (`@dortdb/lang-sql`)
 - [Cypher](https://github.com/filipjezek/dortdb/tree/main/packages/lang-cypher) (`@dortdb/lang-cypher`)
@@ -39,7 +39,7 @@ import { SQL } from '@dortdb/lang-sql';
 // configure the db
 const db = new DortDB({
   mainLang: SQL(),
-  optimizer: defaultRules,
+  optimizer: { rules: [defaultRules] },
 });
 
 const users = [
@@ -48,7 +48,8 @@ const users = [
   { name: 'Charlie', age: 35 },
 ];
 
-// register the data
+// register data
+// this is a constant-time operation
 db.registerSource(['users'], users);
 
 // query!
@@ -57,6 +58,13 @@ const result = db.query(`
   FROM users
   WHERE age > 30
 `);
+
+// {
+//   schema: ['name', 'age'],
+//   data: [
+//     { name: 'Charlie', age: '35' }
+//   ]
+// }
 ```
 
 ## Multiple languages
@@ -73,8 +81,8 @@ import { XQuery } from '@dortdb/lang-xquery';
 // configure the db
 const db = new DortDB({
   mainLang: SQL(),
-  additionalLangs: [XQuery()]
-  optimizer: defaultRules,
+  additionalLangs: [XQuery()],
+  optimizer: { rules: [defaultRules] },
 });
 
 db.registerSource(['users'], [/* ... */]);
@@ -93,24 +101,24 @@ const result = db.query(`
 `);
 ```
 
-### Language Switching
+### Language switching
 
-You can switch between languages using language switch blocks.
+Use language switch blocks to move between languages within a single query.
 
 - A switch typically starts with the `LANG` keyword followed by the language name.
-- Switches can appear anywhere a subquery (or other atomic expression) would.
-- A language block ends when its containing scope ends (e.g. a closing parenthesis).
+- Switches can appear anywhere a subquery or other atomic expression is allowed.
+- A language block ends when its containing scope ends, such as a closing parenthesis.
 
-### Nesting Languages
+### Nesting languages
 
 - Languages can be nested to any depth.
 - Inner queries can reference values from outer language scopes.
 - Internally, all languages are translated into the same [unified algebra](algebra.md).
-- This unified operator tree is then optimized and executed as a whole.
+- The unified operator tree is then optimized and executed as a whole.
 
 ## Data adapters
 
-DortDB aims to provide a way to query _anything_. To achieve this, languages can be configured with data adapters that allow them to interface with different data sources.
+DortDB decouples query languages from the underlying data by letting each language use configurable data adapters to interface with different data sources.
 
 ```ts
 import { DortDB } from '@dortdb/core';
@@ -126,7 +134,7 @@ const db = new DortDB({
       ) => row.get(prop),
     },
   }),
-  optimizer: defaultRules,
+  optimizer: { rules: [defaultRules] },
 });
 
 // use maps instead of objects
@@ -149,7 +157,7 @@ const result = db.query(`
 
 ## Secondary indices
 
-To speed things up, DortDB supports secondary indices. These are additional data structures that allow for faster lookups on specific fields.
+To speed things up, DortDB supports secondary indices. These additional data structures enable faster lookups on specific fields.
 
 ```ts
 import { DortDB, MapIndex } from '@dortdb/core';
@@ -159,7 +167,7 @@ import { SQL } from '@dortdb/lang-sql';
 // configure the db
 const db = new DortDB({
   mainLang: SQL(),
-  optimizer: defaultRules,
+  optimizer: { rules: [defaultRules] },
 });
 
 // register the data
@@ -172,31 +180,49 @@ db.createIndex(['users'], ['age'], MapIndex);
 db.createIndex(['users'], ['name[0] + age'], MapIndex);
 ```
 
-## Language extensions
+### Hash joins
 
-DortDB allows you to define custom operators and functions for your query languages. A simple datetime extension is provided out of the box.
+Secondary index classes can also speed up joins over non-indexed data streams in some cases.
+For example, `MapIndex` can accelerate joins based on equality conditions. Each index class
+defines which expressions it can support. Configure the `Executor` with the available index classes.
 
 ```ts
-import { DortDB, MapIndex, datetime } from '@dortdb/core';
+import { DortDB, MapIndex } from '@dortdb/core';
+import { defaultRules } from '@dortdb/core/optimizer';
+import { SQL } from '@dortdb/lang-sql';
+
+const db = new DortDB({
+  mainLang: SQL(),
+  optimizer: { rules: [defaultRules] },
+  executor: { hashJoinIndices: [MapIndex] },
+});
+```
+
+## Language extensions
+
+DortDB lets you define custom operators and functions for your query languages. A datetime extension is included out of the box.
+
+```ts
+import { DortDB, datetime } from '@dortdb/core';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { SQL } from '@dortdb/lang-sql';
 
 // configure the db
 const db = new DortDB({
   mainLang: SQL(),
-  optimizer: defaultRules,
+  optimizer: { rules: [defaultRules] },
   extensions: [datetime],
 });
 ```
 
 ### Datetime functions
 
-The datetime extension provides the following functions:
+The datetime extension provides these functions:
 
-- `now()`: Returns the current date as a JS Date object.
-- `interval(string)`: Parses an interval string and returns an object representing the interval.
-- `date.add(Date | Interval, Interval)`: Adds an interval to a date and returns the resulting date. Can also sum two intervals.
-- `date.sub(Date | Interval, Interval)`: Subtracts an interval from a date and returns the resulting date. Similarly to above, can also compute a difference between two intervals.
-- `date.extract(Date, string)`: Extracts a specific component (e.g. year, month, day) from a date.
+- `now()`: Returns the current date as a JavaScript `Date`.
+- `interval(string)`: Parses an interval string and returns a corresponding interval object.
+- `date.add(Date | Interval, Interval)`: Adds an interval to a date and returns the result. It can also sum two intervals.
+- `date.sub(Date | Interval, Interval)`: Subtracts an interval from a date and returns the result. It can also compute the difference between two intervals.
+- `date.extract(Date, string)`: Extracts a specific component, such as year, month, or day, from a date.
 
 <!-- prettier-ignore-end -->

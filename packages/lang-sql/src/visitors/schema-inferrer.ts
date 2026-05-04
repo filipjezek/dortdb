@@ -1,4 +1,5 @@
 import {
+  Aliased,
   allAttrs,
   ASTIdentifier,
   boundParam,
@@ -21,7 +22,7 @@ import {
 } from '@dortdb/core/utils';
 import { retI1, toPair } from '@dortdb/core/internal-fns';
 import { LangSwitch } from '../plan/langswitch.js';
-import { SQLPlanVisitor } from '../plan/index.js';
+import { SQLPlanVisitor, TableAlias } from '../plan/index.js';
 import { defaultCol } from './builder.js';
 
 const EMPTY = new Trie<string | symbol | number>();
@@ -35,6 +36,8 @@ function zip<T, U>(a: T[], b: U[]): [T, U][] {
 function getUnd(): undefined {
   return undefined;
 }
+
+const maybeAmbiguous = Symbol('maybeAmbiguous');
 
 /**
  * Infers the schema of a logical plan.
@@ -50,10 +53,20 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     operator: PlanOperator,
     ctx: IdSet,
   ): [PlanOperator, IdSet] {
+    // return [operator, new Trie()];
     const tempHead = new plan.Limit('sql', 0, 1, operator);
     const external = operator.accept(this.vmap, ctx);
     for (const item of external.keys([boundParam])) {
       external.delete(item);
+    }
+    const maybeAmbiguousKeys = Array.from(external.keys([maybeAmbiguous]));
+    const ambiguous = maybeAmbiguousKeys.filter((key) =>
+      external.has(key.slice(1)),
+    );
+    if (ambiguous.length > 0) {
+      throw new Error(
+        `Ambiguous column names: ${ambiguous.map((x) => x[1].toString()).join(', ')}`,
+      );
     }
     return [tempHead.source, external];
   }
@@ -90,7 +103,8 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   }
   visitSelection(operator: plan.Selection, ctx: IdSet): IdSet {
     this.processArg(operator, operator.condition, union(ctx, operator.schema));
-    return operator.source.accept(this.vmap, ctx);
+    const res = operator.source.accept(this.vmap, ctx);
+    return res;
   }
   visitRecursion(operator: plan.Recursion, ctx: IdSet): IdSet {
     if (operator.condition) {
@@ -103,7 +117,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
 
-  protected renameTupleSourceAttrs(
+  protected prefixTupleSourceAttrs(
     operator: plan.TupleSource | plan.TupleFnSource,
   ) {
     const toRemove: ASTIdentifier[] = [];
@@ -135,11 +149,41 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     }
   }
 
+  visitTableAlias(operator: TableAlias, ctx: IdSet): IdSet {
+    const external = new Trie<string | symbol | number>();
+    const name = operator.alias;
+    const nameBelow =
+      operator.source instanceof LangSwitch ? null : operator.source.name;
+    const renames: Aliased[] = [];
+
+    for (const attr of operator.schema.slice()) {
+      if (!isTableAttr(attr, name)) {
+        operator.removeFromSchema(attr);
+        external.add(attr.parts);
+      } else if (attr.parts.at(-1) === toInfer || attr.parts[0] === allAttrs) {
+        operator.removeFromSchema(attr);
+      } else {
+        const origAttr = nameBelow
+          ? overrideSource(nameBelow, attr)
+          : ASTIdentifier.fromParts(attr.parts.slice(1));
+        operator.source.addToSchema(origAttr);
+        renames.push([origAttr, attr]);
+      }
+    }
+
+    for (const item of operator.source.accept(this.vmap, ctx)) {
+      external.add(item);
+    }
+    const proj = new plan.Projection('sql', renames, operator.source);
+    proj.schema = operator.schema;
+    proj.schemaSet = schemaToTrie(proj.schema); // keep references
+    operator.parent.replaceChild(operator, proj);
+    return external;
+  }
   visitTupleSource(operator: plan.TupleSource, ctx: IdSet): IdSet {
     const external = new Trie<string | symbol | number>();
-    const name =
-      operator.name instanceof ASTIdentifier ? operator.name : operator.name[1];
-    let hasRenamedAttrs = false;
+    const name = operator.name;
+    let hasPrefixedAttrs = false;
     for (const attr of operator.schema.slice()) {
       if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
         operator.removeFromSchema(attr);
@@ -147,15 +191,12 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       } else if (attr.parts.at(-1) === toInfer || attr.parts[0] === allAttrs) {
         operator.removeFromSchema(attr);
       } else if (attr.parts.length > 1) {
-        hasRenamedAttrs = true;
+        hasPrefixedAttrs = true;
       }
     }
 
-    if (hasRenamedAttrs) {
-      this.renameTupleSourceAttrs(operator);
-    }
-    if (Array.isArray(operator.name)) {
-      operator.name = operator.name[0];
+    if (hasPrefixedAttrs) {
+      this.prefixTupleSourceAttrs(operator);
     }
 
     return external;
@@ -212,16 +253,17 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
           }
         }
       }
+      if (operator instanceof TableAlias) {
+        return new Trie([operator.alias.parts]);
+      }
       operator = operator.source;
     }
-    // joins are made of either TupleSources or Projections based on table aliases or other joins or langswitches
+    // joins are made of either TupleSources or Projections based on table aliases or other joins or langswitches or table aliases
     if (
       operator instanceof plan.TupleSource ||
       operator instanceof plan.TupleFnSource
     ) {
-      return operator.name instanceof ASTIdentifier
-        ? schemaToTrie([operator.name])
-        : schemaToTrie([operator.name[1]]);
+      return new Trie([operator.name.parts]);
     }
 
     if (
@@ -247,10 +289,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     }
 
     const res = new Trie<string | symbol | number>();
-    if (operator instanceof LangSwitch) {
-      res.add([operator.alias]);
-      return res;
-    } else if (operator.lang !== 'sql') {
+    if (operator.lang !== 'sql') {
       // langswitch already replaced and second pass was triggered (presumably by OrderBy)
       if (operator.parent instanceof plan.MapFromItem)
         operator = operator.parent;
@@ -270,6 +309,16 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
     for (const item of operator.schema.slice()) {
       if (item.parts.length === 1) {
+        const leftContains = operator.left.schemaSet.has(item.parts);
+        const rightContains = operator.right.schemaSet.has(item.parts);
+        if (leftContains !== rightContains) {
+          continue;
+        }
+        if (!leftContains) {
+          external.add([maybeAmbiguous, item.parts[0]]);
+          external.add(item.parts);
+          continue;
+        }
         throw new Error(`Ambiguous column name: ${item.parts[0]?.toString()}`);
       }
       if (isTableAttr(item, leftNames)) {
@@ -298,6 +347,9 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     for (const item of operator.right.accept(this.vmap, ctx)) {
       external.add(item);
     }
+    operator.clearSchema();
+    operator.addToSchema(operator.left.schema);
+    operator.addToSchema(operator.right.schema);
 
     return external;
   }
@@ -323,6 +375,15 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     operator.source.addToSchema(horizontal);
     operator.source.addToSchema(extra);
     const vertical = operator.source.accept(this.vmap, ctx);
+    for (const item of difference(
+      operator.schemaSet,
+      union(operator.source.schema, operator.mapping.schema),
+    )) {
+      vertical.add(item);
+    }
+    for (const item of difference(horizontal, operator.source.schemaSet)) {
+      vertical.add(item);
+    }
     operator.clearSchema();
     operator.addToSchema(
       operator.source.schema.concat(operator.mapping.schema),
@@ -372,7 +433,10 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
 
     if (proj instanceof plan.Projection) {
       // otherwise it's a set op or an aggregate
-      const external = operator.source.accept(this.vmap, ctx);
+
+      // visiting a tuplesource might create a new renaming projection above it
+      // so we add all the attrs to the schema even though it might be redundant
+      proj.source.addToSchema(tempSchema.schema);
       const parent = operator.parent;
       const parentProj = new plan.Projection(
         'sql',
@@ -380,9 +444,9 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         operator,
       );
 
-      for (const attr of difference(tempSchema.schemaSet, external)) {
-        if (!proj.schemaSet.has(attr)) {
-          const id = ASTIdentifier.fromParts(attr);
+      for (const attr of tempSchema.schema) {
+        if (!proj.schemaSet.has(attr.parts)) {
+          const id = ASTIdentifier.fromParts(attr.parts);
           proj.addToSchema(id);
           proj.attrs.push([id, id]);
         }
@@ -393,11 +457,29 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         parent instanceof PlanTupleOperator &&
         parent.schema === operator.schema
       ) {
+        proj.schema = proj.schema.slice();
+        proj.schemaSet = schemaToTrie(proj.schema);
+        for (
+          let op = proj.parent as PlanTupleOperator;
+          op !== parentProj;
+          op = op.parent as PlanTupleOperator
+        ) {
+          op.schema = proj.schema;
+          op.schemaSet = proj.schemaSet;
+        }
         linkSchemaToParent(parentProj);
       }
 
-      // reconstruct external
-      return operator.source.accept(this.vmap, ctx);
+      const external = operator.source.accept(this.vmap, ctx);
+      proj.attrs = proj.attrs.filter(([src, alias]) => {
+        const remove =
+          src instanceof ASTIdentifier &&
+          src.equals(alias) &&
+          external.has(alias.parts);
+        if (remove) proj.removeFromSchema(alias);
+        return !remove;
+      });
+      return external;
     } else if (!(proj instanceof plan.SetOperator)) {
       // aggregate
       operator.source.addToSchema(tempSchema.schema);
@@ -416,11 +498,25 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         this.processArg(operator.source, arg, ctx);
       }
       this.processArg(operator.source, agg.postGroupOp, ctx);
+      operator.source.addToSchema(agg.postGroupSource.schema);
     }
     const external = operator.source.accept(this.vmap, ctx);
+    const fieldNames = operator.aggs.map((x) => x.fieldName);
+    for (const extra of difference(
+      operator.schemaSet,
+      union(operator.source.schemaSet, fieldNames),
+    )) {
+      external.add(extra);
+    }
+
+    for (const agg of operator.aggs) {
+      agg.postGroupSource.clearSchema();
+      agg.postGroupSource.addToSchema(operator.source.schema);
+    }
+
     operator.clearSchema();
     operator.addToSchema(operator.source.schema);
-    operator.addToSchema(operator.aggs.map((x) => x.fieldName));
+    operator.addToSchema(fieldNames);
     return external;
   }
 
@@ -490,7 +586,6 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
               ))
           )
         ) {
-          console.log('removing', attr.parts, n, isTableAttr(attr, n));
           operator.removeFromSchema(attr);
           external.add(attr.parts);
         } else if (
@@ -504,7 +599,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       }
 
       if (hasRenamedAttrs) {
-        this.renameTupleSourceAttrs(operator);
+        this.prefixTupleSourceAttrs(operator);
       }
       if (Array.isArray(operator.name)) {
         operator.name = operator.name[0];
@@ -574,22 +669,13 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     );
     let res: PlanTupleOperator;
     if (nested.plan instanceof PlanTupleOperator && nested.plan.schema) {
-      res = operator.alias
-        ? nested.plan
-        : new plan.Projection(
-            'sql',
-            nested.plan.schema.map(toPair),
-            nested.plan,
-          );
-    } else {
-      res = new plan.MapFromItem('sql', defaultCol, nested.plan);
-    }
-    if (operator.alias) {
       res = new plan.Projection(
         'sql',
-        res.schema.map((x) => [x, overrideSource(operator.alias, x)]),
-        res,
+        nested.plan.schema.map(toPair),
+        nested.plan,
       );
+    } else {
+      res = new plan.MapFromItem('sql', defaultCol, nested.plan);
     }
 
     const external = nested.inferred;

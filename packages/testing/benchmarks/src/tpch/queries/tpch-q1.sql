@@ -7,8 +7,8 @@
 
 
 select
-	l.returnflag,
-	l.linestatus,
+	l.returnflag as returnflag,
+	l.linestatus as linestatus,
 	sum(l.quantity) as sum_qty,
 	sum(l.extendedprice) as sum_base_price,
 	sum(l.extendedprice * (1 - l.discount)) as sum_disc_price,

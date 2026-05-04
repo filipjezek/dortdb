@@ -14,7 +14,7 @@ from
 	(
 		select
 			n.name as nation,
-			strftime('%Y', o.orderdate) as year,
+			cast (strftime('%Y', o.orderdate) as integer) as year,
 			l.extendedprice * (1 - l.discount) - ps.supplycost * l.quantity as amount
 		from
 			part p,

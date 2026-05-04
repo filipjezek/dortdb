@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pickRandom } from '../utils/random.js';
-import { logger as parentLogger } from '../logger.js';
-import pino from 'pino';
-import { promiseTimeout } from '../utils/promise-timeout.js';
 import { Database } from 'arangojs';
+import { isMainThread, workerData } from 'node:worker_threads';
+import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
+import { workerLog } from '../utils/worker-log.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
 
@@ -102,47 +102,75 @@ const productIds = [
   3393, 6107, 1679, 4055, 7603, 7878,
 ];
 
-export async function unibenchBenchmarkArango(): Promise<void> {
-  const logger = parentLogger.child({ name: 'unibench' });
+async function prepareEnv(measureInit: boolean): Promise<Database> {
   const db = new Database();
-
-  for (const query of queries) {
-    await runQuery(query, db, logger);
-  }
+  workerLog({}, 'Finished preparing environment');
+  return db;
 }
 
 async function runQuery(
   query: Query,
   db: Database,
-  logger: pino.Logger,
+  /** in seconds */
+  totalTimeout: number,
+  runs: number,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, query.filename),
     'utf-8',
   ).replaceAll('\r\n', '\n');
 
-  for (let i = 0; i < 10; i++) {
-    const params = Object.fromEntries(
-      Object.entries(query.params || {}).map(([key, value]) => [key, value()]),
-    );
-    performance.mark('query-start');
-    const result = await db.query(queryText, params, { cache: false });
-    await result.all();
-    performance.mark('query-end');
-    logger.info(
-      {
-        query: query.filename,
-        params,
-        duration: result.extra.stats.executionTime * 1000, // Convert to milliseconds
-        memory: result.extra.stats.peakMemoryUsage,
-        durationNode: performance.measure(
-          `query-${query.filename}-node`,
-          'query-start',
-          'query-end',
-        ).duration,
-      },
-      'Executed query successfully',
-    );
-    await promiseTimeout(100);
+  const now = Date.now();
+  for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
+    await measureQueryRun(query, queryText, db, i, false, true);
   }
+}
+
+async function measureQueryRun(
+  query: Query,
+  queryText: string,
+  db: Database,
+  iteration: number,
+  isWarmup: boolean,
+  measureMemory: boolean,
+) {
+  const params = Object.fromEntries(
+    Object.entries(query.params || {}).map(([key, value]) => [key, value()]),
+  );
+  performance.mark('query-start');
+  const result = await db.query(queryText, params, { cache: false });
+  await result.all();
+  performance.mark('query-end');
+  workerLog(
+    {
+      query: query.filename,
+      params,
+      iteration,
+      isWarmup,
+      duration: result.extra.stats.executionTime * 1000, // Convert to milliseconds
+      memory: measureMemory ? result.extra.stats.peakMemoryUsage : undefined,
+      durationNode: performance.measure(
+        `query-${query.filename}-node`,
+        'query-start',
+        'query-end',
+      ).duration,
+    },
+    'Executed query successfully',
+  );
+}
+
+export default async function unibenchBenchmarkArango(
+  options: BenchmarkWorkerOptions,
+) {
+  const db = await prepareEnv(options.measureInit);
+  await runQuery(
+    queries[options.query - 1],
+    db,
+    options.softTimeout,
+    options.runs,
+  );
+}
+
+if (!isMainThread) {
+  await unibenchBenchmarkArango(workerData as BenchmarkWorkerOptions);
 }

@@ -575,7 +575,7 @@ MapLiteral = '{' _? props:(@(@PropertyKeyName _? ':' _? @Expression)|1.., _? ','
 PropertyKeyName = SchemaName ;
 
 Parameter
-  = '$' name:(SymbolicName / $DecimalInteger) {
+  = '$' name:$(SymbolicName / DecimalInteger) {
     const res = new ast.CypherIdentifier(name);
     res.parts.unshift(ast.boundParam);
     return res;

@@ -7,16 +7,17 @@ import { defaultRules } from '@dortdb/core/optimizer';
 import { DomDataAdapter, XQuery } from '@dortdb/lang-xquery';
 import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { prepareData } from './prepare-data.js';
-import { logger as parentLogger } from '../logger.js';
-import pino from 'pino';
 import {
   performance,
   PerformanceMeasure,
   PerformanceObserver,
 } from 'node:perf_hooks';
+import { isMainThread, workerData } from 'node:worker_threads';
 import { Attr, Document, Element, Node } from 'slimdom';
 import { createTreeWalker } from 'tasty-treewalker/src/TreeWalker-polyfill.js';
 import { promiseTimeout } from '../utils/promise-timeout.js';
+import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
+import { workerLog } from '../utils/worker-log.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
 
@@ -50,7 +51,7 @@ const queries: Query[] = [
   },
   {
     filename: 'q04.txt',
-    lang: 'cypher',
+    lang: 'sql',
   },
   {
     filename: 'q05.txt',
@@ -89,13 +90,6 @@ const queries: Query[] = [
     },
   },
   {
-    filename: 'q08_noelement.txt',
-    lang: 'xquery',
-    params: {
-      industry: () => 'Sports',
-    },
-  },
-  {
     filename: 'q09.txt',
     lang: 'sql',
     params: {
@@ -105,6 +99,10 @@ const queries: Query[] = [
   {
     filename: 'q10.txt',
     lang: 'sql',
+  },
+  {
+    filename: 'q04_naive.txt',
+    lang: 'cypher',
   },
 ];
 
@@ -167,20 +165,23 @@ Object.defineProperty(Document.prototype, 'createTreeWalker', {
   value: createTreeWalker,
 });
 
-export async function unibenchBenchmark(): Promise<void> {
+async function prepareEnv(
+  secondaryIndices: boolean,
+  measureInit: boolean,
+): Promise<DortDB> {
   const db = new DortDB({
     mainLang: SQL(),
     additionalLangs: [
-      XQuery({ adapter: new DomDataAdapter(new Document()) }),
+      XQuery({ adapter: new DomDataAdapter(new Document() as any) }),
       Cypher({ defaultGraph: 'defaultGraph' }),
     ],
     extensions: [datetime],
     optimizer: { rules: defaultRules },
+    executor: { hashJoinIndices: [MapIndex] },
   });
-  const logger = parentLogger.child({ name: 'unibench' });
   const obs = new PerformanceObserver((items) => {
     items.getEntries().forEach((entry) => {
-      logger.info(
+      workerLog(
         {
           duration: entry.duration,
           name: entry.name,
@@ -192,17 +193,18 @@ export async function unibenchBenchmark(): Promise<void> {
   });
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
-  await registerDataSources(db, logger);
-  for (const query of queries) {
-    if (query.filename !== 'q06.txt') continue;
-    await runQuery(query, db, logger);
-  }
+  await registerDataSources(db, secondaryIndices, measureInit);
+  workerLog({}, 'Finished preparing environment');
+  return db;
 }
 
 async function runQuery(
   query: Query,
   db: DortDB,
-  logger: pino.Logger,
+  /** in seconds */
+  totalTimeout: number,
+  runs: number,
+  skipWarmup: boolean,
 ): Promise<void> {
   const queryText = readFileSync(
     resolve(QUERY_DIR, query.filename),
@@ -212,70 +214,81 @@ async function runQuery(
   console.log(`Running query: ${query.filename} (${query.lang})`);
   console.log(queryText);
 
-  // warmup
   const now = Date.now();
-  while (Date.now() - now < 30 * 1000) {
-    const bp = Object.entries(query.params || {}).reduce(
-      (result, [key, value]) => {
-        result[key] = value(result);
-        return result;
-      },
-      {} as Record<string, any>,
-    );
-    db.query(queryText, {
-      mainLang: query.lang,
-      boundParams: bp,
-    });
+  if (!skipWarmup) {
+    for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
+      await measureQueryRun(query, queryText, db, i, true, i === 0);
+    }
   }
 
-  for (let i = 0; i < 10; i++) {
-    gc();
-    const params = Object.entries(query.params || {}).reduce(
-      (result, [key, value]) => {
-        result[key] = value(result);
-        return result;
-      },
-      {} as Record<string, any>,
-    );
-    logger.info(
-      { query: query.filename, iteration: i, params },
-      'Running query iteration',
-    );
-    if (i === 0)
-      logger.info(
-        { ...process.memoryUsage(), query: query.filename },
-        'Memory usage before running query',
-      );
-    await promiseTimeout(1000);
-    performance.mark(`runQuery_${query.filename}_start`);
-    db.query(queryText, {
-      mainLang: query.lang,
-      boundParams: params,
-    });
-    performance.mark(`runQuery_${query.filename}_end`);
-    performance.measure(`runQuery_${query.filename}`, {
-      detail: { q: query.filename, params },
-      start: `runQuery_${query.filename}_start`,
-      end: `runQuery_${query.filename}_end`,
-    });
-    if (i === 0)
-      logger.info(
-        { ...process.memoryUsage(), query: query.filename },
-        'Memory usage after running query',
-      );
-    // await promiseTimeout(10000);
+  for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
+    await measureQueryRun(query, queryText, db, i, false, i === 0);
   }
 }
 
-async function registerDataSources(db: DortDB, logger: pino.Logger) {
+async function measureQueryRun(
+  query: Query,
+  queryText: string,
+  db: DortDB,
+  iteration: number,
+  isWarmup: boolean,
+  measureMemory: boolean,
+) {
   gc();
-  logger.info(
-    process.memoryUsage(),
-    'Memory usage before registering data sources',
+  const params = Object.entries(query.params || {}).reduce(
+    (result, [key, value]) => {
+      result[key] = value(result);
+      return result;
+    },
+    {} as Record<string, any>,
   );
+  workerLog(
+    { query: query.filename, iteration, params, isWarmup },
+    'Running query iteration',
+  );
+  if (measureMemory) {
+    workerLog(
+      { ...process.memoryUsage(), query: query.filename, isWarmup, iteration },
+      'Memory usage before running query',
+    );
+  }
+  await promiseTimeout(1000);
+  performance.mark(`runQuery_${query.filename}_start`);
+  db.query(queryText, {
+    mainLang: query.lang,
+    boundParams: params,
+  });
+  performance.mark(`runQuery_${query.filename}_end`);
+  performance.measure(`runQuery_${query.filename}`, {
+    detail: { q: query.filename, params, isWarmup, iteration },
+    start: `runQuery_${query.filename}_start`,
+    end: `runQuery_${query.filename}_end`,
+  });
+  if (measureMemory) {
+    workerLog(
+      { ...process.memoryUsage(), query: query.filename, isWarmup, iteration },
+      'Memory usage after running query',
+    );
+  }
+}
+
+async function registerDataSources(
+  db: DortDB,
+  secondaryIndices: boolean,
+  measure = false,
+) {
+  if (measure) {
+    gc();
+    workerLog(
+      process.memoryUsage(),
+      'Memory usage before registering data sources',
+    );
+  }
   const data = await prepareData();
 
-  gc();
+  if (measure) {
+    gc();
+  }
 
   db.registerSource(['customers'], data.customers);
   db.registerSource(['products'], data.products);
@@ -287,12 +300,14 @@ async function registerDataSources(db: DortDB, logger: pino.Logger) {
   db.registerSource(['posts'], data.posts);
   db.registerSource(['vendors'], data.vendors);
 
-  logger.info(
-    process.memoryUsage(),
-    'Memory usage after registering data sources',
-  );
+  if (measure) {
+    workerLog(
+      process.memoryUsage(),
+      'Memory usage after registering data sources',
+    );
+    performance.mark('registerIndices_start');
+  }
 
-  performance.mark('registerIndices_start');
   db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);
   db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, {
     mainLang: 'cypher',
@@ -301,21 +316,45 @@ async function registerDataSources(db: DortDB, logger: pino.Logger) {
   db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);
   db.createIndex(['customers'], ['id'], MapIndex);
   db.createIndex(['products'], ['productId'], MapIndex);
-  db.createIndex(['products'], ['brand'], MapIndex);
-  db.createIndex(['products'], ['asin'], MapIndex);
-  db.createIndex(['feedback'], ['productAsin'], MapIndex);
-  db.createIndex(['feedback'], ['personId'], MapIndex);
-  db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
-  db.createIndex(['brandProducts'], ['brandName'], MapIndex);
   db.createIndex(['vendors'], ['id'], MapIndex);
   db.createIndex(['posts'], ['id'], MapIndex);
-  db.createIndex(['orders'], ['PersonId'], MapIndex);
-  performance.mark('registerIndices_end');
-  performance.measure(
-    'registerIndices',
-    'registerIndices_start',
-    'registerIndices_end',
-  );
+  db.createIndex(['orders'], ['OrderId'], MapIndex);
 
-  logger.info(process.memoryUsage(), 'Memory usage after registering indices');
+  if (secondaryIndices) {
+    db.createIndex(['products'], ['brand'], MapIndex);
+    db.createIndex(['products'], ['asin'], MapIndex);
+    db.createIndex(['brandProducts'], ['productAsin'], MapIndex);
+    db.createIndex(['brandProducts'], ['brandName'], MapIndex);
+    db.createIndex(['feedback'], ['productAsin'], MapIndex);
+    db.createIndex(['feedback'], ['personId'], MapIndex);
+    db.createIndex(['orders'], ['PersonId'], MapIndex);
+  }
+
+  if (measure) {
+    performance.mark('registerIndices_end');
+    performance.measure(
+      'registerIndices',
+      'registerIndices_start',
+      'registerIndices_end',
+    );
+
+    workerLog(process.memoryUsage(), 'Memory usage after registering indices');
+  }
+}
+
+export default async function unibenchBenchmark(
+  options: BenchmarkWorkerOptions,
+) {
+  const db = await prepareEnv(options.secondaryIndices, options.measureInit);
+  await runQuery(
+    queries[options.query - 1],
+    db,
+    options.softTimeout,
+    options.runs,
+    options.skipWarmup,
+  );
+}
+
+if (!isMainThread) {
+  await unibenchBenchmark(workerData as BenchmarkWorkerOptions);
 }

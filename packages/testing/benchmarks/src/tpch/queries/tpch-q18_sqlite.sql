@@ -12,7 +12,7 @@ select
 	o.orderkey,
 	o.orderdate,
 	o.totalprice,
-	sum(l.quantity)
+	sum(l.quantity) as sum_qty
 from
 	customer c,
 	orders o,
@@ -25,7 +25,7 @@ where
 			lineitem l
 		group by
 			l.orderkey having
-				sum(l.quantity) > 313
+				sum(l.quantity) > 300 -- originally 313, but that had no results
 	)
 	and c.custkey = o.custkey
 	and o.orderkey = l.orderkey

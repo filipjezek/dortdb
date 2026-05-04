@@ -35,8 +35,9 @@ import {
   overrideSource,
   schemaToTrie,
   shortcutNulls,
+  splitByOp,
 } from '@dortdb/core/utils';
-import { ret1, retI0, toPair } from '@dortdb/core/internal-fns';
+import { ret1, retI0, retI1, toPair } from '@dortdb/core/internal-fns';
 import { inOp, notInOp } from '../operators/basic.js';
 import { Trie } from '@dortdb/core/data-structures';
 import { ilike, like } from '../operators/string.js';
@@ -45,6 +46,9 @@ import { SQLDataAdapter } from '../language/data-adapter.js';
 import { SQLLanguage } from '../language/language.js';
 import { collect } from '@dortdb/core/aggregates';
 import { unwind } from '@dortdb/core/fns';
+import { and, eq, isOp, or } from '@dortdb/core/operators';
+import { toBool } from '@dortdb/core/castables';
+import { TableAlias } from '../plan/table-alias.js';
 
 export const defaultCol = toId('value');
 export const nonlocalPrefix = 'nonlocal';
@@ -98,6 +102,7 @@ export class SQLLogicalPlanBuilder
     this.processAttr = this.processAttr.bind(this);
     this.processFnArg = this.processFnArg.bind(this);
     this.toCalc = this.toCalc.bind(this);
+    this.opToCalc = this.opToCalc.bind(this);
     this.processOrderItem = this.processOrderItem.bind(this);
   }
 
@@ -147,6 +152,9 @@ export class SQLLogicalPlanBuilder
     if (intermediate instanceof plan.AggregateCall)
       return intermediate.fieldName;
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
+  }
+  protected opToCalc(op: PlanOperator): plan.Calculation {
+    return intermediateToCalc(op, this.calcBuilders, this.eqCheckers);
   }
 
   visitStringLiteral(node: AST.ASTStringLiteral): PlanOperator {
@@ -227,25 +235,16 @@ export class SQLLogicalPlanBuilder
           true,
         );
   }
+
   visitExists(node: AST.ASTExists): PlanOperator {
-    let res = node.query.accept(this) as PlanOperator;
-    res = new plan.Limit('sql', 0, 1, res);
-    const col = toId('count');
-    res = new plan.GroupBy(
+    let res = toTuples(node.query.accept(this));
+    res = new plan.Projection(
       'sql',
-      [],
-      [
-        new plan.AggregateCall(
-          'sql',
-          [toId(allAttrs)],
-          this.db.langMgr.getAggr('sql', 'count'),
-          col,
-        ),
-      ],
-      res as plan.Limit,
+      [[this.opToCalc(new plan.Literal('sql', true)), toId('1')]],
+      res,
     );
-    res = new plan.MapToItem('sql', col, res as plan.GroupBy);
-    return new plan.FnCall('sql', [{ op: res }], ret1);
+    res = new plan.Limit('sql', 0, 1, res);
+    return new plan.FnCall('sql', [{ op: res }], toBool.convert);
   }
 
   visitQuantifier(node: AST.ASTQuantifier): PlanOperator {
@@ -296,8 +295,7 @@ export class SQLLogicalPlanBuilder
   visitTableAlias(node: AST.ASTTableAlias): PlanTupleOperator {
     let src: PlanTupleOperator;
     if (node.table instanceof ASTIdentifier) {
-      src = new plan.TupleSource('sql', node.table);
-      src.addToSchema(ASTIdentifier.fromParts([...node.table.parts, toInfer]));
+      [src] = this.idToTupleSource(node.table);
     } else {
       src = toTuples(node.table.accept(this));
     }
@@ -327,29 +325,12 @@ export class SQLLogicalPlanBuilder
         src,
       );
     }
-    if (src instanceof plan.TupleFnSource) {
-      const n = ASTIdentifier.fromParts([node.name]);
-      src.removeFromSchema(
-        src.schema.filter((x) => x.parts.at(-1) === toInfer),
-      );
-      src.addToSchema(ASTIdentifier.fromParts([...n.parts, toInfer]));
-      src.name = src.name ? [src.name as ASTIdentifier, n] : n;
-      return src;
-    }
-    if (src instanceof plan.TupleSource) {
-      src.name = [
-        src.name as ASTIdentifier,
-        ASTIdentifier.fromParts([node.name]),
-      ];
-      src.removeFromSchema(
-        src.schema.filter((x) => x.parts.at(-1) === toInfer),
-      );
-      src.addToSchema(ASTIdentifier.fromParts([node.name, toInfer]));
-      return src;
-    }
-    if (src instanceof PlanLangSwitch) {
-      src.alias = node.name;
-      return src;
+    if (
+      src instanceof plan.TupleSource ||
+      src instanceof plan.TupleFnSource ||
+      src instanceof PlanLangSwitch
+    ) {
+      return new TableAlias('sql', toId(node.name), src);
     }
     return new plan.Projection(
       'sql',
@@ -497,7 +478,17 @@ export class SQLLogicalPlanBuilder
         'sql',
       );
     }
-    op = new plan.Projection('sql', items, op);
+    // `(subq) setop (subq)` results in Projection(*, Projection(...)) otherwise
+    if (
+      !(
+        node.items.length === 1 &&
+        node.items[0] instanceof ASTIdentifier &&
+        node.items[0].parts[0] === allAttrs &&
+        (op instanceof plan.Projection || op instanceof PlanLangSwitch)
+      )
+    ) {
+      op = new plan.Projection('sql', items, op);
+    }
     if (node.distinct) {
       op = new plan.Distinct(
         'sql',
@@ -545,56 +536,52 @@ export class SQLLogicalPlanBuilder
         );
       attrs = (node.items as ASTNode[]).map(this.processAttr);
     }
-    for (const aggr of aggregates) {
-      const schemaToReplace = aggr.postGroupSource.schema;
-      for (
-        let step = aggr.postGroupSource.parent as PlanTupleOperator;
-        step?.schema === schemaToReplace;
-        step = step.parent as PlanTupleOperator
-      ) {
-        step.schema = src.schema;
-        step.schemaSet = src.schemaSet;
-      }
-    }
     const res = new plan.GroupBy('sql', attrs, aggregates, src);
-    for (const aggr of res.aggs) {
-      aggr.postGroupSource.schema = res.source.schema;
-      aggr.postGroupSource.schemaSet = res.source.schemaSet;
-    }
     return res;
+  }
+
+  /**
+   * Also handles CTEs and materialized CTEs
+   * @param name name of the tuple source
+   */
+  protected idToTupleSource(
+    name: ASTIdentifier,
+  ): [PlanTupleOperator, ASTIdentifier] {
+    if (
+      name.parts.length === 1 &&
+      this.localLangCtx.ctes.has(name.parts[0] as string)
+    ) {
+      return [
+        this.localLangCtx.ctes.get(name.parts[0] as string).clone(),
+        name,
+      ];
+    } else if (
+      name.parts.length === 1 &&
+      this.localLangCtx.materializedCtes.has(name.parts[0] as string)
+    ) {
+      const schema = this.localLangCtx.materializedCtes.get(
+        name.parts[0] as string,
+      );
+      const src = new plan.TupleFnSource(
+        'sql',
+        [name],
+        unwind.impl,
+        toId('unwind'),
+      );
+      // this actually breaks schema inference
+      // src.addToSchema(schema);
+      return [src, name];
+    }
+    const src = new plan.TupleSource('sql', name);
+    src.addToSchema(ASTIdentifier.fromParts([...name.parts, toInfer]));
+    return [src, name];
   }
 
   protected getTableName(
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [PlanTupleOperator, ASTIdentifier] {
     if (node instanceof ASTIdentifier) {
-      if (
-        node.parts.length === 1 &&
-        this.localLangCtx.ctes.has(node.parts[0] as string)
-      ) {
-        return [
-          this.localLangCtx.ctes.get(node.parts[0] as string).clone(),
-          node,
-        ];
-      } else if (
-        node.parts.length === 1 &&
-        this.localLangCtx.materializedCtes.has(node.parts[0] as string)
-      ) {
-        const schema = this.localLangCtx.materializedCtes.get(
-          node.parts[0] as string,
-        );
-        const src = new plan.TupleFnSource(
-          'sql',
-          [node],
-          unwind.impl,
-          toId('unwind'),
-        );
-        src.addToSchema(schema);
-        return [src, node];
-      }
-      const src = new plan.TupleSource('sql', node);
-      src.addToSchema(ASTIdentifier.fromParts([...node.parts, toInfer]));
-      return [src, node];
+      return this.idToTupleSource(node);
     }
     const src = node.accept(this) as PlanTupleOperator;
     if (node instanceof AST.JoinClause) return [src, null];
@@ -616,7 +603,9 @@ export class SQLLogicalPlanBuilder
         'sql',
         left,
         right,
-        node.condition ? [this.toCalc(node.condition) as plan.Calculation] : [],
+        node.condition
+          ? splitByOp(node.condition.accept(this), and).map(this.opToCalc)
+          : [],
       );
       (op as plan.Join).leftOuter =
         node.joinType === AST.JoinType.LEFT ||
@@ -763,23 +752,45 @@ export class SQLLogicalPlanBuilder
     return this.materializeCte(node, subq);
   }
 
+  /**
+   * Rename with query according to the with query name. If column names are provided, use them.
+   * Additionally, provide schemaless aliases for all columns.
+   */
   protected renameWithQuery(node: AST.WithQuery, subq: PlanTupleOperator) {
     if (node.colNames?.length) {
       return new plan.Projection(
         'sql',
-        subq.schema.map((x, i) => [
-          x,
-          ASTIdentifier.fromParts([
-            ...node.name.parts,
-            ...node.colNames[i].parts,
-          ]),
-        ]),
+        subq.schema
+          .map(
+            (x, i) =>
+              [
+                x,
+                ASTIdentifier.fromParts([
+                  ...node.name.parts,
+                  ...node.colNames[i].parts,
+                ]),
+              ] as Aliased,
+          )
+          .concat(subq.schema.map((x, i) => [x, node.colNames[i]])),
         subq,
       );
     } else {
+      const overridden = subq.schema.map(
+        (x) => [x, overrideSource(node.name, x)] as Aliased,
+      );
       return new plan.Projection(
         'sql',
-        subq.schema.map((x) => [x, overrideSource(node.name, x)]),
+        overridden.concat(
+          overridden.map(
+            ([x, alias]) =>
+              [
+                x,
+                ASTIdentifier.fromParts(
+                  alias.parts.slice(node.name.parts.length),
+                ),
+              ] as Aliased,
+          ),
+        ),
         subq,
       );
     }
@@ -824,6 +835,7 @@ export class SQLLogicalPlanBuilder
     const setOp = sset.setOp as AST.SelectSetOp;
     sset.setOp = null; // we'll handle the set op ourselves
     let basePart = sset.accept(this) as PlanTupleOperator;
+    sset.setOp = setOp; // restore to avoid modifying the original AST
     basePart = this.renameWithQuery(node, basePart);
     const normalizedAttrs = basePart.schema.map(
       (x) =>
@@ -838,19 +850,22 @@ export class SQLLogicalPlanBuilder
     );
     const recSrc = new plan.Projection(
       'sql',
-      normalizedAttrs.concat(
-        normalizedAttrs.map(([calc, alias]) => [
-          calc.clone(),
-          toId(alias.parts.at(-1) as string),
-        ]),
-      ),
+      normalizedAttrs,
       new plan.NullSource('sql'),
     );
 
     this.localLangCtx.ctes.set(node.name.parts[0] as string, recSrc);
     let recursivePart = setOp.next.accept(this) as PlanTupleOperator;
     this.localLangCtx.ctes.delete(node.name.parts[0] as string);
-    recursivePart = this.renameWithQuery(node, recursivePart);
+    recursivePart = this.renameWithQuery(
+      {
+        ...node,
+        colNames: node.colNames?.length
+          ? node.colNames
+          : normalizedAttrs.slice(normalizedAttrs.length / 2).map(retI1),
+      } as AST.WithQuery,
+      recursivePart,
+    );
 
     let res: PlanTupleOperator = new plan.IndexedRecursion(
       'sql',
@@ -858,16 +873,17 @@ export class SQLLogicalPlanBuilder
       Infinity,
       recursivePart,
       basePart,
+      setOp.distinct
+        ? normalizedAttrs
+            .slice(0, normalizedAttrs.length / 2) // the second half of normalizedAttrs are the ones with overridden sources
+            .map(([calc]) => calc.clone())
+        : [],
     );
-    if (setOp.distinct) {
-      console.log('DISTINCT');
-      (res as plan.IndexedRecursion).distinctKeys = normalizedAttrs.map(
-        ([calc]) => calc.clone(),
-      );
-    }
     res = new plan.Projection(
       'sql',
-      normalizedAttrs.map(([calc, alias]) => [calc.clone(), alias]),
+      normalizedAttrs
+        .slice(0, normalizedAttrs.length / 2)
+        .map(([calc, alias]) => [calc.clone(), alias]),
       res,
     );
 
@@ -895,6 +911,44 @@ export class SQLLogicalPlanBuilder
   visitLiteral<U>(node: ASTLiteral<U>): PlanOperator {
     return new plan.Literal('sql', node.value);
   }
+
+  protected optimizeInOp(
+    expr: plan.PlanOpAsArg | ASTIdentifier,
+    subq: PlanOperator,
+  ): PlanOperator {
+    // the unique id is important because of naming collisions
+    // we want to make sure that the selection we add
+    // can be pushed down to the source and converted into an index scan if possible
+    const uniqId = toId(Symbol('inNeedle'));
+    let res = toTuples(subq);
+    const subqCol = res.schema[0];
+    const orNull = new plan.FnCall(
+      'sql',
+      [
+        { op: new plan.FnCall('sql', [uniqId, subqCol], eq.impl) },
+        {
+          op: new plan.FnCall(
+            'sql',
+            [subqCol, { op: new plan.Literal('sql', null) }],
+            isOp.impl,
+          ),
+        },
+      ],
+      or.impl,
+    );
+    res = new plan.Selection('sql', this.opToCalc(orNull), res);
+
+    const exprCalc =
+      expr instanceof ASTIdentifier ? expr : this.opToCalc(expr.op);
+    const uniqSrc = new plan.Projection(
+      'sql',
+      [[exprCalc, uniqId]],
+      new plan.NullSource('sql'),
+    );
+    res = new plan.ProjectionConcat('sql', res, false, uniqSrc);
+    return new plan.MapToItem('sql', subqCol, res);
+  }
+
   visitOperator(node: ASTOperator): PlanOperator {
     const op = this.db.langMgr.getOp(node.lang, ...idToPair(node.id));
     const result = new plan.FnCall(
@@ -908,6 +962,12 @@ export class SQLLogicalPlanBuilder
       (op.impl === inOp.impl || op.impl === notInOp.impl) &&
       'op' in result.args[1]
     ) {
+      if (!(plan.CalcIntermediate in result.args[1].op)) {
+        result.args[1].op = this.optimizeInOp(
+          result.args[0],
+          result.args[1].op,
+        );
+      }
       result.args[1].acceptSequence = true;
     } else if (result.impl === like.impl || result.impl === ilike.impl) {
       // possibly precompute the regex for LIKE/ILIKE

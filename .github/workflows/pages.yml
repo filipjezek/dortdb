@@ -12,27 +12,30 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
-
-      - name: Cache dependencies
-        id: cache_dependencies
-        uses: actions/cache@v3
-        with:
-          path: node_modules
-          key: node-modules-${{ hashFiles('package-lock.json') }}
+          node-version: 24
+          cache-dependency-path: package-lock.json
+          cache: 'npm'
 
       - name: Install dependencies
         shell: bash
         if: steps.cache_dependencies.outputs.cache-hit != 'true'
         run: npm ci
 
+      - name: Build pretext
+        shell: bash
+        run: |
+          cd node_modules/@chenglou/pretext
+          wget https://raw.githubusercontent.com/chenglou/pretext/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.build.json
+          wget https://raw.githubusercontent.com/chenglou/pretext/a52268864195edc76d5f382d264dafb33f6be462/tsconfig.json
+          npx --package typescript@6.0.2 tsc -p tsconfig.build.json
+
       - name: Setup Pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
       - name: Build
         run: npx nx build showcase --base-href https://filipjezek.github.io/dortdb/
@@ -56,4 +59,4 @@ jobs:
     steps:
       - name: Publish to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

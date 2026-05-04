@@ -1,5 +1,10 @@
 import { CalculationBuilder, CalculationParams } from '@dortdb/core';
-import { LangSwitch, SQLPlanVisitor, Using } from '../plan/index.js';
+import {
+  LangSwitch,
+  SQLPlanVisitor,
+  TableAlias,
+  Using,
+} from '../plan/index.js';
 import { assertMaxOne } from '@dortdb/core/internal-fns';
 
 export class SQLCalculationBuilder
@@ -14,6 +19,13 @@ export class SQLCalculationBuilder
     };
   }
   visitUsing(operator: Using): CalculationParams {
+    return {
+      args: [this.toItem(operator)],
+      impl: assertMaxOne,
+      argMeta: [{ originalLocations: [] }],
+    };
+  }
+  visitTableAlias(operator: TableAlias, arg?: never): CalculationParams {
     return {
       args: [this.toItem(operator)],
       impl: assertMaxOne,

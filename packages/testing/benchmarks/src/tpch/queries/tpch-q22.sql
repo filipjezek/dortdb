@@ -7,18 +7,18 @@
 
 
 select
-	custsale.cntrycode,
+	custsale.cntrycode as cntrycode,
 	count(*) as numcust,
 	sum(custsale.acctbal) as totacctbal
 from
 	(
 		select
-			substr(c.phone, 0, 2) as cntrycode,
+			substr(c.phone, 1, 2) as cntrycode,
 			c.acctbal
 		from
 			customer c
 		where
-			substr(c.phone, 0, 2) in
+			substr(c.phone, 1, 2) in
 				('24', '18', '27', '28', '29', '10', '17')
 			and c.acctbal > (
 				select
@@ -27,7 +27,7 @@ from
 					customer c
 				where
 					c.acctbal > 0.00
-					and substr(c.phone, 0, 2) in
+					and substr(c.phone, 1, 2) in
 						('24', '18', '27', '28', '29', '10', '17')
 			)
 			and not exists (

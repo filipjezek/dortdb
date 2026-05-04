@@ -1,11 +1,6 @@
 import { Trie } from '../../../data-structures/trie.js';
 import { ASTIdentifier } from '../../../ast.js';
-import {
-  Aliased,
-  PlanOperator,
-  PlanTupleOperator,
-  PlanVisitor,
-} from '../../visitor.js';
+import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
@@ -13,12 +8,9 @@ import { schemaToTrie } from '../../../utils/trie.js';
 import { Index } from '../../../indices/index.js';
 
 export class TupleSource extends PlanTupleOperator {
-  /**
-   * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
-   */
   constructor(
     lang: Lowercase<string>,
-    public name: ASTIdentifier | Aliased<ASTIdentifier>,
+    public name: ASTIdentifier,
   ) {
     super();
     this.lang = lang;
@@ -47,14 +39,11 @@ export class TupleSource extends PlanTupleOperator {
 }
 
 export class TupleFnSource extends PlanTupleOperator {
-  /**
-   * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
-   */
   constructor(
     lang: Lowercase<string>,
     public args: (ASTIdentifier | Calculation)[],
     public impl: (...args: any[]) => Iterable<unknown>,
-    public name?: ASTIdentifier | Aliased<ASTIdentifier>,
+    public name?: ASTIdentifier,
   ) {
     super();
     this.lang = lang;

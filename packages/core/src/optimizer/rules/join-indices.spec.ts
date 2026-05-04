@@ -451,7 +451,7 @@ describe('JoinIndices', () => {
       expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
     });
 
-    it('should work with leftOuter joins', () => {
+    it('should work with rightOuter joins', () => {
       const calcA = strToCalc('a', [['c']]);
       source.addToSchema([strToId('a'), strToId('b')]);
       sourceRight.addToSchema([strToId('c'), strToId('d')]);
@@ -466,7 +466,7 @@ describe('JoinIndices', () => {
         10,
         new plan.Join(lang, source.clone(), sourceRight.clone(), [calcA]),
       );
-      (initialPlan.source as plan.Join).leftOuter = true;
+      (initialPlan.source as plan.Join).rightOuter = true;
       const optimized = db.optimizer.optimize(initialPlan);
       const externalKey = getExternalKey(optimized);
       const clonedCalcA = strToCalc('a', [[externalKey, 'c']]);
@@ -504,7 +504,7 @@ describe('JoinIndices', () => {
       expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
     });
 
-    it('should not do anything with rightOuter joins', () => {
+    it('should not do anything with leftOuter joins', () => {
       const calcA = strToCalc('a', [['c']]);
       source.addToSchema([strToId('a'), strToId('b')]);
       sourceRight.addToSchema([strToId('c'), strToId('d')]);
@@ -519,7 +519,7 @@ describe('JoinIndices', () => {
         10,
         new plan.Join(lang, source.clone(), sourceRight.clone(), [calcA]),
       );
-      (initialPlan.source as plan.Join).rightOuter = true;
+      (initialPlan.source as plan.Join).leftOuter = true;
       const expectedPlan = initialPlan.clone();
       const optimized = db.optimizer.optimize(initialPlan);
       expect(eqChecker.areEqual(optimized, expectedPlan)).toBe(true);
