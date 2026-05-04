@@ -7,13 +7,13 @@
 
 
 select
-	orders."count" as "count",
+	orders.`count` as `count`,
 	count(*) as custdist
 from
 	(
 		select
 			c.custkey,
-			count(o.orderkey) as "count"
+			count(o.orderkey) as `count`
 		from
 			customer c left outer join orders o on
 				c.custkey = o.custkey
@@ -22,7 +22,7 @@ from
 			c.custkey
 	) as orders
 group by
-	orders."count"
+	orders.`count`
 order by
 	custdist desc,
-	orders."count" desc;
+	orders.`count` desc;

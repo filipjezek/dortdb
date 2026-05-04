@@ -58,9 +58,11 @@ export function interpretEscape(esc: string): string {
 }
 
 export function parseIdentifier(original: string): string {
-  return original[0] === '"'
-    ? original.replaceAll('""', '"').slice(1, -1)
-    : original;
+  const delim = original[0];
+  if (delim === '"' || delim === '`') {
+    return original.replaceAll(delim + delim, delim).slice(1, -1);
+  }
+  return original;
 }
 
 export function likeToRegex(like: string, caseSensitive = true): RegExp {

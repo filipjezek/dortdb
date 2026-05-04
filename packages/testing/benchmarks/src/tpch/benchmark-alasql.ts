@@ -9,6 +9,9 @@ import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { promiseTimeout } from '../utils/promise-timeout.js';
+import { getExpectedResult } from './get-expected.js';
+import { diff } from '@vitest/utils/diff';
+import { deepEqual } from '../utils/deep-equal.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -40,6 +43,7 @@ async function prepareEnv(measureInit: boolean): Promise<typeof alasql> {
   });
   obs.observe({ entryTypes: ['measure'], buffered: false });
 
+  workerLog({}, 'Preparing environment');
   await registerDataSources(alasql, measureInit);
   workerLog({}, 'Finished preparing environment');
   return alasql;
@@ -63,19 +67,35 @@ async function runQuery(
     .replaceAll('date.sub', 'date_sub')
     .replaceAll('date.extract', 'date_extract')
     .replaceAll('interval', 'date_interval');
-  console.log(new Date());
   console.log(`Running query: tpch-q${query}.sql`);
   console.log(queryText);
+  const expectedResult = getExpectedResult(query);
 
   const now = Date.now();
   if (!skipWarmup) {
     for (let i = 0; Date.now() - now < 30 * 1000 && i < 5; i++) {
-      await measureQueryRun(query, queryText, db, i, true, i === 0);
+      await measureQueryRun(
+        query,
+        queryText,
+        db,
+        i,
+        true,
+        i === 0,
+        expectedResult,
+      );
     }
   }
 
   for (let i = 0; i < runs && Date.now() - now < totalTimeout * 1000; i++) {
-    await measureQueryRun(query, queryText, db, i, false, i === 0);
+    await measureQueryRun(
+      query,
+      queryText,
+      db,
+      i,
+      false,
+      i === 0,
+      expectedResult,
+    );
   }
 }
 
@@ -86,6 +106,7 @@ async function measureQueryRun(
   iteration: number,
   isWarmup: boolean,
   measureMemory: boolean,
+  expectedResult?: any[],
 ) {
   if (measureMemory) {
     workerLog(
@@ -95,7 +116,7 @@ async function measureQueryRun(
   }
   await promiseTimeout(1000);
   performance.mark(`runQuery_${query}_start`);
-  db(queryText);
+  const res = db(queryText) as any[];
 
   performance.mark(`runQuery_${query}_end`);
   performance.measure(`runQuery_${query}`, {
@@ -108,6 +129,45 @@ async function measureQueryRun(
       { ...process.memoryUsage(), query, iteration, isWarmup },
       'Memory usage after running query',
     );
+  }
+
+  if (expectedResult) {
+    replaceDates(res, expectedResult);
+    if (deepEqual(res, expectedResult)) {
+      workerLog(
+        { query, iteration, isWarmup },
+        'Query result matches expected result',
+      );
+    } else {
+      workerLog(
+        {
+          query,
+          iteration,
+          isWarmup,
+          expected: expectedResult,
+          actual: res,
+        },
+        'Query result does NOT match expected result',
+      );
+      console.log(
+        diff(expectedResult, res, {
+          aAnnotation: 'expected',
+          bAnnotation: 'actual',
+        }),
+      );
+    }
+  }
+}
+
+function replaceDates(rows: any[], expected: any[]) {
+  const dateFields = Object.keys(expected[0]).filter(
+    (key) => expected[0][key] instanceof Date,
+  );
+  if (dateFields.length === 0) return;
+  for (const row of rows) {
+    for (const field of dateFields) {
+      row[field] = new Date(row[field]);
+    }
   }
 }
 

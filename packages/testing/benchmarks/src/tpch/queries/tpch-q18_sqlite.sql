@@ -25,7 +25,7 @@ where
 			lineitem l
 		group by
 			l.orderkey having
-				sum(l.quantity) > 313 -- originally 313, but that had no results
+				sum(l.quantity) > 300 -- originally 313, but that had no results
 	)
 	and c.custkey = o.custkey
 	and o.orderkey = l.orderkey

@@ -1,18 +1,5 @@
 {
-  "jest.jestCommandLine": "npx jest",
-  "jest.virtualFolders": [
-    { "name": "lang-sql", "rootPath": "packages/lang-sql" },
-    { "name": "lang-xquery", "rootPath": "packages/lang-xquery" },
-    { "name": "lang-cypher", "rootPath": "packages/lang-cypher" },
-    { "name": "core", "rootPath": "packages/core" }
-  ],
-  "jest.runMode": {
-    "type": "on-demand"
-  },
-  "jest.nodeEnv": {
-    "TS_NODE_COMPILER_OPTIONS": "{\"moduleResolution\":\"node10\"}"
-  },
-  "typescript.preferences.importModuleSpecifier": "project-relative",
+  "js/ts.preferences.importModuleSpecifier": "project-relative",
   "angular.enable-strict-mode-prompt": false,
   "vitest.rootConfig": "vitest.config.mts"
 }
