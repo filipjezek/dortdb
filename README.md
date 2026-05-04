@@ -48,7 +48,8 @@ const users = [
   { name: 'Charlie', age: 35 },
 ];
 
-// register the data
+// register data
+// this is a constant-time operation
 db.registerSource(['users'], users);
 
 // query!
@@ -57,6 +58,13 @@ const result = db.query(`
   FROM users
   WHERE age > 30
 `);
+
+// {
+//   schema: ['name', 'age'],
+//   data: [
+//     { name: 'Charlie', age: '35' }
+//   ]
+// }
 ```
 
 ## Multiple languages
