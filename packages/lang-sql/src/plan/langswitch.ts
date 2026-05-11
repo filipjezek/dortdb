@@ -1,4 +1,4 @@
-import { PlanOperator, PlanTupleOperator } from '@dortdb/core';
+import { ASTIdentifier, PlanOperator, PlanTupleOperator } from '@dortdb/core';
 import { LangSwitch as ASTLangSwitch } from '@dortdb/core';
 import { Trie } from '@dortdb/core/data-structures';
 import { SQLPlanVisitor } from './index.js';
@@ -9,6 +9,13 @@ import { SQLLangCtx } from '../visitors/builder.js';
  * This operator is a temporary operator which is replaced in {@link SchemaInferrer}.
  */
 export class LangSwitch extends PlanTupleOperator {
+  /**
+   * IN optimization needs information about the first returned column. The
+   * schema is not known at that point, so we create a new column which is required to be
+   * returned by the subquery.
+   */
+  public requiredCol: ASTIdentifier;
+
   constructor(
     lang: Lowercase<string>,
     public node: ASTLangSwitch,
@@ -38,6 +45,7 @@ export class LangSwitch extends PlanTupleOperator {
     const res = new LangSwitch(this.lang, this.node, this.langCtx);
     res.schema = this.schema.slice();
     res.schemaSet = this.schemaSet.clone();
+    res.requiredCol = this.requiredCol;
     return res;
   }
 }
