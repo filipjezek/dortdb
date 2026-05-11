@@ -248,16 +248,34 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
       }
     }
   }
+  visitAggregate(operator: plan.AggregateCall, ctx: VariableMapperCtx): void {
+    this.setTranslations(operator, ctx);
+    operator.postGroupOp.accept(this.vmap, ctx);
+    for (let i = 0; i < operator.args.length; i++) {
+      const arg = operator.args[i];
+      if (arg instanceof ASTIdentifier) {
+        operator.args[i] = this.translate(arg, ctx);
+      } else {
+        this.visitCalculation(arg, ctx);
+      }
+    }
+    ctx.currentIndex -= ctx.scopeStack.pop().size;
+  }
   visitGroupBy(operator: plan.GroupBy, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
     for (const key of operator.keys) {
-      key[1] = this.translate(key[1], ctx, 1);
       if (key[0] instanceof ASTIdentifier) {
         key[0] = this.translate(key[0], ctx);
       } else {
         this.visitCalculation(key[0], ctx);
       }
+    }
+    for (const key of operator.keys) {
+      key[1] = this.translate(key[1], ctx, 1);
+    }
+    for (const agg of operator.aggs) {
+      agg.fieldName = this.translate(agg.fieldName, ctx, 1);
     }
     for (const agg of operator.aggs) {
       this.visitAggregate(agg, ctx);
@@ -303,20 +321,6 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitNullSource(operator: plan.NullSource, ctx: VariableMapperCtx): void {
     ctx.scopeStack.push(new Trie());
     this.setTranslations(operator, ctx);
-  }
-  visitAggregate(operator: plan.AggregateCall, ctx: VariableMapperCtx): void {
-    this.setTranslations(operator, ctx);
-    operator.fieldName = this.translate(operator.fieldName, ctx, 1);
-    operator.postGroupOp.accept(this.vmap, ctx);
-    for (let i = 0; i < operator.args.length; i++) {
-      const arg = operator.args[i];
-      if (arg instanceof ASTIdentifier) {
-        operator.args[i] = this.translate(arg, ctx);
-      } else {
-        this.visitCalculation(arg, ctx);
-      }
-    }
-    ctx.currentIndex -= ctx.scopeStack.pop().size;
   }
   visitItemFnSource(operator: plan.ItemFnSource, ctx: VariableMapperCtx): void {
     for (let i = 0; i < operator.args.length; i++) {

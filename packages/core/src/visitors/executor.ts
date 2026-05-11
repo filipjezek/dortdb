@@ -1328,10 +1328,16 @@ export abstract class Executor implements PlanVisitor<
     ctx: ExecutionContext,
   ): Iterable<unknown> {
     const groups = new Trie<unknown, unknown[][]>();
+    const srcKeys = ctx.getKeys(operator.source);
+    const aggRenamers = operator.aggs.map((agg) =>
+      makeRenamer(
+        srcKeys,
+        ctx.getRenames(operator.source, agg.postGroupSource),
+      ),
+    );
     const aggKeys = operator.aggs.map((agg) =>
       ctx.getKeys(agg.postGroupSource),
     );
-    const srcKeys = ctx.getKeys(operator.source);
     const resultKeys = ctx.getKeys(operator);
     const keyKeys = operator.keys.map((x) => x[1].parts[0] as number);
 
@@ -1349,7 +1355,7 @@ export abstract class Executor implements PlanVisitor<
       group.push(item);
     }
 
-    const originalAggAcepts = operator.aggs.map(
+    const originalAggAccepts = operator.aggs.map(
       (agg) => agg.postGroupSource.accept,
     );
     // prepare the lambdas so that we do not have to rapidly create them for every item in the group
@@ -1372,10 +1378,7 @@ export abstract class Executor implements PlanVisitor<
         const agg = operator.aggs[i];
         agg.postGroupSource.accept = () =>
           Iterator.from(group).map((item) => {
-            return ctx.setTuple(
-              this.renameKeys(item, srcKeys, aggKeys[i]),
-              aggKeys[i],
-            );
+            return ctx.setTuple(aggRenamers[i](item), aggKeys[i]);
           }) as any;
         let state = agg.impl.init();
         const skipNulls = !agg.impl.includeNulls;
@@ -1391,7 +1394,7 @@ export abstract class Executor implements PlanVisitor<
       yield ctx.setTuple(result, resultKeys);
     }
     for (let i = 0; i < operator.aggs.length; i++) {
-      operator.aggs[i].postGroupSource.accept = originalAggAcepts[i];
+      operator.aggs[i].postGroupSource.accept = originalAggAccepts[i];
     }
   }
 
