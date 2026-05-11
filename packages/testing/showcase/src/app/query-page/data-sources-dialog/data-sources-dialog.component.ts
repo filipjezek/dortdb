@@ -384,7 +384,7 @@ export class DataSourcesDialogComponent {
       savedSize: '1.7 MB',
     },
     {
-      name: 'TPCH data sample',
+      name: 'TPC-H (SF 0.1)',
       service: this.tpchS,
       downloadSize: '29 MB',
       savedSize: '68 MB',
