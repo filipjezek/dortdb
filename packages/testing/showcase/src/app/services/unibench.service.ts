@@ -1,17 +1,12 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { Injectable } from '@angular/core';
 import {
   unibenchGraphTables,
   UnibenchData,
   extractArchive,
-  iterStream,
   unibenchFiles,
 } from '@dortdb/dataloaders';
 import { gaLabelsOrType, GraphologyDataAdapter } from '@dortdb/lang-cypher';
-
-const LS_KEY = 'indexeddb-used';
-const DB_NAME = 'unibench';
-const OBJ_STORE_NAME = 'unibench';
-const DB_KEY = 'data';
+import { DatasetService } from './dataset.service';
 
 function promisify<T extends IDBRequest>(req: T): Promise<T['result']>;
 function promisify(req: IDBTransaction): Promise<IDBTransaction>;
@@ -34,108 +29,50 @@ interface SerializedUnibenchData extends Omit<
   socialNetwork: unknown; // Serialized MultiDirectedGraph
 }
 
-export type DataLocation = 'indexeddb' | 'memory' | 'remote';
-
 @Injectable({ providedIn: 'root' })
-export class UnibenchService {
-  private data = signal<UnibenchData>(null);
-  private rawData: ArrayBuffer;
-  private rawDataView: Uint8Array;
-  /**
-   * we do this because access to indexedDB requires user confirmation
-   * and we don't want to ask the user for confirmation if we don't need it
-   */
-  private dbPopulated = signal<boolean>(!!localStorage.getItem(LS_KEY));
-
-  public downloadProgress = signal<number>(undefined);
-  public dataLocation = computed<DataLocation>(() => {
-    if (this.dbPopulated()) {
-      return 'indexeddb';
-    }
-    if (this.data()) {
-      return 'memory';
-    }
-    return 'remote';
-  });
-
-  constructor() {}
-
-  public async getDataIfAvailable(): Promise<UnibenchData> {
-    if (this.data()) {
-      return this.data();
-    }
-
-    return this.checkIndexedDB();
+export class UnibenchService extends DatasetService<
+  UnibenchData,
+  SerializedUnibenchData
+> {
+  protected override LS_KEY(): string {
+    return 'indexeddb-used-unibench';
+  }
+  protected override OBJ_STORE_NAME(): string {
+    return 'unibench';
+  }
+  protected override DATA_URL(): string {
+    return 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip';
+  }
+  protected override DB_KEY(): string {
+    return 'data';
+  }
+  protected override DB_NAME(): string {
+    return 'unibench';
+  }
+  protected override DB_VERSION(): number {
+    return 3;
   }
 
-  public downloadData(): Promise<UnibenchData> {
-    this.downloadProgress.set(0);
-    let bytesRead = 0;
-    const stream = async function* (this: UnibenchService) {
-      const resp = await fetch(
-        'https://s3.eu-north-1.amazonaws.com/dortdb.unibench/Unibench-0.2.sample.zip',
-      );
-      this.rawData = new ArrayBuffer(+resp.headers.get('Content-Length'));
-      this.rawDataView = new Uint8Array(this.rawData);
-      for await (const chunk of iterStream(resp.body)) {
-        this.rawDataView.set(chunk, bytesRead);
-        bytesRead += chunk.length;
-        this.downloadProgress.set(bytesRead / this.rawData.byteLength);
-        yield chunk;
-      }
-    }.bind(this)();
-    return this.processArchive(stream);
-  }
+  constructor() {
+    super();
 
-  private async checkIndexedDB(): Promise<UnibenchData> {
-    if (!this.dbPopulated()) return null;
-    let serialized: SerializedUnibenchData;
-    try {
-      const db = await promisify(indexedDB.open(DB_NAME, 2));
-      const tx = db.transaction(OBJ_STORE_NAME, 'readonly');
-      const store = tx.objectStore(OBJ_STORE_NAME);
-      serialized = await promisify(store.get(DB_KEY));
-    } catch (e) {
-      console.error('Error accessing IndexedDB:', e);
-      return null;
+    // migration
+    if (localStorage.getItem('indexeddb-used')) {
+      localStorage.removeItem('indexeddb-used');
+      localStorage.setItem('indexeddb-used-unibench', 'true');
+      this.dbPopulated.set(true);
     }
-
-    if (!serialized) {
-      console.warn('No data found in IndexedDB');
-      return null;
-    }
-    this.data.set(this.deserializeData(serialized));
-    return this.data();
   }
 
-  public async saveToIndexedDB(): Promise<void> {
-    const dbReq = indexedDB.open(DB_NAME, 2);
-    dbReq.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
-      if (db.objectStoreNames.contains(OBJ_STORE_NAME)) {
-        db.deleteObjectStore(OBJ_STORE_NAME);
-      }
-      db.createObjectStore(OBJ_STORE_NAME);
-    };
-    const db = await promisify(dbReq);
-    const tx = db.transaction(OBJ_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(OBJ_STORE_NAME);
-    store.put(this.serializeData(), DB_KEY);
-    await promisify(tx);
-    localStorage.setItem(LS_KEY, 'true');
-    this.dbPopulated.set(true);
-  }
-
-  private serializeData(): SerializedUnibenchData {
-    const d = this.data();
+  protected serializeData(data: UnibenchData): SerializedUnibenchData {
     return {
-      ...d,
-      socialNetwork: GraphologyDataAdapter.export(d.socialNetwork),
-      invoices: new XMLSerializer().serializeToString(d.invoices),
+      ...data,
+      socialNetwork: GraphologyDataAdapter.export(data.socialNetwork),
+      invoices: new XMLSerializer().serializeToString(data.invoices),
     };
   }
 
-  private deserializeData(serialized: SerializedUnibenchData): UnibenchData {
+  protected deserializeData(serialized: SerializedUnibenchData): UnibenchData {
     const result = {
       ...serialized,
       socialNetwork: GraphologyDataAdapter.import(serialized.socialNetwork),
@@ -158,28 +95,15 @@ export class UnibenchService {
     return result;
   }
 
-  public async clear(): Promise<void> {
-    const db = await promisify(indexedDB.open(DB_NAME, 2));
-    const tx = db.transaction(OBJ_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(OBJ_STORE_NAME);
-    store.clear();
-    await promisify(tx);
-    localStorage.removeItem(LS_KEY);
-    this.dbPopulated.set(false);
-  }
-
-  private async processArchive(
+  protected extractArchive(
     archive: AsyncIterable<Uint8Array<ArrayBufferLike>>,
   ): Promise<UnibenchData> {
-    const result = (await extractArchive(
+    return extractArchive(
       archive,
       unibenchFiles,
       new DOMParser(),
       'socialNetwork',
       unibenchGraphTables,
-    )) as any as UnibenchData;
-
-    this.data.set(result);
-    return result;
+    ) as Promise<any> as Promise<UnibenchData>;
   }
 }

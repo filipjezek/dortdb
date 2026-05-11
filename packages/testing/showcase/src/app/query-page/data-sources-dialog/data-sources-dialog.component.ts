@@ -7,6 +7,8 @@ import Prism from 'prismjs';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { UnibenchService } from '../../services/unibench.service';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+import { TPCHService } from '../../services/tpch.service';
+import { DatasetService } from '../../services/dataset.service';
 
 interface Source {
   name: string;
@@ -17,6 +19,13 @@ interface Source {
   lang: string;
   indices?: string[];
   indicesHighlighted?: SafeHtml[];
+}
+
+interface Dataset {
+  name: string;
+  service: DatasetService<any>;
+  downloadSize: string;
+  savedSize: string;
 }
 
 @Component({
@@ -33,12 +42,12 @@ interface Source {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DataSourcesDialogComponent {
-  sources: Source[] = [
+  unibenchSources: Source[] = [
     {
       lang: 'markup',
       name: 'Invoices',
       description:
-        'Unibench data. Invoices represented as XML. Same data as orders, but in a different format.',
+        'UniBench data. Invoices represented as XML. Same data as orders, but in a different format.',
       example: `<Invoices>
   <Invoice.xml>
       <OrderId>6711da51-dee6-452a-a7b8-f79a1cbb9436</OrderId>
@@ -67,7 +76,7 @@ export class DataSourcesDialogComponent {
       lang: 'javascript',
       name: 'orders',
       description:
-        'Unibench data. Orders represented as JS objects. Same data as invoices, but in a different format.',
+        'UniBench data. Orders represented as JS objects. Same data as invoices, but in a different format.',
       example: `[{
   "OrderId":"016f6a4a-ec18-4885-b1c7-9bf2306c76d6",
   "PersonId":"10995116278711",
@@ -95,7 +104,7 @@ export class DataSourcesDialogComponent {
     {
       lang: 'javascript',
       name: 'customers',
-      description: 'Unibench data. Customers represented as JS objects.',
+      description: 'UniBench data. Customers represented as JS objects.',
       example: `[{
   "id": 4145,
   "firstName": "Albade",
@@ -112,7 +121,7 @@ export class DataSourcesDialogComponent {
     {
       lang: 'javascript',
       name: 'feedback',
-      description: 'Unibench data. Feedback represented as JS objects.',
+      description: 'UniBench data. Feedback represented as JS objects.',
       example: `[{
   "productAsin": "B005FUKW6M",
   "personId": 26388279075595,
@@ -126,7 +135,7 @@ export class DataSourcesDialogComponent {
     {
       lang: 'javascript',
       name: 'products',
-      description: 'Unibench data. E-shop products represented as JS objects.',
+      description: 'UniBench data. E-shop products represented as JS objects.',
       example: `[{
   "asin": "B0001XH6G2",
   "title": "Canon 12x36 Image Stabilization II Binoculars w/Case, Neck Strap &amp; Batteries",
@@ -145,7 +154,7 @@ export class DataSourcesDialogComponent {
       lang: 'javascript',
       name: 'brandProducts',
       description:
-        'Unibench data. A relation linking vendors and products. Represented as JS objects.',
+        'UniBench data. A relation linking vendors and products. Represented as JS objects.',
       example: `[{
   "brandName": "Signia_(sportswear)",
   "productAsin": "B002OP5TUA"
@@ -158,7 +167,7 @@ export class DataSourcesDialogComponent {
     {
       lang: 'javascript',
       name: 'vendors',
-      description: 'Unibench data. E-shop vendors represented as JS objects.',
+      description: 'UniBench data. E-shop vendors represented as JS objects.',
       example: `[{
   "id": "Signia_(sportswear)",
   "Country": "Argentina",
@@ -170,7 +179,7 @@ export class DataSourcesDialogComponent {
       lang: 'javascript',
       name: 'posts',
       description:
-        'Unibench data. Social network posts represented as JS objects.',
+        'UniBench data. Social network posts represented as JS objects.',
       example: `[{
   "id": 549755814351,
   "imageFile": "",
@@ -187,7 +196,7 @@ export class DataSourcesDialogComponent {
       lang: 'javascript',
       name: 'defaultGraph',
       description:
-        'Unibench data. Social network. Represented as Graphology graph.',
+        'UniBench data. Social network. Represented as Graphology graph.',
       img: 'social-network.svg',
       indices: [
         `db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);`,
@@ -199,6 +208,8 @@ export class DataSourcesDialogComponent {
       ],
     },
   ];
+  tpchSources: Source[] = [];
+  sources: Source[] = [...this.unibenchSources, ...this.tpchSources];
   unibench: string[] = [
     'For a given CUSTOMER, find their profile, orders, feedback, and posts.',
     'For a given PRODUCT, find the persons who had bought it and posted on it.',
@@ -217,7 +228,23 @@ export class DataSourcesDialogComponent {
   };
 
   unibenchS = inject(UnibenchService);
+  tpchS = inject(TPCHService);
   private sanitizer = inject(DomSanitizer);
+
+  datasets: Dataset[] = [
+    {
+      name: 'UniBench data sample',
+      service: this.unibenchS,
+      downloadSize: '6.1 MB',
+      savedSize: '1.7 MB',
+    },
+    {
+      name: 'TPCH data sample',
+      service: this.tpchS,
+      downloadSize: '29 MB',
+      savedSize: '68 MB',
+    },
+  ];
 
   constructor() {
     for (const src of this.sources) {
