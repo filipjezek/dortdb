@@ -1,21 +1,29 @@
 {
-  "$schema": "https://typedoc.org/schema.json",
+  "$schema": "https://typedoc-plugin-markdown.org/schema.json",
   "entryPoints": [
-    "../../packages/core/src/index.ts",
-    "../../packages/lang-sql/src/index.ts",
-    "../../packages/lang-xquery/src/index.ts",
-    "../../packages/lang-cypher/src/index.ts"
+    "../../packages/core",
+    "../../packages/lang-sql",
+    "../../packages/lang-xquery",
+    "../../packages/lang-cypher"
   ],
+  "entryPointStrategy": "packages",
   "tsconfig": "./tsconfig.typedoc.json",
-  "plugin": ["typedoc-plugin-markdown"],
+  "plugin": ["typedoc-plugin-markdown", "typedoc-docusaurus-theme"],
   "out": "../../packages/docs/docs/api",
-  "readme": "none",
-  "entryFileName": "README",
   "hideGenerator": true,
   "excludePrivate": true,
   "excludeProtected": true,
   "excludeInternal": true,
+  "cleanOutputDir": true,
+
+  "readme": "none",
+  "name": "API Reference",
+  "sidebar": {
+    "typescript": true
+  },
+
   "sort": ["source-order"],
   "groupOrder": ["Classes", "Interfaces", "Functions", "Variables", "*"],
-  "cleanOutputDir": true
+  "parametersFormat": "table",
+  "enumMembersFormat": "table"
 }
