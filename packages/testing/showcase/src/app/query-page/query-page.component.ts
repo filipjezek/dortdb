@@ -321,7 +321,7 @@ export class QueryPageComponent {
     this.db.registerSource(['customer'], this.tpchData.customer);
     this.db.registerSource(['lineitem'], this.tpchData.lineitem);
     this.db.registerSource(['nation'], this.tpchData.nation);
-    this.db.registerSource(['orders'], this.tpchData.orders);
+    this.db.registerSource(['tpch', 'orders'], this.tpchData.orders);
     this.db.registerSource(['part'], this.tpchData.part);
     this.db.registerSource(['partsupp'], this.tpchData.partsupp);
     this.db.registerSource(['region'], this.tpchData.region);
@@ -334,8 +334,8 @@ export class QueryPageComponent {
     this.db.createIndex(['lineitem'], ['suppkey'], MapIndex);
     this.db.createIndex(['nation'], ['nationkey'], MapIndex);
     this.db.createIndex(['nation'], ['regionkey'], MapIndex);
-    this.db.createIndex(['orders'], ['custkey'], MapIndex);
-    this.db.createIndex(['orders'], ['orderkey'], MapIndex);
+    this.db.createIndex(['tpch', 'orders'], ['custkey'], MapIndex);
+    this.db.createIndex(['tpch', 'orders'], ['orderkey'], MapIndex);
     this.db.createIndex(['part'], ['partkey'], MapIndex);
     this.db.createIndex(['partsupp'], ['partkey'], MapIndex);
     this.db.createIndex(['partsupp'], ['suppkey'], MapIndex);

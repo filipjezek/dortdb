@@ -10,6 +10,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, map } from 'rxjs/operators';
 import fuzzysort from 'fuzzysort';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { tpchQueries } from './tpch-queries';
 
 export interface Sample {
   name: string;
@@ -85,6 +86,12 @@ WITH collect(toptwo) AS toptwo
 MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)<-[:knows *..3]-({id: toptwo[1]})
 RETURN foaf`,
     },
+    ...tpchQueries.map<Sample>((query, i) => ({
+      lang: 'sql',
+      name: `Query ${i + 1}`,
+      tags: ['tpch'],
+      query,
+    })),
     {
       lang: 'sql',
       name: 'Schema inference',

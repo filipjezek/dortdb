@@ -208,7 +208,152 @@ export class DataSourcesDialogComponent {
       ],
     },
   ];
-  tpchSources: Source[] = [];
+  tpchSources: Source[] = [
+    {
+      name: 'part',
+      description: 'TPC-H data. PART table represented as JS objects.',
+      example: `[{
+  "partkey": 1,
+  "name": "goldenrod lavender spring chocolate lace",
+  "mfgr": "Manufacturer#1",
+  "brand": "Brand#13",
+  "type": "PROMO BURNISHED COPPER",
+  "size": 7,
+  "container": "JUMBO PKG",
+  "retailprice": 901,
+  "comment": "ly. slyly ironi"
+  }, /* ... */]`,
+      lang: 'javascript',
+      indices: [`db.createIndex(['part'], ['partkey'], MapIndex);`],
+    },
+    {
+      name: 'supplier',
+      description: 'TPC-H data. SUPPLIER table represented as JS objects.',
+      example: `[{
+  "suppkey": 1,
+  "name": "Supplier#000000001",
+  "address": " N kD4on9OM Ipw3,gf0JBoQDd7tgrzrddZ",
+  "nationkey": 17,
+  "phone": "27-918-335-1736",
+  "acctbal": 5755.94,
+  "comment": "each slyly above the careful"
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [
+        `db.createIndex(['supplier'], ['suppkey'], MapIndex);`,
+        `db.createIndex(['supplier'], ['nationkey'], MapIndex);`,
+      ],
+    },
+    {
+      name: 'partsupp',
+      description: 'TPC-H data. PARTSUPP table represented as JS objects.',
+      example: `[{
+  "partkey": 1,
+  "suppkey": 2,
+  "availqty": 3325,
+  "supplycost": 771.64,
+  "comment": ", even theodolites. regular, final theodolites eat after the carefully pending foxes. furiously regular deposits sleep slyly. carefully bold realms above the ironic dependencies haggle careful"
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [
+        `db.createIndex(['partsupp'], ['partkey'], MapIndex);`,
+        `db.createIndex(['partsupp'], ['suppkey'], MapIndex);`,
+      ],
+    },
+    {
+      name: 'customer',
+      description: 'TPC-H data. CUSTOMER table represented as JS objects.',
+      example: `[{
+  "custkey": 1,
+  "name": "Customer#000000001",
+  "address": "IVhzIApeRb ot,c,E",
+  "nationkey": 15,
+  "phone": "25-989-741-2988",
+  "acctbal": 711.56,
+  "mktsegment": "BUILDING",
+  "comment": "to the even, regular platelets. regular, ironic epitaphs nag e"
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [
+        `db.createIndex(['customer'], ['custkey'], MapIndex);`,
+        `db.createIndex(['customer'], ['nationkey'], MapIndex);`,
+      ],
+    },
+    {
+      name: 'tpch.orders',
+      description: 'TPC-H data. ORDERS table represented as JS objects.',
+      example: `[{
+  "orderkey": 1,
+  "custkey": 3691,
+  "orderstatus": "O",
+  "totalprice": 194029.55,
+  "orderdate": "1996-01-02T00:00:00.000Z",
+  "orderpriority": "5-LOW",
+  "clerk": "Clerk#000000951",
+  "shippriority": 0,
+  "comment": "nstructions sleep furiously among "
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [
+        `db.createIndex(['tpch', 'orders'], ['custkey'], MapIndex);`,
+        `db.createIndex(['tpch', 'orders'], ['orderkey'], MapIndex);`,
+      ],
+    },
+    {
+      name: 'lineitem',
+      description: 'TPC-H data. LINEITEM table represented as JS objects.',
+      example: `[{
+  "orderkey": 1,
+  "partkey": 15519,
+  "suppkey": 785,
+  "linenumber": 1,
+  "quantity": 17,
+  "extendedprice": 24386.67,
+  "discount": 0.04,
+  "tax": 0.02,
+  "returnflag": "N",
+  "linestatus": "O",
+  "shipdate": "1996-03-13T00:00:00.000Z",
+  "commitdate": "1996-02-12T00:00:00.000Z",
+  "receiptdate": "1996-03-22T00:00:00.000Z",
+  "shipinstruct": "DELIVER IN PERSON",
+  "shipmode": "TRUCK",
+  "comment": "egular courts above the"
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [
+        `db.createIndex(['lineitem'], ['orderkey'], MapIndex);`,
+        `db.createIndex(['lineitem'], ['partkey'], MapIndex);`,
+        `db.createIndex(['lineitem'], ['suppkey'], MapIndex);`,
+      ],
+    },
+    {
+      name: 'nation',
+      description: 'TPC-H data. NATION table represented as JS objects.',
+      example: `[{
+  "nationkey": 0,
+  "name": "ALGERIA",
+  "regionkey": 0,
+  "comment": " haggle. carefully final deposits detect slyly agai"
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [
+        `db.createIndex(['nation'], ['nationkey'], MapIndex);`,
+        `db.createIndex(['nation'], ['regionkey'], MapIndex);`,
+      ],
+    },
+    {
+      name: 'region',
+      description: 'TPC-H data. REGION table represented as JS objects.',
+      example: `[{
+  "regionkey": 0,
+  "name": "AFRICA",
+  "comment": "lar deposits. blithely final packages cajole. regular waters are final requests. regular accounts are according to "
+}, /* ... */]`,
+      lang: 'javascript',
+      indices: [`db.createIndex(['region'], ['regionkey'], MapIndex);`],
+    },
+  ];
   sources: Source[] = [...this.unibenchSources, ...this.tpchSources];
   unibench: string[] = [
     'For a given CUSTOMER, find their profile, orders, feedback, and posts.',
