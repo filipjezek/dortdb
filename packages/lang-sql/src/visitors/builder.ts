@@ -466,7 +466,7 @@ export class SQLLogicalPlanBuilder
       }
     }
 
-    if (aggregates.length) {
+    if (aggregates.length || node.groupBy) {
       op = this.visitGroupByClause(node.groupBy, op, aggregates);
     }
     if (node.having) {
