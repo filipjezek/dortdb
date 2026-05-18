@@ -36,7 +36,7 @@
     }
   },
   "peerDependencies": {
-    "@dortdb/core": "*"
+    "@dortdb/core": "^2.0.0"
   },
   "dependencies": {
     "@swc/helpers": "~0.5.11",

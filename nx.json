@@ -94,6 +94,9 @@
     }
   },
   "release": {
+    "changelog": {
+      "workspaceChangelog": true
+    },
     "version": {
       "preVersionCommand": "npx nx run-many -t build",
       "preserveMatchingDependencyRanges": false
