@@ -53,6 +53,11 @@
       "cache": true,
       "dependsOn": ["^build"],
       "inputs": ["production", "^production"]
+    },
+    "@nx/js:swc": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["production", "^production"]
     }
   },
   "plugins": [
@@ -76,19 +81,6 @@
       "options": {
         "testTargetName": "test"
       }
-    },
-    {
-      "plugin": "@nx/js/typescript",
-      "include": ["packages/testing/dataloaders/*"],
-      "options": {
-        "typecheck": {
-          "targetName": "typecheck"
-        },
-        "build": {
-          "targetName": "build",
-          "configName": "tsconfig.lib.json"
-        }
-      }
     }
   ],
   "generators": {
@@ -99,6 +91,21 @@
       "linter": "eslint",
       "style": "scss",
       "unitTestRunner": "vitest"
+    }
+  },
+  "release": {
+    "version": {
+      "preVersionCommand": "npx nx run-many -t build"
+    },
+    "groups": {
+      "main": {
+        "projects": ["core", "packages/lang-*"],
+        "projectsRelationship": "fixed"
+      },
+      "other": {
+        "projects": ["packages/extensions/*"],
+        "projectsRelationship": "independent"
+      }
     }
   }
 }

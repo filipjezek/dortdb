@@ -25,6 +25,9 @@
     },
     {
       "path": "./tools/vitest"
+    },
+    {
+      "path": "./packages/extensions/datetime"
     }
   ]
 }

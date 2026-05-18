@@ -200,19 +200,27 @@ const db = new DortDB({
 
 ## Language extensions
 
-DortDB lets you define custom operators and functions for your query languages. A datetime extension is included out of the box.
+DortDB lets you define custom operators and functions for your query languages. Here's an example using the datetime extension:
+
+```
+npm i @dortdb/datetime
+```
 
 ```ts
-import { DortDB, datetime } from '@dortdb/core';
+import { DortDB } from '@dortdb/core';
+import { datetime } from '@dortdb/datetime';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { SQL } from '@dortdb/lang-sql';
 
-// configure the db
 const db = new DortDB({
   mainLang: SQL(),
   optimizer: { rules: [defaultRules] },
   extensions: [datetime],
 });
+
+db.query(`
+  SELECT date.sub(now(), interval('3 years'))
+`)
 ```
 
 ### Datetime functions

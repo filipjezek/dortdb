@@ -20,13 +20,8 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
-import {
-  datetime,
-  DortDB,
-  MapIndex,
-  PlanOperator,
-  QueryResult,
-} from '@dortdb/core';
+import { DortDB, MapIndex, PlanOperator, QueryResult } from '@dortdb/core';
+import { datetime } from '@dortdb/datetime';
 import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';

@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pickRandom } from '../utils/random.js';
-import { datetime, DortDB, MapIndex } from '@dortdb/core';
+import { DortDB, MapIndex } from '@dortdb/core';
+import { datetime } from '@dortdb/datetime';
 import { SQL } from '@dortdb/lang-sql';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { DomDataAdapter, XQuery } from '@dortdb/lang-xquery';

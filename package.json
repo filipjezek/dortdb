@@ -5,7 +5,8 @@
   "description": "",
   "workspaces": [
     "packages/*",
-    "packages/testing/*"
+    "packages/testing/*",
+    "packages/extensions/*"
   ],
   "scripts": {
     "watch": "nx watch -p showcase -d -- nx run-many -t build -p %NX_PROJECT_NAME% --exclude=showcase",
@@ -45,6 +46,7 @@
     "eslint": "^9.8.0",
     "eslint-config-prettier": "10.0.0",
     "jsdom": "^27.1.0",
+    "jsonc-eslint-parser": "^2.1.0",
     "nx": "22.3.3",
     "prettier": "^3.5.1",
     "tslib": "^2.3.0",
@@ -59,5 +61,6 @@
         "executor": "nx:noop"
       }
     }
-  }
+  },
+  "dependencies": {}
 }
