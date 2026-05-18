@@ -64,7 +64,6 @@ FROM t1
 Currently, some SQL features are not supported, including:
 
 - window functions
-- common table expressions (CTEs)
 - special `GROUP BY` behavior (`ROLLUP`, `CUBE`, `GROUPING SETS`)
 - any schema-dependent features (read further)
 
