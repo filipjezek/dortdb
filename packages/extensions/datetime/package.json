@@ -2,6 +2,7 @@
   "name": "@dortdb/datetime",
   "version": "1.0.0",
   "type": "module",
+  "description": "DateTime extension for DortDB",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,10 +14,16 @@
       "default": "./dist/index.js"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filipjezek/dortdb.git"
+  },
   "files": [
     "dist",
     "!**/*.tsbuildinfo"
   ],
+  "author": "dortdb",
+  "license": "ISC",
   "nx": {
     "sourceRoot": "packages/extensions/datetime/src",
     "targets": {

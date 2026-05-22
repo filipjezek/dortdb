@@ -599,7 +599,7 @@ IsExpression
   = 'EXISTS'i _? '(' _? sq:Subquery _? ')' { return new ast.ASTExists(sq); }
   / e:RelationalExpression ops:(_ 'IS'i _ @(@'NOT'i _)? @IsOp)* {
     for (const [not, [op, right]] of ops) {
-      e = options.wrapNot(options.makeOp(op, [e, right]), not);
+      e = options.wrapNot(options.makeOp('is', [e, right]), not === (op === 'is'));
     }
     return e;
   }
