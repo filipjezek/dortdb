@@ -23,5 +23,10 @@
   "devDependencies": {
     "@dortdb/lang-cypher": "*",
     "graphology-types": "^0.24.8"
+  },
+  "nx": {
+    "targets": {
+      "build": {}
+    }
   }
 }
