@@ -602,10 +602,6 @@ export abstract class Executor implements PlanVisitor<
     let revVisited = new Trie<unknown, LinkedListNode<unknown[]>[]>();
 
     const groups = this.getBidiGroups(operator, ctx, srcRenamer);
-    console.log(
-      'groups: ',
-      groups.map((g) => g.size),
-    );
 
     for (const fwdFrontier of groups) {
       yield* this.initBidiFrontiers(
@@ -639,10 +635,6 @@ export abstract class Executor implements PlanVisitor<
       ) {
         if (pathSize >= 4 && !searchSpace) {
           // If the depth is large, precompute the search space to avoid exploring impossible paths
-          console.log(
-            new Date().toISOString(),
-            'Calculating bidirectional recursion search space...',
-          );
           searchSpace = this.bfsCheck(
             Queue.from(fwdFrontier),
             Queue.from(revFrontier),
@@ -653,10 +645,6 @@ export abstract class Executor implements PlanVisitor<
             initialKeys,
             operator.max,
           );
-          console.log(
-            new Date().toISOString(),
-            `Bidi recursion search space size: ${searchSpace.size}`,
-          );
           if (searchSpace.size === 0) return;
         }
         if (
@@ -664,10 +652,6 @@ export abstract class Executor implements PlanVisitor<
           (revFrontier.size === 0 || fwdFrontier.size <= revFrontier.size)
         ) {
           pathSize++;
-          console.log(
-            new Date().toISOString(),
-            `FWD path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
-          );
           fwdVisited = new Trie();
           yield* this.expandBidiFrontier(
             fwdFrontier,
@@ -690,10 +674,6 @@ export abstract class Executor implements PlanVisitor<
           (fwdFrontier.size === 0 || revFrontier.size <= fwdFrontier.size)
         ) {
           pathSize++;
-          console.log(
-            new Date().toISOString(),
-            `REV path size: ${pathSize}, fwd frontier: ${fwdFrontier.size}, rev frontier: ${revFrontier.size} (total: ${fwdFrontier.size + revFrontier.size})`,
-          );
           revVisited = new Trie();
           yield* this.expandBidiFrontier(
             revFrontier,
