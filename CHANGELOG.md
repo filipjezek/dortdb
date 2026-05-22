@@ -1,3 +1,13 @@
+## 2.0.1 (2026-05-22)
+
+### 🩹 Fixes
+
+- MapIndex now handles equality checks properly (i.e. not strictly) ([b55ef43](https://github.com/filipjezek/dortdb/commit/b55ef43))
+
+### ❤️ Thank You
+
+- Filip Ježek @filipjezek
+
 # 2.0.0 (2026-05-18)
 
 ### 🚀 Features
