@@ -2,38 +2,40 @@
 <mat-dialog-content>
   <section class="download">
     <ul>
-      <li>
-        <span class="title">Unibench data sample</span>
-        @switch (unibenchS.dataLocation()) {
-          @case ('remote') {
-            @if (unibenchS.downloadProgress() === undefined) {
-              <button mat-button (click)="unibenchS.downloadData()">
-                Download (6.4 MB)
+      @for (ds of datasets; track ds.name) {
+        <li>
+          <span class="title">{{ ds.name }}</span>
+          @switch (ds.service.dataLocation()) {
+            @case ('remote') {
+              @if (ds.service.downloadProgress() === undefined) {
+                <button mat-button (click)="ds.service.downloadData()">
+                  Download ({{ ds.downloadSize }})
+                </button>
+              } @else {
+                <mat-progress-spinner
+                  [mode]="
+                    ds.service.downloadProgress() < 1
+                      ? 'determinate'
+                      : 'indeterminate'
+                  "
+                  [value]="ds.service.downloadProgress() * 100"
+                  [diameter]="20"
+                ></mat-progress-spinner>
+              }
+            }
+            @case ('memory') {
+              <button mat-button (click)="ds.service.saveToIndexedDB()">
+                Save to browser ({{ ds.savedSize }})
               </button>
-            } @else {
-              <mat-progress-spinner
-                [mode]="
-                  unibenchS.downloadProgress() < 1
-                    ? 'determinate'
-                    : 'indeterminate'
-                "
-                [value]="unibenchS.downloadProgress() * 100"
-                [diameter]="20"
-              ></mat-progress-spinner>
+            }
+            @case ('indexeddb') {
+              <button mat-button (click)="ds.service.clear()" class="warning">
+                Clear browser storage
+              </button>
             }
           }
-          @case ('memory') {
-            <button mat-button (click)="unibenchS.saveToIndexedDB()">
-              Save to browser (1.7 MB)
-            </button>
-          }
-          @case ('indexeddb') {
-            <button mat-button (click)="unibenchS.clear()" class="warning">
-              Clear browser storage
-            </button>
-          }
-        }
-      </li>
+        </li>
+      }
     </ul>
   </section>
   <mat-accordion multi>

@@ -669,13 +669,17 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     );
     let res: PlanTupleOperator;
     if (nested.plan instanceof PlanTupleOperator && nested.plan.schema) {
-      res = new plan.Projection(
+      const paired = nested.plan.schema.map(toPair);
+      if (operator.requiredCol) {
+        paired.push([nested.plan.schema[0], operator.requiredCol]);
+      }
+      res = new plan.Projection('sql', paired, nested.plan);
+    } else {
+      res = new plan.MapFromItem(
         'sql',
-        nested.plan.schema.map(toPair),
+        operator.requiredCol ?? defaultCol,
         nested.plan,
       );
-    } else {
-      res = new plan.MapFromItem('sql', defaultCol, nested.plan);
     }
 
     const external = nested.inferred;
@@ -696,7 +700,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
         operator.parent instanceof PlanTupleOperator &&
         operator.schema === operator.parent.schema;
       operator.parent.replaceChild(operator, res);
-      if (nested.plan instanceof PlanTupleOperator && schemaLinked) {
+      if (schemaLinked) {
         linkSchemaToParent(res);
       }
     }

@@ -37,11 +37,12 @@
     "@types/unzipper": "^0.10.10"
   },
   "peerDependencies": {
-    "@dortdb/core": "^1.0.0",
-    "@dortdb/dataloaders": "^1.0.0",
-    "@dortdb/lang-cypher": "^1.0.0",
-    "@dortdb/lang-sql": "^1.0.0",
-    "@dortdb/lang-xquery": "^1.0.0"
+    "@dortdb/core": "*",
+    "@dortdb/dataloaders": "*",
+    "@dortdb/lang-cypher": "*",
+    "@dortdb/lang-sql": "*",
+    "@dortdb/lang-xquery": "*",
+    "@dortdb/datetime": "*"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",

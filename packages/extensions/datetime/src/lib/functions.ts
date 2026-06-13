@@ -1,5 +1,5 @@
 import { add, sub } from 'date-fns';
-import { Fn } from '../../extension.js';
+import { Fn } from '@dortdb/core';
 
 export const now: Fn = {
   name: 'now',

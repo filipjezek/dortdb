@@ -1,4 +1,4 @@
-import { Extension } from '../../extension.js';
+import { Extension } from '@dortdb/core';
 import { dateAdd, dateSub, extract, interval, now } from './functions.js';
 
 /**

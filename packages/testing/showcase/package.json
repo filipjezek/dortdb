@@ -7,19 +7,16 @@
     "type": "git",
     "url": "git+https://github.com/filipjezek/dortdb.git"
   },
-  "scripts": {
-    "comment:build-deps": "Does not work, because tsconfig is not included in the installed package. Download it from GitHub first.",
-    "build-deps": "cd ../../../node_modules/@chenglou/pretext && npm run build:package"
-  },
   "private": true,
   "author": "dortdb",
   "license": "ISC",
   "peerDependencies": {
-    "@dortdb/core": "^1.0.0",
-    "@dortdb/dataloaders": "^1.0.0",
-    "@dortdb/lang-cypher": "^1.0.0",
-    "@dortdb/lang-sql": "^1.0.0",
-    "@dortdb/lang-xquery": "^1.0.0"
+    "@dortdb/core": "*",
+    "@dortdb/dataloaders": "*",
+    "@dortdb/lang-cypher": "*",
+    "@dortdb/lang-sql": "*",
+    "@dortdb/lang-xquery": "*",
+    "@dortdb/datetime": "*"
   },
   "dependencies": {
     "@angular/animations": "^21.0.1",
@@ -32,7 +29,7 @@
     "@angular/platform-browser": "^21.0.1",
     "@angular/platform-browser-dynamic": "^21.0.1",
     "@angular/router": "^21.0.1",
-    "@chenglou/pretext": "github:chenglou/pretext#a52268864195edc76d5f382d264dafb33f6be462",
+    "@chenglou/pretext": "^0.0.7",
     "@swc/helpers": "^0.5.15",
     "@zip.js/zip.js": "^2.7.62",
     "codemirror": "^6.0.2",

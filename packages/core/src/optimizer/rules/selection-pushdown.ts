@@ -163,31 +163,35 @@ export class PushdownSelections implements PatternRule<
   ): PlanOperator {
     const { selections, source } = bindings;
     const last = selections.at(-1);
+    let res: PlanOperator;
     if (this.alwaysSwap.includes(source.constructor as any)) {
-      return this.transformBasic(source as any, node, last);
-    }
-    if (this.setOps.includes(source.constructor as any)) {
-      return this.tranformSetOp(source as any, node, last, selections);
-    }
-    if (source.constructor === Projection) {
-      return this.transformProjection(source as Projection, selections);
-    }
-    if (
+      res = this.transformBasic(source as any, node, last);
+    } else if (this.setOps.includes(source.constructor as any)) {
+      res = this.tranformSetOp(source as any, node, last, selections);
+    } else if (source.constructor === Projection) {
+      res = this.transformProjection(source as Projection, selections);
+    } else if (
       source.constructor === CartesianProduct ||
       source.constructor === Join
     ) {
-      return this.transformJoin(source as CartesianProduct, selections);
-    }
-    if (source.constructor === ProjectionConcat) {
-      return this.transformProjectionConcat(
+      res = this.transformJoin(source as CartesianProduct, selections);
+    } else if (source.constructor === ProjectionConcat) {
+      res = this.transformProjectionConcat(
         source as ProjectionConcat,
         selections,
       );
+    } else if (source.constructor === GroupBy) {
+      res = this.transformGroupBy(source as GroupBy, selections);
+    } else {
+      res = node;
     }
-    if (source.constructor === GroupBy) {
-      return this.transformGroupBy(source as GroupBy, selections);
+
+    for (const s of selections) {
+      this.tdepsVmap[s.lang].invalidateCacheElement(s);
     }
-    return node;
+    this.tdepsVmap[node.lang].invalidateCacheElement(source);
+
+    return res;
   }
 
   protected transformBasic(

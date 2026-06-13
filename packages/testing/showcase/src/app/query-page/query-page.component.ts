@@ -20,13 +20,8 @@ import { MatCheckbox } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatOption, MatSelect } from '@angular/material/select';
-import {
-  datetime,
-  DortDB,
-  MapIndex,
-  PlanOperator,
-  QueryResult,
-} from '@dortdb/core';
+import { DortDB, MapIndex, PlanOperator, QueryResult } from '@dortdb/core';
+import { datetime } from '@dortdb/datetime';
 import { ConnectionIndex, Cypher } from '@dortdb/lang-cypher';
 import { SQL } from '@dortdb/lang-sql';
 import { XQuery } from '@dortdb/lang-xquery';
@@ -57,7 +52,7 @@ import {
   OptimizerListItem,
 } from './optimizer-list/optimizer-list.component';
 import { UnibenchService } from '../services/unibench.service';
-import { UnibenchData } from '@dortdb/dataloaders';
+import { TPCHData, UnibenchData } from '@dortdb/dataloaders';
 import { TPCHService } from '../services/tpch.service';
 import { CodeInputComponent } from './code-input/code-input.component';
 
@@ -165,6 +160,7 @@ export class QueryPageComponent {
     optimizerOptions: this.optimizerOptions,
   });
   unibenchData: UnibenchData;
+  tpchData: TPCHData;
   plan: PlanOperator;
   output: QueryResult;
   error: Error;
@@ -191,8 +187,8 @@ export class QueryPageComponent {
         }
       });
 
-    this.registerDataSources();
-    // this.registerTPCH();
+    this.registerUnibench();
+    this.registerTPCH();
   }
 
   parse() {
@@ -237,7 +233,7 @@ export class QueryPageComponent {
     }
   }
 
-  async registerDataSources() {
+  async registerUnibench() {
     if (this.unibenchData) return;
     this.unibenchData = await this.unibenchS.getDataIfAvailable();
     if (!this.unibenchData) return;
@@ -306,20 +302,25 @@ export class QueryPageComponent {
       width: '80vw',
       minWidth: '60vw',
     });
-    ref.afterClosed().subscribe(() => this.registerDataSources());
+    ref.afterClosed().subscribe(() => {
+      this.registerUnibench();
+      this.registerTPCH();
+    });
   }
 
   private async registerTPCH() {
-    const data = await this.tpchS.downloadData();
+    if (this.tpchData) return;
+    this.tpchData = await this.tpchS.getDataIfAvailable();
+    if (!this.tpchData) return;
 
-    this.db.registerSource(['customer'], data.customer);
-    this.db.registerSource(['lineitem'], data.lineitem);
-    this.db.registerSource(['nation'], data.nation);
-    this.db.registerSource(['orders'], data.orders);
-    this.db.registerSource(['part'], data.part);
-    this.db.registerSource(['partsupp'], data.partsupp);
-    this.db.registerSource(['region'], data.region);
-    this.db.registerSource(['supplier'], data.supplier);
+    this.db.registerSource(['customer'], this.tpchData.customer);
+    this.db.registerSource(['lineitem'], this.tpchData.lineitem);
+    this.db.registerSource(['nation'], this.tpchData.nation);
+    this.db.registerSource(['tpch', 'orders'], this.tpchData.orders);
+    this.db.registerSource(['part'], this.tpchData.part);
+    this.db.registerSource(['partsupp'], this.tpchData.partsupp);
+    this.db.registerSource(['region'], this.tpchData.region);
+    this.db.registerSource(['supplier'], this.tpchData.supplier);
 
     this.db.createIndex(['customer'], ['custkey'], MapIndex);
     this.db.createIndex(['customer'], ['nationkey'], MapIndex);
@@ -328,8 +329,8 @@ export class QueryPageComponent {
     this.db.createIndex(['lineitem'], ['suppkey'], MapIndex);
     this.db.createIndex(['nation'], ['nationkey'], MapIndex);
     this.db.createIndex(['nation'], ['regionkey'], MapIndex);
-    this.db.createIndex(['orders'], ['custkey'], MapIndex);
-    this.db.createIndex(['orders'], ['orderkey'], MapIndex);
+    this.db.createIndex(['tpch', 'orders'], ['custkey'], MapIndex);
+    this.db.createIndex(['tpch', 'orders'], ['orderkey'], MapIndex);
     this.db.createIndex(['part'], ['partkey'], MapIndex);
     this.db.createIndex(['partsupp'], ['partkey'], MapIndex);
     this.db.createIndex(['partsupp'], ['suppkey'], MapIndex);

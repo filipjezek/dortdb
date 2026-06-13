@@ -466,7 +466,7 @@ export class SQLLogicalPlanBuilder
       }
     }
 
-    if (aggregates.length) {
+    if (aggregates.length || node.groupBy) {
       op = this.visitGroupByClause(node.groupBy, op, aggregates);
     }
     if (node.having) {
@@ -921,7 +921,12 @@ export class SQLLogicalPlanBuilder
     // can be pushed down to the source and converted into an index scan if possible
     const uniqId = toId(Symbol('inNeedle'));
     let res = toTuples(subq);
-    const subqCol = res.schema[0];
+
+    let subqCol = res.schema[0];
+    if (res instanceof PlanLangSwitch && !res.schema.length) {
+      subqCol = toId(Symbol('lsResult'));
+      res.requiredCol = subqCol;
+    }
     const orNull = new plan.FnCall(
       'sql',
       [

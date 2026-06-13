@@ -1,0 +1,52 @@
+{
+  "name": "@dortdb/datetime",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DateTime extension for DortDB",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/filipjezek/dortdb.git"
+  },
+  "files": [
+    "dist",
+    "!**/*.tsbuildinfo"
+  ],
+  "author": "dortdb",
+  "license": "ISC",
+  "nx": {
+    "sourceRoot": "packages/extensions/datetime/src",
+    "targets": {
+      "build": {
+        "executor": "@nx/js:swc",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "options": {
+          "outputPath": "packages/extensions/datetime/dist",
+          "main": "packages/extensions/datetime/src/index.ts",
+          "tsConfig": "packages/extensions/datetime/tsconfig.lib.json",
+          "skipTypeCheck": true,
+          "stripLeadingPaths": true
+        }
+      }
+    }
+  },
+  "peerDependencies": {
+    "@dortdb/core": "^2.0.0"
+  },
+  "dependencies": {
+    "@swc/helpers": "~0.5.11",
+    "date-fns": "^4.2.0"
+  }
+}

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { prepareData } from './prepare-data.js';
 import alasql from 'alasql';
 import { substr } from '@dortdb/core/fns';
-import { datetime } from '@dortdb/core';
+import { datetime } from '@dortdb/datetime';
 import { PerformanceMeasure } from 'node:perf_hooks';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog } from '../utils/worker-log.js';

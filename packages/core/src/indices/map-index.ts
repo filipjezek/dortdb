@@ -28,10 +28,9 @@ export class MapIndex implements HashJoinIndex {
 
   reindex(values: Iterable<IndexFillInput>): void {
     this.map.clear();
-    for (const {
-      keys: [key],
-      value,
-    } of values) {
+    for (const { keys, value } of values) {
+      let [key] = keys;
+      key = this.normalizeKey(key);
       let keyVals = this.map.get(key);
       if (!keyVals) {
         keyVals = [];
@@ -69,6 +68,35 @@ export class MapIndex implements HashJoinIndex {
     return i === -1 ? null : [i];
   }
 
+  /** The default equality comparison is not strict. This method returns alternative values that are considered equal. */
+  protected getAlternatives(value: unknown): unknown[] {
+    const alternatives = [value];
+    if (typeof value !== 'string' && typeof value !== 'object') {
+      alternatives.push(value.toString());
+    } else {
+      const numValue = +value;
+      if (!isNaN(numValue)) {
+        alternatives.push(numValue);
+      }
+    }
+    if (value === '1' || value === 1 || value === 'true') {
+      alternatives.push(true);
+    } else if (value === '0' || value === 0 || value === 'false') {
+      alternatives.push(false);
+    } else if (value === true) {
+      alternatives.push(1);
+    } else if (value === false) {
+      alternatives.push(0);
+    }
+
+    return alternatives;
+  }
+
+  protected normalizeKey(value: unknown): unknown {
+    if (value === undefined) return null;
+    return value;
+  }
+
   createAccessor(expressions: IndexMatchInput[]): Calculation {
     const eqFn = expressions[0].containingFn;
     const otherArg = eqFn.args.find(
@@ -77,7 +105,12 @@ export class MapIndex implements HashJoinIndex {
     const accessorFnCall = new FnCall(
       eqFn.lang,
       [otherArg],
-      (value) => this.map.get(value) ?? [],
+      eqFn.impl === eq.impl
+        ? (value) =>
+            this.getAlternatives(this.normalizeKey(value)).flatMap(
+              (v) => this.map.get(v) ?? [],
+            )
+        : (value) => this.map.get(this.normalizeKey(value)) ?? [],
     );
     return intermediateToCalc(
       accessorFnCall,

@@ -1,4 +1,5 @@
-import { datetime, DortDB, MapIndex } from '@dortdb/core';
+import { DortDB, MapIndex } from '@dortdb/core';
+import { datetime } from '@dortdb/datetime';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { SQL } from '@dortdb/lang-sql';
 import { resolve } from 'node:path';
