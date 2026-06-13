@@ -2,6 +2,7 @@ import { Operator } from '@dortdb/core';
 import { likeToRegex } from '../utils/string.js';
 import { shortcutNulls } from '@dortdb/core/utils';
 
+/** SQL `||` operator; concatenates arrays via `Array.concat` or coerces operands to strings. */
 export const concat: Operator = {
   name: '||',
   impl: shortcutNulls((a, b) => {
@@ -11,6 +12,7 @@ export const concat: Operator = {
   }),
 };
 
+/** SQL `LIKE` operator; tests a string against a case-sensitive pattern, mapping `%` to `.*` and `_` to `.`. */
 export const like: Operator = {
   name: 'like',
   impl: shortcutNulls((a, b) => {
@@ -19,6 +21,7 @@ export const like: Operator = {
     return regex.test(a);
   }),
 };
+/** SQL `ILIKE` operator; case-insensitive variant of {@link like}. */
 export const ilike: Operator = {
   name: 'ilike',
   impl: shortcutNulls((a, b) => {

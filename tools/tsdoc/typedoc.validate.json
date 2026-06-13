@@ -1,0 +1,33 @@
+{
+  "$schema": "https://typedoc-plugin-markdown.org/schema.json",
+  "tsconfig": "./tsconfig.typedoc.json",
+
+  "entryPointStrategy": "expand",
+  "entryPoints": [
+    "../../packages/core/src",
+    "../../packages/lang-sql/src",
+    "../../packages/lang-xquery/src",
+    "../../packages/lang-cypher/src",
+    "../../packages/extensions/datetime/src"
+  ],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/testing/**",
+    "**/*.peggy.mjs",
+    "**/*.peggy.d.ts",
+    "**/test-setup.ts"
+  ],
+
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "excludeInternal": true,
+
+  "emit": "none",
+  "validation": {
+    "notDocumented": true,
+    "invalidLink": false,
+    "notExported": false
+  },
+  "treatValidationWarningsAsErrors": false,
+  "logLevel": "Warn"
+}

@@ -5,17 +5,27 @@ import { ArgMeta } from '../../../visitors/calculation-builder.js';
 import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate, Calculation } from './calculation.js';
 
+/**
+ * A CASE / IF-THEN-ELSE expression: evaluates `condition` (if present), matches
+ * against `whenThens` in order, and falls back to `defaultCase`.
+ */
 export class Conditional implements PlanOperator {
+  /** Marks this as a {@link CalcIntermediate} sub-operator of a {@link Calculation}. */
   public [CalcIntermediate] = true;
+  /** {@inheritDoc PlanOperator.dependencies} */
   public dependencies: IdSet;
 
   constructor(
+    /** {@inheritDoc PlanOperator.lang} */
     public lang: Lowercase<string>,
+    /** Searched-CASE operand; `null` for a simple CASE without a common operand. */
     public condition: PlanOperator | ASTIdentifier,
+    /** Ordered list of `[WHEN, THEN]` pairs. */
     public whenThens: [
       PlanOperator | ASTIdentifier,
       PlanOperator | ASTIdentifier,
     ][],
+    /** The ELSE expression; `null` means return `null` when no branch matches. */
     public defaultCase: PlanOperator | ASTIdentifier,
   ) {
     this.dependencies = new Trie();
@@ -31,12 +41,14 @@ export class Conditional implements PlanOperator {
     }
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitConditional(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (this.condition === current) {
@@ -56,6 +68,7 @@ export class Conditional implements PlanOperator {
       }
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return [this.condition, ...this.whenThens.flat(), this.defaultCase].filter(
       (ch) => ch && !(ch instanceof ASTIdentifier),

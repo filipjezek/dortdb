@@ -3,10 +3,17 @@ import { Calculation, FnCall, RenameMap } from '../plan/operators/index.js';
 import { OpOrId } from '../plan/visitor.js';
 import { Executor } from '../visitors/executor.js';
 
+/**
+ * Describes a single expression to match against an index, together with
+ * the operator call that wraps it.
+ */
 export interface IndexMatchInput {
+  /** The expression being tested (the operand to `containingFn`). */
   expr: OpOrId;
+  /** The operator call (e.g. an equality check) that contains `expr`. */
   containingFn: FnCall;
 }
+/** Input record supplied to {@link Index.reindex} for each source item. */
 export interface IndexFillInput {
   /** the source item */
   value: unknown;
@@ -14,6 +21,7 @@ export interface IndexFillInput {
   keys: unknown[];
 }
 
+/** Symbol attached to index-entry objects to recover the original source item. */
 export const fromItemIndexKey = Symbol('fromItemIndexKey');
 
 /**

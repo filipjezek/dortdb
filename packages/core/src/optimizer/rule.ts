@@ -1,11 +1,27 @@
 import { DortDBAsFriend } from '../db.js';
-import { PlanOperator } from '../plan/visitor.js';
+import { PlanOperator, PlanTupleOperator } from '../plan/visitor.js';
 
 /**
  * Represents the result of a pattern rule match.
  */
 export interface PatternRuleMatchResult<T> {
+  /** Captured sub-operator references and metadata produced during pattern matching. */
   bindings: T;
+}
+
+/** A tuple operator that wraps a single child plan, exposed as {@link source}. */
+export interface TupleOperatorWithSource extends PlanTupleOperator {
+  /** The single child operator. */
+  source: PlanTupleOperator;
+}
+
+/** A tuple operator with two input branches, such as a set operation. */
+export interface BranchedOperator<T extends PlanOperator = PlanOperator>
+  extends PlanTupleOperator {
+  /** The left input branch. */
+  left: T;
+  /** The right input branch. */
+  right: T;
 }
 
 /**
@@ -29,6 +45,7 @@ export interface PatternRule<T extends PlanOperator = PlanOperator, U = any> {
   transform(node: T, bindings: U): PlanOperator;
 }
 
+/** Constructor shape for {@link PatternRule} implementations that require the database interface at construction time. */
 export interface PatternRuleConstructor<T extends PatternRule = PatternRule> {
   new (db: DortDBAsFriend): T;
 }

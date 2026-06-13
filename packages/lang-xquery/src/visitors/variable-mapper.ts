@@ -2,6 +2,11 @@ import { VariableMapper, VariableMapperCtx } from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { DOT, LEN, POS } from '../utils/dot.js';
 
+/**
+ * Extends {@link VariableMapper} to assign numeric execution slots for the
+ * XQuery focus context columns (`.`, `pos`, `len`) produced by
+ * {@link TreeJoin}, and to translate the size column of {@link ProjectionSize}.
+ */
 export class XQueryVariableMapper
   extends VariableMapper
   implements XQueryPlanVisitor<void, VariableMapperCtx>

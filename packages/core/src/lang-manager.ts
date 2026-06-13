@@ -10,7 +10,9 @@ import { Trie } from './data-structures/trie.js';
 import { ExecutionContext } from './execution-context.js';
 import { PlanOperator } from './plan/visitor.js';
 
+/** A stateless parser for a single query language. */
 export interface Parser {
+  /** Parses a complete query string and returns all top-level statement roots. */
   parse: (input: string) => ParseResult;
   /** should return AST which parses into a projection with one attribute or the one attribute
    * depending on whether the language returns tuples or items. Used when registering secondary
@@ -18,6 +20,7 @@ export interface Parser {
    */
   parseExpr: (input: string) => ParseResult;
 }
+/** Value returned by {@link Parser.parse} and {@link Parser.parseExpr}. */
 export interface ParseResult {
   /** One AST root node for each statement of the input query (for languages that support multiple statements). */
   value: ASTNode[];
@@ -35,26 +38,40 @@ export type SerializeFn = (
   ctx: ExecutionContext,
   plan: PlanOperator,
 ) => {
+  /** Lazy iterable of serialized result values. */
   data: Iterable<unknown>;
+  /** Column names in output order, when known. */
   schema?: string[];
 };
 
+/** Descriptor for a query language that can be registered with {@link LanguageManager}. */
 export interface Language<Name extends string = string> {
+  /** Lowercase language name used as the lookup key. */
   readonly name: Lowercase<Name>;
+  /** Language-specific operators registered alongside any global ones. */
   operators: Operator[];
+  /** Language-specific functions registered alongside any global ones. */
   functions: Fn[];
+  /** Language-specific aggregate functions registered alongside any global ones. */
   aggregates: AggregateFn[];
+  /** Language-specific castable type keywords registered alongside any global ones. */
   castables: Castable[];
+  /** Factory that creates a fresh parser instance bound to the given language manager. */
   createParser: (mgr: LanguageManager) => Parser;
   /** Visitors for extending the default DortDB behavior. Usually required when adding new {@link PlanOperator}s.
    * Some of the visitors are always required, for example, the logical plan builder.
    */
   visitors: Partial<PlanVisitors> &
     Pick<PlanVisitors, 'executor'> & {
+      /**
+       * Constructor for the logical plan builder that translates AST nodes into plan operators.
+       */
       logicalPlanBuilder: {
+        /** Creates a new logical plan builder bound to `db`. */
         new (db: DortDBAsFriend): LogicalPlanBuilder;
       };
     };
+  /** Serializes executor output into the user-facing result format. */
   serialize: SerializeFn;
 }
 

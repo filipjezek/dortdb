@@ -14,9 +14,13 @@ import { PatternRule, PatternRuleMatchResult } from '../rule.js';
  */
 export class ProjConcatToJoin implements PatternRule<ProjectionConcat> {
   public operator = ProjectionConcat;
+  /** Per-language transitive-dependency visitor instances. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
   match(node: ProjectionConcat): PatternRuleMatchResult<unknown> {

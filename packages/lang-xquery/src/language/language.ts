@@ -33,7 +33,9 @@ export interface XQueryConfig {
    */
   serialize?: SerializeFn;
 }
+/** The assembled language descriptor for XQuery, as returned by {@link XQuery}. */
 export interface XQueryLanguage extends Language<'xquery'> {
+  /** The active data adapter used for node creation and tree traversal. */
   dataAdapter: XQueryDataAdapter;
 }
 
@@ -41,6 +43,14 @@ export interface XQueryLanguage extends Language<'xquery'> {
  * Creates a new XQuery language instance.
  * @param config Configuration options for the XQuery language.
  * @returns A new XQuery language instance.
+ * @example
+ * ```ts
+ * import { DortDB } from '@dortdb/core';
+ * import { XQuery } from '@dortdb/lang-xquery';
+ *
+ * const db = new DortDB({ mainLang: XQuery() });
+ * db.query('<greeting>{ 1 + 1 }</greeting>');
+ * ```
  */
 export function XQuery(config?: XQueryConfig): XQueryLanguage {
   const dataAdapter = config?.adapter ?? new DomDataAdapter(document);
@@ -66,15 +76,23 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
   };
 }
 
+/** XQuery-specific extension of {@link Fn} that can suppress automatic argument atomization. */
 export interface XQueryFn extends Fn {
+  /** When `true`, arguments are passed as-is, bypassing XQuery atomization. */
   skipAtomization?: boolean;
 }
+/** XQuery-specific extension of {@link Operator} that can suppress automatic argument atomization. */
 export interface XQueryOp extends Operator {
+  /** When `true`, operands are not atomized before the operator is evaluated. */
   skipAtomization?: boolean;
 }
+/** XQuery-specific extension of {@link AggregateFn} that can suppress automatic atomization. */
 export interface XQueryAggregate extends AggregateFn {
+  /** When `true`, values are not atomized before being passed to the aggregate steps. */
   skipAtomization?: boolean;
 }
+/** XQuery-specific extension of {@link Castable} that can suppress automatic atomization. */
 export interface XQueryCastable extends Castable {
+  /** When `true`, values are not atomized before the cast is attempted. */
   skipAtomization?: boolean;
 }

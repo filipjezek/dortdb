@@ -3,6 +3,7 @@ import { Limit } from '../plan/operators/index.js';
 import { PlanOperator, PlanTupleOperator } from '../plan/visitor.js';
 import { PatternRule, PatternRuleConstructor } from './rule.js';
 
+/** Configuration for the {@link Optimizer}. */
 export interface OptimizerConfig {
   /**
    * The optimization rules to apply. The order of rules matters.
@@ -14,11 +15,14 @@ export interface OptimizerConfig {
  * Optimizer for query plans.
  */
 export class Optimizer {
+  /** Instantiated rule objects derived from the current config. */
   protected rules: PatternRule[];
+  /** Active optimizer configuration. */
   protected config: OptimizerConfig;
 
   constructor(
     config: OptimizerConfig,
+    /** Internal database interface passed to rule constructors. */
     protected db: DortDBAsFriend,
   ) {
     this.reconfigure(config);
@@ -88,6 +92,7 @@ export class Optimizer {
     }
   }
 
+  /** Ensures parent and child operators do not share the same schema array or schema-set reference. */
   protected breakReferences(operator: PlanOperator) {
     if (
       operator instanceof PlanTupleOperator &&

@@ -2,31 +2,57 @@ import { ASTIdentifier } from '../ast.js';
 import * as operators from './operators/index.js';
 import { Trie } from '../data-structures/trie.js';
 
+/** Base interface for every node in the query execution plan tree. */
 export interface PlanOperator {
+  /** Language tag identifying which {@link PlanVisitor} entry to use for dispatch. */
   lang: Lowercase<string>;
+  /** Parent node in the plan tree; `undefined` at the root. */
   parent?: PlanOperator;
+  /** Attribute identifiers read by this operator from its input(s). */
   dependencies: IdSet;
 
+  /** Dispatches this operator to the visitor registered under {@link lang}. */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret;
+  /**
+   * Swaps `current` for `replacement` among this operator's direct children,
+   * updating `replacement.parent` to `this`.
+   */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void;
+  /** Returns all direct child operators of this node. */
   getChildren(): PlanOperator[];
+  /** Returns a deep copy of this operator subtree. */
   clone(): PlanOperator;
 }
+
+/**
+ * Abstract base for operators that produce rows of named attributes (tuple streams).
+ *
+ * Maintains a parallel {@link schema} array and {@link schemaSet} trie so that
+ * attribute membership can be tested in O(k) time (k = identifier depth).
+ */
 export abstract class PlanTupleOperator implements PlanOperator {
+  /** Ordered list of attribute identifiers produced by this operator. */
   public schema: ASTIdentifier[];
+  /** Trie-backed set of the same paths as {@link schema}; used for O(k) membership tests. */
   public schemaSet: IdSet;
+  /** {@inheritDoc PlanOperator.lang} */
   public lang: Lowercase<string>;
+  /** {@inheritDoc PlanOperator.parent} */
   public parent?: PlanOperator;
+  /** {@inheritDoc PlanOperator.dependencies} */
   public dependencies = new Trie<string | symbol | number>();
 
+  /** {@inheritDoc PlanOperator.accept} */
   abstract accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret;
+  /** {@inheritDoc PlanOperator.replaceChild} */
   abstract replaceChild(current: PlanOperator, replacement: PlanOperator): void;
+  /** {@inheritDoc PlanOperator.getChildren} */
   abstract getChildren(): PlanOperator[];
 
   /** will preserve object references */
@@ -82,15 +108,25 @@ export abstract class PlanTupleOperator implements PlanOperator {
     this.schemaSet.clear();
   }
 
+  /** {@inheritDoc PlanOperator.clone} */
   abstract clone(): PlanTupleOperator;
 }
 
+/** A plan operator or a bare attribute identifier; used where either form may appear in a tree position. */
 export type OpOrId = PlanOperator | ASTIdentifier;
 
+/** A pair of `[value, alias]`; associates an expression with its output attribute name. */
 export type Aliased<T = ASTIdentifier> = [T, ASTIdentifier];
 
+/** Trie-backed set of multi-part identifier paths, keyed by `string | symbol | number` path segments. */
 export type IdSet = Trie<string | symbol | number, any>;
 
+/**
+ * Visitor interface for the query plan tree.
+ *
+ * Implement one entry per registered language to traverse or transform the plan.
+ * Each {@link PlanOperator} calls the method matching its concrete type via {@link PlanOperator.accept}.
+ */
 export interface PlanVisitor<Ret, Arg = never> {
   visitRecursion(operator: operators.Recursion, arg?: Arg): Ret;
   visitIndexedRecursion(operator: operators.IndexedRecursion, arg?: Arg): Ret;

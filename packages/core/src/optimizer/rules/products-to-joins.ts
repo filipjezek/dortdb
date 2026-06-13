@@ -6,8 +6,11 @@ import {
 import { PlanOperator } from '../../plan/visitor.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 
+/** Pattern-match bindings for the {@link productsToJoins} rule. */
 export interface ProductsToJoinsBindings {
+  /** Stack of contiguous {@link Selection} operators sitting above the product. */
   selections: Selection[];
+  /** The {@link CartesianProduct} to convert. */
   product: CartesianProduct;
 }
 

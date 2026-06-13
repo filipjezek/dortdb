@@ -22,7 +22,9 @@ export interface SQLConfig {
   serialize: SerializeFn;
 }
 
+/** A configured SQL language instance, extending {@link Language} with the active data adapter. */
 export interface SQLLanguage extends Language<'sql'> {
+  /** The data adapter used to convert between plain values and table rows. */
   dataAdapter: SQLDataAdapter;
 }
 
@@ -30,6 +32,14 @@ export interface SQLLanguage extends Language<'sql'> {
  * Creates a new SQL language instance.
  * @param config Configuration options for the SQL language.
  * @returns A new SQL language instance.
+ * @example
+ * ```ts
+ * import { DortDB } from '@dortdb/core';
+ * import { SQL } from '@dortdb/lang-sql';
+ *
+ * const db = new DortDB({ mainLang: SQL() });
+ * db.query('SELECT 1 AS one');
+ * ```
  */
 export function SQL(config?: SQLConfig): SQLLanguage {
   return {

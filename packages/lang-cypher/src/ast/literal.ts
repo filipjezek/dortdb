@@ -2,8 +2,15 @@ import { Aliased, ASTIdentifier, ASTLiteral, ASTNode } from '@dortdb/core';
 import { CypherVisitor } from './visitor.js';
 import { parseStringLiteral } from '../utils/string.js';
 
+/**
+ * Cypher identifier that handles backtick quoting and dot-separated qualified
+ * names (e.g. `` `My Label` `` or `graph.node`).
+ */
 export class CypherIdentifier extends ASTIdentifier {
-  constructor(public idOriginal: string) {
+  constructor(
+    /** Raw identifier text exactly as it appeared in the source, before parsing. */
+    public idOriginal: string,
+  ) {
     super();
     const originalParts = this.splitId(idOriginal);
     this.parts = originalParts.map((part) => this.parseId(part));
@@ -13,6 +20,7 @@ export class CypherIdentifier extends ASTIdentifier {
     return visitor.visitCypherIdentifier(this, arg);
   }
 
+  /** Strips surrounding backtick delimiters from a single name part. */
   protected parseId(id: string): string {
     if (id.startsWith('`') && id.endsWith('`')) {
       return id.replaceAll('`', '');
@@ -20,6 +28,10 @@ export class CypherIdentifier extends ASTIdentifier {
     return id;
   }
 
+  /**
+   * Splits a raw identifier string into individual name parts at unquoted dots,
+   * respecting backtick-quoted segments that may themselves contain dots.
+   */
   protected splitId(id: string): string[] {
     if (id[0] !== '`') {
       const dot = id.indexOf('.');
@@ -41,6 +53,7 @@ export class CypherIdentifier extends ASTIdentifier {
   }
 }
 
+/** String literal with Cypher escape sequences resolved into the final value. */
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(original: string) {
     super(original, null);
@@ -52,6 +65,7 @@ export class ASTStringLiteral extends ASTLiteral<string> {
   }
 }
 
+/** Numeric literal whose `value` is the JavaScript number equivalent of the source text. */
 export class ASTNumberLiteral extends ASTLiteral<number> {
   constructor(original: string) {
     super(original, +original);
@@ -62,22 +76,34 @@ export class ASTNumberLiteral extends ASTLiteral<number> {
   }
 }
 
+/** List literal `[item, ...]`. */
 export class ASTListLiteral implements ASTNode {
-  constructor(public items: ASTNode[]) {}
+  constructor(
+    /** Ordered list of element expressions. */
+    public items: ASTNode[],
+  ) {}
 
   accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitListLiteral(this, arg);
   }
 }
 
+/** Map literal `{key: value, ...}`. */
 export class ASTMapLiteral implements ASTNode {
-  constructor(public items: Aliased<ASTNode>[]) {}
+  constructor(
+    /** Key-value pairs where each alias is the string key name. */
+    public items: Aliased<ASTNode>[],
+  ) {}
 
   accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {
     return visitor.visitMapLiteral(this, arg);
   }
 }
 
+/**
+ * Boolean or `null` literal (`true`, `false`, or `null`); the parsed `value`
+ * is `true`, `false`, or `null` accordingly.
+ */
 export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
   constructor(original: string) {
     super(original, null);
@@ -88,6 +114,10 @@ export class ASTBooleanLiteral extends ASTLiteral<boolean | null> {
     return visitor.visitBooleanLiteral(this, arg);
   }
 
+  /**
+   * Converts the source text to `true`, `false`, or `null` (case-insensitive);
+   * returns `null` for any value other than `'true'` or `'false'`.
+   */
   protected parse(val: string) {
     const lc = val.toLowerCase();
     if (lc === 'true') {

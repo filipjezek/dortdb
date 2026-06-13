@@ -11,8 +11,11 @@ import { HashJoinIndex, IndexFillInput, IndexMatchInput } from './index.js';
  * A simple secondary index based on JavaScript Maps.
  */
 export class MapIndex implements HashJoinIndex {
+  /** Backing store: normalized key → list of source values. */
   protected map: Map<unknown, unknown[]> = new Map();
+  /** Per-language {@link EqualityChecker} visitors used to compare index expressions structurally. */
   protected eqCheckers: Record<string, EqualityChecker>;
+  /** Per-language calculation-builder visitors used to compile plan operators into {@link Calculation} instances. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
 
   constructor(
@@ -60,6 +63,7 @@ export class MapIndex implements HashJoinIndex {
     return null;
   }
 
+  /** Returns the index of the first equality expression that this index type can handle, or `null` if none qualify. */
   static canIndex(expressions: IndexMatchInput[]): number[] | null {
     const i = expressions.findIndex(
       (e) =>
@@ -92,6 +96,7 @@ export class MapIndex implements HashJoinIndex {
     return alternatives;
   }
 
+  /** Normalizes a key before storage or lookup; maps `undefined` to `null`. */
   protected normalizeKey(value: unknown): unknown {
     if (value === undefined) return null;
     return value;

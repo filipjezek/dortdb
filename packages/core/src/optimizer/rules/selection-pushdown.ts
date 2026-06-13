@@ -31,10 +31,18 @@ import {
 import { AttributeRenameChecker } from '../../visitors/attribute-rename-checker.js';
 import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
-import { PatternRule } from '../rule.js';
+import {
+  BranchedOperator,
+  PatternRule,
+  PatternRuleMatchResult,
+  TupleOperatorWithSource,
+} from '../rule.js';
 
+/** Pattern-match bindings for the {@link PushdownSelections} rule. */
 export interface PushdownSelectionsBindings {
+  /** Contiguous {@link Selection} operators to be pushed down. */
   selections: Selection[];
+  /** The operator immediately below the selection stack. */
   source: PlanTupleOperator;
 }
 
@@ -47,20 +55,29 @@ export class PushdownSelections implements PatternRule<
   PushdownSelectionsBindings
 > {
   public operator = Selection;
+  /**
+   * Operator classes whose selection can always be pushed below them (e.g. {@link OrderBy}, {@link Distinct}).
+   */
   public alwaysSwap: {
-    new (...args: any[]): PlanTupleOperator & { source: PlanTupleOperator };
+    new (...args: any[]): TupleOperatorWithSource;
   }[] = [OrderBy, Distinct];
+  /**
+   * Set-operation operator classes through which selections are duplicated to both branches.
+   */
   public setOps: {
-    new (...args: any[]): PlanTupleOperator & {
-      left: PlanOperator;
-      right: PlanOperator;
-    };
+    new (...args: any[]): BranchedOperator;
   }[] = [Union, Intersection, Difference];
+  /** Per-language transitive-dependency visitor instances. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
+  /** Per-language attribute-renamer visitor instances. */
   protected renamerVmap: Record<string, AttributeRenamer>;
+  /** Per-language attribute-rename-checker visitor instances. */
   protected renameCheckerVmap: Record<string, AttributeRenameChecker>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
     this.renamerVmap = this.db.langMgr.getVisitorMap('attributeRenamer');
     this.renameCheckerVmap = this.db.langMgr.getVisitorMap(
@@ -69,7 +86,7 @@ export class PushdownSelections implements PatternRule<
     this.cloneSelection = this.cloneSelection.bind(this);
   }
 
-  public match(node: Selection) {
+  public match(node: Selection): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     if (node.parent.constructor === Selection) return null; // already handled
     const bindings: PushdownSelectionsBindings = {
       selections: [node],
@@ -106,7 +123,8 @@ export class PushdownSelections implements PatternRule<
     return null;
   }
 
-  protected matchGroupBy(bindings: PushdownSelectionsBindings) {
+  /** Returns match bindings when at least one selection depends only on group-by keys. */
+  protected matchGroupBy(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     const src = bindings.source as GroupBy;
     const keySet = schemaToTrie(src.keys.map(retI1));
     for (const s of bindings.selections) {
@@ -118,7 +136,8 @@ export class PushdownSelections implements PatternRule<
     return null;
   }
 
-  protected matchJoins(bindings: PushdownSelectionsBindings) {
+  /** Returns match bindings when at least one selection can be pushed to one side of a join. */
+  protected matchJoins(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     const src = bindings.source as CartesianProduct;
     for (const s of bindings.selections) {
       const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
@@ -131,7 +150,8 @@ export class PushdownSelections implements PatternRule<
     }
     return null;
   }
-  protected matchProjectionConcat(bindings: PushdownSelectionsBindings) {
+  /** Returns match bindings when at least one selection can be pushed into the source or mapping branch of a projection concat. */
+  protected matchProjectionConcat(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     const src = bindings.source as ProjectionConcat;
     for (const s of bindings.selections) {
       const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
@@ -144,7 +164,8 @@ export class PushdownSelections implements PatternRule<
     }
     return null;
   }
-  protected matchProjection(bindings: PushdownSelectionsBindings) {
+  /** Returns match bindings when at least one selection can be pushed through the projection. */
+  protected matchProjection(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     for (const s of bindings.selections) {
       if (this.checkProjection(s, bindings.source as Projection)) {
         return { bindings };
@@ -153,6 +174,7 @@ export class PushdownSelections implements PatternRule<
     return null;
   }
 
+  /** Returns the set of identifiers that the selection's condition transitively depends on. */
   protected getSelectionDeps(s: Selection): IdSet {
     return this.tdepsVmap[s.lang].visitCalculation(s.condition);
   }
@@ -194,8 +216,9 @@ export class PushdownSelections implements PatternRule<
     return res;
   }
 
+  /** Moves the selection stack below `source`, which is an operator that simply wraps a single child. */
   protected transformBasic(
-    source: { source: PlanTupleOperator } & PlanTupleOperator,
+    source: TupleOperatorWithSource,
     first: Selection,
     last: Selection,
   ) {
@@ -206,6 +229,7 @@ export class PushdownSelections implements PatternRule<
     return source;
   }
 
+  /** Partitions selections into those that can be pushed below `source` and those that must stay above it. */
   protected transformGroupBy(source: GroupBy, selections: Selection[]) {
     const canPushdown: Selection[] = [];
     const mustStay: Selection[] = [];
@@ -266,11 +290,9 @@ export class PushdownSelections implements PatternRule<
     }
   }
 
+  /** Duplicates the selection stack into both branches of the set operation. */
   protected tranformSetOp(
-    source: {
-      left: PlanTupleOperator;
-      right: PlanTupleOperator;
-    } & PlanTupleOperator,
+    source: BranchedOperator<PlanTupleOperator>,
     first: Selection,
     last: Selection,
     selections: Selection[],
@@ -291,6 +313,7 @@ export class PushdownSelections implements PatternRule<
     return source;
   }
 
+  /** Pushes selections that can pass through `source` below it, renaming their conditions as needed. */
   protected transformProjection(source: Projection, selections: Selection[]) {
     const canPushdown: Selection[] = [];
     const mustStay: Selection[] = [];
@@ -339,6 +362,7 @@ export class PushdownSelections implements PatternRule<
     }
   }
 
+  /** Routes each selection to the left branch, right branch, or leaves it above the join. */
   protected transformJoin(source: CartesianProduct, selections: Selection[]) {
     const lefts: Selection[] = [];
     const rights: Selection[] = [];
@@ -385,6 +409,7 @@ export class PushdownSelections implements PatternRule<
     }
   }
 
+  /** Pushes selections into the source or mapping branch of a projection concat where possible. */
   protected transformProjectionConcat(
     source: ProjectionConcat,
     selections: Selection[],
@@ -428,6 +453,7 @@ export class PushdownSelections implements PatternRule<
     }
   }
 
+  /** Returns a shallow clone of `s` with its own schema copy. */
   protected cloneSelection(s: Selection): Selection {
     const clone = new Selection(s.lang, s.condition.clone(), s.source);
     clone.schema = clone.schema.slice();
@@ -435,6 +461,7 @@ export class PushdownSelections implements PatternRule<
     return clone;
   }
 
+  /** Returns `true` if selection `s` can be pushed through projection `p`; adds `s` to `toRenameContainer` when a rename is also needed. */
   protected checkProjection(
     s: Selection,
     p: Projection,
@@ -458,6 +485,7 @@ export class PushdownSelections implements PatternRule<
     return false;
   }
 
+  /** Rewires `selections` so they sit between `source` and `source[key]`, updating parent references and schemas. */
   protected pushSelectionsUnder<
     Key extends string,
     Op extends PlanTupleOperator & Record<Key, PlanTupleOperator>,

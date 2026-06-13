@@ -13,6 +13,11 @@ import { interpretEscape } from '../utils/string.js';
 import { PeggyContext } from '../parser/peggy-context.js';
 import { parse as peggyParse } from '../parser/xquery.peggy.mjs';
 
+/**
+ * Creates a Peggy-based XQuery parser bound to the given {@link LanguageManager},
+ * exposing a {@link ParserInterface} whose `parse`/`parseExpr` methods accept
+ * raw XQuery source strings.
+ */
 export function createParser(mgr: LanguageManager): ParserInterface {
   const ctx: PeggyContext = {
     langMgr: mgr,

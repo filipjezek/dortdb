@@ -23,10 +23,15 @@ import { intermediateToCalc } from '../../utils/calculation.js';
 import { getIMIAlternatives } from '../../utils/indices.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 
+/** Pattern-match bindings for the {@link IndexScans} rule. */
 export interface IndexScansBindings {
+  /** Contiguous {@link Selection} operators that can be replaced by the index scan. */
   selections: Selection[];
+  /** The source operator whose data will be accessed via the index. */
   source: TupleSource | ItemSource;
+  /** The matched secondary index. */
   index: Index;
+  /** Calculation that invokes the index to retrieve matching records. */
   accessor: Calculation;
 }
 
@@ -34,10 +39,15 @@ export interface IndexScansBindings {
  * Finds selections that can be satisfied by an index scan and replaces them with an index scan operator.
  */
 export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
+  /** Per-language calculation-builder visitor instances. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  /** Per-language equality-checker visitor instances. */
   protected eqCheckers: Record<string, EqualityChecker>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
   }
@@ -100,11 +110,20 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
     return null;
   }
 
+  /** Tests whether `index` can satisfy any of the `candidates`; returns the surviving candidates and an accessor, or `null`. */
   protected matchIndex(
     index: Index,
     candidates: (IndexMatchInput & { sIndex: number })[],
     renameMap: RenameMap,
-  ) {
+  ): {
+    /** Filtered candidates that participate in the matched index expression. */
+    candidates: (IndexMatchInput & {
+      /** Zero-based index into the outer `selections` array. */
+      sIndex: number;
+    })[];
+    /** Calculation that invokes the index to retrieve matching records. */
+    accessor: Calculation;
+  } | null {
     const origMatch = index.match(candidates, renameMap);
     if (origMatch) {
       candidates = candidates.filter((_, i) => origMatch.includes(i));
@@ -149,9 +168,13 @@ export class IndexScans implements PatternRule<Selection, IndexScansBindings> {
     return null;
   }
 
+  /** Extracts {@link IndexMatchInput} candidates from the given selections, tagged with their selection-array index. */
   protected getExprCandidates(
     selections: Selection[],
-  ): (IndexMatchInput & { sIndex: number })[] {
+  ): (IndexMatchInput & {
+    /** Zero-based index of the enclosing selection within `selections`. */
+    sIndex: number;
+  })[] {
     return selections.flatMap((s, si) => {
       return (s.condition.original as FnCall).args.map((arg) => ({
         sIndex: si,

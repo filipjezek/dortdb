@@ -18,13 +18,29 @@ import { Aliased, PlanOperator } from './plan/visitor.js';
 import { ExecutorConfig } from './visitors/executor.js';
 
 /**
- * The main database class.
+ * The main database class. Construct it with a {@link DortDBConfig} naming the
+ * main language, then {@link query} (or {@link parse}/{@link buildPlan}) against it.
+ *
+ * @example
+ * ```ts
+ * import { DortDB } from '@dortdb/core';
+ * import { SQL } from '@dortdb/lang-sql';
+ *
+ * const db = new DortDB({ mainLang: SQL() });
+ * const { data } = db.query('SELECT 1 + 1 AS sum');
+ * // data === [{ sum: 2 }]
+ * ```
  */
 export class DortDB<LangNames extends string = string> {
+  /** Language manager that holds all registered languages and their extensions. */
   protected langMgr: LanguageManager = null;
+  /** Trie of data sources registered via {@link registerSource}, keyed by their qualified name parts. */
   protected registeredSources = new Trie<symbol | string | number, unknown>();
+  /** The query optimizer applied after every plan is built. */
   public readonly optimizer: Optimizer;
+  /** Secondary indices registered via {@link createIndex}, keyed by the source's qualified name parts. */
   public indices = new Trie<symbol | string | number, Index[]>();
+  /** Internal view of this instance exposed to language plug-ins and visitors. */
   protected friendInterface: DortDBAsFriend = {
     langMgr: null,
     optimizer: null,
@@ -33,7 +49,10 @@ export class DortDB<LangNames extends string = string> {
     config: null,
   };
 
-  constructor(protected config: DortDBConfig<LangNames>) {
+  constructor(
+    /** Configuration used to initialise languages, extensions, and the optimizer. */
+    protected config: DortDBConfig<LangNames>,
+  ) {
     this.langMgr = this.friendInterface.langMgr = new LanguageManager(
       this.friendInterface,
     );
@@ -113,7 +132,9 @@ export class DortDB<LangNames extends string = string> {
     plan: PlanOperator,
     boundParams?: Record<string, unknown>,
   ): {
+    /** Lazy iterable of result rows; consume before the next call to avoid interference. */
     data: Iterable<T>;
+    /** Column names in output order, when known. */
     schema?: string[];
   } {
     const varMappers = this.langMgr.getVisitorMap('variableMapper');
@@ -295,21 +316,33 @@ export class DortDB<LangNames extends string = string> {
   }
 }
 
+/** Fully materialized result of a {@link DortDB.query} call. */
 export interface QueryResult<T = unknown> {
+  /** All result rows, materialized into an array. */
   data: T[];
+  /** Column names in output order, when provided by the language serializer. */
   schema?: string[];
 }
 
+/** Options accepted by {@link DortDB.query}, {@link DortDB.parse}, and related methods. */
 export interface QueryOptions<LangNames extends string> {
+  /** Language to use for parsing and planning; overrides {@link DortDBConfig.mainLang}. */
   mainLang?: Lowercase<LangNames>;
+  /** Values for named parameters referenced in the query. */
   boundParams?: Record<string, unknown>;
 }
 
+/** Configuration supplied to the {@link DortDB} constructor. */
 export interface DortDBConfig<LangNames extends string> {
+  /** Primary language used when no per-query override is given. */
   mainLang: Language<LangNames>;
+  /** Additional languages to register alongside the main one. */
   additionalLangs?: Language<LangNames>[];
+  /** Extensions (operators, functions, aggregates, castables) to register globally. */
   extensions?: Extension<LangNames>[];
+  /** Configuration for the query optimizer. */
   optimizer: OptimizerConfig;
+  /** Executor configuration; currently reserved for future use. */
   executor?: ExecutorConfig;
 }
 
@@ -317,9 +350,14 @@ export interface DortDBConfig<LangNames extends string> {
  * mechanisms.
  */
 export interface DortDBAsFriend {
+  /** The language manager that owns language registrations and visitor maps. */
   langMgr: LanguageManager;
+  /** Returns the registered data source for the given qualified name parts, or `undefined`. */
   getSource(source: (symbol | string | number)[]): unknown;
+  /** The query optimizer shared across all plan builds. */
   optimizer: Optimizer;
+  /** All secondary indices, keyed by the source's qualified name parts. */
   indices: Trie<symbol | string | number, Index[]>;
+  /** The configuration this database instance was created with. */
   config: DortDBConfig<string>;
 }

@@ -1,5 +1,9 @@
 import { ASTIdentifier } from '@dortdb/core';
 
+/**
+ * Unquotes an XQuery string literal, handling doubled-delimiter escapes and
+ * XML character-reference / predefined entity sequences.
+ */
 export function parseStringLiteral(original: string): string {
   const delim = original[0];
   let value = '';
@@ -20,6 +24,11 @@ export function parseStringLiteral(original: string): string {
   return value;
 }
 
+/**
+ * Decodes a single XML/XQuery escape sequence (numeric `#N` / hex `#xN` code
+ * point, or a named entity such as `lt`, `gt`, `amp`, `quot`, `apos`).
+ * Unknown names are returned verbatim as `&name;`.
+ */
 export function interpretEscape(esc: string): string {
   if (esc[0] === '#') {
     if (esc[1] === 'x') {
@@ -43,6 +52,11 @@ export function interpretEscape(esc: string): string {
   }
 }
 
+/**
+ * Splits an XQuery QName or braced URI literal into its parts: `[ns, local]`
+ * for `Q{uri}local` notation, or `[prefix, local]` for `prefix:local`, or
+ * `[local]` for an unprefixed name.
+ */
 export function parseName(original: string): string[] {
   if (original.startsWith('Q{')) {
     const end = original.indexOf('}');
@@ -52,6 +66,10 @@ export function parseName(original: string): string[] {
   return parts;
 }
 
+/**
+ * Serializes an {@link ASTIdentifier} back to a prefixed QName string
+ * (`prefix:local` when a namespace part is present, otherwise just `local`).
+ */
 export function idToStr(id: ASTIdentifier): string {
   let res = '';
   if (id.parts.length > 1) {

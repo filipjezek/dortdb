@@ -1,5 +1,10 @@
 import { AggregateFn } from '../extension.js';
 
+/**
+ * Counts the values received. Supports windowed evaluation through its inverse
+ * step. Like the other aggregates it ignores `null`s, so it counts non-null
+ * inputs.
+ */
 export const count: AggregateFn = {
   name: 'count',
   init: () => 0,
@@ -8,6 +13,10 @@ export const count: AggregateFn = {
   result: (state: number) => state,
 };
 
+/**
+ * Sums the values received, or `null` when no values were aggregated. Supports
+ * windowed evaluation through its inverse step.
+ */
 export const sum: AggregateFn = {
   name: 'sum',
   init: () => null,
@@ -16,6 +25,10 @@ export const sum: AggregateFn = {
   result: (state: number) => state,
 };
 
+/**
+ * Computes the arithmetic mean of the values received, or `null` when no values
+ * were aggregated. Supports windowed evaluation through its inverse step.
+ */
 export const avg: AggregateFn = {
   name: 'avg',
   init: () => ({ sum: 0, count: 0 }),
@@ -33,6 +46,12 @@ export const avg: AggregateFn = {
     state.count === 0 ? null : state.sum / state.count,
 };
 
+/**
+ * Returns the smallest value received (compared with `<`), or `null` when no
+ * values were aggregated.
+ *
+ * @remarks Provides no inverse step, so windowed use recomputes the frame.
+ */
 export const min: AggregateFn = {
   name: 'min',
   init: () => null,
@@ -44,6 +63,12 @@ export const min: AggregateFn = {
   result: (state: any) => state,
 };
 
+/**
+ * Returns the largest value received (compared with `>`), or `null` when no
+ * values were aggregated.
+ *
+ * @remarks Provides no inverse step, so windowed use recomputes the frame.
+ */
 export const max: AggregateFn = {
   name: 'max',
   init: () => null,

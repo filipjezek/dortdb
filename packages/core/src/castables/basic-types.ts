@@ -1,6 +1,7 @@
 import { Castable } from '../extension.js';
 import { shortcutNulls } from '../utils/shortcut-nulls.js';
 
+/** Casts any value to a string via `String()`; propagates `null`/`undefined` as `null`. */
 export const toStr: Castable = {
   name: 'string',
   pure: true,
@@ -8,6 +9,7 @@ export const toStr: Castable = {
     return String(val);
   }),
 };
+/** Casts any value to a number using the unary `+` operator; returns `null` for `NaN` or null input. */
 export const toNumber: Castable = {
   name: 'number',
   pure: true,
@@ -16,6 +18,7 @@ export const toNumber: Castable = {
     return isNaN(res) ? null : res;
   },
 };
+/** Casts any value to a boolean via `Boolean()`; never returns `null`. */
 export const toBool: Castable = {
   name: 'boolean',
   pure: true,
@@ -23,6 +26,7 @@ export const toBool: Castable = {
     return Boolean(val);
   },
 };
+/** Casts any value to a `Date`; returns `null` for null/undefined input or an invalid date string. */
 export const toDate: Castable = {
   name: 'date',
   pure: true,
@@ -31,6 +35,7 @@ export const toDate: Castable = {
     return isNaN(res.getTime()) ? null : res;
   }),
 };
+/** Parses a JSON string; returns `null` for null/undefined input or malformed JSON. */
 export const toJson: Castable = {
   name: 'json',
   convert: shortcutNulls((val) => {

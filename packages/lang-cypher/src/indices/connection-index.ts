@@ -20,11 +20,15 @@ import { intermediateToCalc } from '@dortdb/core/utils';
  * This index does not actually store any indexed data.
  */
 export class ConnectionIndex implements Index {
+  /** Equality checkers keyed by language name, used when building the accessor calculation. */
   protected eqCheckers: Record<string, EqualityChecker>;
+  /** Calculation builders keyed by language name, used when building the accessor calculation. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  /** Graph data adapter retrieved from the registered Cypher language. */
   protected adapter: CypherDataAdaper;
 
   constructor(
+    /** Index key expressions — the edge or node identifiers this index is built on. */
     public expressions: Calculation[],
     db: DortDBAsFriend,
   ) {
@@ -48,6 +52,11 @@ export class ConnectionIndex implements Index {
     return null;
   }
 
+  /**
+   * Returns `true` when any dependency of `expr` is mapped to the
+   * {@link fromItemIndexKey}, meaning the expression references the current
+   * from-item and can be satisfied by a graph traversal.
+   */
   protected matchesFromItemKey(
     expr: ASTIdentifier | PlanOperator,
     renames?: RenameMap,

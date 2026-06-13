@@ -5,9 +5,15 @@ import * as plan from '../plan/operators/index.js';
 import { OpOrId, PlanOperator, PlanVisitor } from '../plan/visitor.js';
 import { containsAll } from '../utils/trie.js';
 
+/**
+ * Arguments threaded through the equality-checking visitor during recursive descent.
+ */
 export interface DescentArgs {
+  /** The node from the second tree being compared against the currently visited node. */
   other: PlanOperator;
+  /** When `true`, differences in the `lang` field of plan operators are ignored. */
   ignoreLang: boolean;
+  /** Optional rename map applied to identifiers in `other` before comparing. */
   renameMap?: plan.RenameMap;
 }
 
@@ -16,14 +22,24 @@ export interface DescentArgs {
  */
 export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
   constructor(
+    /** Per-language visitor map used for recursive descent. */
     protected vmap: Record<string, PlanVisitor<boolean, DescentArgs>>,
   ) {}
 
+  /**
+   * Returns `id` renamed according to `renameMap`, or `id` unchanged when the map is
+   * absent or does not contain an entry for `id`.
+   */
   protected maybeRename(id: ASTIdentifier, renameMap?: plan.RenameMap) {
     const renamed = renameMap?.get(id.parts);
     return renamed ? ASTIdentifier.fromParts(renamed) : id;
   }
 
+  /**
+   * Compares `operator` against `other`, optionally applying `renameMap` to identifiers
+   * from `other`.  Handles the special case where one side is a bare identifier and the
+   * other is an identity `FnCall(ret1, [id])`.
+   */
   protected processItem(
     operator: OpOrId,
     {
@@ -70,6 +86,10 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     });
   }
 
+  /**
+   * Returns `true` only when `arrA` and `arrB` have the same length and every element
+   * pair compares equal via {@link processItem}.
+   */
   protected processArray(
     arrA: OpOrId[],
     arrB: OpOrId[],

@@ -12,20 +12,31 @@ import { AggregateCall } from './aggregate-call.js';
 export const CalcIntermediate = Symbol('CalcIntermediate');
 
 /**
- * Built from literals, fncalls etc.
+ * A scalar expression built from literals, function calls, identifiers, and sub-operators.
+ *
+ * During execution each {@link PlanOperator} in `args` is evaluated to an array of values
+ * that is passed positionally to `impl`.
  */
 export class Calculation implements PlanOperator {
+  /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
+  /** {@inheritDoc PlanOperator.dependencies} */
   public dependencies: IdSet;
 
   constructor(
+    /** {@inheritDoc PlanOperator.lang} */
     public lang: Lowercase<string>,
+    /** Scalar function that computes the expression result from the evaluated arguments. */
     public impl: (...args: any[]) => any,
     /** args which are plan operators will be instantiated as arrays during execution */
     public args: OpOrId[],
+    /** Metadata parallel to `args`; describes the origin of each argument in the original AST. */
     public argMeta: ArgMeta[],
+    /** Original plan operator this calculation was derived from, if any. */
     public original?: PlanOperator,
+    /** Aggregate sub-expressions embedded in this calculation. */
     public aggregates: AggregateCall[] = [],
+    /** `true` when the expression is a compile-time constant with no sub-operators. */
     public literal = false,
   ) {
     arrSetParent(args, this);
@@ -33,12 +44,14 @@ export class Calculation implements PlanOperator {
     this.dependencies = schemaToTrie(this.args.filter(isId));
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitCalculation(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     let idx: number;
@@ -62,6 +75,7 @@ export class Calculation implements PlanOperator {
       }
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     const res: PlanOperator[] = [];
     for (const arg of this.args) {
@@ -72,6 +86,7 @@ export class Calculation implements PlanOperator {
     return res;
   }
 
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): Calculation {
     const clonedMeta: ArgMeta[] = this.argMeta.map((m) => ({
       ...m,

@@ -16,17 +16,36 @@ type VisitorConstr<T extends PlanVisitor<any>> = {
   new (visitors: Record<string, T>, db: DortDBAsFriend): T;
 };
 
+/**
+ * The set of plan-visitor constructors that every language plugin must provide.
+ * The engine instantiates one visitor per language and combines them into a multi-language
+ * dispatch map so that mixed-language plan trees are traversed correctly.
+ */
 export interface PlanVisitors {
   /**
    * Combines fncalls, literals etc. into a single function with clearly specified inputs
    */
   calculationBuilder: VisitorConstr<PlanVisitor<CalculationParams>>;
+  /** Computes the set of identifiers that each plan node depends on from outer scopes. */
   transitiveDependencies: VisitorConstr<TransitiveDependencies>;
+  /** Applies an attribute rename map to a plan subtree in place. */
   attributeRenamer: VisitorConstr<AttributeRenamer>;
+  /** Checks whether applying a rename map to a plan subtree would be safe. */
   attributeRenameChecker: VisitorConstr<AttributeRenameChecker>;
+  /** Checks structural equality between two plan operator trees. */
   equalityChecker: VisitorConstr<EqualityChecker>;
+  /** Translates named identifiers in the plan to numeric indices for the executor. */
   variableMapper: VisitorConstr<VariableMapper>;
+  /** Executes a logical plan and produces result items. */
   executor: VisitorConstr<Executor>;
+}
+
+/** The result of {@link LogicalPlanBuilder.buildPlan}. */
+export interface BuildPlanResult {
+  /** The root operator of the constructed logical plan. */
+  plan: PlanOperator;
+  /** The schema attributes inferred during planning (see {@link toInfer}). */
+  inferred: IdSet;
 }
 
 /**
@@ -45,7 +64,7 @@ export interface LogicalPlanBuilder extends ASTVisitor<PlanOperator> {
     node: ASTNode,
     context: IdSet,
     languageContext: Record<string, unknown>,
-  ): { plan: PlanOperator; inferred: IdSet };
+  ): BuildPlanResult;
 }
 /**
  * Some languages have grammars which require additional pass to fully resolve the schema of each plan operator.
@@ -66,14 +85,27 @@ export interface LogicalPlanBuilder extends ASTVisitor<PlanOperator> {
  */
 export const toInfer = Symbol('toInfer');
 
+/**
+ * Default {@link PlanVisitors} constructors bundled with `@dortdb/core`.
+ * Language plugins extend this by contributing their own visitor implementations
+ * via the language manager.
+ */
 export const coreVisitors = {
+  /** Visitor constructors for the logical-plan traversal passes. */
   logicalPlan: {
+    /** @see {@link CalculationBuilder} */
     calculationBuilder: CalculationBuilder,
+    /** @see {@link TransitiveDependencies} */
     transitiveDependencies: TransitiveDependencies,
+    /** @see {@link AttributeRenamer} */
     attributeRenamer: AttributeRenamer,
+    /** @see {@link AttributeRenameChecker} */
     attributeRenameChecker: AttributeRenameChecker,
+    /** @see {@link EqualityChecker} */
     equalityChecker: EqualityChecker,
+    /** @see {@link VariableMapper} */
     variableMapper: VariableMapper,
+    /** Must be set by a language plugin before query execution. */
     executor: null as VisitorConstr<Executor>,
   } satisfies PlanVisitors,
 };

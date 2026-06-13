@@ -1,11 +1,16 @@
 import { add, sub } from 'date-fns';
 import { Fn } from '@dortdb/core';
 
+/** Returns the current timestamp as a `Date`. */
 export const now: Fn = {
   name: 'now',
   impl: () => new Date(),
 };
 
+/**
+ * Parses an interval string into an {@link Interval}, accepting both SQL-standard
+ * (`'1-2 3 4:5:6'`) and PostgreSQL (`'1 year 2 months ago'`) syntax.
+ */
 export const interval: Fn = {
   name: 'interval',
   impl: (repr: string) => {
@@ -45,6 +50,11 @@ export function trimExtraHours(
   return newDate;
 }
 
+/**
+ * `date.add`: adds its two operands. Two {@link Interval}s sum component-wise;
+ * a `Date` and an `Interval` produce a `Date` (with daylight-saving correction
+ * for whole-day intervals via {@link trimExtraHours}).
+ */
 export const dateAdd: Fn = {
   name: 'add',
   schema: 'date',
@@ -67,6 +77,11 @@ export const dateAdd: Fn = {
   },
 };
 
+/**
+ * `date.sub`: subtracts `b` from `a`. Two {@link Interval}s subtract component-wise;
+ * a `Date` minus an `Interval` produces a `Date` (with daylight-saving correction
+ * for whole-day intervals via {@link trimExtraHours}).
+ */
 export const dateSub: Fn = {
   name: 'sub',
   schema: 'date',
@@ -132,14 +147,25 @@ function postgresInterval(repr: string): Interval | null {
   return res;
 }
 
+/** A calendar/clock interval, stored as independent unit components. */
 export class Interval {
+  /** Seconds component. */
   seconds = 0;
+  /** Minutes component. */
   minutes = 0;
+  /** Hours component. */
   hours = 0;
+  /** Days component. */
   days = 0;
+  /** Months component. */
   months = 0;
+  /** Years component. */
   years = 0;
 
+  /**
+   * Approximate total duration in milliseconds, treating a month as 30 days and a
+   * year as 365 days. Useful for ordering/comparison, not for exact arithmetic.
+   */
   valueOf() {
     return (
       ((((this.years * 365 + this.months * 30 + this.days) * 24 + this.hours) *
@@ -152,6 +178,12 @@ export class Interval {
   }
 }
 
+/**
+ * `date.extract`: returns a single field of a date — one of `year`, `month` (1-based),
+ * `day`, `hour`, `minute`, or `second`.
+ *
+ * @throws if the requested field name is not recognized.
+ */
 export const extract: Fn = {
   name: 'extract',
   schema: 'date',

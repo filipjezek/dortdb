@@ -4,7 +4,8 @@
     "../../packages/core",
     "../../packages/lang-sql",
     "../../packages/lang-xquery",
-    "../../packages/lang-cypher"
+    "../../packages/lang-cypher",
+    "../../packages/extensions/datetime"
   ],
   "entryPointStrategy": "packages",
   "tsconfig": "./tsconfig.typedoc.json",

@@ -2,6 +2,7 @@ import {
   AggregateFn,
   Aliased,
   allAttrs,
+  BuildPlanResult,
   ASTFunction,
   ASTIdentifier,
   ASTLiteral,
@@ -81,22 +82,58 @@ interface DescentArgs {
   graphName: ASTIdentifier;
 }
 
+/** Result of resolving the variables and references of a pattern chain during plan building. */
+interface SetupVarsAndRefsResult {
+  /** One identifier per chain element; generated identifiers use `varPrefix` as their namespace. */
+  variables: ASTIdentifier[];
+  /** `true` for elements whose variable was already bound in the surrounding context. */
+  isRef: boolean[];
+  /** Combined identifier set of the surrounding context and the current source schema. */
+  ctx: IdSet;
+  /** Partially built plan covering the referenced elements, or `undefined` when no references exist. */
+  res: PlanTupleOperator;
+  /** Symbol used as a namespace prefix for unnamed generated variables. */
+  varPrefix: symbol;
+}
+
+/**
+ * Translates a Cypher AST into a logical plan tree, implementing
+ * {@link LogicalPlanBuilder} for the Cypher language.
+ *
+ * @remarks
+ * Write operations (CREATE, MERGE, SET, REMOVE, DELETE) are not yet supported
+ * and will throw {@link UnsupportedError}. Graph traversal with variable-length
+ * relationship patterns is handled via {@link plan.BidirectionalRecursion}.
+ */
 export class CypherLogicalPlanBuilder
   implements LogicalPlanBuilder, CypherVisitor<PlanOperator, DescentArgs>
 {
+  /** Language-keyed map of calculation-builder visitors used to lower intermediate plan nodes to {@link plan.Calculation}s. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  /** Language-keyed map of equality checkers used when constructing {@link plan.Calculation}s. */
   protected eqCheckers: Record<string, EqualityChecker>;
+  /** Stringifier used to derive deterministic alias names for computed columns. */
   protected stringifier = new ASTDeterministicStringifier();
+  /** Cypher graph data adapter obtained from the language registration. */
   protected dataAdapter: CypherDataAdaper;
+  /** Per-query language context forwarded to nested {@link LangSwitch} builders. */
   protected langCtx: Record<string, unknown>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Database handle used for source resolution, function look-up, and language management. */
+    protected db: DortDBAsFriend,
+  ) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     const lang = db.langMgr.getLang<'cypher', CypherLanguage>('cypher');
     this.dataAdapter = lang.dataAdapter;
   }
 
+  /**
+   * Coerces a {@link AST.PropLookup} chain into a flat {@link ASTIdentifier}
+   * when the root is an identifier not yet in scope, enabling more efficient
+   * identifier-based plan paths.  Returns `node` unchanged otherwise.
+   */
   protected maybeId(node: ASTNode, args: DescentArgs): ASTNode {
     if (!(node instanceof AST.PropLookup)) return node;
     const parts = [node.prop.parts[0]];
@@ -117,6 +154,11 @@ export class CypherLogicalPlanBuilder
     return node;
   }
 
+  /**
+   * Lowers an expression node to a {@link plan.Calculation} (or a bare
+   * {@link ASTIdentifier} when no computation is needed).  Aggregate calls are
+   * unwrapped to their result field name.
+   */
   protected toCalc(
     node: ASTNode,
     args: DescentArgs,
@@ -129,6 +171,11 @@ export class CypherLogicalPlanBuilder
     }
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
+  /**
+   * Converts an expression node to the argument format expected by
+   * {@link plan.FnCall}: returns the {@link ASTIdentifier} directly when
+   * possible, otherwise wraps the plan operator in a `{ op }` object.
+   */
   protected processFnArg(
     item: ASTNode,
     args: DescentArgs,
@@ -138,6 +185,11 @@ export class CypherLogicalPlanBuilder
       ? infer(item, args)
       : { op: item.accept(this, args) };
   }
+  /**
+   * Builds an aliased projection attribute: infers an alias from the
+   * stringified expression when none is provided, and lowers the value
+   * expression via {@link toCalc}.
+   */
   protected processAttr(
     attr: ASTNode | Aliased<ASTNode>,
     args: DescentArgs,
@@ -156,6 +208,10 @@ export class CypherLogicalPlanBuilder
     const alias = toId(attr.accept(this.stringifier));
     return [this.toCalc(attr, args), alias];
   }
+  /**
+   * Applies {@link maybeId} coercion then dispatches the node through this
+   * visitor, tracking any newly inferred identifiers in `args`.
+   */
   protected processNode(node: ASTNode, args: DescentArgs) {
     node = this.maybeId(node, args);
     return node instanceof ASTIdentifier
@@ -163,7 +219,12 @@ export class CypherLogicalPlanBuilder
       : node.accept(this, args);
   }
 
-  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>) {
+  /** {@inheritDoc LogicalPlanBuilder.buildPlan} */
+  buildPlan(
+    node: ASTNode,
+    ctx: IdSet,
+    langCtx: Record<string, unknown>,
+  ): BuildPlanResult {
     this.langCtx = langCtx;
     const inferred = new Trie<string | symbol>();
     return {
@@ -253,6 +314,12 @@ export class CypherLogicalPlanBuilder
     return new plan.FnCall('cypher', fnArgs, impl.impl, impl.pure);
   }
 
+  /**
+   * Builds a plan for a CALL procedure invocation, producing a
+   * {@link plan.TupleFnSource} with optional YIELD projection and WHERE
+   * filtering.  Called by {@link visitFnCallWrapper} when `node.procedure` is
+   * set.
+   */
   protected visitProcedure(
     node: AST.FnCallWrapper,
     args: DescentArgs,
@@ -398,6 +465,12 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
+  /**
+   * Builds the initial plan source for pattern chain elements that refer to
+   * already-bound variables: projects the referenced variables and applies
+   * property-filter selections for each.  Returns `args.src` unchanged when
+   * `refVars` is empty.
+   */
   protected preparePatternRefs(
     refVars: ASTIdentifier[],
     chain: (AST.NodePattern | AST.RelPattern)[],
@@ -421,6 +494,12 @@ export class CypherLogicalPlanBuilder
     }
     return args.src;
   }
+  /**
+   * Wraps `src` in one or more {@link plan.Selection} operators that filter
+   * rows by the property constraints declared on `el`.  Returns `src` unchanged
+   * when `el` has no `props`.  Map-literal props produce per-key equality
+   * checks; an identifier prop uses an `isMatch` structural check.
+   */
   protected patternToSelection(
     src: PlanTupleOperator,
     variable: ASTIdentifier,
@@ -464,6 +543,13 @@ export class CypherLogicalPlanBuilder
     return src;
   }
 
+  /**
+   * Appends edge-connectivity {@link plan.Selection}s to `res` for the
+   * relationship elements in `chain[fromI..toI]` (odd indices), skipping those
+   * that have a variable-length range (handled separately by
+   * {@link addRecursion}) and adding edge-uniqueness guards for non-recursive
+   * multi-hop patterns.
+   */
   protected setupChainSelections(
     chain: (AST.NodePattern | AST.RelPattern)[],
     variables: ASTIdentifier[],
@@ -525,6 +611,11 @@ export class CypherLogicalPlanBuilder
     return res;
   }
 
+  /**
+   * Returns `false` when the edge at index `i` in a variable-direction
+   * recursive path is internally inconsistent (source and target of adjacent
+   * edges do not share exactly one endpoint), otherwise `true`.
+   */
   protected checkAnyRecEdge(
     srcNodes: unknown[],
     tgtNodes: unknown[],
@@ -615,6 +706,10 @@ export class CypherLogicalPlanBuilder
     );
   }
 
+  /**
+   * Wraps `res` in a {@link plan.Selection} that asserts the given `node` is
+   * connected to `edge` in direction `dir` within the named graph.
+   */
   protected isEdgeConnected(
     res: PlanTupleOperator,
     dir: EdgeDirection,
@@ -640,10 +735,16 @@ export class CypherLogicalPlanBuilder
     );
   }
 
+  /**
+   * Classifies each element of a {@link AST.PatternElChain} as either a new
+   * variable or a reference to an already-bound one, generates fresh identifiers
+   * for unnamed elements, and builds the initial plan source that covers the
+   * referenced elements via {@link preparePatternRefs}.
+   */
   protected setupVarsAndRefs(
     node: AST.PatternElChain,
     args: DescentArgs & { optional?: boolean },
-  ) {
+  ): SetupVarsAndRefsResult {
     const varPrefix = Symbol('unnamed');
     const variables = node.chain.map(
       (item, i) =>
@@ -674,6 +775,10 @@ export class CypherLogicalPlanBuilder
     return { variables, isRef, ctx, res, varPrefix };
   }
 
+  /**
+   * Visits `node.chain[i]` with the pre-generated variable at `variables[i]`
+   * injected into `args`, returning the resulting tuple plan operator.
+   */
   protected processChainPart(
     node: AST.PatternElChain,
     i: number,
@@ -768,6 +873,11 @@ export class CypherLogicalPlanBuilder
 
     return res;
   }
+  /**
+   * Builds a node scan: an {@link plan.ItemSource} over the graph's nodes,
+   * mapped to `args.variable`, with optional label and property filters.
+   * Requires `args.variable` to be provided by the caller.
+   */
   visitNodePattern(
     node: AST.NodePattern,
     args: DescentArgs & { variable: ASTIdentifier },
@@ -910,6 +1020,12 @@ export class CypherLogicalPlanBuilder
     return [source, mapping];
   }
 
+  /**
+   * Builds a {@link plan.BidirectionalRecursion} plan for the variable-length
+   * relationship at `chain[edgeI]`, using `source` and `target` as the two
+   * anchor sides.  Appends edge-uniqueness and (for undirected patterns)
+   * direction-consistency guards.
+   */
   protected addRecursion(
     source: PlanTupleOperator,
     target: PlanTupleOperator,
@@ -997,6 +1113,13 @@ export class CypherLogicalPlanBuilder
 
     return res;
   }
+  /**
+   * Replaces the leaf {@link plan.ItemSource} in `mapping` with an
+   * {@link plan.ItemFnSource} that iterates the next candidate edges from a
+   * given node, forming the step function of the bidirectional recursion.
+   * For undirected edges it uses {@link checkAnyRecEdge} to pick the correct
+   * traversal direction at each step.
+   */
   protected createRecursionMapping(
     variables: ASTIdentifier[],
     graph: unknown,
@@ -1178,6 +1301,7 @@ export class CypherLogicalPlanBuilder
       node.elseExpr && this.processNode(node.elseExpr, args),
     );
   }
+  /** @throws Always throws `Error('Method not implemented.')` — COUNT(*) is handled upstream by {@link visitFnCallWrapper}. */
   visitCountAll(node: AST.CountAll, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
@@ -1249,6 +1373,11 @@ export class CypherLogicalPlanBuilder
     }
     return res;
   }
+  /**
+   * Builds the plan for a MATCH clause or the pattern portion of an
+   * {@link AST.ExistsSubquery}, joining each pattern chain in sequence and
+   * applying the optional WHERE predicate.
+   */
   visitMatchClause(
     node: AST.MatchClause | AST.ExistsSubquery,
     args: DescentArgs,
@@ -1312,24 +1441,31 @@ export class CypherLogicalPlanBuilder
     if (!args.src) return renamed;
     return new plan.ProjectionConcat('cypher', renamed, false, args.src);
   }
+  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
   visitCreateClause(node: AST.CreateClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
+  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
   visitMergeClause(node: AST.MergeClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
+  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
   visitSetClause(node: AST.SetClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
+  /** @throws Always throws `Error('Method not implemented.')`. */
   visitSetItem(node: AST.SetItem, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
+  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
   visitRemoveClause(node: AST.RemoveClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
+  /** @throws Always throws `Error('Method not implemented.')`. */
   visitRemoveItem(node: AST.RemoveItem, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
+  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
   visitDeleteClause(node: AST.DeleteClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
@@ -1371,6 +1507,12 @@ export class CypherLogicalPlanBuilder
     }
     return res;
   }
+  /**
+   * Builds the pre-sort projection, optional {@link plan.GroupBy}, and
+   * {@link plan.OrderBy} for a projection body that contains an ORDER BY clause,
+   * taking into account whether the body also changes cardinality (DISTINCT or
+   * aggregation).
+   */
   protected processOrderBy(
     node: AST.ProjectionBody,
     res: PlanTupleOperator,
@@ -1411,6 +1553,12 @@ export class CypherLogicalPlanBuilder
 
     return new plan.OrderBy('cypher', orders, res);
   }
+  /**
+   * Builds a {@link plan.GroupBy} operator by separating `allCols` into
+   * aggregate outputs (supplied by `aggrs`) and the non-aggregate group-key
+   * columns, then wiring the pre-group source schema into each aggregate's
+   * post-group operator.
+   */
   protected processGroupBy(
     res: PlanTupleOperator,
     aggrs: plan.AggregateCall[],
@@ -1435,6 +1583,11 @@ export class CypherLogicalPlanBuilder
 
     return new plan.GroupBy('cypher', groupByCols, aggrs, res);
   }
+  /**
+   * Wraps `res` in a {@link plan.Limit} operator derived from the SKIP and
+   * LIMIT expressions on `node`.
+   * @throws `Error` if SKIP or LIMIT is not a numeric constant literal.
+   */
   protected buildLimit(
     node: AST.ProjectionBody,
     res: PlanTupleOperator,
@@ -1454,6 +1607,7 @@ export class CypherLogicalPlanBuilder
     );
   }
 
+  /** @throws Always throws — ORDER BY items are processed directly in {@link processOrderBy}, not via the visitor. */
   visitOrderItem(node: AST.OrderItem, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
@@ -1488,9 +1642,16 @@ export class CypherLogicalPlanBuilder
       true,
     );
   }
+  /** @throws Always throws `Error('Method not implemented.')`. */
   visitFunction(node: ASTFunction, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
+  /**
+   * Delegates plan building for the embedded sub-expression to the
+   * appropriate language's {@link LogicalPlanBuilder}, propagates any newly
+   * inferred identifiers back into `args`, and wraps a tuple-producing plan in
+   * a {@link plan.MapToItem} so the result is always a scalar operator.
+   */
   visitLangSwitch(node: LangSwitch, args: DescentArgs): PlanOperator {
     const nested = new (this.db.langMgr.getLang(
       node.lang,

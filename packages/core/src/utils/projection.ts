@@ -1,12 +1,17 @@
 import { Projection } from '../plan/operators/index.js';
 import { IdSet } from '../plan/visitor.js';
 
+/** Describes how a set of dependencies relates to a {@link Projection}'s rename map. */
 export enum RenamedDepsResult {
+  /** At least one dependency is modified (not merely renamed) by the projection. */
   modified = 0,
+  /** All matching dependencies are renamed but structurally unchanged. */
   renamed = 1,
+  /** All matching dependencies pass through the projection without any renaming. */
   unchanged = 2,
 }
 
+/** Checks whether every dependency in `deps` touched by `projection` is only renamed, never modified. */
 export function areDepsOnlyRenamed(
   deps: IdSet,
   projection: Projection,

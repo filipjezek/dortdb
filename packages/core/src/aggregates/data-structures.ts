@@ -1,5 +1,12 @@
 import { AggregateFn } from '../extension.js';
 
+/**
+ * Collects the values received into an array, in arrival order.
+ *
+ * @remarks Unlike the numeric aggregates this keeps `null`s (see
+ * {@link AggregateFn.includeNulls}). Its inverse step evicts from the front, so
+ * in a sliding window it yields the values currently in the frame.
+ */
 export const collect: AggregateFn = {
   name: 'collect',
   init: () => [],

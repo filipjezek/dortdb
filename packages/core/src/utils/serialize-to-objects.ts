@@ -2,6 +2,12 @@ import { allAttrs } from '../ast.js';
 import { SerializeFn } from '../lang-manager.js';
 import { PlanTupleOperator } from '../plan/visitor.js';
 
+/**
+ * Returns a {@link SerializeFn} that converts tuple rows to plain objects keyed
+ * by the operator's schema, joining multi-part identifiers with `schemaSeparator`.
+ *
+ * @param schemaSeparator - String used to join multi-part attribute names (default `'.'`).
+ */
 export function serializeToObjects(schemaSeparator = '.'): SerializeFn {
   return function (items, ctx, operator) {
     if (!(operator instanceof PlanTupleOperator)) {

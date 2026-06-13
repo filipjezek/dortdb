@@ -16,7 +16,9 @@ import { CalculationParams } from '../../visitors/calculation-builder.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
 import { intermediateToCalc } from '../../utils/calculation.js';
 
+/** Stack of consecutive {@link plan.Projection} operators matched by {@link MergeProjections}, outermost first. */
 export type MergeProjectionsBindings = plan.Projection[];
+/** Maps an aliased identifier (by its parts) to the value expression it was bound to in a lower projection. */
 export type ProjMap = Trie<
   string | symbol | number,
   ASTIdentifier | plan.Calculation
@@ -30,11 +32,17 @@ export class MergeProjections implements PatternRule<
   MergeProjectionsBindings
 > {
   operator = plan.Projection;
+  /** Per-language transitive-dependency visitor instances. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
+  /** Per-language calculation-builder visitor instances. */
   protected calcBuilderVmap: Record<string, PlanVisitor<CalculationParams>>;
+  /** Per-language equality-checker visitor instances. */
   protected eqCheckersVmap: Record<string, EqualityChecker>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
     this.calcBuilderVmap = this.db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckersVmap = this.db.langMgr.getVisitorMap('equalityChecker');
@@ -64,6 +72,7 @@ export class MergeProjections implements PatternRule<
     return node;
   }
 
+  /** Merges the inner projection `b` into the outer projection `a`, returning the surviving projection. */
   protected mergeProjections(
     a: plan.Projection,
     b: plan.Projection,
@@ -105,6 +114,7 @@ export class MergeProjections implements PatternRule<
     return a;
   }
 
+  /** Rebuilds a {@link plan.FnCall} from a calculation template with a new argument list, preserving aggregate metadata. */
   protected calcToFnCall(calc: plan.Calculation, args: OpOrId[]): plan.FnCall {
     return new plan.FnCall(
       calc.lang,
@@ -124,6 +134,7 @@ export class MergeProjections implements PatternRule<
     );
   }
 
+  /** Substitutes identifiers in `calc` using `projMap` and rebuilds the calculation. */
   protected getNewCalc(
     calc: plan.Calculation,
     projMap: ProjMap,
@@ -205,6 +216,7 @@ export class MergeProjections implements PatternRule<
     return [canMerge, usedAttrs];
   }
 
+  /** Returns the union of transitive dependencies of all sub-operator arguments of `calc`. */
   protected getCalcInputDeps(calc: plan.Calculation): IdSet {
     return union(
       ...calc.args

@@ -14,10 +14,17 @@ import {
 } from '../plan/index.js';
 import { SQLLanguage } from '../language/language.js';
 
+/**
+ * Extends the core {@link Executor} with SQL-specific plan operators.
+ *
+ * @remarks {@link visitLangSwitch}, {@link visitUsing}, and {@link visitTableAlias}
+ * are not yet implemented and always throw.
+ */
 export class SQLExecutor
   extends Executor
   implements SQLPlanVisitor<Iterable<unknown>, ExecutionContext>
 {
+  /** SQL data adapter used to access column values from raw data rows. */
   protected adapter = (this.db.langMgr.getLang('sql') as SQLLanguage)
     .dataAdapter;
 

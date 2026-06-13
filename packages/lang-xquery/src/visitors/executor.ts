@@ -13,10 +13,16 @@ import { DOT, POS, LEN } from '../utils/dot.js';
 
 const ctxCols = [DOT, POS, LEN];
 
+/**
+ * Extends {@link Executor} to evaluate XQuery-specific plan operators,
+ * implementing the XQuery focus context (item, position, size) for
+ * {@link TreeJoin} and materializing sequences for {@link ProjectionSize}.
+ */
 export class XQueryExecutor
   extends Executor
   implements XQueryPlanVisitor<Iterable<unknown>, ExecutionContext>
 {
+  /** XQuery data adapter used to materialize and traverse node values during execution. */
   protected adapter = (this.db.langMgr.getLang('xquery') as XQueryLanguage)
     .dataAdapter;
 
@@ -81,6 +87,7 @@ export class XQueryExecutor
     }
   }
 
+  /** Resolves the named source from the database rather than from the execution context. */
   override visitItemSource(operator: ItemSource, ctx: ExecutionContext) {
     return [this.db.getSource((operator.name as ASTIdentifier).parts)];
   }

@@ -19,6 +19,7 @@ import {
   DortDBAsFriend,
   EqualityChecker,
   TransitiveDependencies,
+  BuildPlanResult,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import { XQueryVisitor } from '../ast/visitor.js';
@@ -55,6 +56,10 @@ import {
   XQueryOp,
 } from '../language/language.js';
 
+/**
+ * Symbol key set on a function implementation to tell the builder to skip
+ * atomization of arguments before invoking it.
+ */
 export const skipAtomization = Symbol('skipAtomization');
 
 function idToPair(id: ASTIdentifier): [string, string] {
@@ -92,33 +97,69 @@ function infer(item: AST.ASTVariable, args: DescentArgs) {
   }
 }
 
+/**
+ * Context object threaded through each recursive descent step of the
+ * XQuery plan-builder visitor.
+ */
 export interface DescentArgs {
+  /** Accumulated tuple-pipeline source; `undefined` when building a fresh subexpression. */
   src?: PlanTupleOperator;
+  /** Set of column identifiers visible in the current scope. */
   ctx: IdSet;
+  /** Accumulates identifiers inferred from an outer scope during descent. */
   inferred: IdSet;
 }
 
-export interface XQueryLangCtx {
-  prologOptions: {
-    namespaces: Map<string, string>;
-  };
+/** Namespace settings established by the query prolog. */
+export interface XQueryPrologOptions {
+  /** Maps namespace prefixes to their URIs; the `undefined` key holds the default namespace. */
+  namespaces: Map<string, string>;
 }
 
+/** Per-query XQuery context carrying prolog-level settings such as namespace bindings. */
+export interface XQueryLangCtx {
+  /** Namespace options parsed from the query prolog. */
+  prologOptions: XQueryPrologOptions;
+}
+
+/** Default namespace URI for XHTML elements, used when no explicit namespace overrides the default. */
 export const xhtml = 'http://www.w3.org/1999/xhtml';
 
+/**
+ * Traverses an XQuery AST and converts it into a logical query plan.
+ *
+ * @example
+ * ```ts
+ * const db = new DortDB({ languages: [XQuery] });
+ * const builder = new XQueryLogicalPlanBuilder(db as DortDBAsFriend);
+ * const { plan } = builder.buildPlan(astRoot, ctx, langCtx);
+ * ```
+ */
 export class XQueryLogicalPlanBuilder
   implements XQueryVisitor<PlanOperator, DescentArgs>, LogicalPlanBuilder
 {
+  /** Per-language calculation builders used to convert plan fragments into {@link plan.Calculation} nodes. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  /** Per-language equality checkers for plan-node structural comparison. */
   protected eqCheckers: Record<string, EqualityChecker>;
+  /** Per-language transitive-dependency visitors used during schema resolution. */
   protected tdeps: Record<string, TransitiveDependencies>;
-  protected langCtx: Record<string, unknown> & { xquery: XQueryLangCtx };
-  /** copied to keep outer lang ctx clean */
+  /** Shared language context passed in via {@link buildPlan}; the `xquery` entry holds the outer {@link XQueryLangCtx}. */
+  protected langCtx: Record<string, unknown> & {
+    /** The XQuery-specific language context for the current query scope. */
+    xquery: XQueryLangCtx;
+  };
+  /** Local copy of the language context, kept separate so the outer context is left untouched. */
   protected localLangCtx: XQueryLangCtx;
+  /** Counter for generating unique attribute-name prefixes across builder instances. */
   protected static prefixCounter = 0;
+  /** XQuery data adapter used to construct and traverse node values. */
   protected dataAdapter: XQueryDataAdapter<unknown>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.dataAdapter = db.langMgr.getLang<'xquery', XQueryLanguage>(
@@ -127,6 +168,7 @@ export class XQueryLogicalPlanBuilder
     this.atomize = this.atomize.bind(this);
   }
 
+  /** Creates a fresh {@link XQueryLangCtx} seeded with the default XHTML namespace binding. */
   protected initLangCtx(): XQueryLangCtx {
     return {
       prologOptions: {
@@ -134,6 +176,7 @@ export class XQueryLogicalPlanBuilder
       },
     };
   }
+  /** Returns a copy of `ctx` with its prolog namespace map cloned, so nested scopes can extend it independently. */
   protected cloneLangCtx(ctx: XQueryLangCtx): XQueryLangCtx {
     return {
       ...ctx,
@@ -143,7 +186,12 @@ export class XQueryLogicalPlanBuilder
       },
     };
   }
-  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>) {
+  /** {@inheritDoc LogicalPlanBuilder.buildPlan} */
+  buildPlan(
+    node: ASTNode,
+    ctx: IdSet,
+    langCtx: Record<string, unknown>,
+  ): BuildPlanResult {
     this.langCtx = langCtx as Record<string, unknown> & {
       xquery: XQueryLangCtx;
     };
@@ -158,10 +206,12 @@ export class XQueryLogicalPlanBuilder
     return { plan: res, inferred };
   }
 
+  /** Converts an AST node to a {@link plan.Calculation}, passing variable references through unchanged. */
   protected toCalc(
     node: ASTNode,
     args: DescentArgs,
   ): plan.Calculation | ASTIdentifier;
+  /** Converts an AST node to a {@link plan.Calculation}, materializing variable references too. */
   protected toCalc(
     node: ASTNode,
     args: DescentArgs,
@@ -180,10 +230,12 @@ export class XQueryLogicalPlanBuilder
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
 
+  /** Reduces a value to its atomic XDM representation via the data adapter. */
   protected atomize(item: unknown) {
     return this.dataAdapter.atomize(item);
   }
 
+  /** Visits `item` and, if it yields a calculation, wraps it in an `unwind` item source so its sequence is flattened into items. */
   protected maybeUnwind(item: ASTNode, args: DescentArgs) {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
@@ -200,6 +252,7 @@ export class XQueryLogicalPlanBuilder
     }
     return res;
   }
+  /** Bound helper: passes variable references through (recording the dependency) and visits any other node. */
   protected processNode(item: ASTNode, args: DescentArgs): OpOrId {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
@@ -207,6 +260,7 @@ export class XQueryLogicalPlanBuilder
     }
     return item.accept(this, args);
   }
+  /** Bound helper: turns `item` into a function argument, passing variables through and wrapping other nodes as sequence-accepting plan args. */
   protected processFnArg(
     item: ASTNode,
     args: DescentArgs,
@@ -308,6 +362,7 @@ export class XQueryLogicalPlanBuilder
     return res;
   }
 
+  /** Joins `op` onto `src` with a {@link plan.ProjectionConcat} when `src` is present, otherwise returns `op` unchanged. */
   protected maybeProjectConcat(
     op: PlanTupleOperator,
     src: PlanTupleOperator,
@@ -385,6 +440,7 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
+  /** Builds a grouping key from a `group by` binding: atomizes the key expression and aliases it to the bound variable. */
   protected processGroupByItem(
     item: [AST.ASTVariable, ASTNode],
     args: DescentArgs,
@@ -411,6 +467,7 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
+  /** Converts an `order by` item into a {@link plan.Order} descriptor, resolving its sort key and null-ordering. */
   protected processOrderItem(
     item: AST.OrderByItem,
     args: DescentArgs,
@@ -568,6 +625,12 @@ export class XQueryLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
 
+  /**
+   * Builds the tuple source for the first step of a path expression — seeding from the
+   * context item (`.`) for a leading axis step, or from the evaluated leading expression otherwise.
+   *
+   * @throws if a leading axis step is used without a context item in scope.
+   */
   protected processPathStart(
     first: ASTNode,
     args: DescentArgs,
@@ -619,6 +682,7 @@ export class XQueryLogicalPlanBuilder
     }
     return res as PlanTupleOperator;
   }
+  /** Builds the operator for a single path step relative to `args.src`, handling `.`, filter steps, axis steps, and general step expressions. */
   protected processPathStep(
     step: ASTNode,
     removeDuplicates: boolean,
@@ -750,6 +814,7 @@ export class XQueryLogicalPlanBuilder
       this.localLangCtx.prologOptions.namespaces.get(schema);
     return [uri, schema ? `${schema}:${local}` : local];
   }
+  /** Turns one piece of direct-constructor content into a function argument: a literal for static text, or the visited node otherwise. */
   protected processDirConstrContent(
     content: string | ASTNode,
     args: DescentArgs,
@@ -937,6 +1002,7 @@ export class XQueryLogicalPlanBuilder
   visitLiteral<U>(node: ASTLiteral<U>, args: DescentArgs): PlanOperator {
     return new plan.Literal('xquery', node.value);
   }
+  /** Turns an operator operand into a plan argument, wrapping a bare variable in an identity {@link plan.FnCall} so it can carry a sequence. */
   protected processOpArg(item: ASTNode, args: DescentArgs): plan.PlanOpAsArg {
     if (item instanceof AST.ASTVariable) {
       infer(item, args);
@@ -962,6 +1028,7 @@ export class XQueryLogicalPlanBuilder
     );
   }
 
+  /** Projects an aggregate argument source to the given item/length/position attribute names, adding size and index projections if missing. */
   protected renameAggSource(
     src: PlanTupleOperator,
     dot: ASTIdentifier,
@@ -984,6 +1051,7 @@ export class XQueryLogicalPlanBuilder
       src,
     );
   }
+  /** Positionally aligns multiple aggregate argument sources by full-outer-joining them on matching index (with single-value broadcasting). */
   protected joinAggArgs(args: PlanTupleOperator[]) {
     const colNames = args.map((_, i) => toId(i + ''));
     const posNames = args.map((_, i) => toId('i' + i));
@@ -1013,6 +1081,7 @@ export class XQueryLogicalPlanBuilder
     return joined;
   }
 
+  /** Normalizes an aggregate argument into a tuple source, unwinding a calculation (with sequence coalescing) into items when needed. */
   protected prepareAggArg(arg: PlanOperator): PlanTupleOperator {
     if (plan.CalcIntermediate in arg) {
       let calcParams = arg.accept(this.calcBuilders);
@@ -1045,6 +1114,7 @@ export class XQueryLogicalPlanBuilder
     return toTuples(arg);
   }
 
+  /** Builds the {@link plan.GroupBy} that evaluates an aggregate function call over its (positionally joined) argument sources. */
   protected processAggregateFn(
     node: ASTFunction,
     dargs: DescentArgs,

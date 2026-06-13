@@ -6,7 +6,9 @@ import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { AggregateCall } from './aggregate-call.js';
 import { CalcIntermediate, Calculation } from './calculation.js';
 
+/** A subquery used as an argument to a function call. */
 export interface PlanOpAsArg {
+  /** The subquery operator. */
   op: PlanOperator;
   /** can the subquery return more than one value?
    * if true, the subquery will be converted to an array of values
@@ -14,13 +16,19 @@ export interface PlanOpAsArg {
   acceptSequence?: boolean;
 }
 
+/** A scalar function call whose arguments may be identifiers or subquery operators. */
 export class FnCall implements PlanOperator {
+  /** Marks this as a {@link CalcIntermediate} sub-operator of a {@link Calculation}. */
   public [CalcIntermediate] = true;
+  /** {@inheritDoc PlanOperator.dependencies} */
   public dependencies: IdSet;
 
   constructor(
+    /** {@inheritDoc PlanOperator.lang} */
     public lang: Lowercase<string>,
+    /** Arguments to the function; each is either an identifier or a subquery wrapped in {@link PlanOpAsArg}. */
     public args: (ASTIdentifier | PlanOpAsArg)[],
+    /** Function implementation. */
     public impl: (...args: any[]) => any,
     /**
      * Function is pure if it has no side effects and always returns the same output for the same input.
@@ -36,12 +44,14 @@ export class FnCall implements PlanOperator {
     }
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitFnCall(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     for (const arg of this.args) {
       if ('op' in arg && arg.op === current) {
@@ -51,6 +61,7 @@ export class FnCall implements PlanOperator {
       }
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     const res: PlanOperator[] = [];
     for (const arg of this.args) {

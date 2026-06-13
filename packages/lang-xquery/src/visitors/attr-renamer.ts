@@ -2,6 +2,11 @@ import { AttributeRenamer, DortDBAsFriend, PlanVisitor } from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { RenameMap } from '@dortdb/core/plan';
 
+/**
+ * Extends {@link AttributeRenamer} to apply column renames inside
+ * {@link TreeJoin} step expressions and to propagate renames through
+ * {@link ProjectionSize} operators.
+ */
 export class XQueryAttributeRenamer
   extends AttributeRenamer
   implements XQueryPlanVisitor<void, RenameMap>

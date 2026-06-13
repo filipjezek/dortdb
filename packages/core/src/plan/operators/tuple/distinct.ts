@@ -9,10 +9,20 @@ import {
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
+/**
+ * Eliminates duplicate rows from its source based on a set of attributes.
+ *
+ * When `attrs` is `allAttrs`, rows are compared on every attribute; otherwise
+ * only the listed attributes are used as the deduplication key.
+ */
 export class Distinct extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
+    /**
+     * Attributes used as the deduplication key, or `allAttrs` to compare all columns.
+     */
     public attrs: (ASTIdentifier | Calculation)[] | typeof allAttrs,
+    /** Tuple operator providing the input rows. */
     public source: PlanTupleOperator,
   ) {
     super();
@@ -27,12 +37,14 @@ export class Distinct extends PlanTupleOperator {
     }
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitDistinct(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: OpOrId): void {
     const isId = replacement instanceof ASTIdentifier;
     if (!isId) {
@@ -50,6 +62,7 @@ export class Distinct extends PlanTupleOperator {
         | ASTIdentifier;
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     const res: PlanOperator[] = [this.source];
     if (this.attrs !== allAttrs) {
@@ -57,6 +70,7 @@ export class Distinct extends PlanTupleOperator {
     }
     return res;
   }
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): Distinct {
     return new Distinct(
       this.lang,

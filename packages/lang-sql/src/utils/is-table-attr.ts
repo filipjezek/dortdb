@@ -1,6 +1,10 @@
 import { ASTIdentifier, IdSet } from '@dortdb/core';
 import { Trie } from '@dortdb/core/data-structures';
 
+/**
+ * Returns `true` when `attr` is an attribute of `table`, i.e. `attr`'s identifier
+ * parts are the table's parts with exactly one additional name appended.
+ */
 export function isTableAttr(
   attr: ASTIdentifier,
   table: ASTIdentifier | IdSet,

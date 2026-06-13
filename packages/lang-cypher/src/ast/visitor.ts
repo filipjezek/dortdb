@@ -1,6 +1,10 @@
 import { ASTVisitor } from '@dortdb/core';
 import * as ast from './index.js';
 
+/**
+ * Visitor interface for all Cypher AST node types; implement this to traverse
+ * or transform a parsed Cypher query tree.
+ */
 export interface CypherVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitCypherIdentifier(node: ast.CypherIdentifier, arg?: Arg): Ret;
   visitStringLiteral(node: ast.ASTStringLiteral, arg?: Arg): Ret;

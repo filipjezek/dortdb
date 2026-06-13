@@ -5,6 +5,10 @@ import {
   XQueryPlanVisitor,
 } from '@dortdb/lang-xquery';
 
+/**
+ * Extends {@link EqualityChecker} to compare XQuery-specific plan operators
+ * ({@link TreeJoin}, {@link ProjectionSize}) by structural equality.
+ */
 export class XQueryEqualityChecker
   extends EqualityChecker
   implements XQueryPlanVisitor<boolean, DescentArgs>

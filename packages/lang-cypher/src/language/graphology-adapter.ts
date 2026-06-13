@@ -10,14 +10,21 @@ export const gaNodeOrEdgeId = Symbol('nodeOrEdgeId');
  * A key used to store the node labels or edge type in its attributes. (GraphologyAdapter)
  */
 export const gaLabelsOrType = Symbol('labelsOrType');
+/** Node attributes type for {@link GraphologyDataAdapter}; extends `Attributes` with the required symbol keys. */
 export type GraphologyNode = Attributes & {
+  /** Node labels stored under the {@link gaLabelsOrType} symbol key. */
   [gaLabelsOrType]: string[];
+  /** Graphology string key of the node, stored under the {@link gaNodeOrEdgeId} symbol key. */
   [gaNodeOrEdgeId]: string;
 };
+/** Edge attributes type for {@link GraphologyDataAdapter}; extends `Attributes` with the required symbol keys. */
 export type GraphologyEdge = Attributes & {
+  /** Relationship type stored under the {@link gaLabelsOrType} symbol key. */
   [gaLabelsOrType]: string;
+  /** Graphology string key of the edge, stored under the {@link gaNodeOrEdgeId} symbol key. */
   [gaNodeOrEdgeId]: string;
 };
+/** `MultiDirectedGraph` parameterised with the {@link GraphologyNode} and {@link GraphologyEdge} attribute types. */
 export type GraphologyGraph = MultiDirectedGraph<
   GraphologyNode,
   GraphologyEdge,
@@ -54,6 +61,7 @@ const isSubset = <T>(subset: T[], set: T[]): boolean => {
  * and deserialize the graph to/from a format that can be stored (since symbols are not generally serializable).
  */
 export class GraphologyDataAdapter implements CypherDataAdaper<GraphologyGraph> {
+  /** Stamps the Graphology string key onto `attrs` as {@link gaNodeOrEdgeId} and returns the cast result. */
   protected convertNode(
     node: string,
     attrs: Attributes & Record<string | symbol, unknown>,
@@ -62,6 +70,7 @@ export class GraphologyDataAdapter implements CypherDataAdaper<GraphologyGraph> 
     return attrs as GraphologyNode;
   }
 
+  /** Stamps the Graphology string key onto `attrs` as {@link gaNodeOrEdgeId} and returns the cast result. */
   protected convertEdge(
     edge: string,
     attrs: Attributes & Record<string | symbol, unknown>,

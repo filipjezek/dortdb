@@ -39,7 +39,12 @@ import { SQLVisitor } from '../ast/visitor.js';
 import { WindowSpec } from '../ast/window.js';
 import { SearchType, WithQuery } from '../ast/with.js';
 
+/**
+ * Serializes a SQL AST to a deterministic string suitable for use as a
+ * stable subexpression key or plan identifier.
+ */
 export class ASTDeterministicStringifier implements SQLVisitor<string> {
+  /** Counter incremented for each {@link LangSwitch} node to keep its synthesized key unique within this instance. */
   protected uniqueId = 0;
 
   constructor() {
@@ -47,10 +52,15 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     this.visitSchemaPart = this.visitSchemaPart.bind(this);
   }
 
+  /** Dispatches `x` through the visitor; bound to `this` for use as an array map callback. */
   protected processNode(x: ASTNode) {
     return x.accept(this);
   }
 
+  /**
+   * Returns a synthetic placeholder `lang_<lang>_<n>` rather than stringifying
+   * the embedded expression, because the nested language's AST is opaque to SQL.
+   */
   visitLangSwitch(node: LangSwitch): string {
     return `lang_${node.lang}_${this.uniqueId++}`;
   }
@@ -85,6 +95,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     return `${node.quantifier}(${node.query.accept(this)})`;
   }
 
+  /** Converts a single schema part to SQL text; renders {@link allAttrs} as `*` and wraps string parts in double quotes. */
   protected visitSchemaPart(node: string | symbol | number): string {
     return typeof node === 'symbol' || typeof node === 'number'
       ? node === allAttrs
@@ -99,6 +110,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   visitSQLIdentifier(node: SQLIdentifier): string {
     return this.visitIdentifier(node);
   }
+  /** Wraps `str` in `quot`, doubling any embedded `quot` characters to produce a valid SQL literal or identifier. */
   protected addQuotes(str: string, quot: '"' | "'") {
     return quot + str.replaceAll(quot, quot + quot) + quot;
   }
@@ -126,6 +138,7 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     if (node.offset) res += ' OFFSET ' + node.offset.accept(this);
     return res;
   }
+  /** Serializes an array of ORDER BY items to SQL text, including ASC/DESC and NULLS FIRST/LAST. */
   protected visitOrderBy(nodes: OrderByItem[]): string {
     return nodes
       .map(
@@ -235,6 +248,11 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
     }
     return res + ')';
   }
+  /**
+   * Renders a single window frame boundary.
+   *
+   * @param start `true` for the start boundary (uses `PRECEDING`), `false` for the end (uses `FOLLOWING`).
+   */
   protected visitFrameBoundary(x: ASTNode, start: boolean): string {
     const prefol = start ? ' PRECEDING' : ' FOLLOWING';
     if (x instanceof ASTLiteral) {

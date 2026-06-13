@@ -88,6 +88,9 @@ export interface XQueryDataAdapter<NodeType = any> {
  * attributes with the attribute axis.
  */
 export class DomDataAdapter implements XQueryDataAdapter<Node> {
+  /**
+   * @param doc The DOM Document used for all node creation operations.
+   */
   constructor(protected doc: Document) {
     this.atomize = this.atomize.bind(this);
   }
@@ -165,6 +168,11 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
     return el.lookupNamespaceURI(prefix);
   }
 
+  /**
+   * Appends `item` to `node`: attributes are set via `setAttributeNodeNS`,
+   * other `Node` instances are appended as children, and primitives are
+   * serialized to text nodes.
+   */
   protected appendItem(node: Node, item: unknown) {
     if (item instanceof Attr) {
       (node as Element).setAttributeNodeNS(item);

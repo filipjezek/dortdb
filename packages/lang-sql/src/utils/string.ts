@@ -1,3 +1,4 @@
+/** Parses a SQL string literal (single-quoted or dollar-quoted), expanding backslash escape sequences and `''` escapes. */
 export function parseStringLiteral(original: string): string {
   if (original[0] === '$') {
     return parseDollarQuoted(original);
@@ -21,11 +22,13 @@ export function parseStringLiteral(original: string): string {
   return value;
 }
 
+/** Extracts the body of a dollar-quoted string, stripping the opening and closing tag delimiters (e.g. `$tag$…$tag$`). */
 export function parseDollarQuoted(original: string): string {
   const second$ = original.indexOf('$', 1);
   return original.slice(second$ + 1, -second$ - 1);
 }
 
+/** Translates a single SQL escape sequence (without the leading backslash) to its character value. */
 export function interpretEscape(esc: string): string {
   let code: number;
   switch (esc[0]) {
@@ -57,6 +60,7 @@ export function interpretEscape(esc: string): string {
   }
 }
 
+/** Strips outer double-quote or backtick delimiters from a quoted identifier, unescaping doubled delimiter characters. */
 export function parseIdentifier(original: string): string {
   const delim = original[0];
   if (delim === '"' || delim === '`') {
@@ -65,6 +69,7 @@ export function parseIdentifier(original: string): string {
   return original;
 }
 
+/** Converts a SQL `LIKE` pattern to a `RegExp`, mapping `%` to `.*` and `_` to `.`. */
 export function likeToRegex(like: string, caseSensitive = true): RegExp {
   return new RegExp(
     '^' + like.replace(/%/g, '.*').replace(/_/g, '.') + '$',

@@ -1,4 +1,8 @@
-import { PatternRule, PatternRuleMatchResult } from '../rule.js';
+import {
+  PatternRule,
+  PatternRuleMatchResult,
+  TupleOperatorWithSource,
+} from '../rule.js';
 import * as plan from '../../plan/operators/index.js';
 import {
   PlanOperator,
@@ -18,17 +22,20 @@ import { simplifyCalcParams } from '../../utils/calculation.js';
 import { EqualityChecker } from '../../visitors/equality-checker.js';
 import { CalculationParams } from '../../visitors/calculation-builder.js';
 
+/** Pattern-match bindings for the {@link UnnestSubqueries} rule. */
 export interface UnnestSubqueriesBindings {
+  /** Pairs of (calculation, argument indices) identifying the sub-operators to be lifted out. */
   subqueries: [plan.Calculation, number[]][];
 }
 
+/** Symbol used as the first part of synthetic attribute identifiers introduced when unnesting a subquery. */
 export const unnestedAttr = Symbol('unnested');
 
 /**
  * Replaces eligible nested operators with {@link plan.ProjectionConcat}.
  */
 export class UnnestSubqueries implements PatternRule<
-  PlanTupleOperator & { source: PlanTupleOperator },
+  TupleOperatorWithSource,
   UnnestSubqueriesBindings
 > {
   operator = [
@@ -39,18 +46,24 @@ export class UnnestSubqueries implements PatternRule<
     plan.OrderBy,
   ];
 
+  /** Per-language transitive-dependency visitor instances. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
+  /** Per-language calculation-builder visitor instances. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  /** Per-language equality-checker visitor instances. */
   protected eqCheckers: Record<string, EqualityChecker>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
     this.calcBuilders = this.db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = this.db.langMgr.getVisitorMap('equalityChecker');
   }
 
   match(
-    node: PlanTupleOperator & { source: PlanTupleOperator },
+    node: TupleOperatorWithSource,
   ): PatternRuleMatchResult<UnnestSubqueriesBindings> {
     const calcs = node
       .getChildren()
@@ -71,7 +84,7 @@ export class UnnestSubqueries implements PatternRule<
     return calcs.length ? { bindings: { subqueries: calcs } } : null;
   }
   transform(
-    node: PlanTupleOperator & { source: PlanTupleOperator },
+    node: TupleOperatorWithSource,
     bindings: UnnestSubqueriesBindings,
   ): PlanOperator {
     let newAttrCounter = 0;
@@ -107,6 +120,7 @@ export class UnnestSubqueries implements PatternRule<
     return new plan.Projection(node.lang, restrictedAttrs, node);
   }
 
+  /** Replaces the sub-operator at argument position `argI` in `calc` with a reference to the synthetic `newAttr`. */
   protected removeSubq(
     calc: plan.Calculation,
     argI: number,
@@ -140,6 +154,7 @@ export class UnnestSubqueries implements PatternRule<
     }
   }
 
+  /** Returns `true` when `node` is guaranteed to produce at least one result, allowing the outer join to be skipped. */
   protected isGuaranteedValue(node: PlanOperator): boolean {
     switch (node.constructor) {
       case plan.MapToItem:

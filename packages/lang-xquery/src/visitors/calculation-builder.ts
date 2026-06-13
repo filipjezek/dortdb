@@ -3,6 +3,12 @@ import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { flat } from '@dortdb/core/internal-fns';
 import * as plan from '@dortdb/core/plan';
 
+/**
+ * Extends {@link CalculationBuilder} to lower XQuery-specific operators
+ * ({@link TreeJoin}, {@link ProjectionSize}) into sequence-accepting flat
+ * subquery arguments, matching the pattern used for all sub-plan operators
+ * in the XQuery execution model.
+ */
 export class XQueryCalculationBuilder
   extends CalculationBuilder
   implements XQueryPlanVisitor<CalculationParams>

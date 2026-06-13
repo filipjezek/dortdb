@@ -14,8 +14,11 @@ const ctxCols = [DOT, POS, LEN];
 export class TreeJoin extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
+    /** The {@link Calculation} that produces the XPath step result for each context tuple. */
     public step: Calculation,
+    /** The upstream tuple stream providing the XQuery focus context. */
     public source: PlanTupleOperator,
+    /** When `true` (default), duplicate DOM nodes in the step result are removed. */
     public removeDuplicates = true,
   ) {
     super();
@@ -29,12 +32,14 @@ export class TreeJoin extends PlanTupleOperator {
     }
     this.schemaSet = schemaToTrie(this.schema);
   }
+  /** Dispatches to `visitors[this.lang].visitTreeJoin`. */
   accept<Ret, Arg>(
     visitors: Record<string, XQueryPlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitTreeJoin(this, arg);
   }
+  /** Swaps `source` or `step` and recomputes the output schema including XQuery context columns. */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.source) {
@@ -46,9 +51,11 @@ export class TreeJoin extends PlanTupleOperator {
     this.addToSchema(this.source.schema);
     this.addToSchema(ctxCols);
   }
+  /** Returns `[this.source, this.step]`. */
   getChildren(): PlanOperator[] {
     return [this.source, this.step];
   }
+  /** Returns a deep copy with cloned `step` and `source`. */
   clone(): TreeJoin {
     return new TreeJoin(this.lang, this.step.clone(), this.source.clone());
   }

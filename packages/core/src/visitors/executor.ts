@@ -19,7 +19,11 @@ import { HashJoinIndexStatic, IndexMatchInput } from '../indices/index.js';
 import { intermediateToCalc } from '../utils/calculation.js';
 import { CalculationParams, EqualityChecker } from './index.js';
 
+/**
+ * Optional configuration passed to the database that controls executor behaviour.
+ */
 export interface ExecutorConfig {
+  /** Index implementations that the executor may use to accelerate hash joins. */
   hashJoinIndices: HashJoinIndexStatic[];
 }
 
@@ -95,22 +99,33 @@ export abstract class Executor implements PlanVisitor<
   Iterable<unknown>,
   ExecutionContext
 > {
+  /** Language-specific serialization function, used when converting tuple streams back to items. */
   protected serialize: SerializeFn;
+  /** Per-language {@link TransitiveDependencies} visitor map. */
   protected tdeps: Record<string, TransitiveDependencies> = {};
+  /** Per-language {@link CalculationBuilder} visitor map. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams, never>>;
+  /** Per-language {@link EqualityChecker} visitor map. */
   protected eqCheckers: Record<string, EqualityChecker>;
 
+  /**
+   * Cache keyed by join operator; stores the chosen index and pre-computed calculation
+   * inputs so index selection is not repeated for each execution of the same plan.
+   */
   protected indexCache: Map<
     PlanTupleOperator,
     [plan.Calculation[], IndexMatchInput[], HashJoinIndexStatic]
   > = new Map();
 
   constructor(
+    /** The language identifier this executor handles. */
     protected lang: Lowercase<string>,
+    /** Per-language visitor map used for recursive dispatch. */
     protected vmap: Record<
       string,
       PlanVisitor<Iterable<unknown>, ExecutionContext>
     >,
+    /** Database instance providing sources, configuration, and the language manager. */
     protected db: DortDBAsFriend,
   ) {
     this.serialize = this.db.langMgr.getLang(this.lang).serialize;
@@ -119,11 +134,23 @@ export abstract class Executor implements PlanVisitor<
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
   }
 
+  /**
+   * Executes `plan` and returns the result iterable together with the populated execution
+   * context.  If `boundParams` is provided, each entry is looked up in `varMapperCtx` and
+   * written into the context before evaluation begins.
+   *
+   * @throws {Error} When a key in `boundParams` does not correspond to a known bound parameter.
+   */
   public execute(
     plan: PlanOperator,
     varMapperCtx: VariableMapperCtx,
     boundParams?: Record<string, unknown>,
-  ): { result: Iterable<unknown>; ctx: ExecutionContext } {
+  ): {
+    /** The lazy result iterable produced by evaluating `plan`. */
+    result: Iterable<unknown>;
+    /** The execution context populated with bound parameters and translation tables. */
+    ctx: ExecutionContext;
+  } {
     const ctx = new ExecutionContext();
 
     if (boundParams) {
@@ -142,6 +169,10 @@ export abstract class Executor implements PlanVisitor<
     return { result, ctx };
   }
 
+  /**
+   * Resolves a single value: looks up an {@link ASTIdentifier} in `ctx`, or evaluates a
+   * {@link plan.Calculation} and returns its first (and only expected) result.
+   */
   protected processItem(
     item: ASTIdentifier | plan.Calculation,
     ctx: ExecutionContext,
@@ -320,6 +351,16 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  /**
+   * Advances one frontier by one BFS level, yielding joined paths whenever a node is also
+   * present in the opposite frontier's visited set.
+   *
+   * @param frontier The queue to dequeue from this level.
+   * @param otherFrontier Visited nodes from the opposite direction.
+   * @param visitedItems Accumulates newly visited nodes from this direction.
+   * @param isForward `true` when expanding the forward frontier; affects path-join order.
+   * @param searchSpace When set, only nodes within this set are explored.
+   */
   protected *expandBidiFrontier(
     frontier: Queue<LinkedListNode<unknown[]>>,
     otherFrontier: Trie<unknown, LinkedListNode<unknown[]>[]>,
@@ -366,6 +407,10 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  /**
+   * Yields all result tuples formed by concatenating each forward path with each reverse
+   * path that meets at the same join-key values.
+   */
   protected *joinBidiPaths(
     fwdPaths: LinkedListNode<unknown[]>[],
     revPaths: LinkedListNode<unknown[]>[],
@@ -397,10 +442,27 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  /**
+   * Extracts the numeric key arrays and renamer functions needed to run the bidirectional
+   * BFS for `operator`, returning them as a plain object.
+   */
   protected getBidiKeys(
     operator: plan.BidirectionalRecursion,
     ctx: ExecutionContext,
-  ) {
+  ): {
+    /** Shared path-variable indices (from the mapping schema). */
+    keys: number[];
+    /** Indices of variables that exist only in the source / target but not in the mapping. */
+    initialKeys: number[];
+    /** Renames forward-mapping output into the operator's schema. */
+    fwdRenamer: (item: unknown[]) => unknown[];
+    /** Renames reverse-mapping output into the operator's schema. */
+    revRenamer: (item: unknown[]) => unknown[];
+    /** Renames target source output into the operator's schema. */
+    tgtRenamer: (item: unknown[]) => unknown[];
+    /** Renames initial source output into the operator's schema. */
+    srcRenamer: (item: unknown[]) => unknown[];
+  } {
     const initialKeys = Array.from(
       difference(operator.schemaSet, operator.mappingFwd.schemaSet),
     ).map((id) => ctx.getTranslation(operator, id));
@@ -477,6 +539,10 @@ export abstract class Executor implements PlanVisitor<
     return Array.from(groups.entries()).map(([_, q]) => q);
   }
 
+  /**
+   * Seeds both BFS frontiers from a group of source items and the corresponding target
+   * items, yielding length-1 paths when `operator.min <= 1`.
+   */
   protected *initBidiFrontiers(
     operator: plan.BidirectionalRecursion,
     ctx: ExecutionContext,
@@ -515,6 +581,13 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  /**
+   * Performs a pure BFS from the nodes in `queue`, collecting all reachable join-key values
+   * within `max` hops.  When `visitOnly` is provided, only nodes whose keys appear in that
+   * set are explored, acting as a pre-computed reachability filter.
+   *
+   * @returns The set of join-key values visited during this BFS.
+   */
   protected bfsCheckSide(
     queue: Queue<LinkedListNode<unknown[]>>,
     getNextItems: (ctx: ExecutionContext) => Iterable<unknown[]>,
@@ -750,6 +823,14 @@ export abstract class Executor implements PlanVisitor<
   ): Iterable<unknown> {
     throw new Error('Method not implemented.');
   }
+  /**
+   * Evaluates `operator` synchronously and returns the single result value wrapped in a
+   * one-element tuple.
+   *
+   * @remarks Unlike all other `visitX` methods, the return type is `[unknown]` — a
+   *   single-element tuple — rather than `Iterable<unknown>`.  This is intentional: a
+   *   Calculation always produces exactly one value and the tuple avoids boxing overhead.
+   */
   visitCalculation(
     operator: plan.Calculation,
     ctx: ExecutionContext,
@@ -807,6 +888,7 @@ export abstract class Executor implements PlanVisitor<
       yield* this.visitFullJoin(operator, ctx);
     }
   }
+  /** Executes a standard (non-outer) join; called by {@link visitJoin}. */
   protected *visitInnerJoin(
     operator: plan.Join,
     ctx: ExecutionContext,
@@ -842,6 +924,11 @@ export abstract class Executor implements PlanVisitor<
       );
     }
   }
+  /**
+   * Executes a left-outer join: every row from `left` appears in the output, padded with
+   * `null`s when no matching row exists in `right`.  Called by {@link visitJoin} for both
+   * left-outer and right-outer cases (with sides swapped for the latter).
+   */
   protected *visitLeftJoin(
     left: PlanTupleOperator,
     right: PlanTupleOperator,
@@ -889,6 +976,7 @@ export abstract class Executor implements PlanVisitor<
       }
     }
   }
+  /** Executes a full-outer join; called by {@link visitJoin}. */
   protected *visitFullJoin(
     operator: plan.Join,
     ctx: ExecutionContext,
@@ -981,6 +1069,13 @@ export abstract class Executor implements PlanVisitor<
     ];
   }
 
+  /**
+   * Executes a hash join using `idxCls` to index the `iterPerRow` side, then probes it
+   * for each row from `iterOnce`.
+   *
+   * @returns The same three-element tuple as {@link joinValues}: remaining conditions, pairs,
+   *   and all inner items.
+   */
   protected hashJoinValues(
     iterOnce: PlanTupleOperator,
     iterPerRow: PlanTupleOperator,
@@ -1037,7 +1132,10 @@ export abstract class Executor implements PlanVisitor<
   protected getIndexMatchInputs(
     iterOnce: PlanTupleOperator,
     op: plan.Join,
-  ): (IndexMatchInput & { i: number })[] {
+  ): (IndexMatchInput & {
+    /** Positional index of this argument within its containing {@link plan.FnCall}. */
+    i: number;
+  })[] {
     return op.conditions
       .filter((c) => c.original instanceof plan.FnCall)
       .flatMap((c) =>
@@ -1091,6 +1189,10 @@ export abstract class Executor implements PlanVisitor<
       .filter(([matches]) => matches.length > 0);
   }
 
+  /**
+   * Returns the best available hash-join index triple for this join, or `null` when no
+   * usable index exists.  Results are cached in {@link indexCache} per join operator.
+   */
   protected getBestJoinIndex(
     iterOnce: PlanTupleOperator,
     iterPerRow: PlanTupleOperator,
@@ -1143,6 +1245,10 @@ export abstract class Executor implements PlanVisitor<
     return res;
   }
 
+  /**
+   * Materialises `iterPerRow` into an array, then pairs each `iterOnce` row with the full
+   * array, producing the nested-loop join input for the join variants.
+   */
   protected nestedLoopJoinValues(
     iterOnce: PlanTupleOperator,
     iterPerRow: PlanTupleOperator,
@@ -1384,6 +1490,11 @@ export abstract class Executor implements PlanVisitor<
     }
   }
 
+  /**
+   * Returns a per-aggregate, per-argument null-check function array used inside
+   * {@link visitGroupBy} to determine whether a row should be skipped (e.g. when the
+   * aggregate does not include nulls and the argument is the `allAttrs` sentinel).
+   */
   protected prepareAggNullChecks(
     operator: plan.GroupBy,
     ctx: ExecutionContext,
@@ -1462,6 +1573,10 @@ export abstract class Executor implements PlanVisitor<
       }
     }
   }
+  /**
+   * Item-mode intersection: yields each element from `right` that also appears in `left`.
+   * Used when neither operand is a tuple operator.
+   */
   protected *visitIntersectionItems(
     left: Iterable<unknown>,
     right: Iterable<unknown>,
@@ -1501,6 +1616,10 @@ export abstract class Executor implements PlanVisitor<
       }
     }
   }
+  /**
+   * Item-mode difference: yields each element from `left` that does not appear in `right`.
+   * Used when neither operand is a tuple operator.
+   */
   protected *visitDifferenceItems(
     left: Iterable<unknown>,
     right: Iterable<unknown>,

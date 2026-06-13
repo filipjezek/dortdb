@@ -11,6 +11,11 @@ import { resolveArgs } from '../utils/invoke.js';
 import { DortDBAsFriend } from '../db.js';
 import { or } from '../operators/logical.js';
 
+/**
+ * Metadata attached to each argument of a compiled {@link plan.Calculation}, used during
+ * query planning to track replacement locations, aggregation membership, and evaluation
+ * constraints.
+ */
 export interface ArgMeta {
   /** Evaluation of this argument may be skipped, for example,
    * if it is a part of OR or AND expressions.
@@ -161,7 +166,9 @@ function getQuantifierIndices(
  */
 export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   constructor(
+    /** Per-language visitor map used for recursive descent. */
     protected vmap: Record<string, PlanVisitor<CalculationParams>>,
+    /** Database instance providing access to the language manager. */
     protected db: DortDBAsFriend,
   ) {
     this.processItem = this.processItem.bind(this);
@@ -169,6 +176,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     this.processWhenThen = this.processWhenThen.bind(this);
   }
 
+  /**
+   * Wraps `op` in a {@link plan.MapToItem} node, reparenting `op` under the new node and
+   * updating `op`'s previous parent to point at the wrapper.
+   */
   protected toItem(op: PlanTupleOperator): plan.MapToItem {
     const oldParent = op.parent;
     const toItem = new plan.MapToItem(op.lang, null, op);
@@ -207,6 +218,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
+  /**
+   * Converts an {@link OpOrId} to either a raw {@link ASTIdentifier} or a
+   * {@link CalculationParams} by dispatching through `vmap`, unwrapping identity
+   * `FnCall(ret1, [x])` wrappers along the way.
+   */
   protected processItem(item: OpOrId): CalculationParams | ASTIdentifier {
     if (item instanceof ASTIdentifier) return item;
     if (item instanceof plan.FnCall && item.impl === ret1)
@@ -215,6 +231,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       );
     return item.accept(this.vmap);
   }
+  /**
+   * Builds a runtime implementation for a {@link plan.FnCall} that contains ANY / ALL
+   * {@link plan.Quantifier} arguments, performing the cartesian-product evaluation over
+   * quantified argument sequences.
+   */
   protected processQuantifiedFn(
     operator: plan.FnCall,
     children: (CalculationParams | ASTIdentifier)[],
@@ -249,6 +270,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
       return false;
     };
   }
+  /**
+   * Converts a single {@link plan.FnCall} argument (which may be a wrapped operator or a
+   * bare identifier) to {@link CalculationParams}, relaxing the `assertMaxOne` constraint
+   * to `ret1` when the argument's `acceptSequence` flag is set.
+   */
   protected processFnArg(
     arg: plan.PlanOpAsArg | ASTIdentifier,
   ): CalculationParams | ASTIdentifier {
@@ -323,6 +349,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
+  /** Converts a CASE `[when, then]` pair to {@link CalculationParams} or raw identifiers. */
   protected processWhenThen(item: [OpOrId, OpOrId]) {
     return [this.processItem(item[0]), this.processItem(item[1])] as [
       CalculationParams | ASTIdentifier,
@@ -398,6 +425,11 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
 
+  /**
+   * Attempts to fold a CASE expression at compile time when `cond` is a literal.
+   * Returns the pre-computed {@link CalculationParams} if the matching branch is also a
+   * literal, or `null` when runtime evaluation is still required.
+   */
   protected processLiteralConditional(
     cond: CalculationParams,
     whenthens: [

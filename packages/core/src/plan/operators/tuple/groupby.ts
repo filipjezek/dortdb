@@ -18,12 +18,20 @@ import {
   retI1,
 } from '../../../internal-fns/index.js';
 
+/**
+ * Groups input rows by `keys` and computes `aggs` aggregate expressions per group.
+ *
+ * The output schema is the union of the source schema, the group-key aliases, and
+ * the field names of each {@link AggregateCall} in `aggs`.
+ */
 export class GroupBy extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
     /** in order to calculate schema, we need aliases for calculations */
     public keys: Aliased<ASTIdentifier | Calculation>[],
+    /** Aggregate expressions to compute over each partition. */
     public aggs: AggregateCall[],
+    /** Tuple operator providing the input rows. */
     public source: PlanTupleOperator,
   ) {
     super();
@@ -49,12 +57,14 @@ export class GroupBy extends PlanTupleOperator {
     }
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitGroupBy(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: OpOrId): void {
     const isId = replacement instanceof ASTIdentifier;
     if (!isId) {
@@ -73,6 +83,7 @@ export class GroupBy extends PlanTupleOperator {
         | ASTIdentifier;
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     const res = [this.source] as PlanOperator[];
     for (const k of this.keys) {
@@ -84,6 +95,7 @@ export class GroupBy extends PlanTupleOperator {
     return res;
   }
 
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): GroupBy {
     return new GroupBy(
       this.lang,

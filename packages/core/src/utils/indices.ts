@@ -6,6 +6,7 @@ import { splitByOp } from './selection.js';
 
 /** If the expressions come from an `or` expression, return an index match input group for each alternative */
 export function getIMIAlternatives(expressions: IndexMatchInput[]): {
+  /** The subset of input expressions whose containing function is not an `or` operator. */
   nonOr: IndexMatchInput[];
   /** for each top-level `or` operator, for each of its alternatives */
   alternatives: Map<FnCall, IndexMatchInput[][]>;

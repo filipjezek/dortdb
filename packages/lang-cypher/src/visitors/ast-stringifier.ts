@@ -48,7 +48,15 @@ import {
 } from '../ast/query.js';
 import { CypherVisitor } from '../ast/visitor.js';
 
+/**
+ * Converts a Cypher AST into a deterministic string, used to generate stable
+ * cache keys and computed-column aliases during logical plan building.
+ * Embedded {@link LangSwitch} sub-expressions are replaced with opaque
+ * `lang_<lang>_<N>` placeholders; {@link uniqueId} is incremented on each
+ * encounter to keep them unique within one traversal.
+ */
 export class ASTDeterministicStringifier implements CypherVisitor<string> {
+  /** Counter appended to {@link LangSwitch} placeholders to keep them unique within one traversal. */
   protected uniqueId = 0;
 
   constructor() {
@@ -58,9 +66,11 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     this.processNodeOrAttr = this.processNodeOrAttr.bind(this);
   }
 
+  /** Dispatches `x` through this visitor and returns its string form. */
   protected processNode(x: ASTNode) {
     return x.accept(this);
   }
+  /** Returns `'*'` unchanged, serializes an aliased pair as `expr AS alias`, or dispatches a bare node. */
   protected processNodeOrAttr(x: ASTNode | Aliased<ASTNode> | '*') {
     return x === '*'
       ? x
@@ -68,10 +78,16 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
         ? this.processAttr(x)
         : this.processNode(x);
   }
+  /** Serializes an aliased AST pair as `expr AS alias`. */
   protected processAttr(x: Aliased<ASTNode>) {
     return `${x[0].accept(this)} AS ${x[1].accept(this)}`;
   }
 
+  /**
+   * Serializes one segment of a schema path: {@link allAttrs} becomes `'*'`,
+   * other symbols and numbers use `.toString()`, and plain strings are
+   * backtick-quoted.
+   */
   protected visitSchemaPart(node: string | symbol | number): string {
     return typeof node === 'symbol' || typeof node === 'number'
       ? node === allAttrs
@@ -86,6 +102,7 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
   visitCypherIdentifier(node: CypherIdentifier): string {
     return this.visitIdentifier(node);
   }
+  /** Wraps `str` in `quot`, doubling any existing occurrences of that character. */
   protected addQuotes(str: string, quot: '"' | "'" | '`') {
     return quot + str.replaceAll(quot, quot + quot) + quot;
   }
@@ -144,6 +161,11 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
     return res + ')';
   }
 
+  /**
+   * Serializes a relationship hop range: a single-element tuple emits just
+   * `start`; a two-element tuple emits `start..end` with missing bounds left
+   * blank (e.g. `..5` or `1..`).
+   */
   protected visitRange(
     range: [ASTNode | undefined, ASTNode | undefined] | [ASTNode | undefined],
   ) {
@@ -272,15 +294,28 @@ export class ASTDeterministicStringifier implements CypherVisitor<string> {
   visitReturnClause(node: ReturnClause): string {
     return 'RETURN ' + this.visitProjectionBody(node.body);
   }
+  /**
+   * Not implemented in the base class; subclasses must override.
+   * @throws Always throws `Error('Method not implemented.')`.
+   */
   visitLiteral<T>(node: ASTLiteral<T>): string {
     throw new Error('Method not implemented.');
   }
   visitOperator(node: ASTOperator): string {
     return `${node.id.accept(this)}(${node.operands.map(this.processNode)})`;
   }
+  /**
+   * Not implemented in the base class; subclasses must override.
+   * @throws Always throws `Error('Method not implemented.')`.
+   */
   visitFunction(node: ASTFunction): string {
     throw new Error('Method not implemented.');
   }
+  /**
+   * Returns an opaque `lang_<lang>_<N>` placeholder and increments
+   * {@link uniqueId}, producing a stable unique alias for the embedded
+   * sub-expression without recursing into it.
+   */
   visitLangSwitch(node: LangSwitch): string {
     return `lang_${node.lang}_${this.uniqueId++}`;
   }

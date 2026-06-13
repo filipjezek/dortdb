@@ -1,5 +1,6 @@
 import { Fn } from '@dortdb/core';
 
+/** Returns the first non-`null`/`undefined` argument, or `null` if all arguments are absent. */
 export const coalesce: Fn = {
   name: 'coalesce',
   impl: (...args: unknown[]) => {

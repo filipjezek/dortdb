@@ -19,19 +19,31 @@ export class AttributeRenameChecker implements PlanVisitor<
   boolean,
   plan.RenameMap
 > {
+  /** Per-language {@link TransitiveDependencies} visitor map, used to detect rename conflicts. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
   constructor(
+    /** Per-language visitor map used for recursive descent. */
     protected vmap: Record<string, PlanVisitor<boolean, plan.RenameMap>>,
+    /** Database instance providing access to the language manager. */
     protected db: DortDBAsFriend,
   ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
 
+  /**
+   * Returns `true` if applying `renamesInv` (an inverse rename map) to `plan` is safe,
+   * i.e. no attribute referenced in the subtree would be ambiguously renamed.
+   */
   public canRename(plan: PlanOperator, renamesInv: plan.RenameMap) {
     return plan.accept(this.vmap, renamesInv);
   }
 
+  /**
+   * Checks whether `horizontal` (an expression computed from the current row) can be
+   * safely renamed: its transitive dependencies outside `verticalCtx` must not overlap with
+   * any renamed attribute, and the expression itself must pass the rename check.
+   */
   protected checkHorizontal(
     horizontal: PlanOperator,
     verticalCtx: IdSet,
@@ -42,6 +54,10 @@ export class AttributeRenameChecker implements PlanVisitor<
     return horizontal.accept(this.vmap, renamesInv);
   }
 
+  /**
+   * Calls {@link checkHorizontal} for every non-identifier element of `horizontal`,
+   * returning `false` as soon as any element fails the rename check.
+   */
   protected checkHorizontalArray(
     horizontal: OpOrId[],
     verticalCtx: IdSet,
@@ -57,6 +73,11 @@ export class AttributeRenameChecker implements PlanVisitor<
     return true;
   }
 
+  /**
+   * Verifies that none of the projection `attrs` has its output identifier in `renamesInv`
+   * (unless it is a trivial identity alias), and that all computed attr expressions pass
+   * the horizontal rename check.
+   */
   protected checkAttrs(
     attrs: Aliased<ASTIdentifier | plan.Calculation>[],
     verticalCtx: IdSet,
@@ -71,6 +92,10 @@ export class AttributeRenameChecker implements PlanVisitor<
     );
   }
 
+  /**
+   * Calls the rename check for every non-identifier element of `vertical` (expression
+   * arguments), returning `false` as soon as any element fails.
+   */
   protected checkVerticalArray(vertical: OpOrId[], renamesInv: plan.RenameMap) {
     for (const v of vertical) {
       if (!(v instanceof ASTIdentifier)) {

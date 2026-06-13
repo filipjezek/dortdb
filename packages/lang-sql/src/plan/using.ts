@@ -16,14 +16,20 @@ import { SQLPlanVisitor } from './index.js';
  * in {@link SchemaInferrer}.
  */
 export class Using extends PlanTupleOperator {
+  /** Trie of attribute identifiers excluded from the output schema: the left- and right-qualified forms of the USING columns. */
   public toRemove: IdSet;
+  /** Left-qualified versions of {@link columns}, computed by {@link calculateSchema} and used by {@link SchemaInferrer} to build the equi-join condition. */
   public overriddenCols: ASTIdentifier[];
 
   constructor(
     lang: Lowercase<string>,
+    /** Column names shared by both sides of the join as specified in the USING clause. */
     public columns: ASTIdentifier[],
+    /** Relation name of the left side of the join; used to qualify {@link overriddenCols}. */
     public leftName: ASTIdentifier,
+    /** Relation name of the right side of the join; its USING columns are included in {@link toRemove}. */
     public rightName: ASTIdentifier,
+    /** The underlying join or Cartesian product operator. */
     public source: CartesianProduct | Join,
   ) {
     super();
@@ -33,12 +39,14 @@ export class Using extends PlanTupleOperator {
     this.calculateSchema();
     source.parent = this;
   }
+  /** Dispatches this operator to the SQL plan visitor. */
   accept<Ret, Arg>(
     visitors: Record<string, SQLPlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitUsing(this, arg);
   }
+  /** Replaces the source, then recomputes the schema via {@link calculateSchema}. */
   replaceChild(
     current: PlanTupleOperator,
     replacement: PlanTupleOperator,
@@ -48,10 +56,15 @@ export class Using extends PlanTupleOperator {
     this.clearSchema();
     this.calculateSchema();
   }
+  /** Returns `[source]`. */
   override getChildren(): PlanOperator[] {
     return [this.source];
   }
 
+  /**
+   * Recomputes {@link overriddenCols}, {@link toRemove}, and the operator schema
+   * from the current {@link source} schema.
+   */
   calculateSchema(): void {
     this.overriddenCols = this.columns.map((c) =>
       overrideSource(this.leftName, c),
@@ -66,6 +79,7 @@ export class Using extends PlanTupleOperator {
     this.addToSchema(this.columns);
   }
 
+  /** Returns a deep copy. */
   clone(): Using {
     const res = new Using(
       this.lang,

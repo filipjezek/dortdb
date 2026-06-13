@@ -1,3 +1,4 @@
+/** Direction of an edge relative to a node: `'in'` (incoming), `'out'` (outgoing), or `'any'` (either). */
 export type EdgeDirection = 'in' | 'out' | 'any';
 
 /**

@@ -21,6 +21,13 @@ const axisMap = {
   [AxisType.PRECEDING_SIBLING]: 'previousSibling',
 } as const;
 
+/**
+ * Creates a DOM-based axis step function that traverses `axis` and filters
+ * nodes matching `test`.
+ *
+ * @throws {UnsupportedError} When `test.kind` names an item kind without a
+ *   DOM `nodeType` mapping.
+ */
 export const treeStep = (
   test: ASTItemType,
   axis: AxisType,

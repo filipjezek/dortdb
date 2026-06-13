@@ -8,14 +8,29 @@ import {
 import * as plan from '../plan/operators/index.js';
 import { allAttrs, ASTIdentifier, boundParam } from '../ast.js';
 
+/** Maps multi-part identifier keys to their numeric-index {@link ASTIdentifier} translations. */
 export type VariableMap = Trie<string | number | symbol, ASTIdentifier>;
+
+/**
+ * Mutable context threaded through {@link VariableMapper} during a single `mapVariables`
+ * pass over a plan tree.
+ */
 export interface VariableMapperCtx {
+  /** Stack of lexical scopes; each entry covers one relational operator's output. */
   scopeStack: VariableMap[];
+  /** Per-operator snapshot of the scope stack at the point the operator was visited. */
   translations: Map<
     PlanOperator,
-    { scope: VariableMap; external: VariableMap }
+    {
+      /** Identifiers introduced by this operator's own output. */
+      scope: VariableMap;
+      /** All identifiers visible from outer scopes at this operator. */
+      external: VariableMap;
+    }
   >;
+  /** Maps each numeric index back to its original human-readable {@link ASTIdentifier}. */
   variableNames: ASTIdentifier[];
+  /** The next free numeric index to assign to a new variable. */
   currentIndex: number;
 }
 
@@ -25,9 +40,15 @@ export interface VariableMapperCtx {
  */
 export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   constructor(
+    /** Per-language visitor map used for recursive descent. */
     protected vmap: Record<string, PlanVisitor<void, VariableMapperCtx>>,
   ) {}
 
+  /**
+   * Traverses `plan` and returns a fully populated {@link VariableMapperCtx} in which every
+   * named identifier has been replaced with a numeric index.  The resulting context is
+   * passed to {@link Executor.execute} to drive array-based scope lookups.
+   */
   public mapVariables(plan: PlanOperator): VariableMapperCtx {
     const ctx: VariableMapperCtx = {
       scopeStack: [
@@ -69,6 +90,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     return newTranslation;
   }
 
+  /** Translates each {@link ASTIdentifier} in `array` in place; recurses into operators. */
   protected translateArray(array: OpOrId[], ctx: VariableMapperCtx) {
     for (let i = 0; i < array.length; i++) {
       const k = array[i];
@@ -80,6 +102,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     }
   }
 
+  /** Returns a new {@link VariableMap} containing all entries from `a` and every map in `bs`, with later maps winning on collision. */
   protected union(a: VariableMap, ...bs: VariableMap[]): VariableMap {
     const result: VariableMap = new Trie();
     for (const [key, value] of a.entries()) {
@@ -93,6 +116,10 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     return result;
   }
 
+  /**
+   * Snapshots the current scope stack into `ctx.translations` for `operator`, recording
+   * both the operator's own scope (top of stack) and the merged external view.
+   */
   protected setTranslations(operator: PlanOperator, ctx: VariableMapperCtx) {
     ctx.translations.set(operator, {
       external: this.union(

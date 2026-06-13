@@ -8,6 +8,7 @@ export interface SQLDataAdapter<Row = any> {
    */
   createColumnAccessor(prop: string | symbol | number): (row: Row) => unknown;
 
+  /** Constructs a row object from parallel `keys` and `values` arrays. */
   createRow(keys: string[], values: unknown[]): Row;
 }
 
@@ -23,6 +24,7 @@ export class ObjectDataAdapter implements SQLDataAdapter<
     return (row) => row[prop];
   }
 
+  /** {@inheritDoc SQLDataAdapter.createRow} */
   createRow(
     keys: string[],
     values: unknown[],

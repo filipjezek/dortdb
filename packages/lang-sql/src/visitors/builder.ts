@@ -19,6 +19,7 @@ import {
   DortDBAsFriend,
   EqualityChecker,
   AttributeRenamer,
+  BuildPlanResult,
 } from '@dortdb/core';
 import * as plan from '@dortdb/core/plan';
 import * as AST from '../ast/index.js';
@@ -50,7 +51,9 @@ import { and, eq, isOp, or } from '@dortdb/core/operators';
 import { toBool } from '@dortdb/core/castables';
 import { TableAlias } from '../plan/table-alias.js';
 
+/** Default output column name used when wrapping a scalar subquery result in a tuple row. */
 export const defaultCol = toId('value');
+/** Prefix marking attributes that cross a language boundary (non-local references resolved after plan building). */
 export const nonlocalPrefix = 'nonlocal';
 
 function toId(id: string | symbol): ASTIdentifier {
@@ -70,26 +73,46 @@ function toTuples(op: PlanOperator): PlanTupleOperator {
     : new plan.MapFromItem('sql', defaultCol, op);
 }
 
+/** Per-query SQL language context threaded through the plan builder. */
 export interface SQLLangCtx {
+  /** Non-materialized CTEs available in the current query scope, keyed by name. */
   ctes: Map<string, PlanTupleOperator>;
+  /** Materialized CTEs registered in the current scope; maps CTE name to its output schema. */
   materializedCtes: Map<string, ASTIdentifier[]>;
 }
 
+/**
+ * Translates a SQL AST into a logical plan tree by implementing
+ * {@link SQLVisitor} and {@link LogicalPlanBuilder}.
+ */
 export class SQLLogicalPlanBuilder
   implements SQLVisitor<PlanOperator>, LogicalPlanBuilder
 {
+  /** Produces deterministic string keys for subexpressions used as plan identifiers. */
   protected stringifier = new ASTDeterministicStringifier();
+  /** Per-language {@link SchemaInferrer} instances keyed by language name. */
   protected inferrerMap: Record<string, SchemaInferrer> = {};
+  /** Per-language calculation builders used to convert plan fragments into {@link plan.Calculation} nodes. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
+  /** Per-language equality checkers for plan-node structural comparison. */
   protected eqCheckers: Record<string, EqualityChecker>;
+  /** Per-language attribute renamers applied to non-local cross-boundary references. */
   protected renamers: Record<string, AttributeRenamer>;
 
-  protected langCtx: Record<string, unknown> & { sql: SQLLangCtx };
+  /** Shared language context passed in via {@link buildPlan}; the `sql` entry holds the outer {@link SQLLangCtx}. */
+  protected langCtx: Record<string, unknown> & {
+    /** The SQL-specific language context for the current query scope. */
+    sql: SQLLangCtx;
+  };
   /** copied to keep outer lang ctx clean */
   protected localLangCtx: SQLLangCtx;
+  /** SQL data adapter used to construct row values. */
   protected dataAdapter: SQLDataAdapter<unknown>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Reference to the database instance used to resolve functions, operators, aggregates, and casts. */
+    protected db: DortDBAsFriend,
+  ) {
     this.calcBuilders = db.langMgr.getVisitorMap('calculationBuilder');
     this.eqCheckers = db.langMgr.getVisitorMap('equalityChecker');
     this.renamers = db.langMgr.getVisitorMap('attributeRenamer');
@@ -106,12 +129,14 @@ export class SQLLogicalPlanBuilder
     this.processOrderItem = this.processOrderItem.bind(this);
   }
 
+  /** Creates a fresh, empty {@link SQLLangCtx}. */
   protected initLangCtx(): SQLLangCtx {
     return {
       ctes: new Map<string, PlanTupleOperator>(),
       materializedCtes: new Map<string, ASTIdentifier[]>(),
     };
   }
+  /** Returns a shallow copy of `ctx` with the CTE maps cloned so sub-queries can extend them independently. */
   protected cloneLangCtx(ctx: SQLLangCtx): SQLLangCtx {
     return {
       ...ctx,
@@ -119,7 +144,7 @@ export class SQLLogicalPlanBuilder
       materializedCtes: new Map(ctx.materializedCtes),
     };
   }
-  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>) {
+  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>): BuildPlanResult {
     this.langCtx = langCtx as Record<string, unknown> & {
       sql: SQLLangCtx;
     };
@@ -140,12 +165,15 @@ export class SQLLogicalPlanBuilder
     return { plan, inferred };
   }
 
+  /** Bound to `this` for array map usage; passes identifiers through and visits all other nodes. */
   protected processNode(item: ASTNode): OpOrId {
     return item instanceof ASTIdentifier ? item : item.accept(this);
   }
+  /** Bound to `this`; wraps non-identifier nodes as `{ op }` for use as function arguments. */
   protected processFnArg(item: ASTNode): plan.PlanOpAsArg | ASTIdentifier {
     return item instanceof ASTIdentifier ? item : { op: item.accept(this) };
   }
+  /** Converts an AST node to a {@link plan.Calculation} or identifier; extracts the field name for aggregate calls. */
   protected toCalc(node: ASTNode): plan.Calculation | ASTIdentifier {
     if (node instanceof ASTIdentifier) return node;
     const intermediate = node.accept(this);
@@ -153,6 +181,7 @@ export class SQLLogicalPlanBuilder
       return intermediate.fieldName;
     return intermediateToCalc(intermediate, this.calcBuilders, this.eqCheckers);
   }
+  /** Converts an already-built plan operator into a {@link plan.Calculation}. */
   protected opToCalc(op: PlanOperator): plan.Calculation {
     return intermediateToCalc(op, this.calcBuilders, this.eqCheckers);
   }
@@ -342,6 +371,7 @@ export class SQLLogicalPlanBuilder
     throw new Error('Method not implemented.');
   }
 
+  /** Bound to `this`; converts an ORDER BY item to a {@link plan.Order} descriptor. */
   protected processOrderItem(item: AST.OrderByItem): plan.Order {
     return {
       ascending: item.ascending,
@@ -381,6 +411,11 @@ export class SQLLogicalPlanBuilder
     }
     return op;
   }
+  /**
+   * Builds a {@link plan.Limit} operator from `LIMIT`/`OFFSET` clauses.
+   *
+   * @throws If either value is not a numeric constant.
+   */
   protected buildLimit(node: AST.SelectStatement, op: PlanTupleOperator) {
     const limit = node.limit && this.toCalc(node.limit);
     const offset = node.offset && this.toCalc(node.offset);
@@ -423,7 +458,12 @@ export class SQLLogicalPlanBuilder
   }
 
   /**
+   * Builds the plan for a single SELECT body, merging any outer ORDER BY
+   * aggregate calls supplied by the caller.
+   *
    * @param _ only for compliance with {@link PlanVisitor}
+   * @param orderByAggs aggregate calls inferred from an enclosing ORDER BY clause.
+   * @throws {@link UnsupportedError} when the SELECT uses window functions.
    */
   visitSelectSet(
     node: AST.SelectSet,
@@ -502,6 +542,7 @@ export class SQLLogicalPlanBuilder
     return op;
   }
 
+  /** Bound to `this`; converts a SELECT item to an `[expression, alias]` pair. */
   protected processAttr(
     attr: ASTNode,
   ): Aliased<ASTIdentifier | plan.Calculation> {
@@ -577,6 +618,7 @@ export class SQLLogicalPlanBuilder
     return [src, name];
   }
 
+  /** Resolves a FROM-clause item to a tuple operator and optional relation name. */
   protected getTableName(
     node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
   ): [PlanTupleOperator, ASTIdentifier] {
@@ -796,6 +838,12 @@ export class SQLLogicalPlanBuilder
     }
   }
 
+  /**
+   * Validates that a `WITH RECURSIVE` query is a UNION of a base and recursive part.
+   *
+   * @throws If the query is not a UNION, or if unsupported cycle or search features are used.
+   * @returns The top-level {@link AST.SelectSet} for further processing.
+   */
   protected checkRecursionValidity(node: AST.WithQuery): AST.SelectSet {
     if (
       !(node.query instanceof AST.SelectStatement) ||
@@ -830,6 +878,7 @@ export class SQLLogicalPlanBuilder
     return node.query.selectSet;
   }
 
+  /** Builds an {@link plan.IndexedRecursion} plan for a `WITH RECURSIVE` query after validating it via {@link checkRecursionValidity}. */
   protected handleRecursion(node: AST.WithQuery): PlanTupleOperator {
     const sset = this.checkRecursionValidity(node);
     const setOp = sset.setOp as AST.SelectSetOp;
@@ -890,6 +939,7 @@ export class SQLLogicalPlanBuilder
     return res;
   }
 
+  /** Wraps `subq` in a GroupBy that collects all rows into an array and registers the CTE name in {@link localLangCtx.materializedCtes}. */
   protected materializeCte(node: AST.WithQuery, subq: PlanTupleOperator) {
     const schema = subq.schema;
     const rowConstr = new AST.ASTRow(schema);
@@ -912,6 +962,10 @@ export class SQLLogicalPlanBuilder
     return new plan.Literal('sql', node.value);
   }
 
+  /**
+   * Rewrites an `IN` subquery by pushing the needle value into the subquery as a
+   * selection, enabling the executor to apply an index scan when available.
+   */
   protected optimizeInOp(
     expr: plan.PlanOpAsArg | ASTIdentifier,
     subq: PlanOperator,
@@ -1010,6 +1064,10 @@ export class SQLLogicalPlanBuilder
       impl.pure,
     );
   }
+  /**
+   * Propagates the current CTE maps back to the shared `langCtx` before creating a
+   * {@link PlanLangSwitch}, making locally defined CTEs visible to the embedded language.
+   */
   visitLangSwitch(node: LangSwitch): PlanOperator {
     this.langCtx.sql.ctes = this.localLangCtx.ctes;
     this.langCtx.sql.materializedCtes = this.localLangCtx.materializedCtes;

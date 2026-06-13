@@ -7,6 +7,10 @@ import {
 } from '../plan/index.js';
 import { assertMaxOne } from '@dortdb/core/internal-fns';
 
+/**
+ * Extends the core {@link CalculationBuilder} with SQL-specific plan operators,
+ * treating each as a scalar subquery that returns at most one value.
+ */
 export class SQLCalculationBuilder
   extends CalculationBuilder
   implements SQLPlanVisitor<CalculationParams>

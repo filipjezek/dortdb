@@ -19,8 +19,11 @@ export interface CypherConfig {
   serialize?: SerializeFn;
 }
 
+/** Runtime language descriptor for Cypher, extending the core {@link Language} contract with graph-specific fields. */
 export interface CypherLanguage extends Language<'cypher'> {
+  /** Graph data adapter used by built-in functions and the executor. */
   dataAdapter: CypherDataAdaper;
+  /** Default graph identifier resolved from {@link CypherConfig.defaultGraph}. */
   defaultGraph: ASTIdentifier;
 }
 
@@ -28,6 +31,14 @@ export interface CypherLanguage extends Language<'cypher'> {
  * Creates a new Cypher language instance.
  * @param config Configuration options for the Cypher language.
  * @returns A new Cypher language instance.
+ * @example
+ * ```ts
+ * import { DortDB } from '@dortdb/core';
+ * import { Cypher } from '@dortdb/lang-cypher';
+ *
+ * const db = new DortDB({ mainLang: Cypher({ defaultGraph: 'g' }) });
+ * db.query('MATCH (n) RETURN n');
+ * ```
  */
 export function Cypher(config?: CypherConfig): CypherLanguage {
   return {
@@ -48,10 +59,15 @@ export function Cypher(config?: CypherConfig): CypherLanguage {
   };
 }
 
+/** Extension of {@link Fn} for Cypher built-in functions that may require graph adapter injection. */
 export interface CypherFn extends Fn {
+  /** When `true`, the runtime prepends an {@link AdapterCtxArg} as the first argument before calling `impl`. */
   addAdapterCtx?: boolean;
 }
+/** Adapter context injected as the first argument of any {@link CypherFn} with `addAdapterCtx: true`. */
 export interface AdapterCtxArg {
+  /** The active {@link CypherDataAdaper} for the current execution. */
   adapter: CypherDataAdaper;
+  /** The graph instance being queried. */
   graph: unknown;
 }

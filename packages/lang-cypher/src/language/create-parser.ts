@@ -14,6 +14,11 @@ import { PeggyContext } from '../parser/peggy-context.js';
 import * as ast from '../ast/index.js';
 import { parse as peggyParse } from '../parser/cypher.peggy.mjs';
 
+/**
+ * Creates a {@link ParserInterface} for Cypher backed by the generated Peggy grammar.
+ *
+ * @param mgr The language manager used to resolve cross-language references at parse time.
+ */
 export function createParser(mgr: LanguageManager): ParserInterface {
   const ctx: PeggyContext = {
     langMgr: mgr,

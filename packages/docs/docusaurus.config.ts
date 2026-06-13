@@ -134,6 +134,10 @@ const config: Config = {
               label: '@dortdb/lang-cypher',
               to: '/docs/lang-cypher/overview',
             },
+            {
+              label: '@dortdb/datetime',
+              to: '/docs/datetime/overview',
+            },
           ],
         },
         {

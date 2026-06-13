@@ -16,10 +16,17 @@ let tdepsCache = new WeakMap<PlanOperator, IdSet>();
  * identifiers that are used within the tree, but are defined in external scopes.
  */
 export class TransitiveDependencies implements PlanVisitor<IdSet> {
-  constructor(protected vmap: Record<string, PlanVisitor<IdSet>>) {
+  constructor(
+    /** Per-language visitor map used for recursive descent. */
+    protected vmap: Record<string, PlanVisitor<IdSet>>,
+  ) {
     this.processNode = this.processNode.bind(this);
   }
 
+  /**
+   * Returns a clone of `deps` with all identifiers produced by `op`'s own schema removed,
+   * leaving only those that must be satisfied from an outer scope.
+   */
   protected onlyExternal(deps: IdSet, op: PlanTupleOperator) {
     const clone = deps.clone();
     for (const id of op.schema) {
@@ -27,9 +34,11 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     }
     return clone;
   }
+  /** Dispatches `node` through the per-language `vmap` and returns its transitive dependencies. */
   protected processNode(node: PlanOperator) {
     return node.accept(this.vmap);
   }
+  /** Returns the module-level `WeakMap` used as the computation cache. */
   protected getCache() {
     return tdepsCache;
   }
@@ -306,21 +315,31 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     return result;
   }
 
+  /** Replaces the computation cache with a new empty `WeakMap`, invalidating all entries. */
   public clearCache() {
     tdepsCache = new WeakMap();
   }
+  /**
+   * Removes `operator` and all of its ancestors from the cache, walking up via
+   * {@link PlanOperator.parent} until the root is reached.
+   */
   public invalidateCacheDownstream(operator: PlanOperator) {
     while (operator) {
       tdepsCache.delete(operator);
       operator = operator.parent;
     }
   }
+  /**
+   * Removes `operator` and the entire subtree rooted at it from the cache, recursing
+   * into all children.
+   */
   public invalidateCacheUpstream(operator: PlanOperator) {
     tdepsCache.delete(operator);
     for (const child of operator.getChildren()) {
       this.invalidateCacheUpstream(child);
     }
   }
+  /** Removes only `operator`'s own cache entry without touching its ancestors or children. */
   public invalidateCacheElement(operator: PlanOperator) {
     tdepsCache.delete(operator);
   }

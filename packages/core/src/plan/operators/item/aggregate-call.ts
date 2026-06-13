@@ -15,7 +15,10 @@ import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { ArgMeta } from '../../../visitors/calculation-builder.js';
 
 /**
- * Container for aggregate calls used in {@link GroupBy}
+ * Container for aggregate calls used in {@link GroupBy}.
+ *
+ * Wraps a single aggregate function invocation, including its argument expressions
+ * and the optional pre-aggregation pipeline (`postGroupOp`) applied to each partition.
  */
 export class AggregateCall implements PlanOperator {
   /**
@@ -23,16 +26,23 @@ export class AggregateCall implements PlanOperator {
    * it will be passed through this operator.
    */
   public postGroupOp: PlanTupleOperator;
+  /** The leaf {@link TupleSource} at the bottom of {@link postGroupOp}; holds the partition rows. */
   public get postGroupSource(): PlanTupleOperator {
     return this._postGSource;
   }
+  /** Backing store for {@link postGroupSource}. */
   protected _postGSource: PlanTupleOperator;
+  /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
+  /** {@inheritDoc PlanOperator.dependencies} */
   public dependencies: IdSet;
 
   constructor(
+    /** {@inheritDoc PlanOperator.lang} */
     public lang: Lowercase<string>,
+    /** Argument expressions passed to the aggregate function. */
     public args: (Calculation | ASTIdentifier)[],
+    /** Aggregate function implementation. */
     public impl: AggregateFn,
     /** name of this aggregate in its {@link GroupBy} operator */
     public fieldName: ASTIdentifier,
@@ -47,12 +57,14 @@ export class AggregateCall implements PlanOperator {
     this.fieldName.aggregate = this;
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitAggregate(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     for (let i = 0; i < this.args.length; i++) {
@@ -62,6 +74,7 @@ export class AggregateCall implements PlanOperator {
       }
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return this.args.filter(isCalc);
   }

@@ -45,10 +45,20 @@ const maybeAmbiguous = Symbol('maybeAmbiguous');
  */
 export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
   constructor(
+    /** Per-language visitor map used to recurse into operators of other languages. */
     protected vmap: Record<string, SQLPlanVisitor<IdSet, IdSet>>,
+    /** Database instance used to resolve nested language plan builders during {@link visitLangSwitch}. */
     protected db: DortDBAsFriend,
   ) {}
 
+  /**
+   * Infers and finalises the schema of `operator`, resolving external attribute
+   * references and detecting ambiguous column names.
+   *
+   * @returns A tuple of the (possibly rewritten) root operator and the set of
+   *   external references that must be satisfied by an enclosing scope.
+   * @throws If any column name is ambiguous across joined relations.
+   */
   public inferSchema(
     operator: PlanOperator,
     ctx: IdSet,
@@ -90,6 +100,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return external;
   }
 
+  /** Adds `arg` to `operator`'s schema — directly for identifiers, or by visiting sub-operators for plan nodes. */
   protected processArg(
     operator: PlanTupleOperator,
     arg: ASTIdentifier | PlanOperator,
@@ -117,6 +128,11 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
 
+  /**
+   * Inserts a {@link plan.Projection} above `operator` to strip relation-name
+   * prefixes from its attributes, replacing prefixed identifiers with their
+   * unqualified equivalents in the schema.
+   */
   protected prefixTupleSourceAttrs(
     operator: plan.TupleSource | plan.TupleFnSource,
   ) {
@@ -234,6 +250,13 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     throw new Error('Method not implemented.');
   }
 
+  /**
+   * Walks up through projections and aliases to determine the set of relation
+   * names exposed by `operator`; used by {@link visitCartesianProduct} to
+   * detect duplicate table aliases and route schema attributes to the correct side.
+   *
+   * @throws If duplicate table aliases are found across a join.
+   */
   protected getRelNames(operator: PlanTupleOperator): IdSet {
     while (
       'source' in operator &&
@@ -524,6 +547,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return operator.source.accept(this.vmap, ctx);
   }
 
+  /** Infers schemas of both sides of a set operator and merges their external references. */
   protected processSetOp(operator: plan.SetOperator, ctx: IdSet) {
     const left = operator.left.accept(this.vmap, ctx);
     const right = operator.right.accept(this.vmap, ctx);

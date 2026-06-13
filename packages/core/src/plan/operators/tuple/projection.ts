@@ -17,18 +17,28 @@ import {
 } from '../../../internal-fns/index.js';
 import { Trie } from '../../../data-structures/trie.js';
 
+/** Maps a multi-part identifier path to the renamed path; used in {@link Projection}. */
 export type RenameMap = Trie<
   string | symbol | number,
   (string | symbol | number)[]
 >;
 
+/**
+ * Projects a subset of attributes from its source, optionally renaming them.
+ *
+ * `renames` maps original paths to alias paths; `renamesInv` is the inverse.
+ */
 export class Projection extends PlanTupleOperator {
+  /** Forward rename map: original attribute path → alias path. */
   public renames: RenameMap = new Trie();
+  /** Inverse rename map: alias path → original attribute path. */
   public renamesInv: RenameMap = new Trie();
 
   constructor(
     lang: Lowercase<string>,
+    /** Attributes to emit, each paired with its output alias. */
     public attrs: Aliased<ASTIdentifier | Calculation>[],
+    /** Tuple operator providing the input rows. */
     public source: PlanTupleOperator,
   ) {
     super();
@@ -47,12 +57,14 @@ export class Projection extends PlanTupleOperator {
     }
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitProjection(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: OpOrId): void {
     const isId = replacement instanceof ASTIdentifier;
     if (!isId) {
@@ -69,12 +81,14 @@ export class Projection extends PlanTupleOperator {
         | ASTIdentifier;
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     const res: PlanOperator[] = this.attrs.map(retI0).filter(isCalc);
     res.push(this.source);
     return res;
   }
 
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): Projection {
     return new Projection(
       this.lang,
@@ -101,7 +115,9 @@ export class ProjectionConcat extends PlanTupleOperator {
     lang: Lowercase<string>,
     /** mapping must be interpreted in the context of the source */
     public mapping: PlanTupleOperator,
+    /** When `true`, rows from `source` with no matching `mapping` rows are still emitted (outer join). */
     public outer: boolean,
+    /** Tuple operator providing the driving rows. */
     public source: PlanTupleOperator,
   ) {
     super();
@@ -114,12 +130,14 @@ export class ProjectionConcat extends PlanTupleOperator {
     source.parent = this;
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitProjectionConcat(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(
     current: PlanTupleOperator,
     replacement: PlanTupleOperator,
@@ -135,9 +153,11 @@ export class ProjectionConcat extends PlanTupleOperator {
     this.removeFromSchema(this.mapping.schema);
     this.addToSchema(this.mapping.schema);
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return [this.source, this.mapping];
   }
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): ProjectionConcat {
     const res = new ProjectionConcat(
       this.lang,
@@ -151,10 +171,16 @@ export class ProjectionConcat extends PlanTupleOperator {
   }
 }
 
+/**
+ * Appends or moves a positional index column to the end of the schema,
+ * enabling index-based access to rows in the stream.
+ */
 export class ProjectionIndex extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
+    /** The attribute identifier used as the row-index column. */
     public indexCol: ASTIdentifier,
+    /** Tuple operator providing the input rows. */
     public source: PlanTupleOperator,
   ) {
     super();
@@ -167,12 +193,14 @@ export class ProjectionIndex extends PlanTupleOperator {
     source.parent = this;
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitProjectionIndex(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(
     current: PlanTupleOperator,
     replacement: PlanTupleOperator,
@@ -185,9 +213,11 @@ export class ProjectionIndex extends PlanTupleOperator {
     );
     this.addToSchema(this.indexCol);
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return [this.source];
   }
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): ProjectionIndex {
     return new ProjectionIndex(this.lang, this.indexCol, this.source.clone());
   }

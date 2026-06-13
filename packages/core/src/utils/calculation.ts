@@ -5,6 +5,7 @@ import { OpOrId, PlanOperator, PlanVisitor } from '../plan/visitor.js';
 import { ArgMeta, CalculationParams } from '../visitors/calculation-builder.js';
 import { EqualityChecker } from '../visitors/equality-checker.js';
 
+/** Wraps an {@link ASTIdentifier} in a trivial {@link Calculation} that returns its runtime value unchanged. */
 export function idToCalculation(id: ASTIdentifier, lang: Lowercase<string>) {
   const fn = new FnCall(lang, [id], ret1);
   return new Calculation(
@@ -22,6 +23,11 @@ export function idToCalculation(id: ASTIdentifier, lang: Lowercase<string>) {
   );
 }
 
+/**
+ * Deduplicates repeated arguments in a {@link CalculationParams} so the same
+ * subexpression is evaluated only once; returns the original object unchanged
+ * if all arguments are already unique.
+ */
 export function simplifyCalcParams(
   params: CalculationParams,
   eqCheckers: Record<string, EqualityChecker>,
@@ -76,6 +82,10 @@ export function simplifyCalcParams(
   return ret;
 }
 
+/**
+ * Converts a plan operator to a {@link Calculation} by visiting it with the
+ * language's calculation builder and then simplifying duplicate arguments.
+ */
 export function intermediateToCalc(
   op: PlanOperator,
   calcBuilders: Record<string, PlanVisitor<CalculationParams>>,

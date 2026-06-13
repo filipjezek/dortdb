@@ -9,20 +9,35 @@ import { retI0 } from '../internal-fns/index.js';
  * Renames attributes in the plan.
  */
 export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
+  /** Per-language {@link TransitiveDependencies} visitor map, used to invalidate the cache after renaming. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
 
   constructor(
+    /** Per-language visitor map used for recursive descent. */
     protected vmap: Record<string, PlanVisitor<void, plan.RenameMap>>,
+    /** Database instance providing access to the language manager. */
     protected db: DortDBAsFriend,
   ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
   }
 
+  /**
+   * Applies `renames` to `plan` in place and invalidates the transitive-dependency cache
+   * for the entire subtree rooted at `plan`.
+   */
   public rename(plan: PlanOperator, renames: plan.RenameMap) {
     plan.accept(this.vmap, renames);
     this.tdepsVmap[plan.lang].invalidateCacheUpstream(plan);
   }
 
+  /**
+   * Iterates `array` in place, replacing each {@link ASTIdentifier} element that appears in
+   * both `deps` and `renames` with its renamed counterpart, and recursing into operator
+   * elements via `vmap`.  When `removeDeps` is `true` (the default), updates `deps` to
+   * reflect the new names after processing.
+   * @param updateFn Optional callback used instead of direct array assignment when the
+   *   renamed identifier lives in a wrapper object (e.g. a projection pair).
+   */
   protected processArray(
     array: OpOrId[],
     deps: IdSet,
@@ -55,6 +70,11 @@ export class AttributeRenamer implements PlanVisitor<void, plan.RenameMap> {
     }
   }
 
+  /**
+   * Renames a single property `obj[key]` in place when it is an {@link ASTIdentifier} that
+   * appears in both `deps` and `renames`; otherwise recurses into the operator.
+   * Mirrors the dep-update semantics of {@link processArray}.
+   */
   protected processItem<Key extends string, Obj extends Record<Key, OpOrId>>(
     obj: Obj,
     key: Key,

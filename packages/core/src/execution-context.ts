@@ -2,23 +2,33 @@ import { ASTIdentifier } from './ast.js';
 import { PlanOperator, PlanTupleOperator } from './plan/visitor.js';
 import { VariableMap } from './visitors/variable-mapper.js';
 
+/** Holds the runtime variable bindings and translation tables for a single query execution. */
 export class ExecutionContext {
+  /** Flat array of runtime values indexed by the numeric part of each variable's {@link ASTIdentifier}. */
   public variableValues: unknown[] = [];
   /** same structure as {@link variableNames} */
   public variableNames: ASTIdentifier[] = [];
+  /** Per-operator variable translation maps used to locate values in {@link variableValues}. */
   public translations: Map<
     PlanOperator,
-    { scope: VariableMap; external: VariableMap }
+    {
+      /** Variables produced by the operator itself. */
+      scope: VariableMap;
+      /** Variables inherited from an enclosing scope. */
+      external: VariableMap;
+    }
   > = new Map();
 
   /**
-   * @param variable ASTIdentifier with a single numeric part
+   * Returns the current value of a variable.
+   * @param variable ASTIdentifier with a single numeric part used as the array index.
    */
   public get(variable: ASTIdentifier): unknown {
     return this.variableValues[variable.parts[0] as number];
   }
   /**
-   * @param variable ASTIdentifier with a single numeric part
+   * Sets the current value of a variable.
+   * @param variable ASTIdentifier with a single numeric part used as the array index.
    */
   public set(variable: ASTIdentifier, value: unknown): void {
     this.variableValues[variable.parts[0] as number] = value;
@@ -47,6 +57,7 @@ export class ExecutionContext {
     );
   }
 
+  /** Returns the numeric index in {@link variableValues} for `key` within `operator`'s translation. */
   public getTranslation(
     operator: PlanOperator,
     key: (string | number | symbol)[],

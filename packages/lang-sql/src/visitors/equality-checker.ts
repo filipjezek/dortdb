@@ -6,6 +6,10 @@ import {
   Using,
 } from '../plan/index.js';
 
+/**
+ * Extends the core {@link EqualityChecker} with structural equality checks for
+ * SQL-specific plan operators: {@link LangSwitch}, {@link Using}, and {@link TableAlias}.
+ */
 export class SQLEqualityChecker
   extends EqualityChecker
   implements SQLPlanVisitor<boolean, DescentArgs>

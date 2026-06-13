@@ -10,10 +10,15 @@ import { AttributeRenamer } from '../../visitors/attribute-renamer.js';
 import { TransitiveDependencies } from '../../visitors/transitive-deps.js';
 import { PatternRule, PatternRuleMatchResult } from '../rule.js';
 
+/** Pattern-match bindings for the {@link JoinIndices} rule. */
 export interface JoinIndicesBindings {
+  /** Which join side holds the source that will be replaced by an index scan. */
   side: 'left' | 'right';
+  /** Rename map produced by chained projections on the matched side, if any. */
   renameMap?: plan.RenameMap;
+  /** Indices into the join's conditions array that the index can satisfy. */
   indexMatch: number[];
+  /** Source operator on the matched side that feeds into the index. */
   source: plan.TupleSource | plan.ItemSource;
 }
 
@@ -26,11 +31,17 @@ export class JoinIndices implements PatternRule<
   JoinIndicesBindings
 > {
   public operator = plan.Join;
+  /** Per-language transitive-dependency visitor instances. */
   protected tdepsVmap: Record<string, TransitiveDependencies>;
+  /** Per-language attribute-renamer visitor instances. */
   protected renamerVmap: Record<string, AttributeRenamer>;
+  /** Per-language attribute-rename-checker visitor instances. */
   protected renameCheckerVmap: Record<string, AttributeRenameChecker>;
 
-  constructor(protected db: DortDBAsFriend) {
+  constructor(
+    /** Internal database interface. */
+    protected db: DortDBAsFriend,
+  ) {
     this.tdepsVmap = this.db.langMgr.getVisitorMap('transitiveDependencies');
     this.renamerVmap = this.db.langMgr.getVisitorMap('attributeRenamer');
     this.renameCheckerVmap = this.db.langMgr.getVisitorMap(
@@ -92,6 +103,7 @@ export class JoinIndices implements PatternRule<
     return null;
   }
 
+  /** Composes the inverse rename maps of all chained projections into a single map, or returns `null` if there are none. */
   protected prepareRenameMap(
     projections: plan.Projection[],
   ): plan.RenameMap | null {
@@ -105,6 +117,7 @@ export class JoinIndices implements PatternRule<
     return renameMap;
   }
 
+  /** Returns the matched candidate indices if `index` can satisfy any of them, handling OR alternatives; `null` otherwise. */
   protected matchIndex(
     index: Index,
     candidates: [number, number][],
@@ -183,8 +196,11 @@ export class JoinIndices implements PatternRule<
     return candidates;
   }
 
+  /** Walks down one side of a join through projections/selections/order-by to find the underlying source; returns `null` if the side is not index-eligible. */
   protected traverseSide(node: PlanOperator): {
+    /** Projection operators encountered while descending, in top-down order. */
     projections: plan.Projection[];
+    /** The underlying tuple or item source at the bottom of the chain. */
     source: plan.TupleSource | plan.ItemSource;
   } | null {
     const projections: plan.Projection[] = [];

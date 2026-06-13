@@ -6,6 +6,10 @@ import {
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { RenameMap } from '@dortdb/core/plan';
 
+/**
+ * Extends {@link AttributeRenameChecker} to handle the XQuery-specific
+ * {@link TreeJoin} and {@link ProjectionSize} plan operators.
+ */
 export class XQueryAttributeRenameChecker
   extends AttributeRenameChecker
   implements XQueryPlanVisitor<boolean, RenameMap>

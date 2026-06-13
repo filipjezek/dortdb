@@ -1,3 +1,7 @@
+/**
+ * Parses a Cypher quoted string literal (including its surrounding quotes) and
+ * returns the unescaped string value.
+ */
 export function parseStringLiteral(original: string): string {
   let value = '';
   const escRegex =
@@ -15,6 +19,11 @@ export function parseStringLiteral(original: string): string {
   return value;
 }
 
+/**
+ * Converts a single escape sequence body (the characters after the leading
+ * backslash) to the corresponding character, supporting `b f n r t \\ ' "`,
+ * hex (`x`), Unicode (`u`), and octal forms.
+ */
 export function interpretEscape(esc: string): string {
   let code: number;
   esc = esc.toLowerCase();

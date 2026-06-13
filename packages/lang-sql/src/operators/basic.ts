@@ -1,6 +1,10 @@
 import { Operator } from '@dortdb/core';
 import { shortcutNulls } from '@dortdb/core/utils';
 
+/**
+ * SQL `IN` operator; returns `true` if the left value is found in the iterable,
+ * `null` if not found but the iterable contains a `null`, and `false` otherwise.
+ */
 export const inOp: Operator = {
   name: 'in',
   impl: shortcutNulls((a: unknown, b: unknown): boolean => {
@@ -14,6 +18,10 @@ export const inOp: Operator = {
   }),
 };
 
+/**
+ * SQL `NOT IN` operator; returns `false` if the left value is found in the iterable,
+ * `null` if not found but the iterable contains a `null`, and `true` otherwise.
+ */
 export const notInOp: Operator = {
   name: 'not in',
   impl: shortcutNulls((a: unknown, b: unknown): boolean => {
@@ -27,6 +35,7 @@ export const notInOp: Operator = {
   }),
 };
 
+/** SQL `BETWEEN` operator; returns `true` when `a >= b && a <= c`, with `null` shortcutting via the outer wrapper. */
 export const between: Operator = {
   name: 'between',
   impl: shortcutNulls((a: unknown, b: unknown, c: unknown): boolean => {

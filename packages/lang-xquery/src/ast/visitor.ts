@@ -50,6 +50,7 @@ import {
   InlineFunction,
 } from './function.js';
 
+/** Visitor interface for traversing all XQuery AST node types; implement to walk or transform an XQuery AST. */
 export interface XQueryVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitProlog(node: Prolog, arg?: Arg): Ret;
   visitDefaultNSDeclaration(node: DefaultNSDeclaration, arg?: Arg): Ret;

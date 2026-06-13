@@ -28,6 +28,9 @@ import { ASTExpressionAlias, ASTTableAlias } from './alias.js';
 import { WindowSpec } from './window.js';
 import { WithQuery } from './with.js';
 
+/**
+ * Visitor interface for all SQL-specific AST node types, extending the core {@link ASTVisitor}.
+ */
 export interface SQLVisitor<Ret, Arg = never> extends ASTVisitor<Ret, Arg> {
   visitStringLiteral(node: ASTStringLiteral, arg?: Arg): Ret;
   visitNumberLiteral(node: ASTNumberLiteral, arg?: Arg): Ret;

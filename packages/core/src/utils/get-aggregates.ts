@@ -3,6 +3,7 @@ import { clone } from '../internal-fns/index.js';
 import { AggregateCall, Calculation } from '../plan/operators/index.js';
 import { OpOrId } from '../plan/visitor.js';
 
+/** Collects all {@link AggregateCall}s referenced by `items` (directly or through {@link Calculation.aggregates}), returning cloned copies. */
 export function getAggregates(items: OpOrId[]): AggregateCall[] {
   const aggs: AggregateCall[] = [];
   for (const item of items) {

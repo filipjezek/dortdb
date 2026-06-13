@@ -13,6 +13,7 @@ import { ASTLiteral } from '@dortdb/core';
 import { PeggyContext } from '../parser/peggy-context.js';
 import { parse as peggyParse } from '../parser/sql.peggy.mjs';
 
+/** Constructs a {@link ParserInterface} that parses SQL text using the Peggy-generated grammar wired to the given language manager. */
 export function createParser(mgr: LanguageManager): ParserInterface {
   const ctx: PeggyContext = {
     langMgr: mgr,

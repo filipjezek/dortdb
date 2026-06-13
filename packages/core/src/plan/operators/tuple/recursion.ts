@@ -5,13 +5,20 @@ import { schemaToTrie } from '../../../utils/trie.js';
 import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
+/**
+ * Repeatedly applies a traversal step to a starting set of rows until `condition` becomes
+ * false or the hop count reaches `max`, emitting rows at each depth in `[min, max]`.
+ */
 export class Recursion extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
+    /** Minimum number of hops to traverse (inclusive). */
     public min: number,
+    /** Maximum number of hops to traverse (inclusive). */
     public max: number,
     /** any referenced attributes of the input tuples will be resolved as `[[collected,...], next]` */
     public condition: Calculation,
+    /** Tuple operator providing the start rows. */
     public source: PlanTupleOperator,
     /** If set, the recursion will only consider distinct combinations of these keys */
     public distinctKeys: (Calculation | ASTIdentifier)[] = [],
@@ -27,12 +34,14 @@ export class Recursion extends PlanTupleOperator {
     arrSetParent(this.distinctKeys, this);
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
   ): Ret {
     return visitors[this.lang].visitRecursion(this, arg);
   }
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     for (let i = 0; i < this.distinctKeys.length; i++) {
@@ -47,9 +56,11 @@ export class Recursion extends PlanTupleOperator {
       this.source = replacement as PlanTupleOperator;
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return [this.source, this.condition, ...this.distinctKeys.filter(isCalc)];
   }
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): Recursion {
     return new Recursion(
       this.lang,
@@ -62,12 +73,20 @@ export class Recursion extends PlanTupleOperator {
   }
 }
 
+/**
+ * Recursion variant that uses an index-backed `mapping` to navigate edges,
+ * enabling efficient graph traversals without a full scan per step.
+ */
 export class IndexedRecursion extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
+    /** Minimum number of hops (inclusive). */
     public min: number,
+    /** Maximum number of hops (inclusive). */
     public max: number,
+    /** Index-backed edge traversal operator evaluated per step. */
     public mapping: PlanTupleOperator,
+    /** Tuple operator providing the start rows. */
     public source: PlanTupleOperator,
     /** If set, the recursion will only consider distinct combinations of these keys */
     public distinctKeys: (Calculation | ASTIdentifier)[] = [],
@@ -81,6 +100,7 @@ export class IndexedRecursion extends PlanTupleOperator {
     arrSetParent(this.distinctKeys, this);
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
@@ -88,6 +108,7 @@ export class IndexedRecursion extends PlanTupleOperator {
     return visitors[this.lang].visitIndexedRecursion(this, arg);
   }
 
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     for (let i = 0; i < this.distinctKeys.length; i++) {
@@ -102,9 +123,11 @@ export class IndexedRecursion extends PlanTupleOperator {
       this.source = replacement as PlanTupleOperator;
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return [this.source, this.mapping, ...this.distinctKeys.filter(isCalc)];
   }
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): IndexedRecursion {
     return new IndexedRecursion(
       this.lang,
@@ -117,14 +140,26 @@ export class IndexedRecursion extends PlanTupleOperator {
   }
 }
 
+/**
+ * Bidirectional graph traversal that expands from `source` forward via `mappingFwd`
+ * and from `target` backward via `mappingRev`, meeting in the middle.
+ *
+ * The output schema merges the schemas of `source` and `target`.
+ */
 export class BidirectionalRecursion extends PlanTupleOperator {
   constructor(
     lang: Lowercase<string>,
+    /** Minimum path length (inclusive). */
     public min: number,
+    /** Maximum path length (inclusive). */
     public max: number,
+    /** Forward edge-traversal operator (from source toward target). */
     public mappingFwd: PlanTupleOperator,
+    /** Reverse edge-traversal operator (from target toward source). */
     public mappingRev: PlanTupleOperator,
+    /** Tuple operator providing the target rows. */
     public target: PlanTupleOperator,
+    /** Tuple operator providing the source (start) rows. */
     public source: PlanTupleOperator,
   ) {
     super();
@@ -139,6 +174,7 @@ export class BidirectionalRecursion extends PlanTupleOperator {
     target.parent = this;
   }
 
+  /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
     visitors: Record<string, PlanVisitor<Ret, Arg>>,
     arg?: Arg,
@@ -146,6 +182,7 @@ export class BidirectionalRecursion extends PlanTupleOperator {
     return visitors[this.lang].visitBidirectionalRecursion(this, arg);
   }
 
+  /** {@inheritDoc PlanOperator.replaceChild} */
   replaceChild(current: PlanOperator, replacement: PlanOperator): void {
     replacement.parent = this;
     if (current === this.mappingFwd) {
@@ -158,9 +195,11 @@ export class BidirectionalRecursion extends PlanTupleOperator {
       this.source = replacement as PlanTupleOperator;
     }
   }
+  /** {@inheritDoc PlanOperator.getChildren} */
   getChildren(): PlanOperator[] {
     return [this.source, this.target, this.mappingFwd, this.mappingRev];
   }
+  /** {@inheritDoc PlanOperator.clone} */
   clone(): BidirectionalRecursion {
     return new BidirectionalRecursion(
       this.lang,

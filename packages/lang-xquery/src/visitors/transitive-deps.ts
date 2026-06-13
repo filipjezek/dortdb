@@ -2,6 +2,10 @@ import { IdSet, PlanVisitor, TransitiveDependencies } from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 import { union } from '@dortdb/core/utils';
 
+/**
+ * Extends {@link TransitiveDependencies} to compute external column
+ * dependencies for {@link TreeJoin} and {@link ProjectionSize} operators.
+ */
 export class XQueryTransitiveDependencies
   extends TransitiveDependencies
   implements XQueryPlanVisitor<IdSet>
