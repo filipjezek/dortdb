@@ -100,7 +100,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     return external;
   }
 
-  /** Adds `arg` to `operator`'s schema — directly for identifiers, or by visiting sub-operators for plan nodes. */
+  /** Adds `arg` to `operator`'s schema - directly for identifiers, or by visiting sub-operators for plan nodes. */
   protected processArg(
     operator: PlanTupleOperator,
     arg: ASTIdentifier | PlanOperator,

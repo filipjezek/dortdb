@@ -6,9 +6,9 @@ import { FnCallWrapper, PropLookup } from './expression.js';
 
 /** Set operation type used to combine the results of two queries. */
 export enum SetOpType {
-  /** UNION — combines results and eliminates duplicate rows. */
+  /** UNION - combines results and eliminates duplicate rows. */
   UNION = 'union',
-  /** UNION ALL — combines results preserving duplicate rows. */
+  /** UNION ALL - combines results preserving duplicate rows. */
   UNIONALL = 'unionall',
 }
 
@@ -177,7 +177,7 @@ export class RemoveClause implements ASTNode {
   }
 }
 
-/** A single REMOVE target — either a property or a set of labels. */
+/** A single REMOVE target - either a property or a set of labels. */
 export class RemoveItem implements ASTNode {
   constructor(
     /** The property path or variable to remove from. */

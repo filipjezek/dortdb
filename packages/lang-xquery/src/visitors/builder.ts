@@ -626,7 +626,7 @@ export class XQueryLogicalPlanBuilder
   }
 
   /**
-   * Builds the tuple source for the first step of a path expression — seeding from the
+   * Builds the tuple source for the first step of a path expression - seeding from the
    * context item (`.`) for a leading axis step, or from the evaluated leading expression otherwise.
    *
    * @throws if a leading axis step is used without a context item in scope.

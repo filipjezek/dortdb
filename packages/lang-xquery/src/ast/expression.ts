@@ -6,7 +6,7 @@ import { PathPredicate } from './path.js';
 
 /**
  * XQuery string literal whose value has XQuery escape sequences (`""`, `''`, `&amp;`, etc.)
- * already resolved — `value` holds the decoded string, `original` holds the raw source text.
+ * already resolved - `value` holds the decoded string, `original` holds the raw source text.
  */
 export class ASTStringLiteral extends ASTLiteral<string> {
   constructor(original: string) {
@@ -49,7 +49,7 @@ export class XQueryIdentifier extends ASTIdentifier {
 /**
  * An XQuery variable reference (`$name`); `parts` holds the variable name components.
  *
- * @remarks `original` is always `null` — use `parts` to access the variable name.
+ * @remarks `original` is always `null` - use `parts` to access the variable name.
  * If the first part is `"param"` it is replaced with the internal {@link boundParam} sentinel.
  */
 export class ASTVariable extends XQueryIdentifier {

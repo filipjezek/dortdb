@@ -1,3 +1,11 @@
+/**
+ * Low-level helper functions used when building and transforming logical
+ * plans - argument combinators (`ret1`, `ret2`, `toPair`), type guards,
+ * plan-operator cloning helpers, and small array/object utilities.
+ *
+ * @packageDocumentation
+ */
+
 import { ASTIdentifier } from '../ast.js';
 import {
   AggregateCall,

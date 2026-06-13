@@ -1,3 +1,12 @@
+/**
+ * Assorted utility helpers used throughout the engine - assertions,
+ * plan-operator construction helpers (projection, selection, calculation),
+ * schema/parent linking, aggregate extraction, null-shortcutting, object
+ * serialization, and small invocation helpers.
+ *
+ * @packageDocumentation
+ */
+
 export * from './assert-literal.js';
 export * from './override-source.js';
 export * from './trie.js';

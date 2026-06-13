@@ -1,3 +1,13 @@
+/**
+ * The complete set of logical plan operators that make up DortDB's unified
+ * algebra - item operators (function calls, item sources, literals,
+ * calculations, conditionals, limits, quantifiers, aggregate calls) and tuple
+ * operators (tuple sources, projection, selection, joins, ordering, grouping,
+ * set operations, distinct, and recursion).
+ *
+ * @packageDocumentation
+ */
+
 export * from './item/fn-call.js';
 export * from './item/item-source.js';
 export * from './item/literal.js';

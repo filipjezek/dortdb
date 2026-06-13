@@ -1,6 +1,6 @@
 /**
  * Applies `fn` pairwise across all items of `a` and `b`, returning `true` as
- * soon as any pair satisfies the predicate — XQuery's general comparison
+ * soon as any pair satisfies the predicate - XQuery's general comparison
  * semantics for sequence operands.
  */
 export function generalComparison(

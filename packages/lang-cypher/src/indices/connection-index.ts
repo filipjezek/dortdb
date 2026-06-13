@@ -28,7 +28,7 @@ export class ConnectionIndex implements Index {
   protected adapter: CypherDataAdaper;
 
   constructor(
-    /** Index key expressions — the edge or node identifiers this index is built on. */
+    /** Index key expressions - the edge or node identifiers this index is built on. */
     public expressions: Calculation[],
     db: DortDBAsFriend,
   ) {

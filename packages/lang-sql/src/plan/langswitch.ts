@@ -39,7 +39,7 @@ export class LangSwitch extends PlanTupleOperator {
     return visitors[this.lang].visitLangSwitch(this, arg);
   }
   /**
-   * Not supported — a {@link LangSwitch} has no plan children.
+   * Not supported - a {@link LangSwitch} has no plan children.
    *
    * @throws Always throws; replace the operator itself rather than its children.
    */

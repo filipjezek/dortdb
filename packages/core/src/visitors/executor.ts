@@ -827,8 +827,8 @@ export abstract class Executor implements PlanVisitor<
    * Evaluates `operator` synchronously and returns the single result value wrapped in a
    * one-element tuple.
    *
-   * @remarks Unlike all other `visitX` methods, the return type is `[unknown]` — a
-   *   single-element tuple — rather than `Iterable<unknown>`.  This is intentional: a
+   * @remarks Unlike all other `visitX` methods, the return type is `[unknown]` - a
+   *   single-element tuple - rather than `Iterable<unknown>`.  This is intentional: a
    *   Calculation always produces exactly one value and the tuple avoids boxing overhead.
    */
   visitCalculation(

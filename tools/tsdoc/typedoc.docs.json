@@ -26,5 +26,5 @@
   "sort": ["source-order"],
   "groupOrder": ["Classes", "Interfaces", "Functions", "Variables", "*"],
   "parametersFormat": "table",
-  "enumMembersFormat": "table"
+  "enumMembersFormat": "list"
 }

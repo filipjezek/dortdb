@@ -1,3 +1,12 @@
+/**
+ * Language-agnostic AST node types shared by every DortDB language frontend:
+ * the {@link ASTNode} base contract, literals, operators, function calls,
+ * identifiers, the cross-language {@link LangSwitch} node, and the
+ * {@link ASTVisitor} double-dispatch interface.
+ *
+ * @packageDocumentation
+ */
+
 import { AggregateCall } from './plan/operators/index.js';
 
 /** Minimal shared interface for all AST expression nodes. */

@@ -13,15 +13,15 @@ The authoritative list of what still needs a comment is
 ## Golden rule: document the contract, not the syntax
 
 Explain **what it's for, what it guarantees, and anything a caller can't infer
-from the types** — preconditions, side effects, ownership, units, edge cases,
+from the types** - preconditions, side effects, ownership, units, edge cases,
 performance characteristics. Never restate the signature in prose.
 
 ```ts
-// BAD — adds nothing the type didn't already say
+// BAD - adds nothing the type didn't already say
 /** Sets the name. @param name the name */
 setName(name: string): void;
 
-// GOOD — states the contract
+// GOOD - states the contract
 /**
  * Registers the source under `name`, replacing any existing source with the
  * same name. The name is matched case-sensitively.
@@ -36,18 +36,18 @@ TypeDoc uses **TSDoc**, so use `{@link Target}` for cross-references (not
 
 Use a tag only when it carries information beyond the obvious:
 
-- `@param` / `@returns` — **only when the name alone is ambiguous** (units,
+- `@param` / `@returns` - **only when the name alone is ambiguous** (units,
   meaning of a flag, what `null`/`undefined` signifies, what an empty result
   means). Skip the tag if it would just echo the identifier.
-- `@throws` — whenever the member can throw a meaningful error; name the
+- `@throws` - whenever the member can throw a meaningful error; name the
   condition.
-- `@typeParam` — when a generic parameter's role isn't obvious from its name.
-- `@defaultValue` — for optional parameters / properties with a non-obvious default.
-- `@remarks` — for longer discussion that shouldn't crowd the summary line.
-- `@example` — for any non-trivial public entry point (a language constructor,
+- `@typeParam` - when a generic parameter's role isn't obvious from its name.
+- `@defaultValue` - for optional parameters / properties with a non-obvious default.
+- `@remarks` - for longer discussion that shouldn't crowd the summary line.
+- `@example` - for any non-trivial public entry point (a language constructor,
   a builder, a top-level export). Wrap code in a fenced ` ```ts ` block. Not
   needed for simple accessors or internal helpers.
-- `@see` — to point at the related operator/AST node/visitor.
+- `@see` - to point at the related operator/AST node/visitor.
 
 ## Style
 
@@ -59,7 +59,7 @@ Use a tag only when it carries information beyond the obvious:
   filling gaps. Fill **only** what the worklist flags; leave documented members
   alone.
 
-## Visitor methods — skip the routine ones
+## Visitor methods - skip the routine ones
 
 The visitor classes/interfaces (`plan/visitor.ts`, the `visitors/*.ts`,
 `ast/visitor.ts`) make up a large share of the worklist, but most entries are
@@ -82,7 +82,7 @@ that just handle their node type add only noise.
   pattern the sibling methods follow.
 
 When in doubt for a visitor method, a one-line summary of the unusual part is
-plenty — don't pad it with `@param node`.
+plenty - don't pad it with `@param node`.
 
 The whole framework is intended to be extensible, so every protected member
 should be documented.

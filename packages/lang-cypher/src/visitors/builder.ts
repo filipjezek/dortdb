@@ -1301,7 +1301,7 @@ export class CypherLogicalPlanBuilder
       node.elseExpr && this.processNode(node.elseExpr, args),
     );
   }
-  /** @throws Always throws `Error('Method not implemented.')` — COUNT(*) is handled upstream by {@link visitFnCallWrapper}. */
+  /** @throws Always throws `Error('Method not implemented.')` - COUNT(*) is handled upstream by {@link visitFnCallWrapper}. */
   visitCountAll(node: AST.CountAll, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
@@ -1441,15 +1441,15 @@ export class CypherLogicalPlanBuilder
     if (!args.src) return renamed;
     return new plan.ProjectionConcat('cypher', renamed, false, args.src);
   }
-  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
+  /** @throws {@link UnsupportedError} - write operations are not yet supported. */
   visitCreateClause(node: AST.CreateClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
-  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
+  /** @throws {@link UnsupportedError} - write operations are not yet supported. */
   visitMergeClause(node: AST.MergeClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
-  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
+  /** @throws {@link UnsupportedError} - write operations are not yet supported. */
   visitSetClause(node: AST.SetClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
@@ -1457,7 +1457,7 @@ export class CypherLogicalPlanBuilder
   visitSetItem(node: AST.SetItem, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
-  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
+  /** @throws {@link UnsupportedError} - write operations are not yet supported. */
   visitRemoveClause(node: AST.RemoveClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
@@ -1465,7 +1465,7 @@ export class CypherLogicalPlanBuilder
   visitRemoveItem(node: AST.RemoveItem, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }
-  /** @throws {@link UnsupportedError} — write operations are not yet supported. */
+  /** @throws {@link UnsupportedError} - write operations are not yet supported. */
   visitDeleteClause(node: AST.DeleteClause, args: DescentArgs): PlanOperator {
     throw new UnsupportedError('Only read operations are supported');
   }
@@ -1607,7 +1607,7 @@ export class CypherLogicalPlanBuilder
     );
   }
 
-  /** @throws Always throws — ORDER BY items are processed directly in {@link processOrderBy}, not via the visitor. */
+  /** @throws Always throws - ORDER BY items are processed directly in {@link processOrderBy}, not via the visitor. */
   visitOrderItem(node: AST.OrderItem, args: DescentArgs): PlanOperator {
     throw new Error('Method not implemented.');
   }

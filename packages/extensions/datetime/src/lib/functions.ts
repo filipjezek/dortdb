@@ -179,7 +179,7 @@ export class Interval {
 }
 
 /**
- * `date.extract`: returns a single field of a date — one of `year`, `month` (1-based),
+ * `date.extract`: returns a single field of a date - one of `year`, `month` (1-based),
  * `day`, `hour`, `minute`, or `second`.
  *
  * @throws if the requested field name is not recognized.

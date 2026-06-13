@@ -86,7 +86,7 @@ export class ASTArray implements ASTNode {
   /**
    * Parses a PostgreSQL array literal string into an {@link ASTArray}.
    *
-   * @remarks Not yet implemented — always returns an empty array.
+   * @remarks Not yet implemented - always returns an empty array.
    */
   static fromString(str: string): ASTArray {
     // TODO

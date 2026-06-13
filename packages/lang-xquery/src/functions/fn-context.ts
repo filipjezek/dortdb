@@ -12,13 +12,13 @@ export interface FnContext {
   size: number;
 }
 
-/** XQuery `fn:position()` — returns the 1-based position of the context item. */
+/** XQuery `fn:position()` - returns the 1-based position of the context item. */
 export const position: Fn = {
   name: 'position',
   impl: (context: FnContext) => context.position,
 };
 
-/** XQuery `fn:last()` — returns the total number of items in the sequence. */
+/** XQuery `fn:last()` - returns the total number of items in the sequence. */
 export const last: Fn = {
   name: 'last',
   impl: (context: FnContext) => context.size,
