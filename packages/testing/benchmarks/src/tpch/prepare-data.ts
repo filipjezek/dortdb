@@ -39,6 +39,7 @@ export async function parseTPCHData(): Promise<TPCHData> {
     tpchFiles,
     {} as any,
   )) as any as TPCHData;
+  delete (result as any)['defaultGraph'];
 
   return result;
 }
