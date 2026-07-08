@@ -304,10 +304,10 @@ PartialComparisonExpression = @RelOp _? @StringListNullPredicateExpression ;
 
 RelOp = '='
   / '<>'
-  / '<'
-  / '>'
   / '<='
   / '>='
+  / '<'
+  / '>'
   ;
 
 StringListNullPredicateExpression = a:AddOrSubtractExpression bs:StringListNullPredicate* {

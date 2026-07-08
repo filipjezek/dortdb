@@ -620,10 +620,12 @@ ComparisonExpr
 ComparisonOp
   = '='
   / '!='
-  / '<'
-  / '>'
   / '<='
   / '>='
+  / '<<'
+  / '>>'
+  / '<'
+  / '>'
   / @'eq' ! IdentifierPart
   / @'ne' ! IdentifierPart
   / @'lt' ! IdentifierPart
@@ -631,8 +633,6 @@ ComparisonOp
   / @'le' ! IdentifierPart
   / @'ge' ! IdentifierPart
   / @'is' ! IdentifierPart
-  / '<<'
-  / '>>'
   ;
 
 AndExpr
