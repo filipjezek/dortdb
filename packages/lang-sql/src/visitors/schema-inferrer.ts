@@ -173,7 +173,7 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
     const renames: Aliased[] = [];
 
     for (const attr of operator.schema.slice()) {
-      if (!isTableAttr(attr, name)) {
+      if (attr.parts.length > 1 && !isTableAttr(attr, name)) {
         operator.removeFromSchema(attr);
         external.add(attr.parts);
       } else if (attr.parts.at(-1) === toInfer || attr.parts[0] === allAttrs) {

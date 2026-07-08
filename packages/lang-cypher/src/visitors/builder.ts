@@ -227,13 +227,22 @@ export class CypherLogicalPlanBuilder
   ): BuildPlanResult {
     this.langCtx = langCtx;
     const inferred = new Trie<string | symbol>();
+    let res = node.accept(this, {
+      ctx,
+      inferred,
+      graphName: this.db.langMgr.getLang<'cypher', CypherLanguage>('cypher')
+        .defaultGraph,
+    });
+    if (
+      node instanceof LangSwitch &&
+      res instanceof plan.MapToItem &&
+      res.lang === 'cypher'
+    ) {
+      // top level lang switch
+      res = res.source;
+    }
     return {
-      plan: node.accept(this, {
-        ctx,
-        inferred,
-        graphName: this.db.langMgr.getLang<'cypher', CypherLanguage>('cypher')
-          .defaultGraph,
-      }),
+      plan: res,
       inferred,
     };
   }

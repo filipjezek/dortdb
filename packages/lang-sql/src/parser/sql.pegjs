@@ -27,13 +27,13 @@
 }
 
 Root
-  = _? res:StatementList (_? ';')? _? !. {
+  = _? res:StatementsOrLangSwitch (_? ';')? _? !. {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
-  / _? res:StatementList (_? ';')? _? & ScopeExit {
+  / _? res:StatementsOrLangSwitch (_? ';')? _? & ScopeExit {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
-  / _? res:StatementList (_? ';')? _? 'lang'i _ 'exit'i {
+  / _? res:StatementsOrLangSwitch (_? ';')? _? 'lang'i _ 'exit'i {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
   ;
@@ -42,6 +42,11 @@ ScopeExit
   =	'}'
 	/ ')'
 	/ ']'
+  ;
+
+StatementsOrLangSwitch
+  = res:LangSwitch { return [res]; }
+  / StatementList
   ;
 
 StatementList
