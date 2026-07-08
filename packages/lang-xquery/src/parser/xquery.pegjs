@@ -3,16 +3,18 @@
 }
 
 Root
-  = _? res:Module (_? ';')? _? !. {
+  = _? res:ModuleOrLang (_? ';')? _? !. {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
-  / _? res:Module (_? ';')? _? & ScopeExit {
+  / _? res:ModuleOrLang (_? ';')? _? & ScopeExit {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
-  / _? res:Module (_? ';')? _? 'lang'i _ 'exit'i {
+  / _? res:ModuleOrLang (_? ';')? _? 'lang'i _ 'exit'i {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
   ;
+
+ModuleOrLang = NestedLang / Module ;
 
 ScopeExit
   =	'}'

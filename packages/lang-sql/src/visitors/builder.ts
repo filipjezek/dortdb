@@ -126,6 +126,17 @@ export class SQLLogicalPlanBuilder
     this.langCtx['sql'] ??= this.initLangCtx();
     this.localLangCtx = this.cloneLangCtx(this.langCtx.sql);
 
+    // top level lang switch, just forward to the appropriate lang's logical plan builder
+    if (node instanceof LangSwitch) {
+      return new (this.db.langMgr.getLang(
+        node.lang,
+      ).visitors.logicalPlanBuilder)(this.db).buildPlan(
+        node.node,
+        ctx,
+        langCtx,
+      );
+    }
+
     const [plan, inferred] = this.inferrerMap['sql'].inferSchema(
       node.accept(this),
       ctx,

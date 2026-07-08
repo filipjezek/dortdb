@@ -49,15 +49,20 @@
 }
 
 Cypher
-  = _? res:Statement (_? ';')? _? !. {
+  = _? res:StatementOrLangSwitch (_? ';')? _? !. {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
-  / _? res:Statement (_? ';')? _? & ScopeExit {
+  / _? res:StatementOrLangSwitch (_? ';')? _? & ScopeExit {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
-  / _? res:Statement (_? ';')? _? "lang"i _ "exit"i {
+  / _? res:StatementOrLangSwitch (_? ';')? _? "lang"i _ "exit"i {
     return { value: res, remainingInput: input.slice(location().end.offset) };
   }
+  ;
+
+StatementOrLangSwitch
+  = LangSwitch
+  / Statement
   ;
 
 ScopeExit

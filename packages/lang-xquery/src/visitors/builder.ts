@@ -152,7 +152,14 @@ export class XQueryLogicalPlanBuilder
 
     const inferred = new Trie<string | symbol>();
     let res = node.accept(this, { ctx, inferred });
-    if (res instanceof PlanTupleOperator && res.schema) {
+    if (
+      node instanceof LangSwitch &&
+      res instanceof plan.MapToItem &&
+      res.lang === 'xquery'
+    ) {
+      // top level lang switch
+      res = res.source;
+    } else if (res instanceof PlanTupleOperator && res.schema) {
       res = new plan.MapToItem('xquery', DOT, res);
     }
     return { plan: res, inferred };
