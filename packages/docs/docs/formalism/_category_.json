@@ -1,0 +1,9 @@
+{
+  "label": "Formalism",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "title": "Formalism",
+    "description": "The formal model behind DortDB: the unified object representation, the unified algebra, the operator reference, and how each language maps onto it."
+  }
+}
