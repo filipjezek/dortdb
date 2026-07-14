@@ -3,9 +3,16 @@ import { RouterModule } from '@angular/router';
 import { MatToolbar } from '@angular/material/toolbar';
 import { LightToggleComponent } from './light-toggle/light-toggle.component';
 import { GhButtonComponent } from './gh-button/gh-button.component';
+import { DocsButtonComponent } from './docs-button/docs-button.component';
 
 @Component({
-  imports: [RouterModule, MatToolbar, LightToggleComponent, GhButtonComponent],
+  imports: [
+    RouterModule,
+    MatToolbar,
+    LightToggleComponent,
+    GhButtonComponent,
+    DocsButtonComponent,
+  ],
   selector: 'dort-root',
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',

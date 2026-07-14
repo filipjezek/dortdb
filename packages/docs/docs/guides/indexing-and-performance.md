@@ -98,7 +98,7 @@ db.optimizer.reconfigure({ rules: [UnnestSubqueries] });
 ```
 
 :::tip[Experiment in the Showcase]
-The [Showcase demo](https://filipjezek.github.io/dortdb) lets you toggle and
+The [Showcase demo](https://filipjezek.github.io/dortdb/showcase/) lets you toggle and
 reorder individual optimizer rules and watch how the logical plan changes, a
 quick way to build intuition for what each rule does.
 :::

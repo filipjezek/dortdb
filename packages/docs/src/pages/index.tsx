@@ -8,7 +8,7 @@ import MulticodeBlock from '@site/src/theme/multicode-block';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import styles from './index.module.css';
 
-const DEMO_URL = 'https://filipjezek.github.io/dortdb';
+const DEMO_URL = 'https://filipjezek.github.io/dortdb/showcase/';
 const GITHUB_URL = 'https://github.com/filipjezek/dortdb';
 
 // The flagship mixed-language query, split at its LANG boundaries so each slice

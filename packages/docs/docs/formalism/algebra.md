@@ -71,7 +71,7 @@ For example, in `SELECT x + 3 AS xplusthree FROM table1`, the [`TupleSource`](./
 ![Plan visualization example](/img/tree-edge-types.svg)
 
 :::tip[Try it]
-The GUI is live at [filipjezek.github.io/dortdb](https://filipjezek.github.io/dortdb). Type a query and watch the plan build.
+The GUI is live at [filipjezek.github.io/dortdb/showcase](https://filipjezek.github.io/dortdb/showcase/). Type a query and watch the plan build.
 :::
 
 ## A tour of the operator families

@@ -1,97 +1,85 @@
-# DortDB - SQL
+# @dortdb/lang-sql
 
-This package is a language plugin for [DortDB](https://github.com/filipjezek/dortdb). It adds support for SQL `SELECT` queries.
+A SQL language plug-in for [DortDB](https://github.com/filipjezek/dortdb). It
+adds a PostgreSQL-flavored `SELECT` language, the natural choice for
+**row-shaped data**: arrays of plain JavaScript objects where each object is a
+row and each property is a column.
 
-## Data adapter
+## Installation
 
-The default data adapter implementation allows queries against iterables of JS objects.
+```sh
+npm install @dortdb/core @dortdb/lang-sql
+```
+
+`@dortdb/core` is a peer dependency.
+
+## Usage
 
 ```ts
-const t1 = [
-  { a: 1, b: 2, c: 3 },
-  { a: 4, b: 5, c: 6 },
-];
-db.registerSource(['t1'], t1);
-db.query('SELECT a, b FROM t1');
+import { DortDB } from '@dortdb/core';
+import { defaultRules } from '@dortdb/core/optimizer';
+import { SQL } from '@dortdb/lang-sql';
+
+const db = new DortDB({
+  mainLang: SQL(),
+  optimizer: { rules: defaultRules },
+});
+
+db.registerSource(
+  ['people'],
+  [
+    { id: 1, name: 'Alice', city: 'Prague' },
+    { id: 2, name: 'Bob', city: 'Ankara' },
+    { id: 3, name: 'Carol', city: 'Prague' },
+  ],
+);
+
+db.query(`
+  SELECT city, count(*) AS total
+  FROM people
+  GROUP BY city
+  ORDER BY total DESC
+`);
+// [ { city: 'Prague', total: 2 }, { city: 'Ankara', total: 1 } ]
 ```
+
+By default SQL reads sources through the `ObjectDataAdapter`, which treats each
+array element as a row and each property as a column. You can point SQL at
+differently-shaped data (for example `Map`-backed rows) with a custom adapter.
 
 ## Dialect
 
-The package is based on the PostgreSQL dialect. For convenience, identifiers _are_ case-sensitive. Only `SELECT` queries are supported.
+The dialect is based on **PostgreSQL** and covers its data-selection subset,
+including several features other SQL flavors lack:
 
-## Notable features
+- **Lateral joins**: a `JOIN LATERAL (...)` subquery can reference tables that appear earlier in the `FROM` clause and is re-evaluated per outer row.
+- **`DISTINCT ON`**: keep the first row per distinct value of the given expressions rather than deduplicating whole rows.
+- **Filtered / ordered aggregates**: `count(...) FILTER (WHERE ...)`, `count(DISTINCT ...)`, and `collect(x ORDER BY x)`.
 
-PostgreSQL includes several features that are not usual in other SQL flavors. Among them belong the following:
+Identifiers are case-sensitive. There is no data definition or modification
+(`CREATE`, `INSERT`, `UPDATE`, ...); DortDB queries data that already exists in
+memory.
 
-### Lateral joins
+### Schema-free restrictions
 
-Lateral joins allow joining of correlated subqueries. In other words, it is possible for the joined subquery to refer to previous tables, and thus to be re-evaluated for
-different outer contexts.
+DortDB sources have no declared schema, so queries that would be ambiguous
+without one are rejected:
 
-```sql
-SELECT t1.attr1, s.attr2 FROM t1
-JOIN LATERAL (
-SELECT t2.attr2 FROM t2
--- the WHERE clause refers to the outer context
--- the subquery is reevaluated for each t1 row
-WHERE t2.attr3 + t1.attr4 > t1.attr5
-) AS s
-```
+- Unqualified columns require a single, non-joined source; otherwise qualify them (`t1.attr`).
+- Natural joins are disabled (there is no schema to infer the join columns from).
+- Every `FROM` subquery must have an alias.
+- `SELECT *` is not supported.
 
-### DISTINCT ON
+When embedding SQL inside a language that does not prefix identifiers (such as
+Cypher), prefix a column with the `nonlocal` schema to resolve it against the
+surrounding scope instead of the current table.
 
-The `DISTINCT` modifier filters out duplicate values. PostgreSQL allows customizing this behavior.
+Window functions and grouping-set features (`ROLLUP`, `CUBE`, `GROUPING SETS`)
+are not implemented.
 
-```sql
-SELECT DISTINCT ON (attr1, attr2 % 10) attr1, attr2, attr3
-FROM t1
-```
+## Documentation
 
-### Complex aggregate calls
-
-The arguments of aggregate calls such as `count` or `sum` may be filtered or sorted.
-
-```sql
-SELECT
-count(DISTINCT attr1) AS distinct_count,
-count(attr1) FILTER (WHERE attr1 % 2 = 0) AS even_count,
-collect(attr1 ORDER BY attr1) AS ordered_array
-FROM t1
-```
-
-## Limitations
-
-Currently, some SQL features are not supported, including:
-
-- window functions
-- special `GROUP BY` behavior (`ROLLUP`, `CUBE`, `GROUPING SETS`)
-- any schema-dependent features (read further)
-
-### Schema of data sources
-
-DortDB is by design schema-less. This clashes with some SQL expressions, that only make sense in a schema-based context. Consider the following:
-
-```sql
--- which tables are a, b, or c from?
-SELECT a, b, c
--- what columns are used in the natural join?
-FROM t1 NATURAL JOIN t2
-```
-
-The allowed queries therefore face some restrictions.
-
-- It must be clear from which tables specific columns originate.
-- Non-qualified column names are only allowed when there is only a single, non-joined data source.
-- Natural joins are disabled.
-- All `FROM` clause subqueries must have an alias.
-- Selecting all attributes using asterisk \* is currently also disabled, although in theory it should be possible.
-
-When an attribute should not be interpreted as belonging to the current table, it should be prefixed by the `nonlocal` schema. This is relevant when inserting SQL subqueries
-into languages that do not prefix identifiers, such as Cypher.
-
-```sql
--- t1.attr1
-SELECT attr1 FROM t1
--- t2.attr2, t2.attr3, attr1 from elsewhere
-WHERE (SELECT attr2 FROM t1 WHERE attr3 < nonlocal.attr1)
-```
+See the [SQL overview](https://filipjezek.github.io/dortdb/docs/lang-sql/overview)
+and [dialect reference](https://filipjezek.github.io/dortdb/docs/lang-sql/dialect),
+or the full docs at
+[filipjezek.github.io/dortdb](https://filipjezek.github.io/dortdb).

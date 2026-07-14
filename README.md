@@ -1,236 +1,226 @@
 <!-- prettier-ignore-start -->
 
-# DortDB
+<p align="center">
+  <img src="packages/docs/static/img/logo.png" alt="DortDB logo" width="120" height="120" />
+</p>
 
-DortDB is a modular framework for querying JavaScript data structures.
+<h1 align="center">DortDB</h1>
 
-## Main features
+<p align="center">
+  <strong>A modular, multi-language query engine for the JavaScript data already in your app's memory.</strong>
+</p>
 
-- Highly modular architecture
-- Configurable query languages
-- Multi-language queries
-- Extensible query optimizer
+<p align="center">
+  <a href="https://www.npmjs.com/package/@dortdb/core"><img src="https://img.shields.io/npm/v/@dortdb/core.svg" alt="npm version" /></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/npm/l/@dortdb/core.svg" alt="license" /></a>
+</p>
 
-See the live [demo](https://filipjezek.github.io/dortdb/)!
+<p align="center">
+  📖 <a href="https://filipjezek.github.io/dortdb"><strong>Documentation</strong></a> &nbsp;·&nbsp;
+  🕹️ <a href="https://filipjezek.github.io/dortdb/showcase/"><strong>Live demo</strong></a> &nbsp;·&nbsp;
+  🎓 <a href="http://hdl.handle.net/20.500.11956/209701"><strong>Thesis</strong></a>
+</p>
+
+DortDB queries arrays, DOM trees, and graphs **in place**, without moving them
+into a separate database process. It is not tied to one query language: SQL,
+Cypher, and XQuery ship in the box, they can be **mixed in a single query**, and
+you can add your own. Every language compiles to one shared algebra, so a
+cross-model query is optimized and executed as a single plan.
+
+```ts
+import { DortDB } from '@dortdb/core';
+import { defaultRules } from '@dortdb/core/optimizer';
+import { SQL } from '@dortdb/lang-sql';
+
+const db = new DortDB({ mainLang: SQL(), optimizer: { rules: defaultRules } });
+
+db.registerSource(['users'], [
+  { name: 'Alice', age: 30 },
+  { name: 'Bob', age: 25 },
+]);
+
+db.query('SELECT name FROM users WHERE age > 27');
+// { schema: ['name'], data: [{ name: 'Alice' }] }
+```
+
+## Contents
+
+- [Is DortDB for you?](#is-dortdb-for-you)
+- [Installation](#installation)
+- [Multiple languages in one query](#multiple-languages-in-one-query)
+- [Data adapters](#data-adapters)
+- [Secondary indices](#secondary-indices)
+- [Extensions](#extensions)
+- [Packages](#packages)
+- [Documentation](#documentation)
+
+## Is DortDB for you?
+
+**A good fit if you want to:**
+
+- Query data that is already in memory (arrays, DOM/XML, graphs) with no import or copy step.
+- Mix relational, document, and graph queries in one query, each part in the language that fits it best.
+- Ship a small, tree-shakeable engine to the browser or Node, bundling only the languages you use.
+- Extend the engine with your own languages, functions, indices, or optimizer rules.
+
+**Look elsewhere if you need:**
+
+- Persistence, transactions, or data modification. DortDB is **read-only**; to change data, mutate the registered sources directly.
+- A fully standards-compliant SQL, Cypher, or XQuery. Each language covers a data-selection subset.
+- Cost-based optimization or multi-threaded execution over very large datasets. The optimizer is rule-based and execution is single-threaded.
 
 ## Installation
 
-Install the core package:
+Install the core plus whichever language packages you need:
 
+```sh
+npm i @dortdb/core @dortdb/lang-sql
+# add more languages when you need them
+npm i @dortdb/lang-cypher graphology @dortdb/lang-xquery
 ```
-npm i @dortdb/core
-```
 
-Install the language packages you need:
+Each language declares `@dortdb/core` as a peer dependency, so a single core
+instance backs all of them. `graphology` is a peer dependency of the Cypher
+package only.
 
-### Available languages
+## Multiple languages in one query
 
-- [SQL](https://github.com/filipjezek/dortdb/tree/main/packages/lang-sql) (`@dortdb/lang-sql`)
-- [Cypher](https://github.com/filipjezek/dortdb/tree/main/packages/lang-cypher) (`@dortdb/lang-cypher`)
-- [XQuery](https://github.com/filipjezek/dortdb/tree/main/packages/lang-xquery) (`@dortdb/lang-xquery`)
-
-## Basic example
+The distinctive feature of DortDB is **embedding one language inside another**. A
+`LANG` block switches languages, and the inner query can reference values from
+the surrounding scope. Because everything lowers to the same algebra, the whole
+query is optimized and executed as one plan rather than as opaque nested calls.
 
 ```ts
-import { DortDB } from '@dortdb/core';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
-
-// configure the db
-const db = new DortDB({
-  mainLang: SQL(),
-  optimizer: { rules: [defaultRules] },
-});
-
-const users = [
-  { name: 'Alice', age: 30 },
-  { name: 'Bob', age: 25 },
-  { name: 'Charlie', age: 35 },
-];
-
-// register data
-// this is a constant-time operation
-db.registerSource(['users'], users);
-
-// query!
-const result = db.query(`
-  SELECT name, age
-  FROM users
-  WHERE age > 30
-`);
-
-// {
-//   schema: ['name', 'age'],
-//   data: [
-//     { name: 'Charlie', age: '35' }
-//   ]
-// }
-```
-
-## Multiple languages
-
-DortDB allows you to combine multiple query languages in a single query.
-This makes it possible to leverage the strengths of each language for different parts of your query.
-
-```ts
-import { DortDB } from '@dortdb/core';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
-import { XQuery } from '@dortdb/lang-xquery';
-
-// configure the db
 const db = new DortDB({
   mainLang: SQL(),
   additionalLangs: [XQuery()],
-  optimizer: { rules: [defaultRules] },
+  optimizer: { rules: defaultRules },
 });
 
 db.registerSource(['users'], [/* ... */]);
-db.registerSource(
-  ['invoices'],
-  new DOMParser().parseFromString('...')
-);
+db.registerSource(['invoices'], new DOMParser().parseFromString('...', 'text/xml'));
 
-const result = db.query(`
+// SQL filters users by a count computed with XQuery over an XML document
+db.query(`
   SELECT name, age
   FROM users
   WHERE age > 30 AND (
     LANG xquery
-    fn:count($invoices/[customer = $users:name])
+    fn:count($invoices/customer[. = $users:name])
   ) > 5
 `);
 ```
 
-### Language switching
+- A block starts with `LANG <name>` and ends at its enclosing scope (such as a closing parenthesis) or an explicit `LANG EXIT`.
+- Blocks can nest to any depth, and inner queries can read values from any outer scope.
 
-Use language switch blocks to move between languages within a single query.
-
-- A switch typically starts with the `LANG` keyword followed by the language name.
-- Switches can appear anywhere a subquery or other atomic expression is allowed.
-- A language block ends when its containing scope ends, such as a closing parenthesis.
-
-### Nesting languages
-
-- Languages can be nested to any depth.
-- Inner queries can reference values from outer language scopes.
-- Internally, all languages are translated into the same [unified algebra](algebra.md).
-- The unified operator tree is then optimized and executed as a whole.
+See [Cross-language Queries](https://filipjezek.github.io/dortdb/docs/guides/cross-language-queries)
+for the full syntax and scope rules.
 
 ## Data adapters
 
-DortDB decouples query languages from the underlying data by letting each language use configurable data adapters to interface with different data sources.
+DortDB decouples each language from the concrete shape of your data through
+**data adapters**, so you can point a language at differently-shaped sources. For
+example, teaching SQL to read `Map`-backed rows instead of plain objects:
 
 ```ts
-import { DortDB } from '@dortdb/core';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
-
-// configure the db
 const db = new DortDB({
   mainLang: SQL({
     adapter: {
-      createColumnAccessor: (prop) => (
-        row: Map<string | symbol | number, unknown>
-      ) => row.get(prop),
+      createColumnAccessor: (prop) => (row: Map<string, unknown>) => row.get(prop),
     },
   }),
-  optimizer: { rules: [defaultRules] },
+  optimizer: { rules: defaultRules },
 });
 
-// use maps instead of objects
-const users = [
+db.registerSource(['users'], [
   new Map([['name', 'Alice'], ['age', 30]]),
   new Map([['name', 'Bob'], ['age', 25]]),
-  new Map([['name', 'Charlie'], ['age', 35]]),
-];
+]);
 
-// register the data
-db.registerSource(['users'], users);
-
-// query!
-const result = db.query(`
-  SELECT name, age
-  FROM users
-  WHERE age > 30
-`);
+db.query('SELECT name, age FROM users WHERE age > 27');
 ```
 
 ## Secondary indices
 
-To speed things up, DortDB supports secondary indices. These additional data structures enable faster lookups on specific fields.
+Register secondary indices for faster lookups and joins. The optimizer uses a
+matching index automatically.
 
 ```ts
 import { DortDB, MapIndex } from '@dortdb/core';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
 
-// configure the db
-const db = new DortDB({
-  mainLang: SQL(),
-  optimizer: { rules: [defaultRules] },
-});
-
-// register the data
 db.registerSource(['users'], [/* ... */]);
 
-// create a secondary index on the "age" field
+// index a column, or any subquery-free expression
 db.createIndex(['users'], ['age'], MapIndex);
-// the indexed expression may be any expression
-// that does not include subqueries
 db.createIndex(['users'], ['name[0] + age'], MapIndex);
 ```
 
-### Hash joins
-
-Secondary index classes can also speed up joins over non-indexed data streams in some cases.
-For example, `MapIndex` can accelerate joins based on equality conditions. Each index class
-defines which expressions it can support. Configure the `Executor` with the available index classes.
+Index classes can also accelerate joins over non-indexed streams. Make them
+available to the executor with `hashJoinIndices`:
 
 ```ts
-import { DortDB, MapIndex } from '@dortdb/core';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
-
-const db = new DortDB({
+new DortDB({
   mainLang: SQL(),
-  optimizer: { rules: [defaultRules] },
+  optimizer: { rules: defaultRules },
   executor: { hashJoinIndices: [MapIndex] },
 });
 ```
 
-## Language extensions
+See [Indexing & Performance](https://filipjezek.github.io/dortdb/docs/guides/indexing-and-performance).
 
-DortDB lets you define custom operators and functions for your query languages. Here's an example using the datetime extension:
+## Extensions
 
-```
-npm i @dortdb/datetime
-```
+Bundle custom functions, operators, aggregates, and casts as an extension. The
+provided [`@dortdb/datetime`](./packages/extensions/datetime) extension adds
+date/time helpers:
 
 ```ts
-import { DortDB } from '@dortdb/core';
 import { datetime } from '@dortdb/datetime';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
 
 const db = new DortDB({
   mainLang: SQL(),
-  optimizer: { rules: [defaultRules] },
+  optimizer: { rules: defaultRules },
   extensions: [datetime],
 });
 
-db.query(`
-  SELECT date.sub(now(), interval('3 years'))
-`)
+db.query(`SELECT date.sub(now(), interval('3 years'))`);
 ```
 
-### Datetime functions
+See [Extending DortDB](https://filipjezek.github.io/dortdb/docs/guides/extending/overview).
 
-The datetime extension provides these functions:
+## Packages
 
-- `now()`: Returns the current date as a JavaScript `Date`.
-- `interval(string)`: Parses an interval string and returns a corresponding interval object.
-- `date.add(Date | Interval, Interval)`: Adds an interval to a date and returns the result. It can also sum two intervals.
-- `date.sub(Date | Interval, Interval)`: Subtracts an interval from a date and returns the result. It can also compute the difference between two intervals.
-- `date.extract(Date, string)`: Extracts a specific component, such as year, month, or day, from a date.
+| Package | Description |
+| ------- | ----------- |
+| [`@dortdb/core`](./packages/core) | The language-neutral engine, optimizer, index abstractions, and extension points. |
+| [`@dortdb/lang-sql`](./packages/lang-sql) | SQL over arrays of objects. |
+| [`@dortdb/lang-cypher`](./packages/lang-cypher) | Cypher-based queries over property graphs. |
+| [`@dortdb/lang-xquery`](./packages/lang-xquery) | XQuery over XML, DOM, and tree-shaped data. |
+| [`@dortdb/datetime`](./packages/extensions/datetime) | Example extension bundling date/time functions. |
+
+The `@dortdb/lang-cypher` package is a set of implementation extensions to
+Cypher, based on the [openCypher](https://opencypher.org/) grammar (Apache
+License 2.0). It is not approved by the openCypher Implementers Group. Cypher® is
+a registered trademark of Neo4j, Inc.
+
+## Documentation
+
+Full documentation, guides, and a generated API reference live at
+**[filipjezek.github.io/dortdb](https://filipjezek.github.io/dortdb)**:
+
+- [Getting Started](https://filipjezek.github.io/dortdb/docs/intro)
+- [Cross-language Queries](https://filipjezek.github.io/dortdb/docs/guides/cross-language-queries)
+- [Core Concepts](https://filipjezek.github.io/dortdb/docs/core/architecture) and the [Formalism](https://filipjezek.github.io/dortdb/docs/formalism/overview)
+- [Extending DortDB](https://filipjezek.github.io/dortdb/docs/guides/extending/overview)
+
+The design and formal background are described in depth in the
+[thesis](http://hdl.handle.net/20.500.11956/209701).
+
+## License
+
+Released under the [ISC License](./LICENSE), except for the openCypher-derived
+grammar in `@dortdb/lang-cypher`, which is under the Apache License 2.0 (see that
+package's [`NOTICE`](./packages/lang-cypher/NOTICE)).
 
 <!-- prettier-ignore-end -->

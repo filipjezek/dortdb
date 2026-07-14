@@ -37,15 +37,26 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Build
-        run: npx nx build showcase --base-href https://filipjezek.github.io/dortdb/
+      # The showcase is served under /dortdb/showcase/, so it needs a matching base href.
+      - name: Build showcase
+        run: npx nx build showcase --base-href https://filipjezek.github.io/dortdb/showcase/
+
+      # Docs are served at the root /dortdb/. This runs `generate:api` then `docusaurus build`.
+      - name: Build docs
+        run: npm run build -w @dortdb/docs
+
+      # Nest the showcase build inside the docs build so both ship in one artifact.
+      - name: Combine docs and showcase
+        run: cp -r packages/testing/showcase/dist/browser packages/docs/build/showcase
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./packages/testing/showcase/dist/browser
+          path: ./packages/docs/build
 
   deploy:
+    # Only publish on pushes to main; pull requests build for validation but must not deploy.
+    if: github.event_name == 'push'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

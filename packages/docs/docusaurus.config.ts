@@ -110,6 +110,11 @@ const config: Config = {
         },
         { to: '/docs/api', label: 'API', position: 'left' },
         {
+          href: 'https://filipjezek.github.io/dortdb/showcase/',
+          label: 'Demo',
+          position: 'left',
+        },
+        {
           href: 'https://github.com/filipjezek/dortdb',
           label: 'GitHub',
           position: 'right',
@@ -120,11 +125,40 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Learn',
           items: [
             {
-              label: 'Getting Started',
+              label: 'Introduction',
               to: '/docs/intro',
+            },
+            {
+              label: 'Installation',
+              to: '/docs/getting-started/installation',
+            },
+            {
+              label: 'Your First Query',
+              to: '/docs/getting-started/first-query',
+            },
+            {
+              label: 'Running Queries',
+              to: '/docs/getting-started/running-queries',
+            },
+          ],
+        },
+        {
+          title: 'Languages',
+          items: [
+            {
+              label: 'SQL',
+              to: '/docs/lang-sql/overview',
+            },
+            {
+              label: 'Cypher',
+              to: '/docs/lang-cypher/overview',
+            },
+            {
+              label: 'XQuery',
+              to: '/docs/lang-xquery/overview',
             },
             {
               label: 'Cross-language Queries',
@@ -133,27 +167,40 @@ const config: Config = {
           ],
         },
         {
-          title: 'Packages',
+          title: 'Guides',
           items: [
             {
-              label: '@dortdb/core',
+              label: 'Data Sources & Adapters',
+              to: '/docs/guides/data-sources-and-adapters',
+            },
+            {
+              label: 'Indexing & Performance',
+              to: '/docs/guides/indexing-and-performance',
+            },
+            {
+              label: 'Extending DortDB',
+              to: '/docs/guides/extending/overview',
+            },
+          ],
+        },
+        {
+          title: 'Concepts',
+          items: [
+            {
+              label: 'Architecture',
               to: '/docs/core/architecture',
             },
             {
-              label: '@dortdb/lang-sql',
-              to: '/docs/lang-sql/overview',
+              label: 'Design Principles',
+              to: '/docs/core/design-principles',
             },
             {
-              label: '@dortdb/lang-xquery',
-              to: '/docs/lang-xquery/overview',
+              label: 'Formalism',
+              to: '/docs/formalism/overview',
             },
             {
-              label: '@dortdb/lang-cypher',
-              to: '/docs/lang-cypher/overview',
-            },
-            {
-              label: '@dortdb/datetime',
-              to: '/docs/guides/extending/functions-and-aggregates',
+              label: 'API Reference',
+              to: '/docs/api',
             },
           ],
         },
@@ -161,12 +208,16 @@ const config: Config = {
           title: 'More',
           items: [
             {
-              label: 'API Reference',
-              to: '/docs/api',
+              label: 'Live Demo',
+              href: 'https://filipjezek.github.io/dortdb/showcase/',
             },
             {
               label: 'GitHub',
               href: 'https://github.com/filipjezek/dortdb',
+            },
+            {
+              label: 'Thesis',
+              href: 'http://hdl.handle.net/20.500.11956/209701',
             },
           ],
         },

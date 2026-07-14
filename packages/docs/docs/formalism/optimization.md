@@ -22,7 +22,7 @@ the plan and replaces it with an equivalent, cheaper subtree.
 
 :::tip[See it in action]
 
-The [Showcase demo](https://filipjezek.github.io/dortdb) lets you toggle and
+The [Showcase demo](https://filipjezek.github.io/dortdb/showcase/) lets you toggle and
 reorder individual rules and watch the logical plan change, the quickest way to
 build intuition for what each rule does.
 
