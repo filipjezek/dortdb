@@ -50,10 +50,10 @@ export class GroupBy extends PlanTupleOperator {
     arrSetParent(aggs, this);
 
     for (const a of this.aggs) {
-      a.postGroupSource.schema = this.source.schema.concat(
-        this.keys.map(retI1),
+      a.postGroupSource.clearSchema();
+      a.postGroupSource.addToSchema(
+        this.source.schema.concat(this.keys.map(retI1)),
       );
-      a.postGroupSource.schemaSet = schemaToTrie(a.postGroupSource.schema);
     }
   }
 
@@ -79,8 +79,7 @@ export class GroupBy extends PlanTupleOperator {
       this.aggs[idx] = replacement as AggregateCall;
     } else {
       this.keys.find((k) => k[0] === current)[0] = replacement as
-        | Calculation
-        | ASTIdentifier;
+        Calculation | ASTIdentifier;
     }
   }
   /** {@inheritDoc PlanOperator.getChildren} */
