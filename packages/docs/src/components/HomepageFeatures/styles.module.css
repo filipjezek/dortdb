@@ -1,51 +1,46 @@
 .features {
-  padding: 1rem 0 4rem;
+  display: flex;
+  align-items: center;
+  padding: 3rem 0;
   width: 100%;
 }
 
-.featureColumn {
+.card {
   display: flex;
-}
-
-.featureCard {
-  background: linear-gradient(180deg, #fffdf8 0%, #f5f2e7 100%);
-  border: 1px solid rgba(23, 39, 31, 0.08);
-  border-radius: 1.4rem;
-  box-shadow: 0 14px 38px rgba(31, 53, 42, 0.06);
-  display: flex;
-  flex: 1;
   flex-direction: column;
-  gap: 0.9rem;
-  padding: 1.4rem;
+  height: 100%;
+  padding: 1.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: var(--ifm-card-border-radius, 0.5rem);
+  background: var(--ifm-card-background-color, var(--ifm-background-surface-color));
+  color: inherit;
+  text-align: center;
+  transition:
+    border-color var(--ifm-transition-fast) ease,
+    transform var(--ifm-transition-fast) ease,
+    box-shadow var(--ifm-transition-fast) ease;
 }
 
-.featureCard h3 {
-  color: #17271f;
-  font-size: 1.35rem;
-  line-height: 1.15;
-  margin: 0;
-}
-
-.featureCard p {
-  color: #53685b;
-  line-height: 1.65;
-  margin: 0;
-}
-
-.featureEyebrow {
-  color: #1d6f47;
-  font-size: 0.83rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.featureLink {
-  color: #17271f;
-  font-weight: 700;
-  margin-top: auto;
-}
-
-.featureLink:hover {
+.card:hover {
+  color: inherit;
   text-decoration: none;
+  border-color: var(--ifm-color-primary);
+  transform: translateY(-3px);
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+.icon {
+  font-size: 2.5rem;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardBody {
+  margin-bottom: 0;
+  color: var(--ifm-color-emphasis-700);
 }

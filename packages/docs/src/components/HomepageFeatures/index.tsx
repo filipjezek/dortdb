@@ -1,74 +1,91 @@
-import type {ReactNode} from 'react';
+import React, { type ReactNode } from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
-import Heading from '@theme/Heading';
 import styles from './styles.module.css';
 
-type FeatureItem = {
-  eyebrow: string;
+interface FeatureItem {
+  /** Leading emoji shown above the title. */
+  icon: string;
   title: string;
-  description: ReactNode;
+  /** Internal doc route the card links to. */
   to: string;
-};
+  description: ReactNode;
+}
 
 const FeatureList: FeatureItem[] = [
   {
-    eyebrow: 'Multi-language',
-    title: 'Move across relational, document, and graph-shaped data.',
-    description: (
-      <>
-        Load the languages you need — SQL, Cypher, and XQuery are provided — and
-        switch between them inside a single query when that makes the plan simpler.
-      </>
-    ),
-    to: '/docs/guides/cross-language-queries',
-  },
-  {
-    eyebrow: 'Composable core',
-    title: 'Share one optimizer, one execution model, many frontends.',
-    description: (
-      <>
-        The core package owns parsing flow, planning, execution, extensions,
-        indices, and optimizer hooks. Language packages plug into that surface.
-      </>
-    ),
+    icon: '🧩',
+    title: 'Modular architecture',
     to: '/docs/core/architecture',
-  },
-  {
-    eyebrow: 'From source',
-    title: 'Generated API reference stays aligned with the code you export.',
     description: (
       <>
-        Public TypeScript exports are rendered automatically under the API
-        section, so signatures and type shapes do not drift from the packages.
+        The core, each language, and each extension is a separate package, so a
+        browser bundle ships only what you actually import.
       </>
     ),
-      to: '/docs/api',
+  },
+  {
+    icon: '🗣️',
+    title: 'Pluggable query languages',
+    to: '/docs/lang-sql/overview',
+    description: (
+      <>
+        SQL, Cypher, and XQuery come in the box, one for each major data model,
+        and query languages are plug-ins you can add yourself.
+      </>
+    ),
+  },
+  {
+    icon: '🔀',
+    title: 'Multi-language queries',
+    to: '/docs/guides/cross-language-queries',
+    description: (
+      <>
+        Embed one language inside another with a <code>LANG</code> block. The
+        whole query compiles to a single, optimized plan.
+      </>
+    ),
+  },
+  {
+    icon: '🧰',
+    title: 'Extensible & schema-free',
+    to: '/docs/guides/extending/overview',
+    description: (
+      <>
+        Add your own optimizer rules, index types, functions, and data
+        adapters, all over plain in-memory values that register in constant
+        time.
+      </>
+    ),
   },
 ];
 
-function Feature({eyebrow, title, description, to}: FeatureItem) {
+/** A single feature card: emoji, linked title, and a short blurb. */
+function Feature({ icon, title, to, description }: FeatureItem): ReactNode {
   return (
-    <div className={clsx('col col--4', styles.featureColumn)}>
-      <article className={styles.featureCard}>
-        <p className={styles.featureEyebrow}>{eyebrow}</p>
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
-        <Link className={styles.featureLink} to={to}>
-          Learn more
-        </Link>
-      </article>
+    <div className={clsx('col col--3')}>
+      <Link to={to} className={styles.card}>
+        <div className={styles.icon} aria-hidden="true">
+          {icon}
+        </div>
+        <h3 className={styles.cardTitle}>{title}</h3>
+        <p className={styles.cardBody}>{description}</p>
+      </Link>
     </div>
   );
 }
 
+/**
+ * The feature-card grid on the homepage. Each card summarizes one of DortDB's
+ * defining traits and links to the most relevant documentation page.
+ */
 export default function HomepageFeatures(): ReactNode {
   return (
     <section className={styles.features}>
       <div className="container">
         <div className="row">
-          {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
+          {FeatureList.map((props) => (
+            <Feature key={props.title} {...props} />
           ))}
         </div>
       </div>

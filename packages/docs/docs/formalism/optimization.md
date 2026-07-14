@@ -40,7 +40,7 @@ part of the theoretical algebra (a plan is complete without them) but they
 enable substantial speedups: [`IndexScan`](./operators.md#indexscan),
 [`IndexedRecursion`](./operators.md#indexedrecursion), and
 [`BidirectionalRecursion`](./operators.md#bidirectionalrecursion). See the
-[Operator Reference](./operators.md#tuple-operators--optimizer) for their
+[Operator Reference](./operators.md#tuple-operators-optimizer) for their
 signatures and semantics.
 
 ## The rules, in default order
