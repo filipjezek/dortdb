@@ -75,7 +75,7 @@ function firstPart(id: ASTIdentifier): string | symbol | number {
   return id.parts[0];
 }
 
-interface DescentArgs {
+export interface DescentArgs {
   src?: PlanTupleOperator;
   ctx: IdSet;
   inferred: IdSet;
@@ -83,7 +83,7 @@ interface DescentArgs {
 }
 
 /** Result of resolving the variables and references of a pattern chain during plan building. */
-interface SetupVarsAndRefsResult {
+export interface SetupVarsAndRefsResult {
   /** One identifier per chain element; generated identifiers use `varPrefix` as their namespace. */
   variables: ASTIdentifier[];
   /** `true` for elements whose variable was already bound in the surrounding context. */
@@ -639,7 +639,7 @@ export class CypherLogicalPlanBuilder
   /**
    * If the recursive edge direction is 'any', we need to check that the first and last edge are
    * connected to the start and end nodes correctly.
-   * The idea is to prevent something like this: <-(a)(a)->(b)->(c)
+   * The idea is to prevent something like this: `<-(a)(a)->(b)->(c)`
    */
   protected checkCorrectAnyRecursion(
     variables: ASTIdentifier[],

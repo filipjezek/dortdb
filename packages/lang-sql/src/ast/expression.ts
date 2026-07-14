@@ -109,7 +109,7 @@ export class ASTTuple implements ASTNode {
 }
 
 /**
- * SQL `ROW(…)` constructor; wraps each element in an {@link ASTExpressionAlias}
+ * SQL `ROW(...)` constructor; wraps each element in an {@link ASTExpressionAlias}
  * with an auto-assigned column name.
  */
 export class ASTRow implements ASTNode {
@@ -235,9 +235,9 @@ export class ASTAggregate extends ASTFunction {
     distinct?: string,
     /** Per-aggregate `ORDER BY` clause; `undefined` for unordered aggregates. */
     public orderBy?: OrderByItem[],
-    /** Optional `FILTER (WHERE …)` predicate applied before aggregation. */
+    /** Optional `FILTER (WHERE ...)` predicate applied before aggregation. */
     public filter?: ASTNode,
-    /** Ordering for ordered-set aggregate functions (`WITHIN GROUP (ORDER BY …)`). */
+    /** Ordering for ordered-set aggregate functions (`WITHIN GROUP (ORDER BY ...)`). */
     public withinGroupArgs?: OrderByItem[],
   ) {
     super('sql', id, args);

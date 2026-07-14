@@ -1,7 +1,8 @@
 import { ASTIdentifier, PlanOperator, PlanTupleOperator } from '@dortdb/core';
 import { LangSwitch, SQLPlanVisitor } from './index.js';
 import { overrideSource, schemaToTrie } from '@dortdb/core/utils';
-import { TupleFnSource, TupleSource } from '@dortdb/core/plan';
+import { TupleFnSource, TupleSource, Projection } from '@dortdb/core/plan';
+import { SchemaInferrer } from '../visitors/schema-inferrer.js';
 
 /**
  * Plan operator that renames all attributes of a table or function source

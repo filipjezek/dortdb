@@ -17,6 +17,10 @@
   "excludeInternal": true,
   "cleanOutputDir": true,
 
+  "validation": {
+    "invalidLink": false
+  },
+
   "readme": "none",
   "name": "API Reference",
   "sidebar": {

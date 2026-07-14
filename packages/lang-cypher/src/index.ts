@@ -5,8 +5,13 @@
  *
  * @module default export
  */
-export { Cypher } from './language/language.js';
+export * from './language/language.js';
 export * from './ast/visitor.js';
 export * from './indices/connection-index.js';
 export * from './language/data-adapter.js';
 export * from './language/graphology-adapter.js';
+export * from './functions/index.js';
+export * from './visitors/ast-stringifier.js';
+export * from './visitors/builder.js';
+export * from './visitors/executor.js';
+export * from './utils/string.js';

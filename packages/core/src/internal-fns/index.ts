@@ -100,7 +100,8 @@ export function assertMaxOne<T>(vals: T[]): T {
   return vals[0];
 }
 
-type RecursiveArray<T> = T[] | RecursiveArray<T>[];
+/** An arbitrarily nested array of `T`, i.e. an array whose elements are `T` or further `RecursiveArray<T>`. */
+export type RecursiveArray<T> = T[] | RecursiveArray<T>[];
 /** Deeply flattens a recursive array; if the result has exactly one element, returns that element directly. */
 export function flat<T>(input: RecursiveArray<T>): T[] | T {
   const flattened = (input as T[]).flat(Infinity) as T[];

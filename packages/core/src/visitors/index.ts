@@ -12,7 +12,8 @@ import { Executor } from './executor.js';
 import { TransitiveDependencies } from './transitive-deps.js';
 import { VariableMapper } from './variable-mapper.js';
 
-type VisitorConstr<T extends PlanVisitor<any>> = {
+/** Constructor shape for a plan visitor: takes the per-language visitor registry and the database handle. */
+export type VisitorConstr<T extends PlanVisitor<any>> = {
   new (visitors: Record<string, T>, db: DortDBAsFriend): T;
 };
 

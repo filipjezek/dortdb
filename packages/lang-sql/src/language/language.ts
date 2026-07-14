@@ -1,16 +1,22 @@
 import { Language, SerializeFn } from '@dortdb/core';
-import { coalesce } from '../functions/coalesce.js';
 import { SQLLogicalPlanBuilder } from '../visitors/builder.js';
 import { SQLCalculationBuilder } from '../visitors/calculation-builder.js';
 import { ObjectDataAdapter, SQLDataAdapter } from './data-adapter.js';
 import { createParser } from './create-parser.js';
-import { between, inOp, notInOp } from '../operators/basic.js';
 import { SQLEqualityChecker } from '../visitors/equality-checker.js';
 import { SQLExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
-import { objAccess, objMatch } from '../operators/json.js';
-import { concat, ilike, like } from '../operators/string.js';
-import { substr } from '../functions/string.js';
+import { coalesce, substr } from '../functions/index.js';
+import {
+  inOp,
+  notInOp,
+  objAccess,
+  concat,
+  objMatch,
+  like,
+  ilike,
+  between,
+} from '../operators/index.js';
 
 /**
  * Configuration for the SQL language.
