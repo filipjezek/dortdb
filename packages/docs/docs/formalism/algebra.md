@@ -6,7 +6,7 @@ description: Operator context, instantiation, plan visualization, and a tour of 
 
 # Unified Algebra
 
-A parsed query becomes a tree of **operators**. Each operator is a node from the unified algebra; the leaves are data sources and the root is the final result. This is the same algebra for every language — see [Language Mapping](./language-mapping.md) for how each frontend gets here.
+A parsed query becomes a tree of **operators**. Each operator is a node from the unified algebra; the leaves are data sources and the root is the final result. This is the same algebra for every language; see [Language Mapping](./language-mapping.md) for how each frontend gets here.
 
 Operators come in two families:
 
@@ -15,7 +15,7 @@ Operators come in two families:
 
 A few operators ([`Limit`](./operators.md#limit), the [set operators](./operators.md#set-operators)) work on either, depending on their input. The design draws on existing algebras for XQuery, graph paths, and nested relations.
 
-The full catalog — with a plain-language description, signature, and formal semantics for each operator — lives in the [Operator Reference](./operators.md). This page explains the concepts you need to read that catalog and the plans the engine produces.
+The full catalog, with a plain-language description, signature, and formal semantics for each operator, lives in the [Operator Reference](./operators.md). This page explains the concepts you need to read that catalog and the plans the engine produces.
 
 ## Operator context
 
@@ -41,7 +41,7 @@ In short: context flows down the tree, accumulating the rows each operator's anc
 Operators differ in **how often their inputs are (re)created**, and this distinction drives both execution and how plans are drawn.
 
 - Most inputs are created **once** and reused for the operator's whole life. These are **vertical inputs** ($\mathrm{vertical}(\mathrm{Op})$). Example: the `source` of a [`Selection`](./operators.md#selection). [`CartesianProduct`](./operators.md#cartesianproduct) likewise builds its `left` and `right` streams once.
-- Some inputs are **recreated repeatedly** as the context changes — once per incoming row. These are **horizontal inputs** ($\mathrm{horizontal}(\mathrm{Op})$). Example: a correlated subquery inside a [`Selection`](./operators.md#selection) condition.
+- Some inputs are **recreated repeatedly** as the context changes, once per incoming row. These are **horizontal inputs** ($\mathrm{horizontal}(\mathrm{Op})$). Example: a correlated subquery inside a [`Selection`](./operators.md#selection) condition.
 
 Formally, a horizontal input is not a single stream but a **stream indexed by context**. We name this type with a constructor $\mathrm{inst}$: for any element type $X$,
 
@@ -50,8 +50,8 @@ $$
 $$
 
 A horizontal input of stream type $\mathrm{Stream}(X)$ therefore _denotes an inhabitant_
-of $\mathrm{inst}\,\mathrm{Stream}(X)$ — a function $E : \mathcal{T} \rightarrow \mathrm{Stream}(X)$
-supplied by the sub-plan — and **instantiating** it at a context $\Gamma$ is just application,
+of $\mathrm{inst}\,\mathrm{Stream}(X)$, a function $E : \mathcal{T} \rightarrow \mathrm{Stream}(X)$
+supplied by the sub-plan, and **instantiating** it at a context $\Gamma$ is just application,
 $E(\Gamma)$. The same type has many inhabitants, one per sub-plan, so which stream you get for
 a given $\Gamma$ depends on _which $E$ was supplied_, not on $\Gamma$ alone.
 
@@ -63,8 +63,8 @@ The DortDB GUI draws each plan as a tree. The root is the final query, the leave
 
 Edges tell you the instantiation kind at a glance:
 
-- **Solid edge** — the child is created once, with its parent (a vertical input).
-- **Dashed edge** — the child is recreated many times during the parent's life (a horizontal input).
+- **Solid edge**: the child is created once, with its parent (a vertical input).
+- **Dashed edge**: the child is recreated many times during the parent's life (a horizontal input).
 
 For example, in `SELECT x + 3 AS xplusthree FROM table1`, the [`TupleSource`](./operators.md#tuplesource) **table1** is created once (solid), while the [`Calculation`](./operators.md#calculation) for `x + 3` is re-evaluated per row (dashed) and points at the attribute it produces, `xplusthree`.
 
@@ -80,19 +80,19 @@ For exact semantics, jump to the [Operator Reference](./operators.md). This sect
 
 ### Item operators
 
-Most item operators are **calculation intermediaries** — they never appear as standalone plan nodes. Instead they are the pieces a [`Calculation`](./operators.md#calculation) is built from.
+Most item operators are **calculation intermediaries**; they never appear as standalone plan nodes. Instead they are the pieces a [`Calculation`](./operators.md#calculation) is built from.
 
 [`Calculation`](./operators.md#calculation) is the workhorse: it represents _any computed value_, such as a projection expression or a selection condition. Its arguments can be attribute references or even whole plan operators, which is how subqueries get embedded into an expression. When a subquery is involved, the [`Calculation`](./operators.md#calculation) records whether it should yield at most one value or many.
 
 The remaining item operators are data sources and [`MapToItem`](./operators.md#maptoitem), which pulls one attribute out of each tuple to turn a tuple stream into an item stream.
 
 :::note[Subqueries and the optimizer]
-A subquery starts life as a [`Calculation`](./operators.md#calculation) wrapping a [`Projection`](./operators.md#projection). The optimizer can lift that into an outer [`ProjectionConcat`](./operators.md#projectionconcat), and — if the subquery doesn't depend on the outer row — further into a plain left outer [`Join`](./operators.md#join). Same result, progressively cheaper plans.
+A subquery starts life as a [`Calculation`](./operators.md#calculation) wrapping a [`Projection`](./operators.md#projection). The optimizer can lift that into an outer [`ProjectionConcat`](./operators.md#projectionconcat), and, if the subquery doesn't depend on the outer row, further into a plain left outer [`Join`](./operators.md#join). Same result, progressively cheaper plans.
 :::
 
 ### Tuple operators
 
-These are the familiar relational operators — [`Selection`](./operators.md#selection), [`Projection`](./operators.md#projection), [`Join`](./operators.md#join), [`CartesianProduct`](./operators.md#cartesianproduct), [`OrderBy`](./operators.md#orderby) — plus a few that earn their own mention:
+These are the familiar relational operators ([`Selection`](./operators.md#selection), [`Projection`](./operators.md#projection), [`Join`](./operators.md#join), [`CartesianProduct`](./operators.md#cartesianproduct), [`OrderBy`](./operators.md#orderby)) plus a few that earn their own mention:
 
 - **[`ProjectionConcat`](./operators.md#projectionconcat)** (a.k.a. _depend-join_) re-runs a subquery for each source row and joins the results back. It's how correlated subqueries and `LATERAL` joins are expressed.
 - **[`GroupBy`](./operators.md#groupby)** partitions rows by key and runs aggregates per partition. Each aggregate can carry its own filtering, ordering, or distinctness:
@@ -112,7 +112,7 @@ These are the familiar relational operators — [`Selection`](./operators.md#sel
 
 ### XQuery-specific operators
 
-[`ProjectionSize`](./operators.md#projectionsize) and [`TreeJoin`](./operators.md#treejoin) ship with the XQuery package, not the core — they're the concrete proof that the algebra is extensible. [`TreeJoin`](./operators.md#treejoin) implements path steps like `a/b/c`, exposing the XQuery focus (`$fs:dot`, `$fs:position`, `$fs:last`) for each step.
+[`ProjectionSize`](./operators.md#projectionsize) and [`TreeJoin`](./operators.md#treejoin) ship with the XQuery package, not the core; they're the concrete proof that the algebra is extensible. [`TreeJoin`](./operators.md#treejoin) implements path steps like `a/b/c`, exposing the XQuery focus (`$fs:dot`, `$fs:position`, `$fs:last`) for each step.
 
 ### Universal operators
 
@@ -122,4 +122,4 @@ These are the familiar relational operators — [`Selection`](./operators.md#sel
 
 ## Extensibility
 
-The core algebra covers everything DortDB does today, but a new language might need more. When it does, **adding an operator is just defining its behavior** — you extend the relevant visitor classes inside your language package, and the core stays untouched. The XQuery operators above are built exactly this way.
+The core algebra covers everything DortDB does today, but a new language might need more. When it does, **adding an operator is just defining its behavior**: you extend the relevant visitor classes inside your language package, and the core stays untouched. The XQuery operators above are built exactly this way.

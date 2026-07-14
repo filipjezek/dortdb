@@ -7,10 +7,10 @@ description:
 
 # Plan Visitors
 
-Everything the engine does with a logical plan — inferring dependencies,
+Everything the engine does with a logical plan (inferring dependencies,
 renaming attributes, building executable
 [`Calculation`](../formalism/operators.md#calculation)s, and finally running the
-query — is implemented as a **visitor** over the plan tree. Understanding these
+query) is implemented as a **visitor** over the plan tree. Understanding these
 visitors is mostly relevant when you
 [author a language](../guides/extending/authoring-a-language.md) that introduces
 its **own plan operators**: each new operator must be handled by every visitor,
@@ -32,7 +32,7 @@ When an operator accepts a visitor map, it looks up the entry for its own `lang`
 and calls the matching `visitXxx` method. Dispatch therefore keys on **two**
 things: the operator's _type_ (which `visitXxx` runs) and the operator's
 _language_ (which visitor in the map runs it). The `lang` tag is the language
-that **instantiated** the operator — not necessarily the language a given
+that **instantiated** the operator, not necessarily the language a given
 operator _type_ comes from. A [`Selection`](../formalism/operators.md#selection)
 built by the SQL plan builder is tagged `sql` and handled by SQL's visitor; the
 very same core operator type built by XQuery is tagged `xquery` and handled by
@@ -44,7 +44,7 @@ treated, without touching the core.
 Every registered language must therefore supply visitors that implement the
 **full**
 [`PlanVisitor<Ret, Arg>`](../api/@dortdb/core/default-export/interfaces/PlanVisitor.md)
-interface — one `visitXxx` method per operator type — for the operators it can
+interface (one `visitXxx` method per operator type) for the operators it can
 produce. Writing all of them by hand would be tedious, so in practice a language
 **subclasses the corresponding core visitor**, inheriting every `visitXxx`
 method and overriding only those for the operators it adds or wants to handle
@@ -65,7 +65,7 @@ language adds operators or needs different behavior.
 
 | Visitor                  | Purpose                                            | Provide it when...                                          |
 | ------------------------ | -------------------------------------------------- | ----------------------------------------------------------- |
-| `LogicalPlanBuilder`     | Turns the parsed AST into an initial plan          | **Always** — it is the entry point of a language            |
+| `LogicalPlanBuilder`     | Turns the parsed AST into an initial plan          | **Always**; it is the entry point of a language             |
 | `Executor`               | Evaluates the plan and yields result items         | **Always**, if the language's operators can be a query root |
 | `CalculationBuilder`     | Folds expression subtrees into one callable        | You add new operators, or want to modify behavior           |
 | `TransitiveDependencies` | Finds identifiers bound in an outer scope          | Same as above                                               |
@@ -81,7 +81,7 @@ The
 is the one visitor that runs over the **AST**, not the plan. Its
 [`buildPlan`](../api/@dortdb/core/default-export/interfaces/LogicalPlanBuilder.md#buildplan)
 lowers a parsed query into [unified-algebra](../formalism/algebra.md) operators.
-Unlike the other passes it has no core default — every language must supply one,
+Unlike the other passes it has no core default; every language must supply one,
 and it is the only visitor that is strictly required to register a language.
 
 It also participates in cross-language **schema inference**. When a language is
@@ -96,9 +96,9 @@ inference can complete across the language boundary. See
 
 The
 [`CalculationBuilder`](../api/@dortdb/core/default-export/classes/CalculationBuilder.md)
-collapses a tree of expression operators —
-[`FnCall`](../formalism/operators.md#fncall),
-[`Literal`](../formalism/operators.md#literal), and so on — into a single
+collapses a tree of expression operators
+([`FnCall`](../formalism/operators.md#fncall),
+[`Literal`](../formalism/operators.md#literal), and so on) into a single
 [`Calculation`](../formalism/operators.md#calculation): one callable with a
 clearly specified set of inputs. This is where **constant folding** happens: a
 pure function called with constant arguments is evaluated once, at plan time,
@@ -119,14 +119,14 @@ for the changed subtree.
 
 ### AttributeRenamer & AttributeRenameChecker
 
-These two cooperate whenever the optimizer needs to rename attributes — most
+These two cooperate whenever the optimizer needs to rename attributes, most
 prominently during
 [`Selection` pushdown](../formalism/optimization.md#pushdown-selections), where
 a predicate must be rewritten to match renamed columns underneath a
 [`Projection`](../formalism/operators.md#projection).
 
 - [`AttributeRenameChecker`](../api/@dortdb/core/default-export/classes/AttributeRenameChecker.md)
-  answers _"would applying this rename map be safe?"_ — it rejects renames that
+  answers _"would applying this rename map be safe?"_ and rejects renames that
   would shadow or collide with existing attributes.
 - [`AttributeRenamer`](../api/@dortdb/core/default-export/classes/AttributeRenamer.md)
   applies the rename map to a subtree in place, then invalidates the affected
@@ -195,5 +195,5 @@ The provided language packages
 ([`@dortdb/lang-sql`](../api/@dortdb/lang-sql/index.md),
 [`@dortdb/lang-cypher`](../api/@dortdb/lang-cypher/index.md),
 [`@dortdb/lang-xquery`](../api/@dortdb/lang-xquery/index.md)) are the best
-worked references — for example, XQuery extends these visitors to handle its
+worked references; for example, XQuery extends these visitors to handle its
 [`TreeJoin`](../formalism/operators.md#treejoin) operator.

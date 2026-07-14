@@ -7,8 +7,8 @@ description: Query XML, DOM, and tree-shaped data with the DortDB XQuery languag
 # XQuery
 
 [`@dortdb/lang-xquery`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md) adds XQuery to DortDB. It is the language for **tree-shaped
-and XML-like data** — DOM documents, parsed XML, and similar hierarchical
-structures — and it brings XPath path navigation together with FLWOR
+and XML-like data**, such as DOM documents, parsed XML, and similar hierarchical
+structures, and it brings XPath path navigation together with FLWOR
 transformations.
 
 XQuery works on **sequences** of values. Sequences never nest (a sequence of
@@ -73,14 +73,14 @@ which expects DOM globals (`document`, `Node`, and friends).
 
 - **In the browser** these are available, so [`XQuery()`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md) works directly.
 - **In Node.js** there is no DOM by default. Supply a document from a DOM
-  implementation (e.g. [`jsdom`](https://github.com/jsdom/jsdom)) — `XQuery({ adapter: new DomDataAdapter(doc) })`
-  — and make the DOM globals available, or provide a custom adapter that targets
+  implementation (e.g. [`jsdom`](https://github.com/jsdom/jsdom)), as in `XQuery({ adapter: new DomDataAdapter(doc) })`,
+  and make the DOM globals available, or provide a custom adapter that targets
   your own data shape. See
   [Data Sources & Adapters](../guides/data-sources-and-adapters.md).
 
 ## Learn more
 
-- [XQuery Dialect & Restrictions](./dialect.md) — the supported subset and what
+- [XQuery Dialect & Restrictions](./dialect.md): the supported subset and what
   is intentionally left out.
 - The API reference for [`XQuery`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md),
   [`XQueryConfig`](../api/@dortdb/lang-xquery/default-export/interfaces/XQueryConfig.md),

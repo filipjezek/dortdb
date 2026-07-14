@@ -8,7 +8,7 @@ description: The openCypher-based dialect, read-only semantics, and library cove
 
 DortDB's graph language is a set of **implementation extensions to Cypher**,
 based on the openCypher grammar. DortDB can parse the entire openCypher 9
-grammar, but — in keeping with DortDB's data-selection focus — only the read
+grammar, but, in keeping with DortDB's data-selection focus, only the read
 subset is executed.
 
 :::note[Attribution]
@@ -41,7 +41,7 @@ Running one of these produces an _only read operations are supported_ error.
 
 Only a subset of the standard Cypher functions and operators is currently
 implemented. When a function you need is missing, provide it yourself as a
-[user-defined function or extension](../guides/extending/functions-and-aggregates.md) —
+[user-defined function or extension](../guides/extending/functions-and-aggregates.md);
 this is the intended way to fill gaps in library coverage.
 
 Custom functions for Cypher can receive a reference to the whole queried graph and

@@ -6,7 +6,7 @@ description: How SQL, XQuery, and Cypher constructs are lowered into the unified
 
 # Language Mapping
 
-Every frontend lowers its syntax into the same [operators](./operators.md). If you know a language, this page shows you which operators your queries actually run on — and if you're extending DortDB, it shows the patterns to follow.
+Every frontend lowers its syntax into the same [operators](./operators.md). If you know a language, this page shows you which operators your queries actually run on, and if you're extending DortDB, it shows the patterns to follow.
 
 ## SQL
 

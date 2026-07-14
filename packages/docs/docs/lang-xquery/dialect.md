@@ -21,9 +21,9 @@ expressions, FLWOR, and sequence operations.
 - `cast` expressions (the only typing construct that is supported).
 
 XQuery contributes its own plan operators (such as tree navigation) that extend
-the shared algebra — see the [language mapping](../formalism/language-mapping.md).
+the shared algebra; see the [language mapping](../formalism/language-mapping.md).
 
-## Not implemented — and not planned
+## Not implemented, and not planned
 
 DortDB's XQuery deliberately omits the type system. The following are **not**
 available and are not planned:
@@ -37,7 +37,7 @@ available and are not planned:
 - function types other than `function(*)`
 - named function references with arity (`fnname#arity`)
 
-## Not implemented — possibly later
+## Not implemented, possibly later
 
 These may be added in the future but are not available today:
 
@@ -70,7 +70,7 @@ export interface XQueryFn extends Fn {
 ## XQuery and tuples
 
 XQuery streams named tuples _within_ a FLWOR expression, but it cannot accept or
-produce tuples at its boundaries — a FLWOR expression returns a flattened
+produce tuples at its boundaries; a FLWOR expression returns a flattened
 sequence of opaque items. This matters when embedding XQuery in another language:
 an XQuery block yields item(s), not rows. See
 [Cross-language Queries](../guides/cross-language-queries.md).

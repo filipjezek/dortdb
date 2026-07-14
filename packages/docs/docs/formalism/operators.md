@@ -9,12 +9,12 @@ description: Every operator of the unified algebra, with a plain-language descri
 This is the full catalog of operators in the unified algebra. Each entry gives you:
 
 - **what it does**, in plain language;
-- its **signature** — the arguments and their types, and what it returns;
-- its **semantics** — the precise definition.
+- its **signature**: the arguments and their types, and what it returns;
+- its **semantics**: the precise definition.
 
 Notation used throughout: $\mathcal{V}$ is the domain of items, $\mathcal{T}$ the set of tuples, $\mathcal{A}$ the set of attribute names, $\oplus$ is [tuple concatenation](./object-representation.md#tuple-concatenation), and $\Gamma$ is the [operator context](./algebra.md#operator-context). $\mathrm{inst}_{\dots}$ marks an argument that is re-instantiated per row (a [horizontal input](./algebra.md#instantiation-vertical-vs-horizontal-inputs)). Each operator's formal definition abbreviates its arguments to single letters; the argument list under every entry gives that letter in parentheses, e.g. **attrs** ($A$).
 
-The tables below are a per-group index — the operator name links down to its full entry.
+The tables below are a per-group index; the operator name links down to its full entry.
 
 ---
 
@@ -25,16 +25,16 @@ Item operators produce streams of opaque values. Most are _calculation intermedi
 | Operator                       | Notation                                                             | Result schema |
 | ------------------------------ | -------------------------------------------------------------------- | ------------- |
 | **Calculation intermediaries** |                                                                      |               |
-| [AggregateCall](#aggregatecall) | $\mathrm{agg}(\texttt{args})$                                        | —             |
-| [Conditional](#conditional)    | $\mathrm{cond}(\texttt{expr}, \texttt{whenthens}, \texttt{default})$ | —             |
-| [FnCall](#fncall)              | $\mathrm{fn}(\texttt{impl}, \texttt{args})$                          | —             |
-| [Literal](#literal)            | $\mathrm{literal}(\texttt{value})$                                   | —             |
-| [Quantifier](#quantifier)      | $\mathrm{quant}(\texttt{type}, \texttt{query})$                      | —             |
+| [AggregateCall](#aggregatecall) | $\mathrm{agg}(\texttt{args})$                                        | n/a           |
+| [Conditional](#conditional)    | $\mathrm{cond}(\texttt{expr}, \texttt{whenthens}, \texttt{default})$ | n/a           |
+| [FnCall](#fncall)              | $\mathrm{fn}(\texttt{impl}, \texttt{args})$                          | n/a           |
+| [Literal](#literal)            | $\mathrm{literal}(\texttt{value})$                                   | n/a           |
+| [Quantifier](#quantifier)      | $\mathrm{quant}(\texttt{type}, \texttt{query})$                      | n/a           |
 | **Other**                      |                                                                      |               |
-| [Calculation](#calculation)    | $\mathrm{calc}(\texttt{impl}, \texttt{args})$                        | —             |
-| [ItemSource](#itemsource)      | $\textit{name}$                                                      | —             |
-| [ItemFnSource](#itemfnsource)  | $\textit{name}(\texttt{impl}, \texttt{params})$                      | —             |
-| [MapToItem](#maptoitem)        | $\mathrm{toItem}(\texttt{key}, \texttt{source})$                     | —             |
+| [Calculation](#calculation)    | $\mathrm{calc}(\texttt{impl}, \texttt{args})$                        | n/a           |
+| [ItemSource](#itemsource)      | $\textit{name}$                                                      | n/a           |
+| [ItemFnSource](#itemfnsource)  | $\textit{name}(\texttt{impl}, \texttt{params})$                      | n/a           |
+| [MapToItem](#maptoitem)        | $\mathrm{toItem}(\texttt{key}, \texttt{source})$                     | n/a           |
 
 ### AggregateCall
 
@@ -88,7 +88,7 @@ Signature: $\mathrm{quant}(\texttt{type}, \texttt{query})$
 
 ### Calculation
 
-The general "compute a value" operator, and the only item operator that routinely appears as a real plan node. It wraps an expression — function calls, literals, attribute references, even whole subqueries — and evaluates it against the current row and context. [`Projection`](#projection) attributes and [`Selection`](#selection) conditions are all `Calculation`s. When its expression contains a subquery, it tracks whether that subquery yields at most one value or many.
+The general "compute a value" operator, and the only item operator that routinely appears as a real plan node. It wraps an expression (function calls, literals, attribute references, even whole subqueries) and evaluates it against the current row and context. [`Projection`](#projection) attributes and [`Selection`](#selection) conditions are all `Calculation`s. When its expression contains a subquery, it tracks whether that subquery yields at most one value or many.
 
 Signature: $\mathrm{calc}(\texttt{impl}, \texttt{args})$
 
@@ -102,7 +102,7 @@ $$
 
 ### ItemSource
 
-A named source that emits opaque items — for example a graph's `nodes` or `edges`, or a registered JSON array. The leaf of an item pipeline.
+A named source that emits opaque items, for example a graph's `nodes` or `edges`, or a registered JSON array. The leaf of an item pipeline.
 
 Signature: $\textit{name}$
 
@@ -136,7 +136,7 @@ $$
 
 ---
 
-## Tuple operators — SPJ and other
+## Tuple operators: SPJ and other
 
 Tuple operators produce streams of named rows. These are the relational core of the algebra.
 
@@ -160,7 +160,7 @@ Tuple operators produce streams of named rows. These are the relational core of 
 
 ### CartesianProduct
 
-Pairs every row on the left with every row on the right — the unfiltered cross product.
+Pairs every row on the left with every row on the right: the unfiltered cross product.
 
 Signature: $\times(\texttt{left}, \texttt{right})$
 
@@ -193,7 +193,7 @@ When `leftOuter` (or `rightOuter`) is true, unmatched left (or right) rows are a
 
 ### Projection
 
-Computes a new set of named attributes for each row — the algebra's `SELECT` list. Each output attribute is a [`Calculation`](#calculation) evaluated against the row and context.
+Computes a new set of named attributes for each row: the algebra's `SELECT` list. Each output attribute is a [`Calculation`](#calculation) evaluated against the row and context.
 
 Signature: $\pi(\texttt{attrs}, \texttt{source})$
 
@@ -236,7 +236,7 @@ $$
 
 ### Selection
 
-Keeps only the rows for which the condition is true — the algebra's `WHERE`.
+Keeps only the rows for which the condition is true: the algebra's `WHERE`.
 
 Signature: $\sigma(\texttt{expression}, \texttt{source})$
 
@@ -281,7 +281,7 @@ $$
 
 ### MapFromItem
 
-Wraps each opaque item into a single-attribute row named `key` — the inverse of [`MapToItem`](#maptoitem). The original item is stored as-is; it is _not_ reinterpreted as a tuple.
+Wraps each opaque item into a single-attribute row named `key`, the inverse of [`MapToItem`](#maptoitem). The original item is stored as-is; it is _not_ reinterpreted as a tuple.
 
 Signature: $\mathrm{fromItem}(\texttt{key}, \texttt{source})$
 
@@ -311,13 +311,13 @@ Signature: $\phi(\texttt{min}, \texttt{max}, \texttt{condition}, \texttt{source}
 - **source** ($S$): $\mathrm{Stream}(\mathcal{T})$
 - **returns**: $\mathrm{Stream}(\mathcal{T})$
 
-Base case — a single step wraps each attribute value in a one-element array:
+Base case, a single step wraps each attribute value in a one-element array:
 
 $$
 \phi(0, 1, C, S, \Gamma) = \langle \left\{ a \mapsto \langle s.a \rangle \mid a \in s \right\} \mid s \in S \rangle
 $$
 
-Inductive case — extend each accumulated path by one more matching row:
+Inductive case, extend each accumulated path by one more matching row:
 
 $$
 \begin{aligned}
@@ -336,7 +336,7 @@ $$
 
 ### TupleSource
 
-A named source that emits rows — for example a registered relational table. Its schema is generally not known until planning resolves it.
+A named source that emits rows, for example a registered relational table. Its schema is generally not known until planning resolves it.
 
 Signature: $\textbf{name}$
 
@@ -356,7 +356,7 @@ $$
 
 ---
 
-## Tuple operators — XQuery
+## Tuple operators: XQuery
 
 These two operators are provided by the XQuery package, not the core. They demonstrate that the algebra is extensible.
 
@@ -381,7 +381,7 @@ $$
 
 ### TreeJoin
 
-Implements an XQuery path step such as `a/b/c`. For each source row it evaluates `expr` and, for every produced item, emits a row carrying the XQuery focus: the current item (`$fs:dot`), its position (`$fs:position`), and the total count (`$fs:last`). It rolls [`ProjectionConcat`](#projectionconcat), [`ProjectionIndex`](#projectionindex), and [`ProjectionSize`](#projectionsize) into one — but unlike [`ProjectionConcat`](#projectionconcat), its `expr` is a [`Calculation`](#calculation), not a tuple operator.
+Implements an XQuery path step such as `a/b/c`. For each source row it evaluates `expr` and, for every produced item, emits a row carrying the XQuery focus: the current item (`$fs:dot`), its position (`$fs:position`), and the total count (`$fs:last`). It rolls [`ProjectionConcat`](#projectionconcat), [`ProjectionIndex`](#projectionindex), and [`ProjectionSize`](#projectionsize) into one, but unlike [`ProjectionConcat`](#projectionconcat), its `expr` is a [`Calculation`](#calculation), not a tuple operator.
 
 Signature: $\mathrm{treeJoin}(\texttt{expr}, \texttt{source})$
 
@@ -401,9 +401,9 @@ $$
 
 ---
 
-## Tuple operators — Optimizer
+## Tuple operators: Optimizer
 
-These operators are **not part of the theoretical algebra** — a plan is complete and correct without them. They exist only to give the [optimizer](./optimization.md) better targets, enabling substantial speedups. Two of them enable [secondary indices](./optimization.md#secondary-indices); the third is a faster variant of [`Recursion`](#recursion).
+These operators are **not part of the theoretical algebra**; a plan is complete and correct without them. They exist only to give the [optimizer](./optimization.md) better targets, enabling substantial speedups. Two of them enable [secondary indices](./optimization.md#secondary-indices); the third is a faster variant of [`Recursion`](#recursion).
 
 | Operator               | Notation                                                                                                             | Result schema                        |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
@@ -413,12 +413,12 @@ These operators are **not part of the theoretical algebra** — a plan is comple
 
 ### IndexScan
 
-Replaces a filtered [`TupleSource`](#tuplesource) — or an [`ItemSource`](#itemsource) paired with a [`MapFromItem`](#mapfromitem) — with a lookup into a registered index. Instead of scanning the whole source, it holds an _access_ [`Calculation`](#calculation) that feeds the matching values straight into the underlying index structure. When it stands in for the item-source case, `fromItemKey` carries the [`MapFromItem`](#mapfromitem) key so the result is still a single-attribute row stream.
+Replaces a filtered [`TupleSource`](#tuplesource) (or an [`ItemSource`](#itemsource) paired with a [`MapFromItem`](#mapfromitem)) with a lookup into a registered index. Instead of scanning the whole source, it holds an _access_ [`Calculation`](#calculation) that feeds the matching values straight into the underlying index structure. When it stands in for the item-source case, `fromItemKey` carries the [`MapFromItem`](#mapfromitem) key so the result is still a single-attribute row stream.
 
 Signature: $\mathrm{indexScan}(\texttt{name}, \texttt{access}, \texttt{fromItemKey})$
 
 - **name**: the indexed source's name
-- **access**: $\mathrm{Calculation}$ — the index accessor
+- **access**: $\mathrm{Calculation}$, the index accessor
 - **fromItemKey**: $\mathcal{A}$ (optional, only for the [`ItemSource`](#itemsource) case)
 - **returns**: $\mathrm{Stream}(\mathcal{T})$
 
@@ -434,13 +434,13 @@ Signature: $\stackrel{\phi}{\rightarrow}(\texttt{min}, \texttt{max}, \texttt{map
 - **source** ($S$): $\mathrm{Stream}(\mathcal{T})$
 - **returns**: $\mathrm{Stream}(\mathcal{T})$
 
-Base case — a single step wraps each attribute value in a one-element array:
+Base case, a single step wraps each attribute value in a one-element array:
 
 $$
 \stackrel{\phi}{\rightarrow}(0, 1, M, S, \Gamma) = \langle \left\{ a \mapsto \langle s.a \rangle \mid a \in s \right\} \mid s \in S \rangle
 $$
 
-Inductive case — extend each accumulated path by re-instantiating the mapping against it:
+Inductive case, extend each accumulated path by re-instantiating the mapping against it:
 
 $$
 \begin{aligned}
@@ -458,7 +458,7 @@ $$
 
 ### BidirectionalRecursion
 
-Searches a recursive path from both ends at once — expanding `mappingFwd` from the `source` side and `mappingRev` from the `target` side until the two frontiers meet. It is more work to set up than [`IndexedRecursion`](#indexedrecursion), but offers large asymptotic improvements in both time and memory. Its result combines the schemas of both ends, $\texttt{source} \oplus \texttt{target}$.
+Searches a recursive path from both ends at once, expanding `mappingFwd` from the `source` side and `mappingRev` from the `target` side until the two frontiers meet. It is more work to set up than [`IndexedRecursion`](#indexedrecursion), but offers large asymptotic improvements in both time and memory. Its result combines the schemas of both ends, $\texttt{source} \oplus \texttt{target}$.
 
 Signature: $\stackrel{\phi}{\leftrightarrow}(\texttt{min}, \texttt{max}, \texttt{mappingFwd}, \texttt{mappingRev}, \texttt{target}, \texttt{source})$
 
@@ -499,7 +499,7 @@ $$
 
 ### Limit
 
-Skips the first `offset` results, then passes through at most `limit` of them — `OFFSET` plus `LIMIT`.
+Skips the first `offset` results, then passes through at most `limit` of them: `OFFSET` plus `LIMIT`.
 
 Signature: $\mathrm{limit}(\texttt{offset}, \texttt{limit}, \texttt{source})$
 

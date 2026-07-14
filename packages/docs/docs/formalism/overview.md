@@ -6,7 +6,7 @@ description: How DortDB translates every language into one formal algebra over a
 
 # Formalism
 
-DortDB runs every supported language on a single engine. To make that possible, each language frontend is translated into **one shared algebra** that operates on **one shared data representation**. Nothing in the core is tied to SQL, XQuery, or Cypher specifically — they are all just producers of the same operator trees.
+DortDB runs every supported language on a single engine. To make that possible, each language frontend is translated into **one shared algebra** that operates on **one shared data representation**. Nothing in the core is tied to SQL, XQuery, or Cypher specifically; they are all just producers of the same operator trees.
 
 Two practical things fall out of this design:
 
@@ -25,7 +25,7 @@ Two practical things fall out of this design:
 
 ## How language switching works
 
-Language switching is built on the idea behind Virtuoso's SPASQL: a subquery written in one language can be embedded in another. The tricky part is the boundary — different languages expect different shapes of result.
+Language switching is built on the idea behind Virtuoso's SPASQL: a subquery written in one language can be embedded in another. The tricky part is the boundary, since different languages expect different shapes of result.
 
 DortDB handles this by recognizing **two kinds of results**:
 

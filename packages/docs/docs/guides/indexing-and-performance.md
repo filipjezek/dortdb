@@ -27,7 +27,7 @@ db.createIndex(['users'], ['age'], MapIndex);
 db.createIndex(['users'], ['name[0] + age'], MapIndex);
 ```
 
-The optimizer uses matching indices automatically — for example, an index on
+The optimizer uses matching indices automatically. For example, an index on
 `age` can turn `WHERE age = 35` into an index lookup. Each index class decides
 which expressions it can support, so a given index only applies where it makes
 sense (e.g. [`MapIndex`](../api/@dortdb/core/default-export/classes/MapIndex.md) for equality).
@@ -45,7 +45,7 @@ db.createIndex(['social', 'nodes'], ['x.id'], MapIndex, {
 ### Graph traversal: `ConnectionIndex`
 
 [`@dortdb/lang-cypher`](../api/@dortdb/lang-cypher/index.md) ships a specialized [`ConnectionIndex`](../api/@dortdb/lang-cypher/default-export/classes/ConnectionIndex.md)
-that stores no data of its own — it detects join conditions between nodes and relationships and resolves connected
+that stores no data of its own; it detects join conditions between nodes and relationships and resolves connected
 edges/nodes through the graph adapter, which accelerates traversal:
 
 ```ts
@@ -99,11 +99,11 @@ db.optimizer.reconfigure({ rules: [UnnestSubqueries] });
 
 :::tip[Experiment in the Showcase]
 The [Showcase demo](https://filipjezek.github.io/dortdb) lets you toggle and
-reorder individual optimizer rules and watch how the logical plan changes — a
+reorder individual optimizer rules and watch how the logical plan changes, a
 quick way to build intuition for what each rule does.
 :::
 
-You can also author your own rules for custom operators — see
+You can also author your own rules for custom operators; see
 [Optimizer Rules](../guides/extending/optimizer-rules.md).
 
 ## Performance characteristics

@@ -7,8 +7,8 @@ description: Query property graphs with DortDB's Cypher-based query language and
 # Cypher
 
 [`@dortdb/lang-cypher`](../api/@dortdb/lang-cypher/default-export/functions/Cypher.md) adds a Cypher-based query language to DortDB. It is the
-language for **property graphs** — data best expressed as nodes connected by
-relationships — and it brings Cypher's visual, ASCII-art pattern matching,
+language for **property graphs**, data best expressed as nodes connected by
+relationships, and it brings Cypher's visual, ASCII-art pattern matching,
 including variable-length paths.
 
 Cypher operates on **labeled property graphs**: nodes may carry zero or more
@@ -46,7 +46,7 @@ db.registerSource(['social'], graph);
 
 :::warning[Labels and types live under a symbol key]
 The Graphology adapter expects node **labels** and edge **types** in the
-[`gaLabelsOrType`](../api/@dortdb/lang-cypher/default-export/variables/gaLabelsOrType.md) symbol-keyed attribute — `{ [gaLabelsOrType]: ['Person'] }` for
+[`gaLabelsOrType`](../api/@dortdb/lang-cypher/default-export/variables/gaLabelsOrType.md) symbol-keyed attribute: `{ [gaLabelsOrType]: ['Person'] }` for
 a node, `{ [gaLabelsOrType]: 'KNOWS' }` for a relationship. A plain `labels`
 property will not be recognized, and label/type patterns like `(:Person)` or
 `-[:KNOWS]-` will silently match nothing. The package also exports helpers to
@@ -78,9 +78,9 @@ relationship twice.
 
 ## Learn more
 
-- [Cypher Dialect & Restrictions](./dialect.md) — supported subset and what is
+- [Cypher Dialect & Restrictions](./dialect.md): supported subset and what is
   left out.
-- [Indexing & Performance](../guides/indexing-and-performance.md) — the
+- [Indexing & Performance](../guides/indexing-and-performance.md): the
   [ConnectionIndex](../api/@dortdb/lang-cypher/default-export/classes/ConnectionIndex.md) for graph traversal.
 - The API reference for [`Cypher`](../api/@dortdb/lang-cypher/default-export/functions/Cypher.md),
   [`CypherConfig`](../api/@dortdb/lang-cypher/default-export/interfaces/CypherConfig.md),

@@ -26,10 +26,10 @@ const db = new DortDB({
 ```
 
 - **`mainLang`** is the default language used to parse queries. Each provided
-  language is a factory function — [`SQL()`](../api/@dortdb/lang-sql/default-export/functions/SQL.md),
+  language is a factory function ([`SQL()`](../api/@dortdb/lang-sql/default-export/functions/SQL.md),
   [`Cypher()`](../api/@dortdb/lang-cypher/default-export/functions/Cypher.md),
-  [`XQuery()`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md)
-  — that returns a language descriptor. At least one language is required.
+  [`XQuery()`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md))
+  that returns a language descriptor. At least one language is required.
 - **`optimizer.rules`** is the ordered list of rewrite rules the optimizer
   applies. For tree-shaking reasons the optimizer starts with **no** rules; pass
   the exported [`defaultRules`](../api/@dortdb/core/optimizer/variables/defaultRules.md)
@@ -51,7 +51,7 @@ const db = new DortDB({
 ## 2. Register your data
 
 [`registerSource`](../api/@dortdb/core/default-export/classes/DortDB.md#registersource) pairs an in-memory value with a name. It does not copy or
-transform the data — it is a constant-time operation.
+transform the data; it is a constant-time operation.
 
 ```ts
 const addresses = [
@@ -96,9 +96,9 @@ console.log(result.data);
 
 The return value is a [`QueryResult`](../api/@dortdb/core/default-export/interfaces/QueryOptions.md):
 
-- **`data`** — an array of result objects. For tuple-producing queries each
+- **`data`**: an array of result objects. For tuple-producing queries each
   object maps a result column name to its value.
-- **`schema`** — the ordered list of result column names, when the query
+- **`schema`**: the ordered list of result column names, when the query
   produces tuples.
 
 ## Choosing a language per query
@@ -112,5 +112,5 @@ db.query(`MATCH (p:Person) RETURN p.name`, { mainLang: 'cypher' });
 
 ## Next step
 
-Learn the different ways to run a query — including streaming execution and
-bound parameters — in [Running Queries](./running-queries.md).
+Learn the different ways to run a query, including streaming execution and
+bound parameters, in [Running Queries](./running-queries.md).

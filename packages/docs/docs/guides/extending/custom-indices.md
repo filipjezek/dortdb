@@ -15,13 +15,13 @@ and DortDB optimizes accordingly. Implementing your own means satisfying the
 
 An index implements three methods:
 
-- **[`match(expressions)`](../../api/@dortdb/core/default-export/interfaces/Index.md#match)** — given the expressions appearing in a query (e.g. the
+- **[`match(expressions)`](../../api/@dortdb/core/default-export/interfaces/Index.md#match)**: given the expressions appearing in a query (e.g. the
   operands of an equality check), decide which ones this index can serve. Return
   the ordered positions it matches, or `null` if it cannot help.
-- **[`createAccessor(expressions)`](../../api/@dortdb/core/default-export/interfaces/Index.md#createaccessor)** — for expressions that matched, return a
+- **[`createAccessor(expressions)`](../../api/@dortdb/core/default-export/interfaces/Index.md#createaccessor)**: for expressions that matched, return a
   [`Calculation`](../../api/@dortdb/core/plan/classes/Calculation.md) that looks up the matching items for given values of those
   expressions.
-- **[`reindex(values)`](../../api/@dortdb/core/default-export/interfaces/Index.md#reindex)** — given the source items and the evaluated index-expression
+- **[`reindex(values)`](../../api/@dortdb/core/default-export/interfaces/Index.md#reindex)**: given the source items and the evaluated index-expression
   keys, (re)fill the index's data structure.
 
 ```ts
@@ -34,7 +34,7 @@ interface Index {
 ```
 
 An index does not have to store anything. The [`ConnectionIndex`](../../api/@dortdb/lang-cypher/default-export/classes/ConnectionIndex.md),
-for example, keeps no data structure of its own — it recognizes join conditions
+for example, keeps no data structure of its own; it recognizes join conditions
 between nodes and relationships and resolves the connected elements through the
 graph data adapter.
 
@@ -58,5 +58,5 @@ new DortDB({
 });
 ```
 
-The built-in [`MapIndex`](../../api/@dortdb/core/default-export/classes/MapIndex.md) is the reference implementation of both roles — a hash
+The built-in [`MapIndex`](../../api/@dortdb/core/default-export/classes/MapIndex.md) is the reference implementation of both roles: a hash
 index usable for equality lookups and for equality-based hash joins.

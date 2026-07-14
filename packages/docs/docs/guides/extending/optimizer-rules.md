@@ -16,11 +16,11 @@ removing a redundant pair of operators.
 
 A rule reduces to a starting operator plus two methods:
 
-- **[`operator`](../../api/@dortdb/core/optimizer/interfaces/PatternRule.md#operator)** — the plan-operator class (or classes) the rule starts matching
+- **[`operator`](../../api/@dortdb/core/optimizer/interfaces/PatternRule.md#operator)**: the plan-operator class (or classes) the rule starts matching
   at, or `null` to consider every node.
-- **[`match(node)`](../../api/@dortdb/core/optimizer/interfaces/PatternRule.md#match)** — test whether the pattern applies at `node`; return the
+- **[`match(node)`](../../api/@dortdb/core/optimizer/interfaces/PatternRule.md#match)**: test whether the pattern applies at `node`; return the
   captured bindings, or `null` if it does not apply.
-- **[`transform(node, bindings)`](../../api/@dortdb/core/optimizer/interfaces/PatternRule.md#transform)** — return the rewritten plan operator.
+- **[`transform(node, bindings)`](../../api/@dortdb/core/optimizer/interfaces/PatternRule.md#transform)**: return the rewritten plan operator.
 
 ```ts
 interface PatternRule<T extends PlanOperator, U> {
@@ -38,7 +38,7 @@ is a good source of examples.
 
 ## Registering a rule
 
-Rules are just entries in the optimizer's ordered `rules` array — order matters,
+Rules are just entries in the optimizer's ordered `rules` array, and order matters,
 so place a new rule where it should run relative to the others. A rule that needs
 the database interface can be provided as a class (the optimizer instantiates it,
 see [`PatternRuleConstructor`](../../api/@dortdb/core/optimizer/interfaces/PatternRuleConstructor.md)):

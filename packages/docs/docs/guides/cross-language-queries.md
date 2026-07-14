@@ -9,7 +9,7 @@ description: Embed one query language inside another with LANG blocks.
 DortDB's defining feature is that a single query can use **more than one
 language**. Because every language compiles to the same
 [unified algebra](../formalism/algebra.md), a nested language block is not an
-opaque call — it becomes part of one plan that is optimized and executed as a
+opaque call; it becomes part of one plan that is optimized and executed as a
 whole. That is what lets the optimizer, for example, push a filter from an outer
 SQL query down into an inner Cypher subquery.
 
@@ -27,7 +27,7 @@ const db = new DortDB({
 
 Inside a query, a `LANG <name>` block switches to another language. A block can
 appear anywhere a subquery or atomic expression is allowed, and it ends when its
-enclosing scope ends — typically a closing parenthesis. You can also end a block
+enclosing scope ends, typically at a closing parenthesis. You can also end a block
 explicitly with `LANG EXIT`.
 
 <MulticodeBlock>
@@ -119,7 +119,7 @@ WHERE (
 
 In SQL, an unqualified column is assumed to belong to the current `FROM` table.
 When SQL is embedded in a language that does not prefix identifiers (such as
-Cypher), that assumption gets in the way — you may need to refer to a value from
+Cypher), that assumption gets in the way, since you may need to refer to a value from
 an outer scope rather than the current table. Prefix the column with the
 `nonlocal` schema to do so; DortDB then resolves it against the nearest outer
 definition instead of the current table. See
@@ -131,7 +131,7 @@ The unified model has two kinds of data, and it determines what a nested block
 gives back to its host:
 
 - **Tuples** are rows with named attributes (relational-style). A block that
-  produces tuples can be treated as a table — joined, unwrapped, and so on.
+  produces tuples can be treated as a table: joined, unwrapped, and so on.
 - **Items** are single opaque values (or sequences of them). A block that
   produces items behaves like a scalar or a list.
 

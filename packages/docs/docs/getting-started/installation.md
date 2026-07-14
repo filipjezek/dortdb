@@ -17,7 +17,7 @@ npm install @dortdb/core
 
 [`@dortdb/core`](../api/@dortdb/core/index.md) contains the [`DortDB`](../api/@dortdb/core/default-export/classes/DortDB.md)
 engine, the optimizer, the index abstractions, and all the extension points. It ships no query language on its
-own — you add those separately.
+own; you add those separately.
 
 ## Language packages
 
@@ -29,11 +29,11 @@ npm install @dortdb/lang-cypher graphology
 npm install @dortdb/lang-xquery
 ```
 
-- **[`@dortdb/lang-sql`](../lang-sql/overview.md)** — SQL over object-shaped rows.
-- **[`@dortdb/lang-cypher`](../lang-cypher/overview.md)** — Cypher over property graphs. Its default data
+- **[`@dortdb/lang-sql`](../lang-sql/overview.md)**: SQL over object-shaped rows.
+- **[`@dortdb/lang-cypher`](../lang-cypher/overview.md)**: Cypher over property graphs. Its default data
   adapter is backed by [Graphology](https://graphology.github.io/), so install
   `graphology` alongside it (it is a peer dependency).
-- **[`@dortdb/lang-xquery`](../lang-xquery/overview.md)** — XQuery over XML / DOM / tree-shaped data.
+- **[`@dortdb/lang-xquery`](../lang-xquery/overview.md)**: XQuery over XML / DOM / tree-shaped data.
 
 Each language package declares [`@dortdb/core`](../api/@dortdb/core/index.md) as a peer dependency, so a single
 core instance is shared across all of them.

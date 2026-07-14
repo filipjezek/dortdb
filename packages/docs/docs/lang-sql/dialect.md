@@ -8,7 +8,7 @@ description: The PostgreSQL-based SQL dialect, its schemaless restrictions, and 
 
 DortDB's SQL is based on the **PostgreSQL** flavor and covers its data-selection
 subset. It also supports several of PostgreSQL's JSON access operators. There is
-no data definition or modification (`CREATE`, `INSERT`, `UPDATE`, ...) — DortDB
+no data definition or modification (`CREATE`, `INSERT`, `UPDATE`, ...); DortDB
 queries data that already exists in memory.
 
 ## Notable features
@@ -57,14 +57,14 @@ column comes from.
 
 - **Unqualified columns require a single, non-joined source.** With more than one
   source in scope, referencing a bare column name raises an _ambiguous column
-  names_ error — qualify it (`t1.attr`).
+  names_ error, so qualify it (`t1.attr`).
 - **Natural joins are disabled** (there is no schema to infer the join columns
   from). Use an explicit `JOIN ... ON ...`.
 - **Every `FROM` subquery must have an alias.** `FROM (SELECT ...)` is a parse
   error; write `FROM (SELECT ...) AS s`.
 - **`SELECT *` is not supported.** Without a schema there is nothing to reliably
   expand `*` over. It may occasionally return a result, but that behavior is not
-  something to rely on — always list the columns you want explicitly.
+  something to rely on, so always list the columns you want explicitly.
 
 :::tip Referring to an outer scope: `nonlocal`
 By default an unqualified column belongs to the current `FROM` table. When you

@@ -33,7 +33,7 @@ db.query('SELECT double(x) AS d FROM t');
 
 ## Aggregates
 
-An aggregate is expressed as three parts — `init` to create the starting state,
+An aggregate is expressed as three parts: `init` to create the starting state,
 `step` to fold in each value, and `result` to extract the final value:
 
 ```ts

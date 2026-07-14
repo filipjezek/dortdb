@@ -9,7 +9,7 @@ description: Register in-memory data and adapt each language to its shape.
 ## Registering sources
 
 [`registerSource`](../api/@dortdb/core/default-export/classes/DortDB.md#registersource)
-pairs an in-memory value with a name. It does not copy or convert anything — it
+pairs an in-memory value with a name. It does not copy or convert anything; it
 is a constant-time operation, so you can register large structures freely.
 
 ```ts
@@ -19,7 +19,7 @@ db.registerSource(['social'], graph);
 ```
 
 The name is an array of parts, which lets you namespace sources. **Anything**
-can be registered — an array, an object, a DOM document, a graph — because it is
+can be registered (an array, an object, a DOM document, a graph) because it is
 the language's _data adapter_ that decides how to read it.
 
 ## Data adapters
@@ -37,7 +37,7 @@ a different shape by supplying your own adapter in the language's config.
 ### SQL: object rows, or your own accessor
 
 By default SQL treats each array element as a row and each property as a column.
-To read differently-shaped rows — say, `Map`-backed rows — supply an adapter
+To read differently-shaped rows (say, `Map`-backed rows) supply an adapter
 with a
 [`createColumnAccessor`](../api/@dortdb/lang-sql/default-export/interfaces/SQLDataAdapter.md#createcolumnaccessor):
 
@@ -93,7 +93,7 @@ DOM. See [XQuery Overview](../lang-xquery/overview.md).
 Adapters are a first-class extension point. The interfaces differ per language
 ([`SQLDataAdapter`](../api/@dortdb/lang-sql/default-export/interfaces/SQLDataAdapter.md),
 [`XQueryDataAdapter`](../api/@dortdb/lang-xquery/default-export/interfaces/XQueryDataAdapter.md),
-[`CypherDataAdapter`](../api/@dortdb/lang-cypher/default-export/interfaces/CypherDataAdapter.md))
-— see the API reference for the exact members, and
+[`CypherDataAdapter`](../api/@dortdb/lang-cypher/default-export/interfaces/CypherDataAdapter.md)).
+See the API reference for the exact members, and
 [Extending DortDB](./extending/overview.md) for how adapters fit into the
 broader extension model.

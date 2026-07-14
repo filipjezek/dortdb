@@ -8,8 +8,8 @@ description:
 # Architecture
 
 [`@dortdb/core`](../api/@dortdb/core/index.md) is a small, **language-neutral**
-engine. It owns the query lifecycle — registration, planning, optimization, and
-execution — but ships no query language itself. Languages, functions, indices,
+engine. It owns the query lifecycle (registration, planning, optimization, and
+execution) but ships no query language itself. Languages, functions, indices,
 and optimizer rules are all plug-ins that attach to the core.
 
 ## The query pipeline
@@ -47,13 +47,13 @@ and the all-in-one
 DortDB is a set of small packages so that a deployment bundles only what it
 uses:
 
-- **[`@dortdb/core`](../api/@dortdb/core/index.md)** — the engine, optimizer,
+- **[`@dortdb/core`](../api/@dortdb/core/index.md)**: the engine, optimizer,
   index abstractions, and every extension point.
 - **[`@dortdb/lang-sql`](../api/@dortdb/lang-sql/index.md)**,
   **[`@dortdb/lang-cypher`](../api/@dortdb/lang-cypher/index.md)**,
-  **[`@dortdb/lang-xquery`](../api/@dortdb/lang-xquery/index.md)** — the
+  **[`@dortdb/lang-xquery`](../api/@dortdb/lang-xquery/index.md)**: the
   provided language plug-ins, one per data model.
-- **[`@dortdb/datetime`](../api/@dortdb/datetime/index.md)** — an example
+- **[`@dortdb/datetime`](../api/@dortdb/datetime/index.md)**: an example
   extension bundling date/time functions.
 
 Each language declares the core as a peer dependency, so one core instance backs
@@ -66,23 +66,23 @@ The core processes plans with an **extended visitor pattern**. A plan operator's
 method receives a _dictionary of visitors keyed by language_, and dispatch keys
 on both the operator's type and the language that **instantiated** it: a core
 operator built by SQL is handled by SQL's visitor, the same operator type built
-by Cypher by Cypher's. A language implements the full visitor interface —
+by Cypher by Cypher's. A language implements the full visitor interface,
 usually by subclassing the core visitor and overriding only the methods for the
-operators it adds — which is what lets it grow the algebra without changing the
+operators it adds, which is what lets it grow the algebra without changing the
 core. For instance, XQuery adds a
 [`TreeJoin`](../formalism/operators.md#treejoin) operator for path navigation.
 See [Plan Visitors](./plan-visitors.md) for the individual passes.
 
 This is the seam that [Extending DortDB](../guides/extending/overview.md) builds
-on. The formal side — what the operators mean — is covered in the
+on. The formal side, what the operators mean, is covered in the
 [Formalism](../formalism/overview.md) section.
 
 ## Execution model
 
 Execution is **lazy, synchronous, and single-threaded**: iterating a result
 pulls rows through the operator tree on the calling thread, so functions and
-aggregates must be synchronous. The engine is schema-free — sources are plain
+aggregates must be synchronous. The engine is schema-free: sources are plain
 in-memory values read through
-[data adapters](../guides/data-sources-and-adapters.md) — which is what keeps
+[data adapters](../guides/data-sources-and-adapters.md), which is what keeps
 registration free and languages decoupled from data shape. See
 [Limitations](./limitations.md) for the consequences of these choices.

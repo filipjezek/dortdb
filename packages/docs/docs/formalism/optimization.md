@@ -9,7 +9,7 @@ description:
 # Optimization
 
 Because every language is lowered into the [same algebra](./algebra.md), a query
-can be optimized **holistically** — the optimizer neither knows nor cares which
+can be optimized **holistically**: the optimizer neither knows nor cares which
 language produced which part of the plan. A filter written at the end of an SQL
 query can end up pushed deep into a Cypher subtree that came from a nested
 `LANG` block, because to the optimizer both are just operators in one tree.
@@ -23,7 +23,7 @@ the plan and replaces it with an equivalent, cheaper subtree.
 :::tip[See it in action]
 
 The [Showcase demo](https://filipjezek.github.io/dortdb) lets you toggle and
-reorder individual rules and watch the logical plan change — the quickest way to
+reorder individual rules and watch the logical plan change, the quickest way to
 build intuition for what each rule does.
 
 :::
@@ -36,7 +36,7 @@ practical configuration knobs (indices, hash joins, rule ordering), see
 ## Optimizer-only plan operators
 
 Three operators exist purely to give the optimizer better targets. They are not
-part of the theoretical algebra — a plan is complete without them — but they
+part of the theoretical algebra (a plan is complete without them) but they
 enable substantial speedups: [`IndexScan`](./operators.md#indexscan),
 [`IndexedRecursion`](./operators.md#indexedrecursion), and
 [`BidirectionalRecursion`](./operators.md#bidirectionalrecursion). See the
@@ -55,7 +55,7 @@ Finds [`Calculation`](./operators.md#calculation)s that contain a **safe**
 nested subquery and lifts the subquery out in front of the operator as a
 [`ProjectionConcat`](./operators.md#projectionconcat), replacing it in the
 calculation with a plain reference. A subquery is safe when it produces at most
-one value and is always evaluated — so `(SELECT number FROM t) + 5` is unnested,
+one value and is always evaluated, so `(SELECT number FROM t) + 5` is unnested,
 but `val IN (SELECT number FROM t)` is not (the containing operator accepts a
 sequence). Unless the subquery is guaranteed to return a value, the
 [`ProjectionConcat`](./operators.md#projectionconcat) is made _outer_.
@@ -108,7 +108,7 @@ case, the merge is skipped.
 ### Pushdown Selections
 
 A [`Selection`](./operators.md#selection) reduces cardinality, so it pays to
-evaluate it as early — as close to the leaves — as possible. This rule moves
+evaluate it as early (as close to the leaves) as possible. This rule moves
 [`Selection`](./operators.md#selection)s down the tree, with the constraints
 needed to preserve meaning:
 
@@ -120,13 +120,13 @@ needed to preserve meaning:
   branches.
 - Past a [`Projection`](./operators.md#projection) only if the predicate does
   not depend on newly computed attributes, and only if the required renaming is
-  safe (no variable shadowing) — this is exactly what the
+  safe (no variable shadowing); this is exactly what the
   [attribute rename checker](../core/plan-visitors.md#attributerenamer--attributerenamechecker)
   verifies.
 - Into a [`Join`](./operators.md#join),
   [`CartesianProduct`](./operators.md#cartesianproduct), or
   [`ProjectionConcat`](./operators.md#projectionconcat) branch that contains all
-  the attributes the predicate needs — but never into the null-padded side of an
+  the attributes the predicate needs, but never into the null-padded side of an
   outer join.
 
 To avoid one un-pushable [`Selection`](./operators.md#selection) blocking a
@@ -178,7 +178,7 @@ Merges a [`Selection`](./operators.md#selection) with the
 [`CartesianProduct`](./operators.md#cartesianproduct) beneath it into a single
 [`Join`](./operators.md#join), moving the predicate into the join condition.
 When the [`Selection`](./operators.md#selection) cannot be pushed into either
-branch — because it references attributes from both — this is the rewrite that
+branch (because it references attributes from both), this is the rewrite that
 still makes it useful. Applied to an existing [`Join`](./operators.md#join), it
 simply adds another condition rather than combining them into one.
 
@@ -239,7 +239,7 @@ into the index structure instead of scanning the whole source. Like
 
 The most involved built-in rule. It combines two stacked
 [`Projection`](./operators.md#projection)s into one: unused attributes are
-dropped, and computed attributes are inlined — **but only when a computed
+dropped, and computed attributes are inlined, **but only when a computed
 attribute is referenced once**, so a potentially expensive calculation is never
 duplicated. For example, `π([x → a, x → b], π([calc(1+1) → x], ...))` is left
 as-is, because merging would evaluate `1+1` twice.
@@ -260,7 +260,7 @@ DortDB lets you register
 many data models, indexing is deliberately open-ended: any
 [`Calculation`](./operators.md#calculation) that contains no subquery is
 indexable. During optimization, registered indices are shown the access
-expressions in the plan and decide whether they apply — a hash-table index might
+expressions in the plan and decide whether they apply: a hash-table index might
 require an equality check on one attribute, while a range index also handles
 inequalities. Currently the first matching index wins; this selection lives in
 the two replaceable rules above ([Join Indices](#join-indices) and
@@ -297,7 +297,7 @@ by themselves ignore the underlying structure. The Cypher
 detects those [`Join`](./operators.md#join)s via the data adapter's
 [`isConnected`](../api/@dortdb/lang-cypher/default-export/interfaces/CypherDataAdapter.md#isconnected)
 condition and routes them through the adapter's neighbor-lookup methods instead.
-The index stores nothing itself — it is a thin wrapper over the adapter — and it
+The index stores nothing itself (it is a thin wrapper over the adapter) and it
 is what makes [`IndexedRecursion`](./operators.md#indexedrecursion) and
 [`BidirectionalRecursion`](./operators.md#bidirectionalrecursion) possible for
 graph queries.
@@ -312,7 +312,7 @@ _pure_ function whose arguments are all constants is evaluated once at plan time
 and replaced by its result, avoiding redundant work at execution time.
 
 Because all languages share one algebra, optimizations that target a single
-language are rare — it is usually better to write a rule that applies
+language are rare; it is usually better to write a rule that applies
 universally. The exceptions live in the language packages, not the core. SQL,
 for instance, rewrites **quantified comparisons** during plan building: a
 `> ALL (...)` or similar subquery is replaced by an aggregation over the

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: Unified Object Representation
-description: Items, tuples, and streams — the uniform internal representation that abstracts over heterogeneous data models.
+description: Items, tuples, and streams, the uniform internal representation that abstracts over heterogeneous data models.
 ---
 
 # Unified Object Representation
@@ -9,7 +9,7 @@ description: Items, tuples, and streams — the uniform internal representation 
 Everything that flows through a DortDB plan is one of two things: a **tuple** or an **item**.
 
 - A **tuple** is a row with named attributes, just like a relational tuple. Each attribute name is a sequence of identifiers (for example, a table name plus a column name).
-- An **item** is an opaque value. The engine makes no assumptions about its shape or schema — it could be a number, a JSON object, a graph node, or an XML fragment.
+- An **item** is an opaque value. The engine makes no assumptions about its shape or schema; it could be a number, a JSON object, a graph node, or an XML fragment.
 
 Operators consume and produce **streams** of these values. Keeping the representation this small is what lets one algebra serve relational, document, and graph data at once.
 
@@ -51,8 +51,8 @@ $$
 
 where $<_{tu}$ is defined by:
 
-- $\forall x, y \in A_t: x <_{tu} y \iff x <_t y$ — the left side keeps its order, and comes first;
-- $\forall x, y \in A_u \setminus A_t: x <_{tu} y \iff x <_u y$ — then the attributes unique to the right side, in their order.
+- $\forall x, y \in A_t: x <_{tu} y \iff x <_t y$ (the left side keeps its order, and comes first);
+- $\forall x, y \in A_u \setminus A_t: x <_{tu} y \iff x <_u y$ (then the attributes unique to the right side, in their order).
 
 On values, when both sides share an attribute, the right side wins:
 
@@ -64,8 +64,8 @@ $$
 
 A **stream** is a possibly infinite, ordered sequence of values of type $X$, denoted $\mathrm{Stream}(X)$. Two refinements show up in operator signatures:
 
-- $\mathrm{Stream}_1(X)$ — produces **exactly one** value.
-- $\mathrm{Stream}_{01}(X)$ — produces **one or no** value.
+- $\mathrm{Stream}_1(X)$ produces **exactly one** value.
+- $\mathrm{Stream}_{01}(X)$ produces **one or no** value.
 
 A concrete stream is written with angle brackets, optionally as a comprehension:
 
@@ -77,6 +77,6 @@ The set of all streams is denoted $\mathcal{I}$.
 
 ## Why not nested relations or property graphs?
 
-**Nested relations** are a well-studied formal model, but they assume you know the full schema of every source up front — which conflicts with DortDB's schema-agnostic design. They also don't fit semi-structured or unstructured data well. Our opaque items handle those cases, while our tuples are essentially relational tuples, so there's still plenty of overlap.
+**Nested relations** are a well-studied formal model, but they assume you know the full schema of every source up front, which conflicts with DortDB's schema-agnostic design. They also don't fit semi-structured or unstructured data well. Our opaque items handle those cases, while our tuples are essentially relational tuples, so there's still plenty of overlap.
 
 **Property graphs** can model anything, since any data can be drawn as a graph. We chose tuples and items instead, mainly because existing work on XQuery algebra adapted cleanly to our needs.

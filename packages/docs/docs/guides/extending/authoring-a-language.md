@@ -9,7 +9,7 @@ description: The pieces required to add a whole new query language.
 Adding a language is the most involved extension point. This page outlines the
 pieces involved; the provided language packages ([`@dortdb/lang-sql`](../../api/@dortdb/lang-sql/index.md),
 [`@dortdb/lang-cypher`](../../api/@dortdb/lang-cypher/index.md), [`@dortdb/lang-xquery`](../../api/@dortdb/lang-xquery/index.md)) are the best worked references, and
-a language is registered exactly like the provided ones — as [`mainLang`](../../api/@dortdb/core/default-export/interfaces/DortDBConfig.md#mainlang) or in
+a language is registered exactly like the provided ones: as [`mainLang`](../../api/@dortdb/core/default-export/interfaces/DortDBConfig.md#mainlang) or in
 [`additionalLangs`](../../api/@dortdb/core/default-export/interfaces/DortDBConfig.md#additionallangs).
 
 ## 1. A parser that cooperates with language switching
@@ -17,7 +17,7 @@ a language is registered exactly like the provided ones — as [`mainLang`](../.
 The parser turns query text into an AST. Because any language can be nested
 inside any other, a parser must handle **language switches**: when it encounters
 a `LANG <name>` block it hands off to another parser, and it must know when to
-**stop**, even with input remaining — either at an explicit `LANG EXIT` keyword or
+**stop**, even with input remaining, either at an explicit `LANG EXIT` keyword or
 when it would leave its own scope (for example a closing parenthesis).
 
 The parser therefore returns both the parsed AST **and any unparsed remainder**,
@@ -37,7 +37,7 @@ the nested parser should stop at the `)` and return the remaining
 
 From the AST, the language builds an initial [logical plan](../../formalism/algebra.md).
 If the unified algebra is not enough, the language may define **new plan
-operators** — but it must then handle them in **every visitor pass** the engine
+operators**, but it must then handle them in **every visitor pass** the engine
 runs over the plan (dependency analysis, renaming, execution, and so on). The
 full set of passes, what each one does, and default implementations are covered
 in [Plan Visitors](../../core/plan-visitors.md). A language is described by a

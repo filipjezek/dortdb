@@ -7,7 +7,7 @@ description: Query arrays of objects with the DortDB SQL language.
 # SQL
 
 [`@dortdb/lang-sql`](../api/@dortdb/lang-sql/index.md) adds a PostgreSQL-flavored `SELECT` language to DortDB. It is
-the natural choice for **row-shaped data** — arrays of plain JavaScript objects,
+the natural choice for **row-shaped data**: arrays of plain JavaScript objects,
 where each object is a row and each property is a column.
 
 ```ts
@@ -43,7 +43,7 @@ const result = db.query(`
 By default SQL reads sources through the [`ObjectDataAdapter`](../api/@dortdb/lang-sql/default-export/classes/ObjectDataAdapter.md), which treats each
 element of a registered array as a row and reads columns as object properties.
 You can point SQL at differently-shaped data (for example `Map`-backed rows) by
-supplying a custom adapter — see
+supplying a custom adapter; see
 [Data Sources & Adapters](../guides/data-sources-and-adapters.md).
 
 ## Result column names
@@ -58,7 +58,7 @@ db.query('SELECT t1.id AS id, t2.w AS weight FROM t1 JOIN t2 ON t1.id = t2.id');
 
 ## Learn more
 
-- [SQL Dialect & Restrictions](./dialect.md) — supported features, the
+- [SQL Dialect & Restrictions](./dialect.md): supported features, the
   schemaless restrictions, and what is not implemented.
 - The API reference for the exported [`SQL`](../api/@dortdb/lang-sql/default-export/functions/SQL.md),
   [`SQLConfig`](../api/@dortdb/lang-sql/default-export/interfaces/SQLConfig.md),

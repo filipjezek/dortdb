@@ -31,7 +31,7 @@ multiple statements, only the **last** statement is executed.
 
 ### `parse`
 
-[`parse`](../api/@dortdb/core/default-export/classes/DortDB.md#parse) returns an **array** of AST nodes — one per top-level statement:
+[`parse`](../api/@dortdb/core/default-export/classes/DortDB.md#parse) returns an **array** of AST nodes, one per top-level statement:
 
 ```ts
 import { ASTNode } from '@dortdb/core';
@@ -86,7 +86,7 @@ you process large results incrementally or stop early. To materialize a streamed
 result, spread or collect it: `const rows = [...result.data]`.
 
 :::note[Synchronous execution]
-Execution is synchronous and single-threaded — iterating `data` pulls rows
+Execution is synchronous and single-threaded; iterating `data` pulls rows
 through the operator tree on the calling thread. Functions and aggregates used in
 queries must therefore be synchronous.
 :::
@@ -122,6 +122,6 @@ same parameter map as its second argument.
 | Method                                                                                           | Returns                                                                         | Data               | Use when                               |
 | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------ | -------------------------------------- |
 | [`query(text, opts?)`](../api/@dortdb/core/default-export/classes/DortDB.md#query)               | [`QueryResult`](../api/@dortdb/core/default-export/interfaces/QueryResult.md)   | materialized array | you just want results                  |
-| [`parse(text, opts?)`](../api/@dortdb/core/default-export/classes/DortDB.md#parse)               | [`ASTNode[]`](../api/@dortdb/core/ast/interfaces/ASTNode.md)                    | —                  | you need the AST                       |
-| [`buildPlan(ast, opts?)`](../api/@dortdb/core/default-export/classes/DortDB.md#buildplan)        | [`PlanOperator`](../api/@dortdb/core/default-export/interfaces/PlanOperator.md) | —                  | you want to inspect/transform the plan |
+| [`parse(text, opts?)`](../api/@dortdb/core/default-export/classes/DortDB.md#parse)               | [`ASTNode[]`](../api/@dortdb/core/ast/interfaces/ASTNode.md)                    | n/a                | you need the AST                       |
+| [`buildPlan(ast, opts?)`](../api/@dortdb/core/default-export/classes/DortDB.md#buildplan)        | [`PlanOperator`](../api/@dortdb/core/default-export/interfaces/PlanOperator.md) | n/a                | you want to inspect/transform the plan |
 | [`executePlan(plan, params?)`](../api/@dortdb/core/default-export/classes/DortDB.md#executeplan) | [`QueryResult`](../api/@dortdb/core/default-export/interfaces/QueryResult.md)   | lazy iterable      | you want streaming / early exit        |
