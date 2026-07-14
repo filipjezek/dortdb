@@ -1,0 +1,9 @@
+{
+  "label": "Guides",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "title": "Guides",
+    "description": "Task-oriented guides: combining languages in one query, connecting data through adapters, and tuning performance with indices."
+  }
+}

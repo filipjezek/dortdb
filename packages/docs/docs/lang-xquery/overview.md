@@ -1,64 +1,88 @@
 ---
 sidebar_position: 1
 title: XQuery Overview
-description: Query XML, DOM trees, and similar structures with DortDB's XQuery frontend.
+description: Query XML, DOM, and tree-shaped data with the DortDB XQuery language.
 ---
 
-# `@dortdb/lang-xquery`
+# XQuery
 
-`@dortdb/lang-xquery` adds an XQuery frontend to DortDB.
+[`@dortdb/lang-xquery`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md) adds XQuery to DortDB. It is the language for **tree-shaped
+and XML-like data** — DOM documents, parsed XML, and similar hierarchical
+structures — and it brings XPath path navigation together with FLWOR
+transformations.
 
-In DortDB's multimodel architecture, XQuery is the language specialized for tree-shaped and XML-like structures, while still interoperating with SQL and Cypher through shared execution planning.
+XQuery works on **sequences** of values. Sequences never nest (a sequence of
+sequences is flattened), a single value is a sequence of length one, and an empty
+sequence stands in for "no value".
 
-Its default adapter, `DomDataAdapter`, targets DOM and XML-like trees and allows controlled access to JavaScript object attributes through the attribute axis.
+```ts
+import { DortDB } from '@dortdb/core';
+import { defaultRules } from '@dortdb/core/optimizer';
+import { XQuery, DomDataAdapter } from '@dortdb/lang-xquery';
 
-## Why XQuery In DortDB
+const db = new DortDB({
+  // in a browser, XQuery() picks up the global document automatically
+  mainLang: XQuery({ adapter: new DomDataAdapter(document) }),
+  optimizer: { rules: defaultRules },
+});
 
-XQuery is included to make hierarchical data first-class in the same runtime where you query rows and graphs.
+const people = new DOMParser().parseFromString(
+  `<people>
+     <person age="30">Alice</person>
+     <person age="20">Bob</person>
+   </people>`,
+  'text/xml',
+);
+db.registerSource(['people'], people);
 
-Use it for:
+db.query('for $p in $people/people/person return string($p/@age)');
+// data: ['30', '20']
 
-- path navigation and structural filtering over trees
-- FLWOR-style transformations
-- XML-oriented construction and existence checks
-- embedded document constraints inside larger SQL or Cypher workflows
+db.query('for $p in $people/people/person[@age > 25] return string($p)');
+// data: ['Alice']
+```
 
-## Typical Use Cases
+## FLWOR and sequences
 
-Use the XQuery package when:
+FLWOR expressions (**F**or, **L**et, **W**here, **O**rder by, **R**eturn) stream
+data as named tuples between clauses, but a FLWOR expression as a whole produces
+a flattened sequence of items:
 
-- your source data is XML or DOM-based
-- you want path expressions, FLWOR expressions, or XML construction
-- you need to embed document-oriented checks inside SQL or Cypher queries
+```ts
+db.query('for $x in (1 to 3) let $y := $x * 10 return $y');
+// data: [10, 20, 30]
+```
 
-## Where It Fits In Multimodel Queries
+Aggregation is done by passing a sequence to a function:
 
-XQuery often appears as a focused subquery language:
+```ts
+db.query('sum(1 to 10)'); // data: [55]
+```
 
-- SQL can use XQuery to test XML payload conditions per row
-- Cypher can use XQuery to validate or transform tree-like node payloads
+Path predicates can read the current context item (`.`), position
+(`fn:position()`), and size (`fn:last()`):
 
-This follows the DortDB goal of choosing the best language per subproblem instead of forcing one universal syntax.
+```ts
+db.query('(5 to 10)[. mod 2 eq 1]'); // data: [5, 7, 9]
+```
 
-## Configuration Surface
+## The DOM adapter
 
-The main exported entry point is `XQuery(config?)`. The generated API also documents:
+By default XQuery reads data through [`DomDataAdapter`](../api/@dortdb/lang-xquery/default-export/classes/DomDataAdapter.md),
+which expects DOM globals (`document`, `Node`, and friends).
 
-- `XQueryConfig`
-- `XQueryLanguage`
-- `XQueryDataAdapter`
-- `DomDataAdapter`
-- `XQueryFn`, `XQueryOp`, `XQueryAggregate`, and `XQueryCastable`
+- **In the browser** these are available, so [`XQuery()`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md) works directly.
+- **In Node.js** there is no DOM by default. Supply a document from a DOM
+  implementation (e.g. [`jsdom`](https://github.com/jsdom/jsdom)) — `XQuery({ adapter: new DomDataAdapter(doc) })`
+  — and make the DOM globals available, or provide a custom adapter that targets
+  your own data shape. See
+  [Data Sources & Adapters](../guides/data-sources-and-adapters.md).
 
-## Adapter Note
+## Learn more
 
-The default `DomDataAdapter` expects DOM globals. In browser runtimes that usually works directly. In non-browser runtimes you should provide a compatible adapter if `document` and related node types are not available.
-
-## Scope Notes
-
-The frontend focuses on practical query features needed for application integration. For concrete behavior differences and unsupported features, see [XQuery Dialect Notes](./dialect.md).
-
-## Related Pages
-
-- [XQuery Dialect Notes](./dialect.md)
-- [Cross-language Queries](../cross-language-queries.md)
+- [XQuery Dialect & Restrictions](./dialect.md) — the supported subset and what
+  is intentionally left out.
+- The API reference for [`XQuery`](../api/@dortdb/lang-xquery/default-export/functions/XQuery.md),
+  [`XQueryConfig`](../api/@dortdb/lang-xquery/default-export/interfaces/XQueryConfig.md),
+  [`XQueryDataAdapter`](../api/@dortdb/lang-xquery/default-export/interfaces/XQueryDataAdapter.md), and
+  [`DomDataAdapter`](../api/@dortdb/lang-xquery/default-export/classes/DomDataAdapter.md).

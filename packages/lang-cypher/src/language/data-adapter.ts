@@ -7,7 +7,7 @@ export type EdgeDirection = 'in' | 'out' | 'any';
  * @template NodeType - the type of the nodes in the graph
  * @template EdgeType - the type of the edges in the graph
  */
-export interface CypherDataAdaper<
+export interface CypherDataAdapter<
   GraphType = any,
   NodeType extends Record<string, unknown> = any,
   EdgeType extends Record<string, unknown> = any,

@@ -17,11 +17,11 @@ const FeatureList: FeatureItem[] = [
     title: 'Move across relational, document, and graph-shaped data.',
     description: (
       <>
-        Configure a single DortDB instance with SQL, XQuery, and Cypher, then
-        switch languages inside a query when that makes the plan simpler.
+        Load the languages you need — SQL, Cypher, and XQuery are provided — and
+        switch between them inside a single query when that makes the plan simpler.
       </>
     ),
-    to: '/docs/cross-language-queries',
+    to: '/docs/guides/cross-language-queries',
   },
   {
     eyebrow: 'Composable core',
@@ -32,7 +32,7 @@ const FeatureList: FeatureItem[] = [
         indices, and optimizer hooks. Language packages plug into that surface.
       </>
     ),
-    to: '/docs/core/overview',
+    to: '/docs/core/architecture',
   },
   {
     eyebrow: 'From source',

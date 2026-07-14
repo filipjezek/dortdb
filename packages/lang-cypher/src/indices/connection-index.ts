@@ -11,7 +11,7 @@ import {
   PlanVisitor,
 } from '@dortdb/core';
 import { Calculation, FnCall, PlanOpAsArg, RenameMap } from '@dortdb/core/plan';
-import { CypherDataAdaper, EdgeDirection } from '../language/data-adapter.js';
+import { CypherDataAdapter, EdgeDirection } from '../language/data-adapter.js';
 import { CypherLanguage } from '../language/language.js';
 import { intermediateToCalc } from '@dortdb/core/utils';
 
@@ -25,7 +25,7 @@ export class ConnectionIndex implements Index {
   /** Calculation builders keyed by language name, used when building the accessor calculation. */
   protected calcBuilders: Record<string, PlanVisitor<CalculationParams>>;
   /** Graph data adapter retrieved from the registered Cypher language. */
-  protected adapter: CypherDataAdaper;
+  protected adapter: CypherDataAdapter;
 
   constructor(
     /** Index key expressions - the edge or node identifiers this index is built on. */

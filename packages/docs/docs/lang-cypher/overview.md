@@ -1,85 +1,89 @@
 ---
 sidebar_position: 1
 title: Cypher Overview
-description: Query graph data with DortDB's Cypher frontend and the built-in Graphology adapter.
+description: Query property graphs with DortDB's Cypher-based query language and the Graphology adapter.
 ---
 
-# `@dortdb/lang-cypher`
+# Cypher
 
-`@dortdb/lang-cypher` adds a Cypher-style graph query frontend to DortDB.
+[`@dortdb/lang-cypher`](../api/@dortdb/lang-cypher/default-export/functions/Cypher.md) adds a Cypher-based query language to DortDB. It is the
+language for **property graphs** — data best expressed as nodes connected by
+relationships — and it brings Cypher's visual, ASCII-art pattern matching,
+including variable-length paths.
 
-In DortDB's multimodel strategy, Cypher is the graph-native language used when pattern matching and graph traversal are the natural way to express a subproblem.
+Cypher operates on **labeled property graphs**: nodes may carry zero or more
+labels, each relationship has exactly one type and a direction, and both nodes
+and relationships may hold properties.
 
-The default adapter targets Graphology graphs and lets you select the default graph through package configuration.
+## Setup
 
-## Why Cypher In DortDB
-
-Cypher gives DortDB an expressive graph layer for:
-
-- pattern matching over nodes and relationships
-- traversal-heavy queries that are awkward in SQL
-- graph checks that can be embedded into larger SQL or XQuery-driven workflows
-
-## Quick Setup
+The default data adapter is backed by [Graphology](https://graphology.github.io/).
+Register a graph as a source and point the language at it with `defaultGraph`
+or with a `FROM graph` clause:
 
 ```ts
-import { MultiDirectedGraph } from 'graphology';
 import { DortDB } from '@dortdb/core';
-import { Cypher } from '@dortdb/lang-cypher';
-
-const graph = new MultiDirectedGraph();
+import { defaultRules } from '@dortdb/core/optimizer';
+import { Cypher, gaLabelsOrType } from '@dortdb/lang-cypher';
+import { MultiDirectedGraph } from 'graphology';
 
 const db = new DortDB({
-  mainLang: Cypher({ defaultGraph: 'defaultGraph' }),
+  mainLang: Cypher({ defaultGraph: 'social' }),
+  optimizer: { rules: defaultRules },
 });
 
-db.registerSource(['defaultGraph'], graph);
+const graph = new MultiDirectedGraph();
+graph.addNode('alice', {
+  [gaLabelsOrType]: ['Person'],
+  name: 'Alice',
+  age: 30,
+});
+graph.addNode('bob', { [gaLabelsOrType]: ['Person'], name: 'Bob', age: 20 });
+graph.addEdge('alice', 'bob', { [gaLabelsOrType]: 'KNOWS' });
+
+db.registerSource(['social'], graph);
 ```
 
-The graph can also be selected directly in the query with a `FROM graphName` clause.
+:::warning[Labels and types live under a symbol key]
+The Graphology adapter expects node **labels** and edge **types** in the
+[`gaLabelsOrType`](../api/@dortdb/lang-cypher/default-export/variables/gaLabelsOrType.md) symbol-keyed attribute — `{ [gaLabelsOrType]: ['Person'] }` for
+a node, `{ [gaLabelsOrType]: 'KNOWS' }` for a relationship. A plain `labels`
+property will not be recognized, and label/type patterns like `(:Person)` or
+`-[:KNOWS]-` will silently match nothing. The package also exports helpers to
+serialize/deserialize a graph that uses these symbol keys.
+:::
 
-## Where It Fits In Multimodel Queries
+## Pattern matching
 
-Cypher is often used either:
+```ts
+// every Person, by name
+db.query('MATCH (p:Person) RETURN p.name AS name ORDER BY name');
 
-- as the main language when output is relationship-driven
-- as an embedded `LANG cypher` subquery inside a SQL or XQuery outer query
+// filter and project matched values, SQL-style
+db.query(`
+  MATCH (x)-[]->(y)
+  WHERE y.age < 15
+  RETURN x.name AS person, y.age AS age
+`);
 
-This allows you to keep graph-specific logic in Cypher while still participating in one shared execution context.
+// variable-length path: friends-of-friends up to three hops away
+db.query(`
+  MATCH ({name: "Alice"})-[:KNOWS *1..3]->(foaf)
+  RETURN foaf.name AS name
+`);
+```
 
-## Main Exported Surface
+A matched path may visit the same node more than once but cannot reuse the same
+relationship twice.
 
-The generated API documents the public package surface, especially:
+## Learn more
 
-- `Cypher(config?)`
-- `CypherConfig`
-- `CypherLanguage`
-- `CypherDataAdapter`
-- `GraphologyDataAdapter`
-- `ConnectionIndex`
-- `CypherFn`
-- `AdapterCtxArg`
-
-## Graphology Integration
-
-The built-in adapter expects labels and edge types to be carried in symbol-backed attributes. The package exports `gaNodeOrEdgeId` and `gaLabelsOrType` to make that convention explicit and reusable.
-
-## Scope Notes
-
-The Cypher frontend is practical and integration-focused. It does not currently aim for full Neo4j feature parity; use the API and tests as the source of truth for exact supported behavior.
-
-## Built-in Graph Functions
-
-The Cypher package exports helper functions such as:
-
-- `startNode`
-- `endNode`
-- `labels`
-- `type`
-
-These are adapter-aware and operate against the active graph context.
-
-## Related Pages
-
-- [Cross-language Queries](../cross-language-queries.md)
-- [Core Indices](../core/indices.md)
+- [Cypher Dialect & Restrictions](./dialect.md) — supported subset and what is
+  left out.
+- [Indexing & Performance](../guides/indexing-and-performance.md) — the
+  [ConnectionIndex](../api/@dortdb/lang-cypher/default-export/classes/ConnectionIndex.md) for graph traversal.
+- The API reference for [`Cypher`](../api/@dortdb/lang-cypher/default-export/functions/Cypher.md),
+  [`CypherConfig`](../api/@dortdb/lang-cypher/default-export/interfaces/CypherConfig.md),
+  [`GraphologyDataAdapter`](../api/@dortdb/lang-cypher/default-export/classes/GraphologyDataAdapter.md),
+  [`gaLabelsOrType`](../api/@dortdb/lang-cypher/default-export/variables/gaLabelsOrType.md), and
+  [`ConnectionIndex`](../api/@dortdb/lang-cypher/default-export/classes/ConnectionIndex.md).

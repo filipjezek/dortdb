@@ -1,9 +1,9 @@
 {
   "label": "Cypher",
-  "position": 7,
+  "position": 5,
   "link": {
     "type": "generated-index",
     "title": "Cypher",
-    "description": "Guide docs for @dortdb/lang-cypher, plus generated API reference for the exported Cypher package surface."
+    "description": "Guide to @dortdb/lang-cypher: the supported Cypher subset and its restrictions."
   }
 }

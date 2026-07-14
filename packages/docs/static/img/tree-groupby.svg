@@ -1,0 +1,172 @@
+<svg _ngcontent-ng-c2497098021="" xmlns="http://www.w3.org/2000/svg" id="svg-output-0" class="" width="585.7333374023438" style="aspect-ratio: 585.733 / 670.883;" viewBox="0 0 585.7333374023438 670.88330078125">
+      <style>
+        
+        svg.triangles polygon {
+          visibility: visible;
+        }
+        svg * {
+          paint-order: stroke;
+          font-family: Georgia, Times, 'Times New Roman', serif;
+          font-size: 15px;
+        }
+        svg *:not(text) {
+          stroke-width: 2px;
+        }
+        svg text, svg tspan {
+          stroke-width: 0;
+        }
+        .text-container {
+          fill: #1a1b1f;
+        }
+        .text-container.source-tuple {
+          font-weight: bold;
+        }
+        .text-container.source-item {
+          font-weight: bold;
+          font-style: italic;
+        }
+        .text-container .placeholder {
+          fill: #546be8;
+          font-weight: bold;
+        }
+        .text-container.groupby .placeholder {
+          fill: #a65d1e;
+        }
+        .text-container .schema text, .text-container .schema tspan {
+          font-size: 12px;
+          fill: #74777f;
+          font-weight: normal;
+        }
+        rect {
+          fill: #faf9fd;
+          stroke: #74777f;
+        }
+        .groupby-content rect {
+          stroke: #faf9fd !important;
+          filter: none !important;
+        }
+        polygon {
+          visibility: hidden;
+        }
+        line {
+          stroke: #888888;
+          stroke-width: 2px;
+        }
+        line.djoin {
+          stroke-dasharray: 3;
+        }
+        line.group-op {
+          stroke: #a65d1e;
+        }
+      </style>
+      <defs>
+        
+            <filter id="shadow-xquery">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="hsl(9, 64%, 50%)"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          
+            <filter id="shadow-sql">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="hsl(278, 64%, 50%)"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          
+            <filter id="shadow-cypher">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="hsl(827, 64%, 50%)"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          
+      </defs>
+      <g id="drawing-container"/>
+      <g id="tree-container" transform="translate(292.8666687011719, 9)"><line x1="0" y1="78.67500305175781" x2="0" y2="157.35000610351562"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-76.25, 0)">
+      <rect width="152.5" height="127.35000610351562"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(7.3083343505859375, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">men</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">women</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">all_ids</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="7.958333492279053px"><tspan dx="0">π</tspan><tspan dx="0">(</tspan><tspan dx="0">men</tspan><tspan dx="0">=</tspan><tspan dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'M'))</title>"count"("</tspan></text><text y="34.5px" x="0px"><tspan dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'M'))</title>id") FI…</tspan><tspan dx="0">,</tspan><tspan dx="3.9666666984558105">women</tspan><tspan dx="0">=</tspan><tspan dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'F'))</title>"c</tspan></text><text y="52.5px" x="15.500000715255737px"><tspan dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'F'))</title>ount"("id") FI…</tspan><tspan dx="0">,</tspan></text><text y="70.5px" x="8.549999952316284px"><tspan dx="0">all_ids</tspan><tspan dx="0">=</tspan><tspan dx="0"><title>"collect"(DISTINCT "id" "id" ASC NULLS LAST)</title>"collect"(</tspan></text><text y="88.5px" x="33.725001096725464px"><tspan dx="0"><title>"collect"(DISTINCT "id" "id" ASC NULLS LAST)</title>DISTIN…</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="0" y1="377.4416809082031" x2="0" y2="597.5333557128906"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-283.8666648864746, 157.35000610351562)"><rect width="567.7333297729492" height="410.183349609375"/><polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/><g transform="translate(306.6333312988281, 8)"><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-85.88333129882812, 0)" class="groupby-content">
+      <rect width="171.76666259765625" height="138.13333129882812"/>
+      
+    <g class="text-container groupby" transform="translate(8, 8)">
+        <g class="schema" transform="translate(3.1916656494140625, 0)"><text y="13.2px" x="3.524999737739563px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053"><title>"count"("id") FILTER(WHERE "="("sex",'M'))</title>"count"("</tspan></text><text y="27.599999999999998px" x="0px"><tspan dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'M'))</title>id") FI…</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053"><title>"count"("id") FILTER(WHERE "="("sex",'F'))</title>"count"("id") FI…</tspan><tspan dx="0">,</tspan></text><text y="41.99999999999999px" x="17.549999117851257px"><tspan dx="0"><title>"collect"(DISTINCT "id" "id" ASC NULLS LAST)</title>"collect"(DISTIN…</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          48.81666564941406&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">γ</tspan><tspan dx="0">(</tspan><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">]; [</tspan><tspan class="placeholder placeholder-0" dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'M'))</title>"count"("</tspan></text><text y="34.5px" x="7.833333730697632px"><tspan class="placeholder placeholder-0" dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'M'))</title>id") FI…</tspan><tspan dx="0">,</tspan><tspan class="placeholder placeholder-1" dx="3.9666666984558105"><title>"count"("id") FILTER(WHERE "="("sex",'F'))</title>"count"("</tspan></text><text y="52.5px" x="6.908332586288452px"><tspan class="placeholder placeholder-1" dx="0"><title>"count"("id") FILTER(WHERE "="("sex",'F'))</title>id") FI…</tspan><tspan dx="0">,</tspan><tspan class="placeholder placeholder-2" dx="3.9666666984558105"><title>"collect"(DISTINCT "id" "id" ASC NULLS LAST)</title>"collect"(</tspan></text><text y="70.5px" x="32.441667556762695px"><tspan class="placeholder placeholder-2" dx="0"><title>"collect"(DISTINCT "id" "id" ASC NULLS LAST)</title>DISTIN…</tspan><tspan dx="0">]</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="38.07495880126953" y1="77.316650390625" x2="-199.03333282470703" y2="168.13333129882812" class="group-op"/><line x1="-199.03333282470703" y1="210.80833435058594" x2="-244.56666564941406" y2="253.48333740234375"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-248.3000030517578, 168.13333129882812)">
+      <rect width="98.53334045410156" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          25.058334350585938,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">σ</tspan><tspan dx="0">(</tspan><tspan class="placeholder placeholder-0" dx="0">_</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-298.6333312988281, 253.48333740234375)">
+      <rect width="108.13333129882812" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container source-tuple" transform="translate(8, 8)">
+        <g class="schema" transform="translate(4.799995422363281, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">&lt;partition&gt;</tspan></text></g>
+      </g></g><line x1="-194.72501373291016" y1="216.68331909179688" x2="-137.46666717529297" y2="253.48333740234375" class="djoin"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-175.5, 253.48333740234375)">
+      <rect width="76.06666564941406" height="35"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        
+        <g class="main-text"><text y="16.5px" x="0px"><tspan dx="0">calc</tspan><tspan dx="0">(</tspan><tspan dx="0">sex</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="40.09169006347656" y1="95.316650390625" x2="25.166664123535156" y2="168.13333129882812" class="group-op"/><line x1="25.166664123535156" y1="210.80833435058594" x2="-20.366668701171875" y2="253.48333740234375"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-24.100006103515625, 168.13333129882812)">
+      <rect width="98.53334045410156" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          25.058334350585938,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">σ</tspan><tspan dx="0">(</tspan><tspan class="placeholder placeholder-0" dx="0">_</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-74.43333435058594, 253.48333740234375)">
+      <rect width="108.13333129882812" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container source-tuple" transform="translate(8, 8)">
+        <g class="schema" transform="translate(4.799995422363281, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">&lt;partition&gt;</tspan></text></g>
+      </g></g><line x1="29.4749755859375" y1="216.68331909179688" x2="86.73332977294922" y2="253.48333740234375" class="djoin"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(48.69999694824219, 253.48333740234375)">
+      <rect width="76.06666564941406" height="35"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        
+        <g class="main-text"><text y="16.5px" x="0px"><tspan dx="0">calc</tspan><tspan dx="0">(</tspan><tspan dx="0">sex</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="38.54167175292969" y1="113.316650390625" x2="199.03333282470703" y2="168.13333129882812" class="group-op"/><line x1="199.03333282470703" y1="210.80833435058594" x2="199.03333282470703" y2="253.48333740234375"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(149.76666259765625, 168.13333129882812)">
+      <rect width="98.53334045410156" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          24.741668701171875,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">τ</tspan><tspan dx="0">(</tspan><tspan dx="0">id</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="199.03333282470703" y1="296.15834045410156" x2="199.03333282470703" y2="338.8333435058594"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(149.76666259765625, 253.48333740234375)">
+      <rect width="98.53334045410156" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          24.066673278808594,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">δ</tspan><tspan dx="0">(</tspan><tspan dx="0">id</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(144.96666717529297, 338.8333435058594)">
+      <rect width="108.13333129882812" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container source-tuple" transform="translate(8, 8)">
+        <g class="schema" transform="translate(4.799995422363281, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">&lt;partition&gt;</tspan></text></g>
+      </g></g></g></g><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-49.26667022705078, 597.5333557128906)">
+      <rect width="98.53334045410156" height="55.350006103515625"/>
+      <polygon points="0,0 0,10 10,0" fill="none" data-original-fill="hsl(278, 64%, 50%)"/>
+    <g class="text-container source-tuple" transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">brand</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">id</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">sex</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          21.241668701171875,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">sales</tspan></text></g>
+      </g></g></g>
+    </svg>

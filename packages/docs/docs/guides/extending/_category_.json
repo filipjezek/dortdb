@@ -1,0 +1,9 @@
+{
+  "label": "Extending DortDB",
+  "position": 4,
+  "link": {
+    "type": "generated-index",
+    "title": "Extending DortDB",
+    "description": "Add to the engine without forking it: functions and aggregates, custom index types, optimizer rules, and whole new languages."
+  }
+}

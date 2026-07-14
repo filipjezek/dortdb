@@ -66,7 +66,10 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          remarkPlugins: [remarkMath],
+          remarkPlugins: [
+            remarkMath,
+            [require('@docusaurus/remark-plugin-npm2yarn'), {}],
+          ],
           rehypePlugins: [rehypeKatex],
           editUrl: ({ docPath }) =>
             `https://github.com/filipjezek/dortdb/edit/main/packages/docs/docs/${docPath}`,
@@ -96,7 +99,7 @@ const config: Config = {
       title: 'DortDB',
       logo: {
         alt: 'DortDB logo',
-        src: 'img/logo.svg',
+        src: 'img/logo.png',
       },
       items: [
         {
@@ -125,7 +128,7 @@ const config: Config = {
             },
             {
               label: 'Cross-language Queries',
-              to: '/docs/cross-language-queries',
+              to: '/docs/guides/cross-language-queries',
             },
           ],
         },
@@ -134,7 +137,7 @@ const config: Config = {
           items: [
             {
               label: '@dortdb/core',
-              to: '/docs/core/overview',
+              to: '/docs/core/architecture',
             },
             {
               label: '@dortdb/lang-sql',
@@ -150,7 +153,7 @@ const config: Config = {
             },
             {
               label: '@dortdb/datetime',
-              to: '/docs/datetime/overview',
+              to: '/docs/guides/extending/functions-and-aggregates',
             },
           ],
         },
@@ -173,6 +176,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
+      additionalLanguages: ['sql', 'xquery', 'cypher'],
     },
   } satisfies Preset.ThemeConfig,
 };

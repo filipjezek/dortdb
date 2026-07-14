@@ -1,7 +1,7 @@
 import { ASTIdentifier, Fn, Language, SerializeFn } from '@dortdb/core';
 import { CypherLogicalPlanBuilder } from '../visitors/builder.js';
 import { createParser } from './create-parser.js';
-import { CypherDataAdaper } from './data-adapter.js';
+import { CypherDataAdapter } from './data-adapter.js';
 import { CypherExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 import * as fns from '../functions/index.js';
@@ -12,7 +12,7 @@ import { GraphologyDataAdapter } from './graphology-adapter.js';
  */
 export interface CypherConfig {
   /** Data adapter for accessing graph data. Uses {@link GraphologyDataAdapter} by default */
-  adapter?: CypherDataAdaper;
+  adapter?: CypherDataAdapter;
   /** The default graph to query against. */
   defaultGraph: string;
   /** Function to serialize query results. */
@@ -22,7 +22,7 @@ export interface CypherConfig {
 /** Runtime language descriptor for Cypher, extending the core {@link Language} contract with graph-specific fields. */
 export interface CypherLanguage extends Language<'cypher'> {
   /** Graph data adapter used by built-in functions and the executor. */
-  dataAdapter: CypherDataAdaper;
+  dataAdapter: CypherDataAdapter;
   /** Default graph identifier resolved from {@link CypherConfig.defaultGraph}. */
   defaultGraph: ASTIdentifier;
 }
@@ -66,8 +66,8 @@ export interface CypherFn extends Fn {
 }
 /** Adapter context injected as the first argument of any {@link CypherFn} with `addAdapterCtx: true`. */
 export interface AdapterCtxArg {
-  /** The active {@link CypherDataAdaper} for the current execution. */
-  adapter: CypherDataAdaper;
+  /** The active {@link CypherDataAdapter} for the current execution. */
+  adapter: CypherDataAdapter;
   /** The graph instance being queried. */
   graph: unknown;
 }

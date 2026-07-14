@@ -1,0 +1,140 @@
+<svg _ngcontent-ng-c3032582887="" xmlns="http://www.w3.org/2000/svg" id="svg-output-0" class="" width="326.875" style="aspect-ratio: 326.875 / 520.467;" viewBox="0 0 326.875 520.4667053222656">
+      <style>
+        
+        svg.triangles polygon {
+          visibility: visible;
+        }
+        svg * {
+          paint-order: stroke;
+          font-family: Georgia, Times, 'Times New Roman', serif;
+          font-size: 15px;
+        }
+        svg *:not(text) {
+          stroke-width: 2px;
+        }
+        svg text, svg tspan {
+          stroke-width: 0;
+        }
+        .text-container {
+          fill: #1a1b1f;
+        }
+        .text-container.source-tuple {
+          font-weight: bold;
+        }
+        .text-container.source-item {
+          font-weight: bold;
+          font-style: italic;
+        }
+        .text-container .placeholder {
+          fill: #546be8;
+          font-weight: bold;
+        }
+        .text-container.groupby .placeholder {
+          fill: #a65d1e;
+        }
+        .text-container .schema text, .text-container .schema tspan {
+          font-size: 12px;
+          fill: #74777f;
+          font-weight: normal;
+        }
+        rect {
+          fill: #faf9fd;
+          stroke: #74777f;
+        }
+        .groupby-content rect {
+          stroke: #faf9fd !important;
+          filter: none !important;
+        }
+        polygon {
+          visibility: hidden;
+        }
+        line {
+          stroke: #888888;
+          stroke-width: 2px;
+        }
+        line.djoin {
+          stroke-dasharray: 3;
+        }
+        line.group-op {
+          stroke: #a65d1e;
+        }
+      </style>
+      <defs>
+        
+            <filter id="shadow-xquery">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="hsl(9, 64%, 50%)"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          
+            <filter id="shadow-sql">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="hsl(278, 64%, 50%)"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          
+            <filter id="shadow-cypher">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="5"/>
+              <feOffset dx="0" dy="0" result="offsetblur"/>
+              <feFlood flood-color="hsl(827, 64%, 50%)"/>
+              <feComposite in2="offsetblur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>  
+          
+      </defs>
+      <g id="drawing-container"/>
+      <g id="tree-container" transform="translate(183.9666748046875, 9)"><line x1="0" y1="42.67500305175781" x2="0" y2="85.35000610351562"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-22.941673278808594, 0)">
+      <rect width="45.88334655761719" height="55.350006103515625"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(6.400001525878906, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">a</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">π</tspan><tspan dx="0">(</tspan><tspan dx="0">a</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="0" y1="128.02500915527344" x2="-60.125" y2="170.70001220703125"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-73.78334045410156, 85.35000610351562)">
+      <rect width="147.56668090820312" height="55.350006103515625"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">a</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">Symbol(unnested).0</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          49.57500457763672,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">σ</tspan><tspan dx="0">(</tspan><tspan class="placeholder placeholder-0" dx="0">_</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="-60.125" y1="214.55834197998047" x2="-139.08333587646484" y2="258.4166717529297"/><line x1="-60.125" y1="214.55834197998047" x2="-16.741661071777344" y2="258.4166717529297" class="djoin"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-133.90834045410156, 170.70001220703125)">
+      <rect width="147.56668090820312" height="57.71665954589844"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(0, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">a</tspan><tspan dx="0">,</tspan><tspan dx="2.9833333492279053">Symbol(unnested).0</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          51.28334045410156,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">°⋈͢</tspan></text></g>
+      </g></g><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-174.9666748046875, 258.4166717529297)">
+      <rect width="71.76667785644531" height="55.350006103515625"/>
+    <g class="text-container source-tuple" transform="translate(8, 8)">
+        <g class="schema" transform="translate(19.34166717529297, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">a</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">Source</tspan></text></g>
+      </g></g><line x1="-16.741661071777344" y1="310.0916748046875" x2="-16.741661071777344" y2="361.7666778564453"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-88.19999694824219, 258.4166717529297)">
+      <rect width="142.9166717529297" height="73.35000610351562"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(3.7999954223632812, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">Symbol(unnested).0</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">fromItem</tspan><tspan dx="0">(</tspan><tspan dx="0">Symbol(</tspan></text><text y="34.5px" x="19.9333336353302px"><tspan dx="0">unnested).0</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><line x1="-16.741661071777344" y1="404.4416809082031" x2="-16.741661071777344" y2="447.11668395996094"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-39.68333435058594, 361.7666778564453)">
+      <rect width="45.88334655761719" height="55.350006103515625"/>
+    <g class="text-container " transform="translate(8, 8)">
+        <g class="schema" transform="translate(6.400001525878906, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">x</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">π</tspan><tspan dx="0">(</tspan><tspan dx="0">x</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(-62.883331298828125, 447.11668395996094)">
+      <rect width="92.28334045410156" height="55.350006103515625"/>
+    <g class="text-container source-tuple" transform="translate(8, 8)">
+        <g class="schema" transform="translate(29.599998474121094, 0)"><text y="13.2px" x="0px"><tspan dx="0">[</tspan><tspan dx="0">x</tspan><tspan dx="0">]</tspan></text></g>
+        <g class="main-text" transform="translate(&#xA;          0,&#xA;          20.0333251953125&#xA;        )"><text y="16.5px" x="0px"><tspan dx="0">Subquery</tspan></text></g>
+      </g></g><line x1="4.291648864746094" y1="133.88330078125" x2="81.28334045410156" y2="170.70001220703125" class="djoin"/><g style="--lang-color: hsl(278, 64%, 50%)" data-lang="sql" transform="translate(28.658340454101562, 170.70001220703125)">
+      <rect width="105.25" height="53"/>
+    <g class="text-container " transform="translate(8, 8)">
+        
+        <g class="main-text"><text y="16.5px" x="0px"><tspan dx="0">calc</tspan><tspan dx="0">(</tspan><tspan dx="0">Symbol(</tspan></text><text y="34.5px" x="1.5583345890045166px"><tspan dx="0">unnested).0</tspan><tspan dx="0">)</tspan></text></g>
+      </g></g></g>
+    </svg>

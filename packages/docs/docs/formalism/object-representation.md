@@ -19,7 +19,7 @@ The rest of this page is the precise version of the above. You don't need it to 
 
 ### Item
 
-An **item** is an element of an arbitrary, uninterpreted domain $\mathcal{V}$. The engine makes no structural commitments (schema, attribute decomposition, …) about elements of $\mathcal{V}$ and treats them as opaque.
+An **item** is an element of an arbitrary, uninterpreted domain $\mathcal{V}$. The engine makes no structural commitments (schema, attribute decomposition, ...) about elements of $\mathcal{V}$ and treats them as opaque.
 
 ### Attribute name
 
@@ -37,7 +37,7 @@ The set $S$ together with an attribute ordering $<$ is the **schema** of $t$, wr
 
 ### Tuple concatenation
 
-Operators that combine rows (joins, projections, …) glue tuples together with **tuple concatenation**, denoted $\oplus$:
+Operators that combine rows (joins, projections, ...) glue tuples together with **tuple concatenation**, denoted $\oplus$:
 
 $$
 \oplus : \mathcal{T} \times \mathcal{T} \to \mathcal{T}

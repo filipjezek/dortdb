@@ -22,7 +22,7 @@ export function parseStringLiteral(original: string): string {
   return value;
 }
 
-/** Extracts the body of a dollar-quoted string, stripping the opening and closing tag delimiters (e.g. `$tag$…$tag$`). */
+/** Extracts the body of a dollar-quoted string, stripping the opening and closing tag delimiters (e.g. `$tag$...$tag$`). */
 export function parseDollarQuoted(original: string): string {
   const second$ = original.indexOf('$', 1);
   return original.slice(second$ + 1, -second$ - 1);

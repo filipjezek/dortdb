@@ -26,7 +26,7 @@ import * as AST from '../ast/index.js';
 import { CypherVisitor } from '../ast/visitor.js';
 import { ASTDeterministicStringifier } from './ast-stringifier.js';
 import { unwind } from '@dortdb/core/fns';
-import { CypherDataAdaper, EdgeDirection } from '../language/data-adapter.js';
+import { CypherDataAdapter, EdgeDirection } from '../language/data-adapter.js';
 import {
   AdapterCtxArg,
   CypherFn,
@@ -115,7 +115,7 @@ export class CypherLogicalPlanBuilder
   /** Stringifier used to derive deterministic alias names for computed columns. */
   protected stringifier = new ASTDeterministicStringifier();
   /** Cypher graph data adapter obtained from the language registration. */
-  protected dataAdapter: CypherDataAdaper;
+  protected dataAdapter: CypherDataAdapter;
   /** Per-query language context forwarded to nested {@link LangSwitch} builders. */
   protected langCtx: Record<string, unknown>;
 

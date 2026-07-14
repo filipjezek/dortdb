@@ -1,65 +1,76 @@
 ---
-sidebar_position: 1
+sidebar_position: 0
 title: Introduction
-description: Browser-first multimodel query engine for JavaScript and TypeScript.
+description: A modular, multi-language query engine for in-memory JavaScript data.
 ---
 
-# DortDB
+# Introduction
 
-DortDB is a TypeScript in-memory query engine for existing application data. It is designed for browser and JavaScript runtime environments where data already lives in memory and where you want expressive querying without moving data into a separate database process.
+DortDB is a TypeScript framework for querying data that already lives in your
+application's memory. Instead of moving arrays, DOM trees, or graphs into a
+separate database process, you register them as they are and query them in
+place.
 
-The project is intentionally modular. The core package owns parsing flow, planning, optimization, execution, and extension points. Language packages plug into that core and provide SQL, XQuery, and Cypher frontends.
+DortDB is not tied to any single query language. The engine is a small,
+language-neutral core, and **query languages are plug-ins**. Every language
+compiles to the same [unified algebra](./formalism/algebra.md), which is what
+lets a single query mix languages and lets the optimizer reason across the whole
+plan.
 
-Use DortDB when you want to:
+Three languages are provided out of the box, one for each major data model:
 
-- query plain JavaScript objects with SQL
-- query XML or DOM-like trees with XQuery
-- query graph data with Cypher
-- combine those models inside one runtime and one logical plan
-- keep bundle size under control by importing only the components you need
+| Package                                            | Language | Best for                            |
+| -------------------------------------------------- | -------- | ----------------------------------- |
+| [`@dortdb/lang-sql`](./lang-sql/overview.md)       | SQL      | arrays of objects / row-shaped data |
+| [`@dortdb/lang-cypher`](./lang-cypher/overview.md) | Cypher   | property graphs                     |
+| [`@dortdb/lang-xquery`](./lang-xquery/overview.md) | XQuery   | XML, DOM, and tree-shaped data      |
+
+You choose which languages to load, and you can add your own — the three
+provided packages are consumers of the same public extension points that are
+available to you.
 
 ## Why DortDB
 
-DortDB is built around five practical goals:
+DortDB is built around a few deliberate design principles (covered in depth in
+[Design Principles](./core/design-principles.md)):
 
-- browser-first operation on in-memory JavaScript data
-- modular architecture with tree-shaking-friendly package boundaries
-- multi-language querying instead of a single monolithic "universal" language
-- extensibility through language, function, operator, and index interfaces
-- competitive execution through plan optimization and secondary indices
-
-These goals come directly from the thesis design constraints and drive most architecture decisions.
-
-## Package Layout
-
-- `@dortdb/core`: the engine, optimizer hooks, extensions, and index abstractions
-- `@dortdb/lang-sql`: SQL parser and executor for object-like row data
-- `@dortdb/lang-xquery`: XQuery parser and executor for XML, DOM, and tree-shaped values
-- `@dortdb/lang-cypher`: Cypher parser and executor for graph data, with a Graphology adapter out of the box
-
-The narrative guides in this section explain how these pieces fit together. The `API` navbar section is generated from the exported TypeScript surface of these packages.
+- **Language neutrality.** No language is privileged. Any language can be the
+  outer language, and any language can be nested inside another.
+- **Schema agnosticism.** Sources are plain in-memory values. There is no schema
+  to declare and no import step — registering a source is an $O(1)$ operation.
+- **A shared algebra as the compilation target.** Every language lowers to one
+  operator algebra, so cross-language queries are optimized and executed as a
+  single plan rather than as opaque nested calls.
+- **Modularity.** The core, each language, and each extension is a separate
+  package, so you bundle only what you use.
 
 ## Installation
 
-Install the core package and the language package you plan to use.
+Install the core plus whichever language packages you need:
 
-```bash
+```bash npm2yarn
 npm install @dortdb/core @dortdb/lang-sql
-```
-
-Add the other frontends when you need them.
-
-```bash
+# add more languages when you need them
 npm install @dortdb/lang-cypher @dortdb/lang-xquery graphology
 ```
 
-## First Query
+[`Graphology`](https://npmx.dev/package/graphology) is a peer dependency only of the Cypher package (it backs the
+default graph adapter). See [Installation](./getting-started/installation.md) for
+details.
 
-The smallest useful setup uses SQL over an array of objects.
+## First query
+
+The smallest useful setup is SQL over an array of objects:
 
 ```ts
 import { DortDB } from '@dortdb/core';
+import { defaultRules } from '@dortdb/core/optimizer';
 import { SQL } from '@dortdb/lang-sql';
+
+const db = new DortDB({
+  mainLang: SQL(),
+  optimizer: { rules: defaultRules },
+});
 
 const addresses = [
   { customerId: 1, city: 'Istanbul', country: 'Turkey' },
@@ -68,10 +79,7 @@ const addresses = [
   { customerId: 4, city: 'Ankara', country: 'Turkey' },
 ];
 
-const db = new DortDB({
-  mainLang: SQL(),
-});
-
+// registering a source just pairs data with a name — no copying, no import
 db.registerSource(['addresses'], addresses);
 
 const result = db.query(`
@@ -81,33 +89,68 @@ const result = db.query(`
   ORDER BY customers DESC
 `);
 
-console.log(result.data);
-console.log(result.schema);
+result.schema; // ['city', 'customers']
+result.data;
+// [
+//   { city: 'Ankara', customers: 2 },
+//   { city: 'Istanbul', customers: 1 },
+//   { city: 'Prague', customers: 1 },
+// ]
 ```
 
-`db.query()` materializes results into arrays. When you need streaming behavior instead, build a plan and execute it with `executePlan()`.
+[`db.query()`](./api/@dortdb/core/default-export/classes/DortDB#query)
+materializes the results into an array. When you want streaming results or
+control over the intermediate plan, use [`parse`](./api/@dortdb/core/default-export/classes/DortDB#parse),
+[`buildPlan`](./api/@dortdb/core/default-export/classes/DortDB#buildplan), and
+[`executePlan`](./api/@dortdb/core/default-export/classes/DortDB#executeplan)
+instead — see [Running Queries](./getting-started/running-queries.md).
 
-## Mixing Languages
+## Mixing languages
 
-Where DortDB becomes distinctive is not only support for multiple languages, but embedding one language inside another. A query can switch frontends with a `LANG` block and still reuse values from the surrounding scope.
+The distinctive feature of DortDB is not just supporting several languages, but
+**embedding one inside another**. A query switches languages with a `LANG`
+block, and the inner query can still reference values from the surrounding
+scope:
 
-Examples:
+```ts
+const db = new DortDB({
+  mainLang: SQL(),
+  additionalLangs: [XQuery()],
+  optimizer: { rules: defaultRules },
+});
 
-- SQL outer query with a Cypher subquery over graph data
-- Cypher outer query with an XQuery `EXISTS` test over XML invoices
-- SQL query that unwraps a list, delegates a subproblem to XQuery, and comes back with scalar results
+db.query(`
+  SELECT name, age
+  FROM users
+  WHERE age > 30 AND (
+    LANG xquery
+    fn:count($invoices/customer[. = $users:name])
+  ) > 5
+`);
+```
 
-See [Cross-language Queries](./cross-language-queries.md) for the syntax and patterns.
+See [Cross-language Queries](./guides/cross-language-queries.md) for the syntax,
+scope rules, and patterns.
 
-## Scope and Current Status
+## Scope and status
 
-DortDB currently focuses on query processing over already-loaded data, not full database storage responsibilities. It does not aim to be a persistent DBMS replacement. The SQL, XQuery, and Cypher implementations intentionally prioritize practical querying and integration over full specification coverage.
+DortDB focuses on **querying data that is already loaded** — it is not a
+persistent DBMS and does not handle data modification or storage. The provided
+SQL, XQuery, and Cypher implementations cover the data-selection subset of each
+language rather than the full specification; the exact boundaries are documented
+per language and summarized in [Limitations](./core/limitations.md).
 
-For benchmark context and implementation details, see the thesis-backed pages in this docs section and the generated API reference.
+## Where to next
 
-## Next Steps
-
-1. Read [Design Goals](./design-goals.md) for the architectural intent and tradeoffs.
-2. Read [Core Overview](./core/overview.md) to understand the pipeline and extension boundaries.
-3. Pick a language package: [SQL](./lang-sql/overview.md), [XQuery](./lang-xquery/overview.md), or [Cypher](./lang-cypher/overview.md).
-4. Open the generated `API` section when you need exact signatures and exported types.
+1. [Getting Started](./getting-started/installation.md) — install, configure,
+   and run your first queries.
+2. Language reference — [SQL](./lang-sql/overview.md),
+   [Cypher](./lang-cypher/overview.md), [XQuery](./lang-xquery/overview.md).
+3. [Cross-language Queries](./guides/cross-language-queries.md),
+   [Data Sources & Adapters](./guides/data-sources-and-adapters.md), and
+   [Indexing & Performance](./guides/indexing-and-performance.md).
+4. [Core Concepts](./core/architecture.md) and the [Formalism](./formalism/overview.md)
+   behind the engine.
+5. [Extending DortDB](./guides/extending/overview.md) — add languages, functions,
+   indices, and optimizer rules.
+6. [API Reference](./api/index.md) for exact, generated type signatures.

@@ -46,7 +46,7 @@ export class SelectSet implements ASTNode {
     public groupBy: GroupByClause = null,
     /** `HAVING` predicate; `null` if omitted. */
     public having: ASTNode = null,
-    /** `false` for no `DISTINCT`, `true` for `DISTINCT`, or an expression list for `DISTINCT ON (…)`. */
+    /** `false` for no `DISTINCT`, `true` for `DISTINCT`, or an expression list for `DISTINCT ON (...)`. */
     public distinct: boolean | ASTNode[] = false,
     /** Named window definitions from the `WINDOW` clause; `null` if none are defined. */
     public windows: Record<string, WindowSpec> = null,
@@ -112,13 +112,13 @@ export class OrderByItem {
 
 /** The grouping mode for a `GROUP BY` clause. */
 export enum GroupByType {
-  /** Plain `GROUP BY expr, …`. */
+  /** Plain `GROUP BY expr, ...`. */
   BASIC = 'basic',
-  /** `GROUP BY ROLLUP(…)`. */
+  /** `GROUP BY ROLLUP(...)`. */
   ROLLUP = 'rollup',
-  /** `GROUP BY CUBE(…)`. */
+  /** `GROUP BY CUBE(...)`. */
   CUBE = 'cube',
-  /** `GROUP BY GROUPING SETS(…)`. */
+  /** `GROUP BY GROUPING SETS(...)`. */
   GROUPINGSETS = 'grouping sets',
 }
 /**
@@ -188,7 +188,7 @@ export class JoinClause implements ASTNode {
 }
 
 /**
- * A `VALUES (…), …` clause providing inline row data.
+ * A `VALUES (...), ...` clause providing inline row data.
  */
 export class ValuesClause implements ASTNode {
   constructor(
@@ -220,7 +220,7 @@ export class TableFn extends ASTFunction {
 }
 
 /**
- * `ROWS FROM(…)` multi-function table source.
+ * `ROWS FROM(...)` multi-function table source.
  */
 export class RowsFrom implements ASTNode {
   constructor(

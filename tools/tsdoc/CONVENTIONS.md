@@ -51,7 +51,7 @@ Use a tag only when it carries information beyond the obvious:
 
 ## Style
 
-- Summary is one sentence, imperative-ish mood ("Builds…", "Returns…"),
+- Summary is one sentence, imperative-ish mood ("Builds...", "Returns..."),
   ending with a period.
 - Start the comment with the description; no `@summary`.
 - Reference other API symbols with `{@link Foo}` so the reference page links them.

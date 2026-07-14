@@ -10,17 +10,18 @@ DortDB runs every supported language on a single engine. To make that possible, 
 
 Two practical things fall out of this design:
 
-- **You can mix languages in one query.** A `LANG` block hands a subproblem to another frontend, and the result plugs straight back into the surrounding plan. See [Cross-language Queries](../cross-language-queries.md) for the user-facing side.
+- **You can mix languages in one query.** A `LANG` block hands a subproblem to another frontend, and the result plugs straight back into the surrounding plan. See [Cross-language Queries](../guides/cross-language-queries.md) for the user-facing side.
 - **You can extend the engine without forking it.** A language package can add its own operators by implementing visitors, with no changes to the core. See [Extensibility](./algebra.md#extensibility).
 
 ## Where to go next
 
-| Page | What it covers |
-| --- | --- |
-| [Unified Object Representation](./object-representation.md) | The *items*, *tuples*, and *streams* that flow between operators |
-| [Unified Algebra](./algebra.md) | Operator context, instantiation, plan visualization, and how the operators fit together |
-| [Operator Reference](./operators.md) | Every operator, with a plain-language description plus its signature and formal semantics |
-| [Language Mapping](./language-mapping.md) | How SQL, XQuery, and Cypher are lowered into the algebra |
+| Page                                                        | What it covers                                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| [Unified Object Representation](./object-representation.md) | The _items_, _tuples_, and _streams_ that flow between operators                          |
+| [Unified Algebra](./algebra.md)                             | Operator context, instantiation, plan visualization, and how the operators fit together   |
+| [Operator Reference](./operators.md)                        | Every operator, with a plain-language description plus its signature and formal semantics |
+| [Language Mapping](./language-mapping.md)                   | How SQL, XQuery, and Cypher are lowered into the algebra                                  |
+| [Optimization](./optimization.md)                           | The rule-based optimizer, the rewrites it applies, and how indices are matched            |
 
 ## How language switching works
 
@@ -49,14 +50,23 @@ GROUP BY item_id;
 
 A nested block starts with the `LANG` keyword and ends at the enclosing scope (a closing bracket or parenthesis) or at an explicit `LANG EXIT`. The nested language can read variables from the surrounding scope:
 
+<MulticodeBlock>
 ```sql
 SELECT id, ARRAY(
   LANG cypher
+```
+
+```cypher
   MATCH (:person {id: people.id})-[:KNOWS]->(friend)
   RETURN friend
+```
+
+```sql
 ) AS friends
 FROM people
 ```
+
+</MulticodeBlock>
 
 Here the Cypher block reads `people.id` from the outer SQL query.
 
@@ -64,17 +74,27 @@ Here the Cypher block reads `people.id` from the outer SQL query.
 
 In schema-driven languages like SQL, the attributes a nested block references are used to **infer the schema of the relations it touches**. In the example below, the SQL parser learns the shape of `foo` from how the nested XQuery and SQL blocks use it:
 
+<MulticodeBlock>
+
 ```sql
 SELECT foo.frst, (
   LANG xquery
+```
+
+```xquery
   for $x in $xs
   return $foo:second + (
     LANG sql
+```
+
+```sql
     SELECT foo.third FROM bar
   )
 ) AS nested
 FROM foo
 ```
+
+</MulticodeBlock>
 
 :::info
 The engine produces a logical plan for queries like this, which you can inspect in the GUI. In those diagrams, the grey brackets on a node show that operator's tuple schema. See [Plan visualization](./algebra.md#plan-visualization).

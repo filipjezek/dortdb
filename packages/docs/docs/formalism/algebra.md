@@ -10,7 +10,7 @@ A parsed query becomes a tree of **operators**. Each operator is a node from the
 
 Operators come in two families:
 
-- **Tuple operators** work on streams of named tuples, much like relational algebra ([`Selection`](./operators.md#selection), [`Projection`](./operators.md#projection), [`Join`](./operators.md#join), …).
+- **Tuple operators** work on streams of named tuples, much like relational algebra ([`Selection`](./operators.md#selection), [`Projection`](./operators.md#projection), [`Join`](./operators.md#join), ...).
 - **Item operators** work on streams of opaque items.
 
 A few operators ([`Limit`](./operators.md#limit), the [set operators](./operators.md#set-operators)) work on either, depending on their input. The design draws on existing algebras for XQuery, graph paths, and nested relations.
@@ -23,12 +23,16 @@ Some operators behave differently depending on the rows flowing through the oper
 
 Think of $\Gamma$ as the variable scope an operator can see: the data that was available when it was created, plus the most recent tuples from its direct tuple-producing inputs. A correlated subquery, for instance, reads the outer row from its context.
 
-Walking a small plan top to bottom, the context each operator receives is:
+![Operator context example](/img/tree-context-example.svg)
 
-1. A bottom [`TupleSource`](./operators.md#tuplesource) gets no context.
-2. A [`Selection`](./operators.md#selection) (and the [`Calculation`](./operators.md#calculation) in its condition) gets the latest tuple from its source.
-3. A source feeding off that [`Selection`](./operators.md#selection) gets the [`Selection`](./operators.md#selection)'s latest tuple.
-4. A [`Projection`](./operators.md#projection) over a correlated subquery gets the concatenation of the latest tuples from both inputs.
+For example, see this simple plan. The operators receive the following context:
+
+1. The bottom [`TupleSource`](./operators.md#tuplesource) gets no context.
+2. The [`Selection`](./operators.md#selection) (and the [`Calculation`](./operators.md#calculation) in its condition) gets the latest tuple from its source.
+3. The subquery [`TupleSource`](./operators.md#tuplesource) gets the [`Selection`](./operators.md#selection)'s latest tuple.
+4. The [`Projection`](./operators.md#projection) and its [`Calculation`](./operators.md#calculation) receive the concatenation of the latest tuples produced by the [`Selection`](./operators.md#selection) and the subquery [`TupleSource`](./operators.md#tuplesource).
+5. The [`ProjectionConcat`](./operators.md#projectionconcat) receives the latest tuple from the [`Selection`](./operators.md#selection).
+6. The top [`Projection`](./operators.md#projection) receives the latest tuple from the [`ProjectionConcat`](./operators.md#projectionconcat).
 
 In short: context flows down the tree, accumulating the rows each operator's ancestors have produced.
 
@@ -39,11 +43,17 @@ Operators differ in **how often their inputs are (re)created**, and this distinc
 - Most inputs are created **once** and reused for the operator's whole life. These are **vertical inputs** ($\mathrm{vertical}(\mathrm{Op})$). Example: the `source` of a [`Selection`](./operators.md#selection). [`CartesianProduct`](./operators.md#cartesianproduct) likewise builds its `left` and `right` streams once.
 - Some inputs are **recreated repeatedly** as the context changes — once per incoming row. These are **horizontal inputs** ($\mathrm{horizontal}(\mathrm{Op})$). Example: a correlated subquery inside a [`Selection`](./operators.md#selection) condition.
 
-Formally, a horizontal input is a function from context to a stream:
+Formally, a horizontal input is not a single stream but a **stream indexed by context**. We name this type with a constructor $\mathrm{inst}$: for any element type $X$,
 
 $$
-\mathrm{stream} \subseteq \mathcal{I}, \quad \mathrm{inst}_{stream}: \mathcal{T} \rightarrow \mathrm{stream}
+\mathrm{inst}\,\mathrm{Stream}(X) \;:=\; \big(\mathcal{T} \rightarrow \mathrm{Stream}(X)\big).
 $$
+
+A horizontal input of stream type $\mathrm{Stream}(X)$ therefore _denotes an inhabitant_
+of $\mathrm{inst}\,\mathrm{Stream}(X)$ — a function $E : \mathcal{T} \rightarrow \mathrm{Stream}(X)$
+supplied by the sub-plan — and **instantiating** it at a context $\Gamma$ is just application,
+$E(\Gamma)$. The same type has many inhabitants, one per sub-plan, so which stream you get for
+a given $\Gamma$ depends on _which $E$ was supplied_, not on $\Gamma$ alone.
 
 You'll see the $\mathrm{inst}$ notation in operator signatures wherever an argument is re-instantiated per row.
 
@@ -58,7 +68,9 @@ Edges tell you the instantiation kind at a glance:
 
 For example, in `SELECT x + 3 AS xplusthree FROM table1`, the [`TupleSource`](./operators.md#tuplesource) **table1** is created once (solid), while the [`Calculation`](./operators.md#calculation) for `x + 3` is re-evaluated per row (dashed) and points at the attribute it produces, `xplusthree`.
 
-:::tip Try it
+![Plan visualization example](/img/tree-edge-types.svg)
+
+:::tip[Try it]
 The GUI is live at [filipjezek.github.io/dortdb](https://filipjezek.github.io/dortdb). Type a query and watch the plan build.
 :::
 
@@ -74,7 +86,7 @@ Most item operators are **calculation intermediaries** — they never appear as 
 
 The remaining item operators are data sources and [`MapToItem`](./operators.md#maptoitem), which pulls one attribute out of each tuple to turn a tuple stream into an item stream.
 
-:::note Subqueries and the optimizer
+:::note[Subqueries and the optimizer]
 A subquery starts life as a [`Calculation`](./operators.md#calculation) wrapping a [`Projection`](./operators.md#projection). The optimizer can lift that into an outer [`ProjectionConcat`](./operators.md#projectionconcat), and — if the subquery doesn't depend on the outer row — further into a plain left outer [`Join`](./operators.md#join). Same result, progressively cheaper plans.
 :::
 
@@ -94,6 +106,8 @@ These are the familiar relational operators — [`Selection`](./operators.md#sel
   GROUP BY brand
   ```
 
+![GroupBy example](/img/tree-groupby.svg)
+
 - **[`Recursion`](./operators.md#recursion)** is a self-join repeated up to `max` times, executed breadth-first so the shortest results come out first. It powers variable-length graph paths and recursive CTEs.
 
 ### XQuery-specific operators
@@ -103,6 +117,8 @@ These are the familiar relational operators — [`Selection`](./operators.md#sel
 ### Universal operators
 
 [`Union`](./operators.md#set-operators), [`Intersection`](./operators.md#set-operators), [`Difference`](./operators.md#set-operators), and [`Limit`](./operators.md#limit) all work on tuples or items alike. [`NullSource`](./operators.md#nullsource) emits a single empty row, which is what gives a constant query like `SELECT 1 AS one` something to project from.
+
+![NullSource example](/img/tree-null-source.svg)
 
 ## Extensibility
 

@@ -24,9 +24,9 @@ export enum ItemKind {
   ELEMENT = 'element',
   /** Matches a document node with no content constraint (`document-node()`). */
   DOCUMENT = 'document-node',
-  /** Matches a document node whose content satisfies an element test (`document-node(element(…))`). */
+  /** Matches a document node whose content satisfies an element test (`document-node(element(...))`). */
   DOCUMENT_ELEMENT = 'document-node element',
-  /** Matches a document node whose content satisfies a schema-element test (`document-node(schema-element(…))`). */
+  /** Matches a document node whose content satisfies a schema-element test (`document-node(schema-element(...))`). */
   DOCUMENT_SCHEMA_ELEMENT = 'document-node schema-element',
   /** Matches a schema-validated element node (`schema-element()`). */
   SCHEMA_ELEMENT = 'schema-element',

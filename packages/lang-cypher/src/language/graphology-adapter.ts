@@ -1,6 +1,6 @@
 import { MultiDirectedGraph } from 'graphology';
 import { Attributes } from 'graphology-types';
-import { CypherDataAdaper, EdgeDirection } from './data-adapter.js';
+import { CypherDataAdapter, EdgeDirection } from './data-adapter.js';
 
 /**
  * A key used to store the unique identifier for a node or edge in its attributes. (GraphologyAdapter)
@@ -60,7 +60,7 @@ const isSubset = <T>(subset: T[], set: T[]): boolean => {
  * in the attributes using the `gaLabelsOrType` symbol key. Convenience functions are provided to serialize
  * and deserialize the graph to/from a format that can be stored (since symbols are not generally serializable).
  */
-export class GraphologyDataAdapter implements CypherDataAdaper<GraphologyGraph> {
+export class GraphologyDataAdapter implements CypherDataAdapter<GraphologyGraph> {
   /** Stamps the Graphology string key onto `attrs` as {@link gaNodeOrEdgeId} and returns the cast result. */
   protected convertNode(
     node: string,
