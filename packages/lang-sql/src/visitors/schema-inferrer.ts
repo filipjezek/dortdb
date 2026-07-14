@@ -179,9 +179,12 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       } else if (attr.parts.at(-1) === toInfer || attr.parts[0] === allAttrs) {
         operator.removeFromSchema(attr);
       } else {
-        const origAttr = nameBelow
-          ? overrideSource(nameBelow, attr)
-          : ASTIdentifier.fromParts(attr.parts.slice(1));
+        const origAttr =
+          attr.parts.length > 1
+            ? nameBelow
+              ? overrideSource(nameBelow, attr)
+              : ASTIdentifier.fromParts(attr.parts.slice(1))
+            : attr;
         operator.source.addToSchema(origAttr);
         renames.push([origAttr, attr]);
       }

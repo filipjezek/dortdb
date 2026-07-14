@@ -28,6 +28,9 @@
     },
     {
       "path": "./packages/extensions/datetime"
+    },
+    {
+      "path": "./packages/testing/regression"
     }
   ]
 }

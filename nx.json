@@ -68,7 +68,10 @@
           "targetName": "typecheck"
         }
       },
-      "exclude": ["packages/testing/dataloaders/*"]
+      "exclude": [
+        "packages/testing/dataloaders/*",
+        "packages/testing/regression/*"
+      ]
     },
     {
       "plugin": "@nx/eslint/plugin",
@@ -80,6 +83,19 @@
       "plugin": "@nx/vitest",
       "options": {
         "testTargetName": "test"
+      }
+    },
+    {
+      "plugin": "@nx/js/typescript",
+      "include": ["packages/testing/regression/*"],
+      "options": {
+        "typecheck": {
+          "targetName": "typecheck"
+        },
+        "build": {
+          "targetName": "build",
+          "configName": "tsconfig.lib.json"
+        }
       }
     }
   ],
