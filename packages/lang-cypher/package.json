@@ -1,7 +1,7 @@
 {
   "name": "@dortdb/lang-cypher",
   "type": "module",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Cypher parser and executor for DortDB",
   "exports": {
     ".": "./dist/index.js",
@@ -39,7 +39,7 @@
     }
   },
   "peerDependencies": {
-    "@dortdb/core": "^2.0.1"
+    "@dortdb/core": "^2.1.0"
   },
   "dependencies": {
     "@swc/helpers": "^0.5.15",

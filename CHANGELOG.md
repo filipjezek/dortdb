@@ -1,3 +1,21 @@
+## 2.1.0 (2026-07-15)
+
+### 🚀 Features
+
+- top-level language switches ([66305d7](https://github.com/filipjezek/dortdb/commit/66305d7))
+
+### 🩹 Fixes
+
+- selection pushdown rule resulted in stale transitive dependencies ([2805027](https://github.com/filipjezek/dortdb/commit/2805027))
+- recognize >= and <= operators ([a81b0e7](https://github.com/filipjezek/dortdb/commit/a81b0e7))
+- SQL: unqualified attrs selected from aliased tables ([4b7c3b6](https://github.com/filipjezek/dortdb/commit/4b7c3b6))
+- SQL: unqualified VALUES columns ([7e09b79](https://github.com/filipjezek/dortdb/commit/7e09b79))
+- SQL: ordered aggregates ([1a65ab3](https://github.com/filipjezek/dortdb/commit/1a65ab3))
+
+### ❤️ Thank You
+
+- Filip Ježek @filipjezek
+
 ## 2.0.1 (2026-05-22)
 
 ### 🩹 Fixes
