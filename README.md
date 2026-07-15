@@ -53,21 +53,24 @@ db.query('SELECT name FROM users WHERE age > 27');
 - [Extensions](#extensions)
 - [Packages](#packages)
 - [Documentation](#documentation)
+- [Alternatives](#alternatives)
 
 ## Is DortDB for you?
 
-**A good fit if you want to:**
+**DortDB lets you:**
 
 - Query data that is already in memory (arrays, DOM/XML, graphs) with no import or copy step.
 - Mix relational, document, and graph queries in one query, each part in the language that fits it best.
 - Ship a small, tree-shakeable engine to the browser or Node, bundling only the languages you use.
 - Extend the engine with your own languages, functions, indices, or optimizer rules.
 
-**Look elsewhere if you need:**
+**DortDB does not:**
 
-- Persistence, transactions, or data modification. DortDB is **read-only**; to change data, mutate the registered sources directly.
-- A fully standards-compliant SQL, Cypher, or XQuery. Each language covers a data-selection subset.
-- Cost-based optimization or multi-threaded execution over very large datasets. The optimizer is rule-based and execution is single-threaded.
+- Provide persistence, transactions, or data modification. DortDB is read-only and in-memory only.
+- Have cost-based optimization or multi-threaded execution over very large datasets. The optimizer is rule-based and execution is single-threaded.
+- Ship extensive built-in libraries for each language (yet) (you can add your own).
+
+See [Alternatives](#alternatives) for libraries that may be a better fit for your use case.
 
 ## Installation
 
@@ -79,8 +82,7 @@ npm i @dortdb/core @dortdb/lang-sql
 npm i @dortdb/lang-cypher graphology @dortdb/lang-xquery
 ```
 
-Each language declares `@dortdb/core` as a peer dependency, so a single core
-instance backs all of them. `graphology` is a peer dependency of the Cypher
+`graphology` is a peer dependency of the Cypher
 package only.
 
 ## Multiple languages in one query
@@ -216,6 +218,27 @@ Full documentation, guides, and a generated API reference live at
 
 The design and formal background are described in depth in the
 [thesis](http://hdl.handle.net/20.500.11956/209701).
+
+## Alternatives
+
+Is DortDB not the right tool for your use case? Here are some other libraries:
+
+**SQL:**
+
+- [AlaSQL](https://github.com/AlaSQL/alasql): A full SQL engine for Node and the browser, with persistence and data modification. It is larger and mostly slower than DortDB, but has more features and built-in functions. Can work on existing arrays etc.
+- [sql.js](https://github.com/sql-js/sql.js): SQLite compiled to WebAssembly. It is a full, very fast SQL engine with persistence and data modification, but it requires copying data into its own database format.
+- [PGlite](https://github.com/electric-sql/pglite): PostgreSQL compiled to WebAssembly. Similar as above.
+- [DuckDB-WASM](https://github.com/duckdb/duckdb-wasm): High-performance analytical SQL engine compiled to WebAssembly. Provides many extensions and features, requires copying data into its own database format.
+
+**XQuery:**
+
+- [fontoxpath](https://github.com/FontoXML/fontoxpath): An XQuery 3.1 engine for Node and the browser. Can modify data. Likely faster than DortDB, but have not compared yet.
+- [`document.evaluate`](https://developer.mozilla.org/en-US/docs/Web/API/Document/evaluate): The built-in XPath engine in browsers. Can only evaluate XPath, not full XQuery.
+
+**No query language:**
+
+- [PouchDB](https://github.com/apache/pouchdb): Inspired by Apache CouchDB, can store data in IndexedDB or WebSQL in the browser, and sync with a CouchDB server. Lightweight.
+- [RxDB](https://github.com/pubkey/rxdb): A reactive database with offline-first support. Can sync with a server. More features than PouchDB, but also larger and more complex.
 
 ## License
 
