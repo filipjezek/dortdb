@@ -12,7 +12,7 @@ export const objAccess: Operator = {
     (obj: Record<string, unknown>, key: string | number): unknown => {
       if (typeof obj !== 'object' && typeof obj !== 'string') return null;
       if (Array.isArray(obj)) return obj.at(key as number);
-      if (obj instanceof Element)
+      if (globalThis.Element && obj instanceof Element)
         return obj.getAttribute(key as string) ?? obj[key];
       return obj[key];
     },
