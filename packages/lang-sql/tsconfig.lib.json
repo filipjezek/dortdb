@@ -5,7 +5,7 @@
     "outDir": "dist",
     "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
     "emitDeclarationOnly": true,
-    "lib": ["DOM", "ES2024"]
+    "lib": ["DOM", "ES2025"]
   },
   "include": ["src/**/*.ts"],
   "files": ["src/parser/sql.peggy.mjs"],

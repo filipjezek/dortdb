@@ -1,4 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  inject,
+  InjectionToken,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { History } from '../history';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -20,5 +25,7 @@ import { MatIcon } from '@angular/material/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HistoryDialogComponent {
-  history = inject<History<string>>(MAT_DIALOG_DATA);
+  history = inject<History<string>>(
+    MAT_DIALOG_DATA as any as InjectionToken<History<string>>,
+  );
 }

@@ -127,5 +127,6 @@
         "projectsRelationship": "independent"
       }
     }
-  }
+  },
+  "analytics": false
 }

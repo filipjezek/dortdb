@@ -37,4 +37,9 @@ describe('SQL - LIKE escape characters', () => {
     const result = db.query(`SELECT s FROM test WHERE s LIKE '10\\\\\\% sure'`);
     expect(result.data).toEqual([{ s: '10\\% sure' }]);
   });
+
+  it('should not allow other regex patterns to be used in LIKE', () => {
+    const result = db.query(`SELECT s FROM test WHERE s LIKE '.+b'`);
+    expect(result.data).toEqual([]);
+  });
 });

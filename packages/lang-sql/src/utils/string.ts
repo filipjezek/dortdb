@@ -77,7 +77,8 @@ export function likeToRegex(
   isStrLit = false,
   caseSensitive = true,
 ): RegExp {
-  let pattern = like
+  let pattern = like.replace(/([.*+?^${}()|[\]])/g, '\\$1'); // escape regex metacharacters
+  pattern = pattern
     .replace(/(?<!\\)(\\\\)*%/g, '$1.*')
     .replace(/(?<!\\)(\\\\)*_/g, '$1.')
     .replace(/\\([%_])/g, '$1');
@@ -90,6 +91,5 @@ export function likeToRegex(
       '$',
     caseSensitive ? undefined : 'i',
   );
-  console.log(`LIKE pattern: ${like} => regex: ${res}`);
   return res;
 }
