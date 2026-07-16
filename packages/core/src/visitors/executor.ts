@@ -1273,7 +1273,7 @@ export abstract class Executor implements PlanVisitor<
     const mappedKeys = ctx.getKeys(operator.mapping);
     const emptyVal = [];
     for (const key of mappedKeys) {
-      emptyVal[key] = operator.emptyVal.get([key]);
+      emptyVal[key] = operator.emptyVal.get([key], null);
     }
     const source = operator.source.accept(this.vmap, ctx) as Iterable<
       unknown[]
@@ -1319,7 +1319,9 @@ export abstract class Executor implements PlanVisitor<
   ): Iterable<T> {
     if (operator.validateSingleValue) {
       const iter = items[Symbol.iterator]();
-      const value = iter.next().value;
+      const first = iter.next();
+      if (first.done) return [];
+      const value = first.value;
       if (!iter.next().done) {
         throw new Error('Operator returned more than one value');
       }
