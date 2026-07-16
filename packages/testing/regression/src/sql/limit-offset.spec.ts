@@ -16,7 +16,6 @@ describe('SQL - LIMIT and OFFSET', () => {
   }
 
   it('should return no rows for LIMIT 0', () => {
-    // KNOWN BUG: DortDB currently returns all rows (Postgres returns none)
     const result = db.query('SELECT n FROM nums ORDER BY n LIMIT 0');
     expect(result.data).toEqual([]);
   });

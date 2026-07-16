@@ -1527,8 +1527,8 @@ export abstract class Executor implements PlanVisitor<
     }
     for (const item of source) {
       count++;
+      if (count > operator.limit + operator.skip) break;
       if (count > operator.skip) yield item;
-      if (count === operator.limit + operator.skip) break;
     }
   }
   *visitUnion(operator: plan.Union, ctx: ExecutionContext): Iterable<unknown> {

@@ -432,8 +432,8 @@ export class SQLLogicalPlanBuilder
    * @throws If either value is not a numeric constant.
    */
   protected buildLimit(node: AST.SelectStatement, op: PlanTupleOperator) {
-    const limit = node.limit && this.toCalc(node.limit);
-    const offset = node.offset && this.toCalc(node.offset);
+    const limit = node.limit !== null && this.toCalc(node.limit);
+    const offset = node.offset !== null && this.toCalc(node.offset);
     if (limit && !assertCalcLiteral(limit, 'number'))
       throw new Error('Limit must be a number constant');
     if (offset && !assertCalcLiteral(offset, 'number'))

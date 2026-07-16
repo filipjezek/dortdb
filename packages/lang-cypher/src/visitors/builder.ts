@@ -1602,8 +1602,8 @@ export class CypherLogicalPlanBuilder
     res: PlanTupleOperator,
     args: DescentArgs,
   ) {
-    const limit = node.limit && this.toCalc(node.limit, args);
-    const offset = node.skip && this.toCalc(node.skip, args);
+    const limit = node.limit !== null && this.toCalc(node.limit, args);
+    const offset = node.skip !== null && this.toCalc(node.skip, args);
     if (limit && !assertCalcLiteral(limit, 'number'))
       throw new Error('Limit must be a number constant');
     if (offset && !assertCalcLiteral(offset, 'number'))
