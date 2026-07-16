@@ -1,15 +1,15 @@
 import { Operator } from '../extension.js';
 import { shortcutNulls } from '../utils/index.js';
 
-/** Short-circuit logical OR (`||`); does not propagate `null`. */
+/** Logical OR (`||`). Three-valued logic. */
 export const or: Operator = {
   name: 'or',
-  impl: (a, b) => a || b,
+  impl: (a, b) => a || b || (a === null ? a : b),
 };
-/** Short-circuit logical AND (`&&`); does not propagate `null`. */
+/** Logical AND (`&&`). Three-valued logic. */
 export const and: Operator = {
   name: 'and',
-  impl: (a, b) => a && b,
+  impl: (a, b) => (a && b) || (b === false ? b : a),
 };
 /** Logical NOT (`!`); propagates `null`. */
 export const not: Operator = {
