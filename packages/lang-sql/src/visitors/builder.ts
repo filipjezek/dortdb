@@ -324,7 +324,10 @@ export class SQLLogicalPlanBuilder
       return new plan.FnCall(
         'sql',
         [{ op: new plan.MapToItem('sql', col, query) }],
-        ret1,
+        node.quantifier === plan.QuantifierType.ALL
+          ? (x) =>
+              x ?? ((node.parentOp as string)[0] === '<' ? Infinity : -Infinity)
+          : ret1,
       );
     }
 

@@ -144,8 +144,10 @@ function* cartesian(iters: Iterable<unknown>[]): Iterable<unknown[]> {
     }
   }
 }
-function isQuantifier(op: unknown) {
-  return op instanceof plan.Quantifier;
+function isQuantifier(
+  op: ASTIdentifier | plan.PlanOpAsArg,
+): op is plan.PlanOpAsArg & { op: plan.Quantifier } {
+  return (op as plan.PlanOpAsArg).op instanceof plan.Quantifier;
 }
 function getQuantifierIndices(
   args: (ASTIdentifier | plan.PlanOpAsArg)[],
@@ -267,7 +269,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
         }
         return true;
       }
-      return false;
+      return !anys.length;
     };
   }
   /**
@@ -280,7 +282,10 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
   ): CalculationParams | ASTIdentifier {
     if (arg instanceof ASTIdentifier) return arg;
     const params = arg.op.accept(this.vmap);
-    if (arg.acceptSequence && params.impl === assertMaxOne) {
+    if (
+      (arg.acceptSequence || isQuantifier(arg)) &&
+      params.impl === assertMaxOne
+    ) {
       params.impl = ret1;
     }
     return params;
@@ -364,9 +369,7 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     const args: ((ASTIdentifier | OpOrId[]) | (ASTIdentifier | OpOrId[])[])[] =
       whenthens.map(getWhenThenArgs);
     const aggrs: (
-      | plan.AggregateCall
-      | plan.AggregateCall[]
-      | plan.AggregateCall[][]
+      plan.AggregateCall | plan.AggregateCall[] | plan.AggregateCall[][]
     )[] = whenthens.map(getWhenThenAggrs);
     const metas = whenthens
       .map((wt, i) => getWhenThenMetas(wt, operator.whenThens[i], operator))
@@ -610,7 +613,12 @@ export class CalculationBuilder implements PlanVisitor<CalculationParams> {
     };
   }
   visitQuantifier(operator: plan.Quantifier): CalculationParams {
-    return operator.query.accept(this.vmap);
+    const res = operator.query.accept(this.vmap);
+    res.argMeta[0].acceptSequence = true;
+    res.argMeta[0].originalLocations = [
+      { obj: operator, key: 'query', op: operator },
+    ];
+    return res;
   }
   visitRecursion(operator: plan.Recursion): CalculationParams {
     return {

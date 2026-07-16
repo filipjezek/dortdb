@@ -25,6 +25,7 @@ import {
   containsAll,
   containsAny,
   difference,
+  invert,
   restriction,
   schemaToTrie,
 } from '../../utils/trie.js';
@@ -86,7 +87,9 @@ export class PushdownSelections implements PatternRule<
     this.cloneSelection = this.cloneSelection.bind(this);
   }
 
-  public match(node: Selection): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
+  public match(
+    node: Selection,
+  ): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     if (node.parent.constructor === Selection) return null; // already handled
     const bindings: PushdownSelectionsBindings = {
       selections: [node],
@@ -98,12 +101,14 @@ export class PushdownSelections implements PatternRule<
     }
     bindings.source = node.source;
 
-    if (
-      this.alwaysSwap.includes(bindings.source.constructor as any) ||
-      (this.setOps.includes(bindings.source.constructor as any) &&
-        bindings.source.schema)
-    ) {
+    if (this.alwaysSwap.includes(bindings.source.constructor as any)) {
       return { bindings };
+    }
+    if (
+      this.setOps.includes(bindings.source.constructor as any) &&
+      bindings.source.schema
+    ) {
+      return this.matchSetOp(bindings);
     }
     if (bindings.source.constructor === Projection) {
       return this.matchProjection(bindings);
@@ -124,7 +129,9 @@ export class PushdownSelections implements PatternRule<
   }
 
   /** Returns match bindings when at least one selection depends only on group-by keys. */
-  protected matchGroupBy(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
+  protected matchGroupBy(
+    bindings: PushdownSelectionsBindings,
+  ): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     const src = bindings.source as GroupBy;
     const keySet = schemaToTrie(src.keys.map(retI1));
     for (const s of bindings.selections) {
@@ -137,7 +144,9 @@ export class PushdownSelections implements PatternRule<
   }
 
   /** Returns match bindings when at least one selection can be pushed to one side of a join. */
-  protected matchJoins(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
+  protected matchJoins(
+    bindings: PushdownSelectionsBindings,
+  ): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     const src = bindings.source as CartesianProduct;
     for (const s of bindings.selections) {
       const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
@@ -151,7 +160,9 @@ export class PushdownSelections implements PatternRule<
     return null;
   }
   /** Returns match bindings when at least one selection can be pushed into the source or mapping branch of a projection concat. */
-  protected matchProjectionConcat(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
+  protected matchProjectionConcat(
+    bindings: PushdownSelectionsBindings,
+  ): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     const src = bindings.source as ProjectionConcat;
     for (const s of bindings.selections) {
       const tdeps = restriction(this.getSelectionDeps(s), src.schemaSet);
@@ -165,9 +176,32 @@ export class PushdownSelections implements PatternRule<
     return null;
   }
   /** Returns match bindings when at least one selection can be pushed through the projection. */
-  protected matchProjection(bindings: PushdownSelectionsBindings): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
+  protected matchProjection(
+    bindings: PushdownSelectionsBindings,
+  ): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
     for (const s of bindings.selections) {
       if (this.checkProjection(s, bindings.source as Projection)) {
+        return { bindings };
+      }
+    }
+    return null;
+  }
+
+  /** Returns match bindings when at least one selection can be pushed through a set operation. */
+  protected matchSetOp(
+    bindings: PushdownSelectionsBindings,
+  ): PatternRuleMatchResult<PushdownSelectionsBindings> | null {
+    const src = bindings.source as BranchedOperator<PlanTupleOperator>;
+    if (src.right.schema.every((id, i) => id.equals(src.left.schema[i]))) {
+      // no need to rename
+      return { bindings };
+    }
+    const renamesInv: RenameMap = new Trie();
+    for (let i = 0; i < src.right.schema.length; i++) {
+      renamesInv.set(src.right.schema[i].parts, src.left.schema[i].parts);
+    }
+    for (const s of bindings.selections) {
+      if (this.renameCheckerVmap[s.lang].canRename(s.condition, renamesInv)) {
         return { bindings };
       }
     }
@@ -189,7 +223,7 @@ export class PushdownSelections implements PatternRule<
     if (this.alwaysSwap.includes(source.constructor as any)) {
       res = this.transformBasic(source as any, node, last);
     } else if (this.setOps.includes(source.constructor as any)) {
-      res = this.tranformSetOp(source as any, node, last, selections);
+      res = this.tranformSetOp(source as any, selections);
     } else if (source.constructor === Projection) {
       res = this.transformProjection(source as Projection, selections);
     } else if (
@@ -293,24 +327,83 @@ export class PushdownSelections implements PatternRule<
   /** Duplicates the selection stack into both branches of the set operation. */
   protected tranformSetOp(
     source: BranchedOperator<PlanTupleOperator>,
-    first: Selection,
-    last: Selection,
     selections: Selection[],
   ) {
-    const clones = selections.map(this.cloneSelection);
-    last.source = source.left;
-    source.left.parent = last;
-    source.left = first;
-    first.parent = source;
+    let canPushdown: Selection[] = [];
+    const mustStay: Selection[] = [];
+    const toRename = new Set<Selection>();
+    const renamesInv: RenameMap = new Trie();
 
-    const cloneLast = clones.at(-1);
-    const cloneFirst = clones[0];
-    cloneLast.source = source.right;
-    source.right.parent = cloneLast;
-    source.right = cloneFirst;
-    cloneFirst.parent = source;
+    if (
+      source.left.schema.every((id, i) => id.equals(source.right.schema[i]))
+    ) {
+      canPushdown = selections;
+    } else {
+      for (let i = 0; i < source.right.schema.length; i++) {
+        renamesInv.set(
+          source.right.schema[i].parts,
+          source.left.schema[i].parts,
+        );
+      }
+      for (const s of selections) {
+        if (this.renameCheckerVmap[s.lang].canRename(s.condition, renamesInv)) {
+          canPushdown.push(s);
+          toRename.add(s);
+        } else {
+          mustStay.push(s);
+        }
+      }
+    }
+    const renames: RenameMap = invert(renamesInv);
 
-    return source;
+    const clones = canPushdown.map(this.cloneSelection);
+    for (let i = 0; i < mustStay.length - 1; i++) {
+      mustStay[i].source = mustStay[i + 1];
+      mustStay[i + 1].parent = mustStay[i];
+    }
+    for (let i = 0; i < canPushdown.length - 1; i++) {
+      const curr = canPushdown[i];
+      curr.source = canPushdown[i + 1];
+      canPushdown[i + 1].parent = curr;
+      if (toRename.has(curr)) {
+        this.renamerVmap[curr.lang].rename(curr.condition, renames);
+      }
+
+      clones[i].source = clones[i + 1];
+      clones[i + 1].parent = clones[i];
+    }
+
+    for (const s of canPushdown) {
+      s.schema = source.right.schema.slice();
+      s.schemaSet = source.right.schemaSet.clone();
+    }
+    for (const s of clones) {
+      s.schema = source.left.schema.slice();
+      s.schemaSet = source.left.schemaSet.clone();
+    }
+
+    const lastCP = canPushdown.at(-1);
+    lastCP.source = source.right;
+    source.right.parent = lastCP;
+    source.right = canPushdown[0];
+    canPushdown[0].parent = source;
+    if (toRename.has(lastCP)) {
+      this.renamerVmap[lastCP.lang].rename(lastCP.condition, renames);
+    }
+
+    const lastC = clones.at(-1);
+    lastC.source = source.left;
+    source.left.parent = lastC;
+    source.left = clones[0];
+    clones[0].parent = source;
+
+    if (mustStay.length) {
+      mustStay.at(-1).source = source;
+      source.parent = mustStay.at(-1);
+      return mustStay[0];
+    } else {
+      return source;
+    }
   }
 
   /** Pushes selections that can pass through `source` below it, renaming their conditions as needed. */

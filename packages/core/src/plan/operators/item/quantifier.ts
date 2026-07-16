@@ -25,7 +25,9 @@ export class Quantifier implements PlanOperator {
     public type: QuantifierType,
     /** The subquery operator whose rows are quantified. */
     public query: PlanOperator,
-  ) {}
+  ) {
+    this.query.parent = this;
+  }
 
   /** {@inheritDoc PlanOperator.accept} */
   accept<Ret, Arg>(
@@ -45,7 +47,7 @@ export class Quantifier implements PlanOperator {
   }
 
   /**
-   * Clone this FnCall
+   * Clone this Quantifier
    * @param meta provided by cloned {@link Calculation}, should be modified in-place
    * to reflect new locations of arguments
    */
