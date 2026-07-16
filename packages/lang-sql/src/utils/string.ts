@@ -69,10 +69,27 @@ export function parseIdentifier(original: string): string {
   return original;
 }
 
-/** Converts a SQL `LIKE` pattern to a `RegExp`, mapping `%` to `.*` and `_` to `.`. */
-export function likeToRegex(like: string, caseSensitive = true): RegExp {
-  return new RegExp(
-    '^' + like.replace(/%/g, '.*').replace(/_/g, '.') + '$',
+/** Converts a SQL `LIKE` pattern to a `RegExp`, mapping `%` to `.*` and `_` to `.`.
+ * @param isStrLit Whether the pattern is a string literal and requires general escape sequence processing
+ */
+export function likeToRegex(
+  like: string,
+  isStrLit = false,
+  caseSensitive = true,
+): RegExp {
+  let pattern = like
+    .replace(/(?<!\\)(\\\\)*%/g, '$1.*')
+    .replace(/(?<!\\)(\\\\)*_/g, '$1.')
+    .replace(/\\([%_])/g, '$1');
+
+  if (isStrLit) pattern = parseStringLiteral(pattern);
+
+  const res = new RegExp(
+    '^' +
+      pattern.replaceAll('\\', '\\\\') + // escape every backslash in the pattern
+      '$',
     caseSensitive ? undefined : 'i',
   );
+  console.log(`LIKE pattern: ${like} => regex: ${res}`);
+  return res;
 }

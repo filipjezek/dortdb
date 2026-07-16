@@ -13,7 +13,14 @@ describe('SQL - LIKE escape characters', () => {
   });
   db.registerSource(
     ['test'],
-    [{ s: '100% sure' }, { s: '100x sure' }, { s: 'a_b' }, { s: 'axb' }],
+    [
+      { s: '100% sure' },
+      { s: '100x sure' },
+      { s: '10\\% sure' },
+      { s: '10\\x sure' },
+      { s: 'a_b' },
+      { s: 'axb' },
+    ],
   );
 
   it('should treat backslash-escaped % as a literal percent sign', () => {
@@ -24,5 +31,10 @@ describe('SQL - LIKE escape characters', () => {
   it('should treat backslash-escaped _ as a literal underscore', () => {
     const result = db.query(`SELECT s FROM test WHERE s LIKE 'a\\_b'`);
     expect(result.data).toEqual([{ s: 'a_b' }]);
+  });
+
+  it('should treat double backslashes as a literal backslash', () => {
+    const result = db.query(`SELECT s FROM test WHERE s LIKE '10\\\\\\% sure'`);
+    expect(result.data).toEqual([{ s: '10\\% sure' }]);
   });
 });

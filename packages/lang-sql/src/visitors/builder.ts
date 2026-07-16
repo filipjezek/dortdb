@@ -144,7 +144,11 @@ export class SQLLogicalPlanBuilder
       materializedCtes: new Map(ctx.materializedCtes),
     };
   }
-  buildPlan(node: ASTNode, ctx: IdSet, langCtx: Record<string, unknown>): BuildPlanResult {
+  buildPlan(
+    node: ASTNode,
+    ctx: IdSet,
+    langCtx: Record<string, unknown>,
+  ): BuildPlanResult {
     this.langCtx = langCtx as Record<string, unknown> & {
       sql: SQLLangCtx;
     };
@@ -530,14 +534,12 @@ export class SQLLogicalPlanBuilder
       );
     }
     // `(subq) setop (subq)` results in Projection(*, Projection(...)) otherwise
-    if (
-      !(
-        node.items.length === 1 &&
-        node.items[0] instanceof ASTIdentifier &&
-        node.items[0].parts[0] === allAttrs &&
-        (op instanceof plan.Projection || op instanceof PlanLangSwitch)
-      )
-    ) {
+    if (!(
+      node.items.length === 1 &&
+      node.items[0] instanceof ASTIdentifier &&
+      node.items[0].parts[0] === allAttrs &&
+      (op instanceof plan.Projection || op instanceof PlanLangSwitch)
+    )) {
       op = new plan.Projection('sql', items, op);
     }
     if (node.distinct) {
@@ -1041,11 +1043,22 @@ export class SQLLogicalPlanBuilder
       result.args[1].acceptSequence = true;
     } else if (result.impl === like.impl || result.impl === ilike.impl) {
       // possibly precompute the regex for LIKE/ILIKE
+      const isLit = node.operands[1] instanceof AST.ASTStringLiteral;
       result.args[1] = {
         op: new plan.FnCall(
           'sql',
           [
-            result.args[1],
+            isLit
+              ? {
+                  op: new plan.Literal(
+                    'sql',
+                    (node.operands[1] as AST.ASTStringLiteral).original,
+                  ),
+                }
+              : result.args[1],
+            {
+              op: new plan.Literal('sql', isLit),
+            },
             { op: new plan.Literal('sql', result.impl === like.impl) },
           ],
           likeToRegex,
