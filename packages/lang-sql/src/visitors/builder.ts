@@ -795,7 +795,7 @@ export class SQLLogicalPlanBuilder
   }
   visitWithQuery(node: AST.WithQuery): PlanOperator {
     let subq: PlanTupleOperator;
-    if (node.recursive) {
+    if (this.isRecursive(node)) {
       subq = this.handleRecursion(node);
     } else {
       subq = node.query.accept(this) as PlanTupleOperator;
@@ -855,22 +855,67 @@ export class SQLLogicalPlanBuilder
   }
 
   /**
-   * Validates that a `WITH RECURSIVE` query is a UNION of a base and recursive part.
+   * Determines if a WITH query is recursive.
+   */
+  protected isRecursive(node: AST.WithQuery): boolean {
+    let recursive =
+      node.query instanceof AST.SelectStatement &&
+      node.query.selectSet instanceof AST.SelectSet &&
+      node.query.selectSet.setOp &&
+      node.query.selectSet.setOp.type === AST.SelectSetOpType.UNION &&
+      !node.query.selectSet.setOp.next.setOp;
+
+    if (recursive) {
+      const tableNames = this.getAllTableNames(
+        ((node.query as AST.SelectStatement).selectSet as AST.SelectSet).setOp
+          .next.from,
+      );
+      recursive = tableNames.some((tn) => tn.equals(node.name));
+    }
+
+    if (!recursive && (node.searchCols?.length || node.cycleCols?.length)) {
+      throw new Error(
+        'SEARCH and CYCLE clauses are only allowed for recursive CTEs',
+      );
+    }
+
+    return !!recursive;
+  }
+
+  /**
+   * Get all table names forming a join (before aliasing)
+   */
+  protected getAllTableNames(
+    node: ASTIdentifier | AST.ASTTableAlias | AST.JoinClause,
+  ): ASTIdentifier[] {
+    const tableNames: ASTIdentifier[] = [];
+    if (node instanceof ASTIdentifier) {
+      tableNames.push(node);
+    } else if (node instanceof AST.ASTTableAlias) {
+      if (node.table instanceof ASTIdentifier) {
+        tableNames.push(node.table);
+      } else if (node.table instanceof AST.JoinClause) {
+        tableNames.push(...this.getAllTableNames(node.table));
+      } else if (
+        node.table instanceof AST.SelectStatement &&
+        node.table.selectSet instanceof AST.SelectSet
+      ) {
+        tableNames.push(...this.getAllTableNames(node.table.selectSet.from));
+      }
+    } else {
+      tableNames.push(...this.getAllTableNames(node.tableLeft));
+      tableNames.push(...this.getAllTableNames(node.tableRight));
+    }
+    return tableNames;
+  }
+
+  /**
+   * Validates that a `WITH RECURSIVE` query only uses supported features.
    *
    * @throws If the query is not a UNION, or if unsupported cycle or search features are used.
    * @returns The top-level {@link AST.SelectSet} for further processing.
    */
   protected checkRecursionValidity(node: AST.WithQuery): AST.SelectSet {
-    if (
-      !(node.query instanceof AST.SelectStatement) ||
-      !(node.query.selectSet instanceof AST.SelectSet) ||
-      !node.query.selectSet.setOp ||
-      node.query.selectSet.setOp.type !== AST.SelectSetOpType.UNION
-    ) {
-      throw new Error(
-        'Recursive with query must be a union of a base and a recursive part',
-      );
-    }
     if (
       node.cycleCols?.length ||
       node.cycleMarkDefault ||
@@ -891,7 +936,7 @@ export class SQLLogicalPlanBuilder
         'Search strategies in recursive queries not supported',
       );
     }
-    return node.query.selectSet;
+    return (node.query as AST.SelectStatement).selectSet as AST.SelectSet;
   }
 
   /** Builds an {@link plan.IndexedRecursion} plan for a `WITH RECURSIVE` query after validating it via {@link checkRecursionValidity}. */

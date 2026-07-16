@@ -290,7 +290,6 @@ export class ASTDeterministicStringifier implements SQLVisitor<string> {
   }
   visitWithQuery(node: WithQuery): string {
     let res = 'WITH ';
-    if (node.recursive) res += 'RECURSIVE ';
     res += this.visitIdentifier(node.name);
     if (node.colNames)
       res += '(' + node.colNames.map(this.processNode).join(',') + ')';

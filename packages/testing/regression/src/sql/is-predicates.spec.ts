@@ -5,8 +5,6 @@ import { defaultRules } from '@dortdb/core/optimizer';
 // Postgres reference:
 //   SELECT x IS NOT NULL FROM (VALUES (1), (NULL)) t(x)     -> true, false
 //   SELECT (x > 0) IS NOT TRUE FROM (VALUES (1), (NULL)) t(x) -> false, true
-// DortDB returns the exact opposite for IS NOT NULL and IS NOT TRUE
-// (IS NULL, IS TRUE, IS FALSE and IS NOT FALSE are all correct).
 describe('SQL - IS NOT predicates', () => {
   const db = new DortDB({
     mainLang: SQL(),

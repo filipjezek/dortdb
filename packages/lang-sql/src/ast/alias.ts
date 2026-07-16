@@ -10,7 +10,7 @@ export class ASTTableAlias implements ASTNode {
   name: string;
   /** Normalized column names; `undefined` when no column aliases were specified. */
   columns: string[];
-  /** The aliased relation node, set by the planner after parsing. */
+  /** The aliased relation node. */
   table: ASTNode;
 
   constructor(

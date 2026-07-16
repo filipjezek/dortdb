@@ -14,9 +14,6 @@ export enum SearchType {
  * A single CTE definition inside a `WITH` clause.
  */
 export class WithQuery implements ASTNode {
-  /** `true` when the `RECURSIVE` keyword was present. */
-  public recursive = false;
-
   /** Columns tracked for the `SEARCH` ordering; `undefined` if no `SEARCH` clause. */
   public searchCols: SQLIdentifier[];
   /** Traversal order for the `SEARCH` clause. */

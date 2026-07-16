@@ -138,13 +138,7 @@ TableFunctionCall
   ;
 
 WithClause
-  = 'WITH'i rec:(_ 'RECURSIVE'i)? _ qs:WithQueryCycleList {
-    rec = !!rec;
-    for (const q of qs) {
-      q.recursive = rec;
-    }
-    return qs;
-  }
+  = 'WITH'i (_ 'RECURSIVE'i)? _ @WithQueryCycleList
   ;
 
 WithQueryName
