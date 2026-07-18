@@ -12,6 +12,7 @@ import { castables } from '../castables/index.js';
 import { XQueryCalculationBuilder } from '../visitors/calculation-builder.js';
 import * as fns from '../functions/index.js';
 import * as operators from '../operators/index.js';
+import * as aggregates from '../aggregates/index.js';
 import { createParser } from './create-parser.js';
 import { XQueryDataAdapter, DomDataAdapter } from './data-adapter.js';
 import { XQueryTransitiveDependencies } from '../visitors/transitive-deps.js';
@@ -57,7 +58,7 @@ export function XQuery(config?: XQueryConfig): XQueryLanguage {
   return {
     name: 'xquery',
     operators: [...Object.values(operators)],
-    aggregates: [{ ...count, schema: 'fn' }],
+    aggregates: [{ ...count, schema: 'fn' }, ...Object.values(aggregates)],
     functions: [...Object.values(fns)],
     castables,
     createParser,

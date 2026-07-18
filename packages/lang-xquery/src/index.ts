@@ -15,6 +15,7 @@ export * from './plan/index.js';
 export * from './language/data-adapter.js';
 export * from './operators/index.js';
 export * from './functions/index.js';
+export * from './aggregates/index.js';
 export * from './castables/index.js';
 export * from './visitors/attr-rename-checker.js';
 export * from './visitors/attr-renamer.js';

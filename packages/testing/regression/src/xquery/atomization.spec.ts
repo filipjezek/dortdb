@@ -3,12 +3,6 @@ import { DortDB } from '@dortdb/core';
 import { XQuery, DomDataAdapter } from '@dortdb/lang-xquery';
 import { defaultRules } from '@dortdb/core/optimizer';
 
-// XQuery 3.0 reference (verified with fontoxpath):
-//   sum($doc/catalog/book/@price) -> 50   (attributes atomize to numbers)
-//   sum(())                       -> 0
-// DortDB concatenates the Attr objects into the string
-// '[object Attr][object Attr][object Attr]' and returns null for sum(()).
-// The docs promise aggregate arguments are atomized by default.
 describe('XQuery - aggregate atomization', () => {
   const doc = new DOMParser().parseFromString(
     `<catalog>
