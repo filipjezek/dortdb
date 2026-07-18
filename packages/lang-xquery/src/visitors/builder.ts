@@ -311,10 +311,7 @@ export class XQueryLogicalPlanBuilder
     throw new UnsupportedError('Empty order declaration not supported.');
   }
   visitNSDeclaration(node: AST.NSDeclaration, args: DescentArgs): PlanOperator {
-    this.localLangCtx.prologOptions.namespaces.set(
-      node.prefix.parts[0] as string,
-      node.uri.value,
-    );
+    this.localLangCtx.prologOptions.namespaces.set(node.prefix, node.uri.value);
     return null;
   }
   visitStringLiteral(
@@ -1089,7 +1086,13 @@ export class XQueryLogicalPlanBuilder
   }
 
   /** Normalizes an aggregate argument into a tuple source, unwinding a calculation (with sequence coalescing) into items when needed. */
-  protected prepareAggArg(arg: PlanOperator): PlanTupleOperator {
+  protected prepareAggArg(
+    arg: PlanOperator,
+    atomize = true,
+  ): PlanTupleOperator {
+    if (atomize) {
+      arg = new plan.FnCall('xquery', [{ op: arg }], (x) => this.atomize(x));
+    }
     if (plan.CalcIntermediate in arg) {
       let calcParams = arg.accept(this.calcBuilders);
       calcParams = simplifyCalcParams(calcParams, this.eqCheckers, 'xquery');
@@ -1128,7 +1131,7 @@ export class XQueryLogicalPlanBuilder
     impl: XQueryAggregate,
   ): PlanOperator {
     const args = node.args.map((x) =>
-      this.prepareAggArg(x.accept(this, dargs)),
+      this.prepareAggArg(x.accept(this, dargs), !impl.skipAtomization),
     );
     let gb: plan.GroupBy;
     if (args.length === 1) {

@@ -25,7 +25,7 @@ export type Declaration =
 export class NSDeclaration implements ASTNode {
   constructor(
     /** The namespace prefix being declared. */
-    public prefix: XQueryIdentifier,
+    public prefix: string,
     /** The namespace URI bound to the prefix. */
     public uri: ASTStringLiteral,
   ) {}

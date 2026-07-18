@@ -11,5 +11,12 @@ import { DSCell, DSCELL_VAL } from '../cell-generic/cell-generic.component';
 })
 export class CellNodeComponent implements DSCell<unknown> {
   public value = inject<Node>(DSCELL_VAL);
-  valueAsString = new XMLSerializer().serializeToString(this.value);
+  valueAsString = this.stringifyValue(this.value);
+
+  public stringifyValue(val: Node): string {
+    if (val instanceof Attr) {
+      return val.name + '="' + val.value + '"';
+    }
+    return new XMLSerializer().serializeToString(val);
+  }
 }

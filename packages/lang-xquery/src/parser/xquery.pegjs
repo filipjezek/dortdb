@@ -29,11 +29,11 @@ Module = p:(@Prolog _)? b:QueryBody {
 Prolog = x:Declaration|.., _| { return new ast.Prolog(x); } ;
 
 Declaration
-  = 'declare' _ 'namespace' _ key:NCName _? '=' _? val:StringLiteral { return ast.NSDeclaration(key, val); }
-  / 'declare' _ 'default' _ 'element' _ 'namespace' _? '=' _? val:StringLiteral { return ast.DefaultNSDeclaration(val); }
-  / 'declare' _ 'base' _ 'uri' _ val:StringLiteral { return ast.BaseURIDeclaration(val); }
-  / 'declare' _ 'ordering' _ val:OrderingMode { return ast.OrderingDeclaration(key, val); }
-  / 'declare' _ 'default' _ 'order' _ 'empty' _ val:EmptyOrder { return ast.EmptyOrderDeclaration(key, val); }
+  = 'declare' _ 'namespace' _ key:$NCName _? '=' _? val:StringLiteral { return new ast.NSDeclaration(key, val); }
+  / 'declare' _ 'default' _ 'element' _ 'namespace' _? '=' _? val:StringLiteral { return new ast.DefaultNSDeclaration(val); }
+  / 'declare' _ 'base' _ 'uri' _ val:StringLiteral { return new ast.BaseURIDeclaration(val); }
+  / 'declare' _ 'ordering' _ val:OrderingMode { return new ast.OrderingDeclaration(key, val); }
+  / 'declare' _ 'default' _ 'order' _ 'empty' _ val:EmptyOrder { return new ast.EmptyOrderDeclaration(key, val); }
   ;
 
 OrderingMode = 'ordered' { return true; }
