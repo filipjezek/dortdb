@@ -424,6 +424,20 @@ export class CypherLogicalPlanBuilder
       ),
     );
 
+    const invertCond = node.quantifier === AST.Quantifier.ALL;
+    const invertRes = node.quantifier === AST.Quantifier.ANY;
+
+    let cond = this.toCalc(node.where ?? node.variable, args);
+    if (invertCond) {
+      if (cond instanceof ASTIdentifier) {
+        cond = new plan.Calculation('cypher', (x) => !x, [cond], [undefined]);
+      } else {
+        const oldImpl = cond.impl;
+        cond.impl = (...args) => !oldImpl(...args);
+      }
+    }
+    res = new plan.Selection('cypher', cond, res);
+
     if (node.quantifier === AST.Quantifier.SINGLE) {
       res = new plan.GroupBy(
         'cypher',
@@ -445,21 +459,6 @@ export class CypherLogicalPlanBuilder
       );
     }
 
-    const invertCond = node.quantifier === AST.Quantifier.ALL;
-    const invertRes =
-      node.quantifier === AST.Quantifier.ANY ||
-      node.quantifier === AST.Quantifier.NONE;
-
-    let cond = this.toCalc(node.where ?? node.variable, args);
-    if (invertCond) {
-      if (cond instanceof ASTIdentifier) {
-        cond = new plan.Calculation('cypher', (x) => !x, [cond], [undefined]);
-      } else {
-        const oldImpl = cond.impl;
-        cond.impl = (...args) => !oldImpl(...args);
-      }
-    }
-    res = new plan.Selection('cypher', cond, res);
     res = new plan.Limit('cypher', 0, 1, res);
     res = new plan.Projection(
       'cypher',
@@ -471,7 +470,14 @@ export class CypherLogicalPlanBuilder
       ],
       res,
     );
-    return res;
+    return new plan.FnCall('cypher', [{ op: res }], (x) => {
+      if (x === null)
+        return (
+          node.quantifier === AST.Quantifier.ALL ||
+          node.quantifier === AST.Quantifier.NONE
+        );
+      return x;
+    });
   }
 
   /**
