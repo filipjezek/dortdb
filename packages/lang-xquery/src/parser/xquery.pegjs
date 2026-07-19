@@ -691,9 +691,9 @@ Name
 NCName
   = IdentifierStart IdentifierPart* ;
 
-IdentifierStart = [\p{ID_Start}\p{Pc}] ;
+IdentifierStart = [\p{ID_Start}\p{Pc}-] ;
 
-IdentifierPart = [\p{ID_Continue}\p{Sc}.] ;
+IdentifierPart = [\p{ID_Continue}\p{Sc}.-] ;
 
 QName
   = NCName ':' NCName
