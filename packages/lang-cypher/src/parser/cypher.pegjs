@@ -218,7 +218,7 @@ Skip = 'SKIP'i _ @Expression ;
 Limit = 'LIMIT'i _ @Expression ;
 
 SortItem = expr:Expression dir:(_? @('ASCENDING'i / 'ASC'i / 'DESCENDING'i / 'DESC'i))? {
-  const asc = dir && (dir[0] === 'a' || dir[0] === 'A');
+  const asc = !dir || (dir[0] === 'a' || dir[0] === 'A');
   return new ast.OrderItem(expr, asc);
 };
 

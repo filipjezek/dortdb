@@ -3,8 +3,6 @@ import { Cypher } from '@dortdb/lang-cypher';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { createSocialGraph } from './test-graph.js';
 
-// openCypher: ORDER BY sorts ascending by default. DortDB sorts descending
-// unless ASC is written explicitly (explicit ASC and DESC both work).
 describe('Cypher - ORDER BY default direction', () => {
   const db = new DortDB({
     mainLang: Cypher({ defaultGraph: 'social' }),
