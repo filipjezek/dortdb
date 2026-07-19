@@ -3,14 +3,6 @@ import { DortDB } from '@dortdb/core';
 import { XQuery, DomDataAdapter } from '@dortdb/lang-xquery';
 import { defaultRules } from '@dortdb/core/optimizer';
 
-// XQuery 3.0 reference (verified with fontoxpath):
-//   (1, 2, 3)[last()]                          -> 3
-//   $doc/catalog/book[position() = 2]/@id      -> b2
-//   $doc/catalog/book[2][1]/@id                -> b2
-//   $doc/catalog/book[@price > 12][1]/@id      -> b2
-// DortDB returns an empty sequence for all of these. Plain numeric predicates
-// ($doc/catalog/book[2]) work; the failures involve last()/position() or a
-// second (chained) predicate.
 describe('XQuery - positional predicates', () => {
   const doc = new DOMParser().parseFromString(
     `<catalog>

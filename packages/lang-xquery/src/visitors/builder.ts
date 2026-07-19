@@ -738,7 +738,12 @@ export class XQueryLogicalPlanBuilder
     node: AST.PathPredicate,
     dargs: DescentArgs,
   ): PlanTupleOperator {
-    const calcCtx = union(dargs.ctx, dargs.src.schema);
+    let res = dargs.src;
+    if (!(dargs.src instanceof TreeJoin)) {
+      res = new plan.ProjectionIndex('xquery', POS, res);
+      res = new ProjectionSize('xquery', LEN, res);
+    }
+    const calcCtx = union(dargs.ctx, res.schema);
     const args = node.exprs.map((x) =>
       this.processFnArg(x, { ctx: calcCtx, inferred: dargs.inferred }),
     );
@@ -754,7 +759,7 @@ export class XQueryLogicalPlanBuilder
       this.calcBuilders,
       this.eqCheckers,
     );
-    return new plan.Selection('xquery', calc, dargs.src);
+    return new plan.Selection('xquery', calc, res);
   }
   visitPathAxis(node: AST.PathAxis, args: DescentArgs): PlanTupleOperator {
     let res: PlanTupleOperator = new TreeJoin(
@@ -773,11 +778,7 @@ export class XQueryLogicalPlanBuilder
     return res;
   }
   visitFilterExpr(node: AST.FilterExpr, args: DescentArgs): PlanTupleOperator {
-    let res = toTuples(this.maybeUnwind(node.expr, args));
-    if (!(res instanceof TreeJoin)) {
-      res = new plan.ProjectionIndex('xquery', POS, res);
-      res = new ProjectionSize('xquery', LEN, res);
-    }
+    const res = toTuples(this.maybeUnwind(node.expr, args));
     return this.visitPathPredicate(node.predicate, { ...args, src: res });
   }
   visitDynamicFunctionCall(
