@@ -5,6 +5,7 @@ import { CypherDataAdapter } from './data-adapter.js';
 import { CypherExecutor } from '../visitors/executor.js';
 import { serializeToObjects } from '@dortdb/core/utils';
 import * as fns from '../functions/index.js';
+import * as ops from '../operators/index.js';
 import { GraphologyDataAdapter } from './graphology-adapter.js';
 
 /**
@@ -43,7 +44,7 @@ export interface CypherLanguage extends Language<'cypher'> {
 export function Cypher(config?: CypherConfig): CypherLanguage {
   return {
     name: 'cypher',
-    operators: [],
+    operators: [...Object.values(ops)],
     aggregates: [],
     functions: [...Object.values(fns)],
     castables: [],

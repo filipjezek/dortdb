@@ -15,3 +15,4 @@ export * from './visitors/ast-stringifier.js';
 export * from './visitors/builder.js';
 export * from './visitors/executor.js';
 export * from './utils/string.js';
+export * from './operators/index.js';
