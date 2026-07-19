@@ -458,7 +458,8 @@ FilterExpression = idcol:IdInColl where:(_? @Where)? {
 } ;
 
 PatternPredicate = pattern:RelationshipsPattern {
-  return new ast.PatternElChain(pattern.flat(Infinity));
+  const chain = new ast.PatternElChain(pattern.flat(Infinity));
+  return new ast.ExistsSubquery(null, [chain]);
 } ;
 
 ParenthesizedExpression = '(' _? @Expression _? ')' ;
