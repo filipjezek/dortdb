@@ -569,7 +569,10 @@ export class XQueryLogicalPlanBuilder
     return new plan.FnCall(
       'xquery',
       [{ op: subq }],
-      (x) => x !== null && x !== undefined,
+      (x) => {
+        if (x instanceof Array && !x.length) return invert;
+        return x;
+      },
       true,
     );
   }

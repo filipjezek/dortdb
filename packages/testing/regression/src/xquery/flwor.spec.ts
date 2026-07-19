@@ -8,7 +8,7 @@ import { defaultRules } from '@dortdb/core/optimizer';
 const XML =
   '<catalog>\n  <book id="b1" price="10">\n    <title>SQL Basics</title>\n    <author>Ann</author>\n    <author>Ben</author>\n    <year>2001</year>\n  </book>\n  <book id="b2" price="25">\n    <title>XML Advanced</title>\n    <author>Cid</author>\n    <year>2005</year>\n  </book>\n  <book id="b3" price="15">\n    <title>Graphs</title>\n    <author>Ann</author>\n    <year>2003</year>\n  </book>\n</catalog>';
 
-// a fresh document per test: element constructors currently mutate the source
+// a fresh document per test
 function makeDb() {
   const doc = new DOMParser().parseFromString(XML, 'text/xml');
   const db = new DortDB({
