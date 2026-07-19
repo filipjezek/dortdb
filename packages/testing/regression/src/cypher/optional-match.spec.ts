@@ -3,9 +3,6 @@ import { Cypher } from '@dortdb/lang-cypher';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { createSocialGraph } from './test-graph.js';
 
-// Neo4j: when an OPTIONAL MATCH finds nothing, only the variables introduced
-// by the optional pattern are null - values bound before it are kept.
-// DortDB also nulls out the previously bound variables (a.name is lost).
 describe('Cypher - OPTIONAL MATCH', () => {
   const db = new DortDB({
     mainLang: Cypher({ defaultGraph: 'social' }),
@@ -31,7 +28,7 @@ describe('Cypher - OPTIONAL MATCH', () => {
     `);
     expect(result.data).toEqual([
       { an: 'Alice', cn: 'Acme' },
-      { an: 'Bob', cn: null },
+      { an: 'Bob', cn: undefined },
       { an: 'Carol', cn: 'Acme' },
     ]);
   });

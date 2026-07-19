@@ -883,6 +883,12 @@ export class CypherLogicalPlanBuilder
     res = new plan.Projection('cypher', cols, res);
     if (args.optional) {
       const src = args.src ?? new plan.NullSource('cypher');
+      // do not overwrite existing columns in the source schema (could be nulled out by the outer join)
+      res = new plan.Projection(
+        'cypher',
+        res.schema.filter((x) => !src.schemaSet.has(x.parts)).map(toPair),
+        res,
+      );
       res = new plan.ProjectionConcat('cypher', res, true, src);
     }
 
