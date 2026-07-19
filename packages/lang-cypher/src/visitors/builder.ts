@@ -1348,7 +1348,7 @@ export class CypherLogicalPlanBuilder
       shortcutNulls(
         node.subscript.length === 2
           ? (e, f, t) => e.slice(f ?? 0, t ?? e.length)
-          : (e, i) => e[i],
+          : (e, i) => ('at' in e ? e.at(i) : e[i]),
       ),
     );
   }

@@ -3,9 +3,6 @@ import { Cypher } from '@dortdb/lang-cypher';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { createSocialGraph } from './test-graph.js';
 
-// Neo4j list semantics:
-//   [1, 2] + [3]   -> [1, 2, 3]   (DortDB: the string '1,23')
-//   [1, 2, 3][-1]  -> 3           (DortDB: undefined)
 describe('Cypher - list operators', () => {
   const db = new DortDB({
     mainLang: Cypher({ defaultGraph: 'social' }),
