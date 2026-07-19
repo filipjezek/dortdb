@@ -826,8 +826,37 @@ export class XQueryLogicalPlanBuilder
     if (typeof content === 'string') {
       return { op: new plan.Literal('xquery', content) } as plan.PlanOpAsArg;
     }
-    return this.processFnArg(content, args);
+    const res = this.processFnArg(content, args);
+    return this.cloneConstrContent(content, res);
   }
+
+  /**
+   * When inserting content into a direct or computed constructor, the content may
+   * refer to existing nodes in the source tree. In such cases, the content must be cloned.
+   */
+  protected cloneConstrContent(
+    original: string | ASTNode,
+    processed: plan.PlanOpAsArg | ASTIdentifier,
+  ): plan.PlanOpAsArg | ASTIdentifier {
+    if (
+      typeof original !== 'string' &&
+      ![
+        AST.ComputedConstructor,
+        AST.DirectCommentConstructor,
+        AST.DirectElementConstructor,
+        AST.DirectPIConstructor,
+      ].some((x) => original instanceof x)
+    ) {
+      return {
+        op: new plan.FnCall('xquery', [processed], (arg) =>
+          this.dataAdapter.isNode(arg) ? this.dataAdapter.cloneNode(arg) : arg,
+        ),
+        acceptSequence: true,
+      };
+    }
+    return processed;
+  }
+
   visitDirectElementConstructor(
     node: AST.DirectElementConstructor,
     dargs: DescentArgs,
@@ -850,7 +879,8 @@ export class XQueryLogicalPlanBuilder
       const el = this.dataAdapter.createElement(
         ns,
         qname,
-        args.slice(0, -node.attributes.length || undefined),
+        // the input can consist of sequences
+        args.slice(0, -node.attributes.length || undefined).flat(),
       );
       for (let i = 0; i < node.attributes.length; i++) {
         const [id] = node.attributes[i];
@@ -904,7 +934,9 @@ export class XQueryLogicalPlanBuilder
     args: DescentArgs,
   ): PlanOperator {
     let ns: string, qname: string;
-    const content = node.content.map((x) => this.processFnArg(x, args));
+    const content = node.content.map((x) =>
+      this.cloneConstrContent(x, this.processFnArg(x, args)),
+    );
     if (
       node.name instanceof ASTIdentifier &&
       !(node.name instanceof AST.ASTVariable)
@@ -941,7 +973,7 @@ export class XQueryLogicalPlanBuilder
             node.type === AST.ConstructorType.DOCUMENT
               ? 'createDocument'
               : 'createElement'
-          ](ns, qname, args);
+          ](ns, qname, args.flat());
         });
       case AST.ConstructorType.NAMESPACE:
         return new plan.FnCall('xquery', content, (...args) => {

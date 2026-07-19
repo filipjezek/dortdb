@@ -9,6 +9,10 @@ import { treeStep } from './tree-step.js';
 export interface XQueryDataAdapter<NodeType = any> {
   /** Is the value a Node? */
   isNode(node: unknown): node is NodeType;
+
+  /** Create deep copy of a node. */
+  cloneNode(node: NodeType): NodeType;
+
   /**
    * Create an XPath step function.
    * @param test The item test to apply.
@@ -97,6 +101,10 @@ export class DomDataAdapter implements XQueryDataAdapter<Node> {
 
   public isNode(node: unknown): node is Node {
     return node instanceof Node;
+  }
+
+  public cloneNode(node: Node): Node {
+    return node.cloneNode(true);
   }
 
   public atomize(value: unknown): unknown {
