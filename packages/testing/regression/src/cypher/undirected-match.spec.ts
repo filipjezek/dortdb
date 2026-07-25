@@ -3,9 +3,6 @@ import { Cypher } from '@dortdb/lang-cypher';
 import { defaultRules } from '@dortdb/core/optimizer';
 import { createSocialGraph } from './test-graph.js';
 
-// Neo4j: an undirected pattern (a)-[:KNOWS]-(b) binds each matching
-// relationship once in each direction, with a and b at opposite endpoints.
-// DortDB additionally produces self-pairs where a = b.
 describe('Cypher - undirected relationship patterns', () => {
   const db = new DortDB({
     mainLang: Cypher({ defaultGraph: 'social' }),

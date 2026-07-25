@@ -600,6 +600,15 @@ export class CypherLogicalPlanBuilder
         variables[i],
         graphName,
       );
+      if (edgeDir1 === 'any') {
+        res = this.checkCorrectAnyEdge(
+          variables[i - 1],
+          variables[i],
+          variables[i + 1],
+          graphName,
+          res,
+        );
+      }
     }
 
     const edgeVars = variables.filter((_, i) => i % 2 === 1);
@@ -712,6 +721,36 @@ export class CypherLogicalPlanBuilder
         }
 
         return true;
+      },
+    );
+    return new plan.Selection(
+      'cypher',
+      intermediateToCalc(nodeCheckFn, this.calcBuilders, this.eqCheckers),
+      source,
+    );
+  }
+
+  /**
+   * If the plain edge direction is 'any', we need to check that the edge is connected to the
+   * start and end nodes correctly.
+   * The idea is to prevent this: `(a)(a)->`
+   */
+  protected checkCorrectAnyEdge(
+    node1: ASTIdentifier,
+    edge: ASTIdentifier,
+    node2: ASTIdentifier,
+    graphName: ASTIdentifier,
+    source: PlanTupleOperator,
+  ) {
+    const graph = this.db.getSource(graphName.parts);
+    const nodeCheckFn = new plan.FnCall(
+      'cypher',
+      [node1, edge, node2],
+      (n1, e, n2) => {
+        const srcNode = this.dataAdapter.getEdgeNode(graph, e, 'source');
+        const tgtNode = this.dataAdapter.getEdgeNode(graph, e, 'target');
+
+        return (srcNode === n1) !== (srcNode === n2) || srcNode === tgtNode;
       },
     );
     return new plan.Selection(
@@ -1518,6 +1557,17 @@ export class CypherLogicalPlanBuilder
     }
     if (!bodyChangesCardinality || !node.order?.length) {
       // for bodies that change cardinality, this is handled in processOrderBy
+      if (node.order?.length) {
+        for (const pair of cols) {
+          if (
+            pair[0] instanceof plan.Calculation &&
+            res.schemaSet.has(pair[1].parts)
+          ) {
+            // already computed in presort projection
+            pair[0] = pair[1];
+          }
+        }
+      }
       res = new plan.Projection('cypher', cols, res);
     }
     if (node.distinct) {
