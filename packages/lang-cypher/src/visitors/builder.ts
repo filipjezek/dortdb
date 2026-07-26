@@ -1408,9 +1408,12 @@ export class CypherLogicalPlanBuilder
     );
   }
   visitSetOp(node: AST.SetOp, args: DescentArgs): PlanTupleOperator {
-    let next = node.next.accept(this, args) as PlanTupleOperator;
+    let next = node.next.accept(this, {
+      ...args,
+      src: null,
+    }) as PlanTupleOperator;
     next = new plan.Union('cypher', args.src, next);
-    if (node.type === AST.SetOpType.UNIONALL) {
+    if (node.type === AST.SetOpType.UNION) {
       next = new plan.Distinct('cypher', allAttrs, next);
     }
     return next;
