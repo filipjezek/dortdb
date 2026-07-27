@@ -20,7 +20,6 @@ export default async function unibenchBenchmarkOrient(options: BenchmarkWorkerOp
   workerLog('Finished preparing environment');
 
   const id = options.query;
-
   const def = defineQueries()[id - 1];
   const query = new Query(
     id,

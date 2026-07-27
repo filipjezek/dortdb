@@ -6,7 +6,7 @@ export type BenchmarkWorkerOptions = {
   benchmark: BenchmarkArgs['benchmark'];
   database: BenchmarkArgs['database'][number];
   query: BenchmarkArgs['query'][number];
-  measureInit: boolean;
+  dataUrl: string | undefined;
   /** in seconds */
   hardTimeout: number;
   /** in seconds */

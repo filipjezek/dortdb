@@ -3,12 +3,12 @@ import { pickRandom, setupPerformanceObserver, workerLog } from '../utils/common
 import { DortDB, MapIndex } from '@dortdb/core';
 import { ConnectionIndex } from '@dortdb/lang-cypher';
 import { prepareData } from './prepare-data.js';
-import { performance } from 'node:perf_hooks';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { brands, personIds, productIds } from './data.js';
 import { Query, QueryDef } from '../query.js';
 import { DortDBDatabase } from '../databases/dortdb.js';
+import { UnibenchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
 
@@ -20,7 +20,8 @@ export default async function unibenchBenchmark(options: BenchmarkWorkerOptions)
   setupPerformanceObserver();
 
   const db = DortDBDatabase.create();
-  await registerDataSources(db.innerDb, options.secondaryIndexes, options.measureInit);
+  const data = await prepareData(options.dataUrl);
+  registerDataSources(db.innerDb, data, options.secondaryIndexes);
 
   workerLog('Finished preparing environment');
 
@@ -37,17 +38,7 @@ export default async function unibenchBenchmark(options: BenchmarkWorkerOptions)
   await query.run(db, options.softTimeout, options.runs);
 }
 
-async function registerDataSources(db: DortDB, secondaryIndexes: boolean, measureInit: boolean) {
-  if (measureInit) {
-    gc();
-    workerLog('Memory usage before registering data sources', process.memoryUsage())
-  }
-
-  const data = await prepareData();
-
-  if (measureInit)
-    gc();
-
+function registerDataSources(db: DortDB, data: UnibenchData, secondaryIndexes: boolean) {
   db.registerSource(['customers'], data.customers);
   db.registerSource(['products'], data.products);
   db.registerSource(['feedback'], data.feedback);
@@ -58,16 +49,8 @@ async function registerDataSources(db: DortDB, secondaryIndexes: boolean, measur
   db.registerSource(['posts'], data.posts);
   db.registerSource(['vendors'], data.vendors);
 
-  if (measureInit) {
-    workerLog('Memory usage after registering data sources', process.memoryUsage());
-    performance.mark('registerIndexes_start');
-  }
-
   db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);
-  db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, {
-    mainLang: 'cypher',
-    fromItemKey: ['x'],
-  });
+  db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, { mainLang: 'cypher', fromItemKey: ['x'] });
   db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);
   db.createIndex(['customers'], ['id'], MapIndex);
   db.createIndex(['products'], ['productId'], MapIndex);
@@ -83,17 +66,6 @@ async function registerDataSources(db: DortDB, secondaryIndexes: boolean, measur
     db.createIndex(['feedback'], ['productAsin'], MapIndex);
     db.createIndex(['feedback'], ['personId'], MapIndex);
     db.createIndex(['orders'], ['PersonId'], MapIndex);
-  }
-
-  if (measureInit) {
-    performance.mark('registerIndexes_end');
-    performance.measure(
-      'registerIndexes',
-      'registerIndexes_start',
-      'registerIndexes_end',
-    );
-
-    workerLog('Memory usage after registering indexes', process.memoryUsage());
   }
 }
 

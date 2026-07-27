@@ -1,14 +1,12 @@
 import { DortDB, MapIndex } from '@dortdb/core';
-import { datetime } from '@dortdb/datetime';
-import { defaultRules } from '@dortdb/core/optimizer';
-import { SQL } from '@dortdb/lang-sql';
 import { resolve } from 'node:path';
 import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
-import { workerLog, setupPerformanceObserver } from '../utils/common.js';
+import { setupPerformanceObserver } from '../utils/common.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { DortDBDatabase } from '../databases/dortdb.js';
 import { Query } from '../query.js';
+import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 
@@ -20,7 +18,8 @@ export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
   setupPerformanceObserver();
 
   const db = DortDBDatabase.create();
-  await registerDataSources(db.innerDb, options.measureInit);
+  const data = await prepareData(options.dataUrl);
+  registerDataSources(db.innerDb, data);
 
   const id = options.query;
   const query = new Query(
@@ -33,9 +32,7 @@ export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
   await query.run(db, options.softTimeout, options.runs);
 }
 
-async function registerDataSources(db: DortDB, measureInit: boolean) {
-  const data = await prepareData();
-
+function registerDataSources(db: DortDB, data: TpchData) {
   db.registerSource(['customer'], data.customer);
   db.registerSource(['lineitem'], data.lineitem);
   db.registerSource(['nation'], data.nation);

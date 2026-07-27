@@ -1,11 +1,12 @@
 import { resolve } from 'node:path';
+import fs from 'node:fs/promises';
 import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog, setupPerformanceObserver } from '../utils/common.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { SqliteDatabase, type SqliteDB } from '../databases/sqlite.js';
-import { readFileSync } from 'node:fs';
 import { Query } from '../query.js';
+import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 const SCHEMA_FILE = resolve(QUERY_DIR, 'schema_sqlite.sql');
@@ -19,7 +20,8 @@ export default async function tpchBenchmarkSQLite(options: BenchmarkWorkerOption
 
   const db = await SqliteDatabase.create();
 
-  await registerDataSources(db.innerDb, options.measureInit);
+  const data = await prepareData(options.dataUrl);
+  await registerDataSources(db.innerDb, data);
   workerLog('Finished preparing environment');
 
   const id = options.query;
@@ -33,11 +35,9 @@ export default async function tpchBenchmarkSQLite(options: BenchmarkWorkerOption
   await query.run(db, options.softTimeout, options.runs);
 }
 
-async function registerDataSources(db: SqliteDB, measureInit: boolean) {
-  const schema = readFileSync(SCHEMA_FILE, 'utf-8');
+async function registerDataSources(db: SqliteDB, data: TpchData) {
+  const schema = await fs.readFile(SCHEMA_FILE, 'utf-8');
   db.run(schema);
-
-  const data = await prepareData();
 
   for (const [table, rows] of Object.entries(data)) {
     const columns = Object.keys(rows[0]);

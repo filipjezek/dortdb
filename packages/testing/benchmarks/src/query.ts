@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
+import fs from 'node:fs/promises';
+import { performance } from 'node:perf_hooks';
 import type { Database, SqlObject, SqlValue } from './database.js';
 import { deepEqual, promiseTimeout, workerLog } from './utils/common.js';
 import { diff } from '@vitest/utils/diff';
@@ -27,7 +28,7 @@ export class Query {
     totalTimeout: number,
     runs: number,
   ): Promise<void> {
-    this.prepare();
+    await this.prepare();
 
     const now = Date.now();
 
@@ -44,12 +45,13 @@ export class Query {
   protected content?: string;
   protected expectedResult?: SqlObject[];
 
-  protected prepare(): void {
-    this.content = readFileSync(resolve(this.directory, this.filename), 'utf-8');
+  protected async prepare(): Promise<void> {
+    this.content = await fs.readFile(resolve(this.directory, this.filename), 'utf-8');
 
     if (this.resultsFilename) {
       const resultsPath = resolve(this.directory, this.resultsFilename);
-      this.expectedResult = JSON.parse(readFileSync(resultsPath, 'utf-8')) as SqlObject[];
+      const resultsContent = await fs.readFile(resultsPath, 'utf-8');
+      this.expectedResult = JSON.parse(resultsContent) as SqlObject[];
     }
   }
 

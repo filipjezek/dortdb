@@ -1,54 +1,26 @@
 import { resolve } from 'node:path';
-import fs from 'node:fs/promises';
-import { createWriteStream, createReadStream } from 'node:fs';
-import { pipeline } from 'node:stream/promises';
-import { Readable } from 'node:stream';
+import type { ReadStream } from 'node:fs';
+import { getParsedData } from '../utils/data-loader.js';
 import { extractArchive, UnibenchData, unibenchFiles, unibenchGraphTables } from '@dortdb/dataloaders';
 import { DOMParser } from 'slimdom';
 
 const DATA_DIR = resolve(import.meta.dirname, '../../dist/data');
-const ARCHIVE_PATH = resolve(DATA_DIR, 'unibench.zip');
+// const DEFAULT_URL = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip';
+const DEFAULT_URL = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip';
 
-export async function prepareData() {
-  if (!(await fs.stat(ARCHIVE_PATH).catch(() => {}))) {
-    await downloadData();
-  }
-  return parseUnibenchData();
+export function prepareData(dataUrl: string | undefined): Promise<UnibenchData> {
+  const finalUrl = dataUrl ?? DEFAULT_URL;
+  return getParsedData(finalUrl, 'unibench', DATA_DIR, parseUnibenchData);
 }
 
-async function downloadData() {
-  console.log('Downloading Unibench data...');
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  // const url = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip';
-  const url = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip';
-
-  const response = await fetch(url);
-  if (!response.ok)
-    throw new Error(`Failed to download ${url}: ${response.statusText}`);
-
-  await pipeline(
-    Readable.fromWeb(response.body as any),
-    createWriteStream(ARCHIVE_PATH, { flags: 'w+' }),
-  );
-  console.log('Unibench data downloaded.');
-}
-
-async function parseUnibenchData(): Promise<UnibenchData> {
-  performance.mark('parseUnibenchData_start');
-  const archiveStream = createReadStream(ARCHIVE_PATH);
+async function parseUnibenchData(stream: ReadStream): Promise<UnibenchData> {
   const result = (await extractArchive(
-    archiveStream,
+    stream,
     unibenchFiles,
     new DOMParser() as any,
     'socialNetwork',
     unibenchGraphTables,
-  )) as any as UnibenchData;
-  performance.mark('parseUnibenchData_end');
-  performance.measure(
-    'parseUnibenchData',
-    'parseUnibenchData_start',
-    'parseUnibenchData_end',
-  );
+  )) as unknown as UnibenchData;
 
   return result;
 }

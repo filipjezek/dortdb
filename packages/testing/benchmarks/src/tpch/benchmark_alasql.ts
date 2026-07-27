@@ -1,11 +1,12 @@
 import { resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
+import fs from 'node:fs/promises';
 import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { workerLog, setupPerformanceObserver } from '../utils/common.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { AlaSQL, AlasqlDatabase } from '../databases/alasql.js';
 import { Query } from '../query.js';
+import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
 const SCHEMA_FILE = resolve(QUERY_DIR, 'schema_alasql.sql');
@@ -18,7 +19,8 @@ export default async function tpchBenchmarkAlaSQL(options: BenchmarkWorkerOption
   setupPerformanceObserver();
 
   const db = AlasqlDatabase.create();
-  await registerDataSources(db.innerDb, options.measureInit);
+  const data = await prepareData(options.dataUrl);
+  await registerDataSources(db.innerDb, data);
 
   workerLog('Finished preparing environment');
 
@@ -33,11 +35,9 @@ export default async function tpchBenchmarkAlaSQL(options: BenchmarkWorkerOption
   await query.run(db, options.softTimeout, options.runs);
 }
 
-async function registerDataSources(db: AlaSQL, measureInit: boolean) {
-  const schema = readFileSync(SCHEMA_FILE, 'utf-8');
+async function registerDataSources(db: AlaSQL, data: TpchData) {
+  const schema = await fs.readFile(SCHEMA_FILE, 'utf-8');
   db(schema);
-
-  const data = await prepareData();
 
   for (const table of [
     'region',

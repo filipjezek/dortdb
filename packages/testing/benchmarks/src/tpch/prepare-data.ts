@@ -1,43 +1,23 @@
 import { resolve } from 'node:path';
-import fs from 'node:fs/promises';
+import type { ReadStream } from 'node:fs';
+import { getParsedData } from '../utils/data-loader.js';
 import { extractArchive, TpchData, tpchFiles } from '@dortdb/dataloaders';
-import { createReadStream, createWriteStream } from 'node:fs';
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
 
 const DATA_DIR = resolve(import.meta.dirname, '../../dist/data/tpch');
-const ARCHIVE_PATH = resolve(DATA_DIR, 'tpch.zip');
+const DEFAULT_URL = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/tpch.zip';
 
-export async function prepareData() {
-  if (!(await fs.stat(ARCHIVE_PATH).catch(() => {}))) {
-    await downloadData();
-  }
-  return parseTpchData();
+export function prepareData(dataUrl: string | undefined): Promise<TpchData> {
+  const finalUrl = dataUrl ?? DEFAULT_URL;
+  return getParsedData(finalUrl, 'tpch', DATA_DIR, parseTpchData);
 }
 
-async function downloadData() {
-  console.log('Downloading TPCH data...');
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const url = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/tpch.zip';
-
-  const response = await fetch(url);
-  if (!response.ok)
-    throw new Error(`Failed to download ${url}: ${response.statusText}`);
-
-  await pipeline(
-    Readable.fromWeb(response.body as any),
-    createWriteStream(ARCHIVE_PATH, { flags: 'w+' }),
-  );
-  console.log('TPCH data downloaded.');
-}
-
-async function parseTpchData(): Promise<TpchData> {
-  const archiveStream = createReadStream(ARCHIVE_PATH);
+async function parseTpchData(stream: ReadStream): Promise<TpchData> {
   const result = (await extractArchive(
-    archiveStream,
+    stream,
     tpchFiles,
     {} as any,
-  )) as any as TpchData;
+  )) as unknown as TpchData;
+
   delete (result as any)['defaultGraph'];
 
   return result;

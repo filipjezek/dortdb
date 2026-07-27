@@ -5,6 +5,7 @@ export type BenchmarkArgs = {
   benchmark: 'tpch' | 'unibench';
   database: DatabaseName[];
   query: number[];
+  dataUrl: string | undefined;
   runs: number;
   softTimeout: number;
   hardTimeout: number;
@@ -40,6 +41,11 @@ export function parseArgs(): BenchmarkArgs {
       description: 'Specify the query to run',
       array: true,
       required: true,
+    })
+    .option('data-url', {
+      alias: 'u',
+      type: 'string',
+      description: 'URL to fetch the data from. Each benchmark has a default URL, but you can override it with this option.',
     })
     .option('runs', {
       alias: 'r',
@@ -86,6 +92,7 @@ export function parseArgs(): BenchmarkArgs {
     benchmark: argv.benchmark as BenchmarkArgs['benchmark'],
     database: argv.database as BenchmarkArgs['database'],
     query: argv.query,
+    dataUrl: argv['data-url'],
     runs: argv.runs,
     softTimeout: argv['soft-timeout'],
     hardTimeout: argv.timeout,

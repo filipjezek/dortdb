@@ -15,7 +15,7 @@ for (const db of args.database) {
         benchmark: args.benchmark,
         database: db,
         query,
-        measureInit: true,
+        dataUrl: args.dataUrl,
         hardTimeout: args.hardTimeout,
         softTimeout: args.softTimeout,
         runs: args.runs,
