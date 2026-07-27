@@ -25,7 +25,7 @@ export async function extractArchive(
   graphKey = 'defaultGraph',
   graphTypesToTableNames: Record<string, string> = {},
 ): Promise<Record<string, unknown>> {
-  const cachedIndices: Record<
+  const cachedIndexes: Record<
     string,
     Map<string | number, Record<string, any>>
   > = {};
@@ -79,7 +79,7 @@ export async function extractArchive(
           graph,
           dsOptions.csvOptions,
           graphTypesToTableNames,
-          cachedIndices,
+          cachedIndexes,
           dsPromises,
         ),
       );

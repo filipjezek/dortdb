@@ -18,14 +18,14 @@ function updateNode(attrs: any, id: string, label: string) {
 
 /**
  * @param indexedTableNames - maps node types to table names
- * @param cachedIndices - maps table names to the table index
+ * @param cachedIndexes - maps table names to the table index
  */
 export async function csvToGraph(
   entry: StreamedEntry,
   graph: MultiDirectedGraph,
   options?: CSVParseOptions,
   indexedTableNames: Record<string, string> = {},
-  cachedIndices: Record<string, Map<string | number, Record<string, any>>> = {},
+  cachedIndexes: Record<string, Map<string | number, Record<string, any>>> = {},
   dsPromises: Record<string, { promise: Promise<any[]> }> = {},
 ) {
   const [from, edgeType, to] = entry.filename.split('/').pop().split('_');
@@ -56,11 +56,11 @@ export async function csvToGraph(
     );
   const fromIndex =
     from in indexedTableNames
-      ? await getTableIndex(indexedTableNames[from], dsPromises, cachedIndices)
+      ? await getTableIndex(indexedTableNames[from], dsPromises, cachedIndexes)
       : null;
   const toIndex =
     to in indexedTableNames
-      ? await getTableIndex(indexedTableNames[to], dsPromises, cachedIndices)
+      ? await getTableIndex(indexedTableNames[to], dsPromises, cachedIndexes)
       : null;
 
   const iter = iterStream(stream)[
@@ -101,20 +101,20 @@ export async function csvToGraph(
 async function getTableIndex(
   table: string,
   dsPromises: Record<string, { promise: Promise<any[]> }>,
-  cachedIndices: Record<
+  cachedIndexes: Record<
     string,
     Map<string | number, Record<string | symbol, any>>
   >,
   column = 'id',
 ): Promise<Map<string | number, Record<string | symbol, any>>> {
   const ds = await dsPromises[table].promise;
-  if (cachedIndices[table]) {
-    return cachedIndices[table];
+  if (cachedIndexes[table]) {
+    return cachedIndexes[table];
   }
   const index = new Map<string | number, Record<string | symbol, any>>();
   for (const row of ds) {
     index.set(row[column], row);
   }
-  cachedIndices[table] = index;
+  cachedIndexes[table] = index;
   return index;
 }

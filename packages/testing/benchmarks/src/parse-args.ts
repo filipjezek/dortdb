@@ -1,20 +1,22 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
-export interface BenchmarkArgs {
+export type BenchmarkArgs = {
   benchmark: 'tpch' | 'unibench';
-  database: ('alasql' | 'sqlite' | 'arango' | 'orient' | 'dortdb')[];
+  database: DatabaseName[];
   query: number[];
   runs: number;
   softTimeout: number;
   hardTimeout: number;
   snapshotInterval: number;
   unibench: {
-    secondaryIndices: boolean;
+    secondaryIndexes: boolean;
   };
   skipWarmup: boolean;
   output?: string;
-}
+};
+
+type DatabaseName = 'alasql' | 'sqlite' | 'arango' | 'orient' | 'dortdb';
 
 export function parseArgs(): BenchmarkArgs {
   const argv = yargs(hideBin(process.argv))
@@ -23,6 +25,7 @@ export function parseArgs(): BenchmarkArgs {
       type: 'string',
       description: 'Run a specific benchmark',
       choices: ['tpch', 'unibench'],
+      required: true,
     })
     .option('database', {
       alias: 'd',
@@ -30,13 +33,14 @@ export function parseArgs(): BenchmarkArgs {
       description: 'Specify the database to use',
       choices: ['alasql', 'sqlite', 'arango', 'orient', 'dortdb'],
       array: true,
-      default: ['dortdb'],
+      required: true,
     })
     .option('query', {
       alias: 'q',
       type: 'number',
       description: 'Specify the query to run',
       array: true,
+      required: true,
     })
     .option('runs', {
       alias: 'r',
@@ -47,16 +51,14 @@ export function parseArgs(): BenchmarkArgs {
     .option('soft-timeout', {
       alias: 'T',
       type: 'number',
-      description:
-        'Set a soft timeout for all runs of a query in seconds. The query will not be stopped, but the next run will be skipped if the total time exceeds this limit.',
+      description: 'Set a soft timeout for all runs of a query in seconds. The query will not be stopped, but the next run will be skipped if the total time exceeds this limit.',
       default: 24 * 60 * 60, // 24 hours,
       defaultDescription: '24 hours',
     })
     .option('timeout', {
       alias: 't',
       type: 'number',
-      description:
-        'Set a hard timeout for all runs of a query in seconds. The query will be stopped if the time exceeds this limit.',
+      description: 'Set a hard timeout for all runs of a query in seconds. The query will be stopped if the time exceeds this limit.',
       default: 24 * 60 * 60, // 24 hours,
       defaultDescription: '24 hours',
     })
@@ -67,10 +69,9 @@ export function parseArgs(): BenchmarkArgs {
       default: 0,
       defaultDescription: 'disabled',
     })
-    .option('unibench-secondary-indices', {
+    .option('unibench-secondary-indexes', {
       type: 'boolean',
-      description:
-        'Whether to create secondary indices for the Unibench benchmark. The original Unibench paper uses only primary indices.',
+      description: 'Whether to create secondary indexes for the Unibench benchmark. The original Unibench paper uses only primary indexes.',
       default: false,
     })
     .option('output', {
@@ -86,22 +87,17 @@ export function parseArgs(): BenchmarkArgs {
       default: false,
     })
     .parseSync();
+
   return {
-    benchmark: argv.benchmark as 'tpch' | 'unibench',
-    database: argv.database as (
-      | 'alasql'
-      | 'sqlite'
-      | 'arango'
-      | 'orient'
-      | 'dortdb'
-    )[],
+    benchmark: argv.benchmark as BenchmarkArgs['benchmark'],
+    database: argv.database as BenchmarkArgs['database'],
     query: argv.query,
     runs: argv.runs,
     softTimeout: argv['soft-timeout'],
     hardTimeout: argv.timeout,
     snapshotInterval: argv['snapshot-interval'],
     unibench: {
-      secondaryIndices: argv['unibench-secondary-indices'],
+      secondaryIndexes: argv['unibench-secondary-indexes'],
     },
     output: argv.output,
     skipWarmup: argv['skip-warmup'],

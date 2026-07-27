@@ -66,9 +66,9 @@ StatementOrLangSwitch
   ;
 
 ScopeExit
-  =	'}'
-	/ ')'
-	/ ']'
+  =  '}'
+  / ')'
+  / ']'
   ;
 
 Statement = Query ;

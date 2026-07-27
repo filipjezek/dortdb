@@ -1,6 +1,6 @@
 import { ExtractedFileOptions } from './zip/zip-extractor.js';
 
-export interface TPCHData {
+export interface TpchData {
   customer: any[];
   lineitem: any[];
   nation: any[];

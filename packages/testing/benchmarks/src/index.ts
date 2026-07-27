@@ -1,8 +1,10 @@
-import { logger } from './logger.js';
+import { logger, setupLogger } from './utils/logger.js';
 import { parseArgs } from './parse-args.js';
 import { runBenchmarkWorker } from './run-benchmark-worker.js';
 
 const args = parseArgs();
+
+setupLogger(args);
 
 const queries = args.query?.length ? args.query : [0];
 
@@ -18,12 +20,11 @@ for (const db of args.database) {
         softTimeout: args.softTimeout,
         runs: args.runs,
         snapshotInterval: args.snapshotInterval,
-        secondaryIndices:
-          args.benchmark === 'unibench' && args.unibench.secondaryIndices,
+        secondaryIndexes: args.benchmark === 'unibench' && args.unibench.secondaryIndexes,
         skipWarmup: args.skipWarmup,
       });
     } catch (err) {
-      logger.error(
+      logger().error(
         {
           error: err instanceof Error ? err.message : String(err),
           benchmark: args.benchmark,

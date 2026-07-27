@@ -1,14 +1,14 @@
 {
-  "name": "@dortdb/unibench",
+  "name": "@dortdb/benchmarks",
   "type": "module",
   "version": "1.0.0",
   "description": "",
   "exports": {
     ".": "./dist/index.js",
-    "./tpch/benchmark": "./dist/tpch/benchmark.js",
-    "./tpch/benchmark-sqlite": "./dist/tpch/benchmark-sqlite.js",
-    "./tpch/benchmark-alasql": "./dist/tpch/benchmark-alasql.js",
-    "./unibench/benchmark": "./dist/unibench/benchmark.js",
+    "./tpch/benchmark_dortdb": "./dist/tpch/benchmark_dortdb.js",
+    "./tpch/benchmark_sqlite": "./dist/tpch/benchmark_sqlite.js",
+    "./tpch/benchmark_alasql": "./dist/tpch/benchmark_alasql.js",
+    "./unibench/benchmark_dortdb": "./dist/unibench/benchmark_dortdb.js",
     "./unibench/benchmark_arango": "./dist/unibench/benchmark_arango.js",
     "./unibench/benchmark_orient": "./dist/unibench/benchmark_orient.js",
     "./package.json": "./package.json"
@@ -19,6 +19,7 @@
   },
   "private": true,
   "scripts": {
+    "benchmark": "node --max-old-space-size=30000 --expose-gc dist/index.js",
     "unibench": "node --max-old-space-size=30000 --expose-gc dist/index.js -b unibench -d dortdb -T 14400 -q 1 -q 2 -q 3 -q 4 -q 5 -q 6 -q 7 -q 8 -q 9 -q 10",
     "tpch": "node --max-old-space-size=30000 --expose-gc dist/index.js -b tpch -d dortdb -t 4000 -q 1 -q 2 -q 3 -q 4 -q 5 -q 6 -q 7 -q 8 -q 9 -q 10 -q 11 -q 12 -q 13 -q 14 -q 15 -q 16 -q 17 -q 18 -q 19 -q 20 -q 21 -q 22",
     "tpch:sqlite": "node --max-old-space-size=30000 --expose-gc dist/index.js -b tpch -d sqlite -t 4000 -q 1 -q 2 -q 3 -q 4 -q 5 -q 6 -q 7 -q 8 -q 9 -q 10 -q 11 -q 12 -q 13 -q 14 -q 15 -q 16 -q 17 -q 18 -q 19 -q 20 -q 21 -q 22",

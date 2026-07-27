@@ -52,7 +52,7 @@ import {
   OptimizerListItem,
 } from './optimizer-list/optimizer-list.component';
 import { UnibenchService } from '../services/unibench.service';
-import { TPCHData, UnibenchData } from '@dortdb/dataloaders';
+import { TpchData, UnibenchData } from '@dortdb/dataloaders';
 import { TPCHService } from '../services/tpch.service';
 import { CodeInputComponent } from './code-input/code-input.component';
 
@@ -160,7 +160,7 @@ export class QueryPageComponent {
     optimizerOptions: this.optimizerOptions,
   });
   unibenchData: UnibenchData;
-  tpchData: TPCHData;
+  tpchData: TpchData;
   plan: PlanOperator;
   output: QueryResult;
   error: Error;

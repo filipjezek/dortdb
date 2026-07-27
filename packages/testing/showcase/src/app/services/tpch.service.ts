@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
-import { extractArchive, TPCHData, tpchFiles } from '@dortdb/dataloaders';
+import { extractArchive, TpchData, tpchFiles } from '@dortdb/dataloaders';
 import { DatasetService } from './dataset.service';
 
 @Injectable({ providedIn: 'root' })
-export class TPCHService extends DatasetService<TPCHData> {
+export class TPCHService extends DatasetService<TpchData> {
   protected override LS_KEY(): string {
     return 'indexeddb-used-tpch';
   }
@@ -23,10 +23,10 @@ export class TPCHService extends DatasetService<TPCHData> {
     return 1;
   }
 
-  protected override serializeData(data: TPCHData): TPCHData {
+  protected override serializeData(data: TpchData): TpchData {
     return data;
   }
-  protected override deserializeData(serialized: TPCHData): TPCHData {
+  protected override deserializeData(serialized: TpchData): TpchData {
     return serialized;
   }
 
@@ -36,11 +36,11 @@ export class TPCHService extends DatasetService<TPCHData> {
 
   protected extractArchive(
     archive: AsyncIterable<Uint8Array<ArrayBufferLike>>,
-  ): Promise<TPCHData> {
+  ): Promise<TpchData> {
     console.log('Processing TPCH archive...');
     return extractArchive(archive, tpchFiles).then((res) => {
       console.log('TPCH archive processed');
       return res;
-    }) as Promise<any> as Promise<TPCHData>;
+    }) as Promise<any> as Promise<TpchData>;
   }
 }

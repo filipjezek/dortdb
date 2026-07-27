@@ -3,15 +3,10 @@ import fs from 'node:fs/promises';
 import { createWriteStream, createReadStream } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
-import {
-  extractArchive,
-  UnibenchData,
-  unibenchFiles,
-  unibenchGraphTables,
-} from '@dortdb/dataloaders';
+import { extractArchive, UnibenchData, unibenchFiles, unibenchGraphTables } from '@dortdb/dataloaders';
 import { DOMParser } from 'slimdom';
 
-export const DATA_DIR = resolve(import.meta.dirname, '../../dist/data');
+const DATA_DIR = resolve(import.meta.dirname, '../../dist/data');
 const ARCHIVE_PATH = resolve(DATA_DIR, 'unibench.zip');
 
 export async function prepareData() {
@@ -24,9 +19,8 @@ export async function prepareData() {
 async function downloadData() {
   console.log('Downloading Unibench data...');
   await fs.mkdir(DATA_DIR, { recursive: true });
-  const url =
-    // 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip';
-    'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip';
+  // const url = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip';
+  const url = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip';
 
   const response = await fetch(url);
   if (!response.ok)
@@ -39,7 +33,7 @@ async function downloadData() {
   console.log('Unibench data downloaded.');
 }
 
-export async function parseUnibenchData(): Promise<UnibenchData> {
+async function parseUnibenchData(): Promise<UnibenchData> {
   performance.mark('parseUnibenchData_start');
   const archiveStream = createReadStream(ARCHIVE_PATH);
   const result = (await extractArchive(

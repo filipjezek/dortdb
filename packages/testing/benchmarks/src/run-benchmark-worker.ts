@@ -1,8 +1,8 @@
 import { BenchmarkArgs } from './parse-args.js';
 import { Worker } from 'node:worker_threads';
-import { logger } from './logger.js';
+import { logger } from './utils/logger.js';
 
-export interface BenchmarkWorkerOptions {
+export type BenchmarkWorkerOptions = {
   benchmark: BenchmarkArgs['benchmark'];
   database: BenchmarkArgs['database'][number];
   query: BenchmarkArgs['query'][number];
@@ -13,45 +13,40 @@ export interface BenchmarkWorkerOptions {
   softTimeout: number;
   runs: number;
   snapshotInterval: number;
-  secondaryIndices: boolean;
+  secondaryIndexes: boolean;
   skipWarmup: boolean;
-}
+};
 
-export interface BenchmarkWorkerLogMessage {
+export type BenchmarkWorkerLogMessage = {
   details: Record<string, any>;
   message: string;
-}
+};
 
 const BENCHMARK_WORKER_MODULES: Record<
   BenchmarkArgs['benchmark'],
   Partial<Record<BenchmarkArgs['database'][number], string>>
 > = {
   tpch: {
-    alasql: './tpch/benchmark-alasql.js',
-    sqlite: './tpch/benchmark-sqlite.js',
-    dortdb: './tpch/benchmark.js',
+    alasql: './tpch/benchmark_alasql.js',
+    sqlite: './tpch/benchmark_sqlite.js',
+    dortdb: './tpch/benchmark_dortdb.js',
   },
   unibench: {
-    dortdb: './unibench/benchmark.js',
+    dortdb: './unibench/benchmark_dortdb.js',
     arango: './unibench/benchmark_arango.js',
     orient: './unibench/benchmark_orient.js',
   },
 };
 
 function resolveWorkerScript(options: BenchmarkWorkerOptions): URL {
-  const scriptPath =
-    BENCHMARK_WORKER_MODULES[options.benchmark][options.database];
-  if (!scriptPath) {
-    throw new Error(
-      `No worker script configured for ${options.benchmark}/${options.database}`,
-    );
-  }
+  const scriptPath = BENCHMARK_WORKER_MODULES[options.benchmark][options.database];
+  if (!scriptPath)
+    throw new Error(`No worker script configured for ${options.benchmark}/${options.database}`);
+
   return new URL(scriptPath, import.meta.url);
 }
 
-export async function runBenchmarkWorker(
-  options: BenchmarkWorkerOptions,
-): Promise<void> {
+export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promise<void> {
   const workerScript = resolveWorkerScript(options);
 
   await new Promise<void>((resolve, reject) => {
@@ -81,7 +76,7 @@ export async function runBenchmarkWorker(
     if (timeoutMs > 0) {
       timeoutId = setTimeout(() => {
         // finish will be called automatically by the 'exit' event
-        logger.error(
+        logger().error(
           {
             benchmark: options.benchmark,
             database: options.database,
@@ -103,7 +98,7 @@ export async function runBenchmarkWorker(
         'details' in value
       ) {
         const msg = value as BenchmarkWorkerLogMessage;
-        logger.info(msg.details, msg.message);
+        logger().info(msg.details, msg.message);
 
         if (
           msg.message === 'Finished preparing environment' &&
@@ -136,7 +131,7 @@ export async function runBenchmarkWorker(
 
 function setupMemorySnapshots(options: BenchmarkWorkerOptions): NodeJS.Timeout {
   return setInterval(() => {
-    logger.info(
+    logger().info(
       {
         benchmark: options.benchmark,
         database: options.database,
