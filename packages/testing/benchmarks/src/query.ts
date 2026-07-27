@@ -21,15 +21,11 @@ export class Query {
     readonly params?: QueryParamsDef,
   ) {}
 
-  static readonly WARMUP_TIMEOUT_S = 30;
-  static readonly WARMUP_ITERATIONS = 5;
-
   async run(
     db: Database<unknown>,
     /** In seconds. */
     totalTimeout: number,
     runs: number,
-    skipWarmup: boolean,
   ): Promise<void> {
     this.prepare();
 
@@ -37,20 +33,11 @@ export class Query {
 
     console.log(`Running query: ${this.filename} at: ${now}`);
 
-    if (!skipWarmup) {
-      for (let i = 0; i < Query.WARMUP_ITERATIONS; i++) {
-        if (Date.now() - now >= Query.WARMUP_TIMEOUT_S * 1000)
-          break;
-
-        await this.runOnce(db, i, true);
-      }
-    }
-
     for (let i = 0; i < runs; i++) {
       if (Date.now() - now >= totalTimeout * 1000)
         break;
 
-      await this.runOnce(db, i, false);
+      await this.runOnce(db, i);
     }
   }
 
@@ -77,13 +64,12 @@ export class Query {
     return output;
   }
 
-  private async runOnce<TResult = unknown>(db: Database<TResult>, iteration: number, isWarmup: boolean) {
+  private async runOnce<TResult = unknown>(db: Database<TResult>, iteration: number) {
     gc();
 
     const info = {
       id: this.id,
       iteration,
-      isWarmup,
     };
 
     const params = this.generateParams();
@@ -117,10 +103,9 @@ export class Query {
   }
 }
 
-export type QueryInfo = {
+type QueryInfo = {
   id: number;
   iteration: number;
-  isWarmup: boolean;
 }
 
 function checkQueryResult(query: QueryInfo, actual: SqlObject[], expected: SqlObject[]) {

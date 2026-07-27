@@ -34,12 +34,7 @@ export default async function unibenchBenchmark(options: BenchmarkWorkerOptions)
     def.params,
   );
 
-  await query.run(
-    db,
-    options.softTimeout,
-    options.runs,
-    options.skipWarmup,
-  );
+  await query.run(db, options.softTimeout, options.runs);
 }
 
 async function registerDataSources(db: DortDB, secondaryIndexes: boolean, measureInit: boolean) {

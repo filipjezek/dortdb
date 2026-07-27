@@ -30,12 +30,7 @@ export default async function tpchBenchmarkSQLite(options: BenchmarkWorkerOption
     `q${id}_results.json`,
   );
 
-  await query.run(
-    db,
-    options.softTimeout,
-    options.runs,
-    options.skipWarmup,
-  );
+  await query.run(db, options.softTimeout, options.runs);
 }
 
 async function registerDataSources(db: SqliteDB, measureInit: boolean) {

@@ -12,7 +12,6 @@ export type BenchmarkArgs = {
   unibench: {
     secondaryIndexes: boolean;
   };
-  skipWarmup: boolean;
   output?: string;
 };
 
@@ -81,11 +80,6 @@ export function parseArgs(): BenchmarkArgs {
       default: undefined,
       defaultDescription: 'based on other parameters',
     })
-    .option('skip-warmup', {
-      type: 'boolean',
-      description: 'Skip warmup runs',
-      default: false,
-    })
     .parseSync();
 
   return {
@@ -100,6 +94,5 @@ export function parseArgs(): BenchmarkArgs {
       secondaryIndexes: argv['unibench-secondary-indexes'],
     },
     output: argv.output,
-    skipWarmup: argv['skip-warmup'],
   };
 }

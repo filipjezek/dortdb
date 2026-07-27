@@ -14,7 +14,6 @@ export type BenchmarkWorkerOptions = {
   runs: number;
   snapshotInterval: number;
   secondaryIndexes: boolean;
-  skipWarmup: boolean;
 };
 
 export type BenchmarkWorkerLogMessage = {

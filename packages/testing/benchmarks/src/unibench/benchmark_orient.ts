@@ -30,12 +30,7 @@ export default async function unibenchBenchmarkOrient(options: BenchmarkWorkerOp
     def.params,
   );
 
-  await query.run(
-    db,
-    options.softTimeout,
-    options.runs,
-    options.skipWarmup,
-  );
+  await query.run(db, options.softTimeout, options.runs);
 }
 
 function defineQueries(): QueryDef[] {
