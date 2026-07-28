@@ -1,4 +1,4 @@
-Select feedback from Feedback where asin in 
+Select feedback from Feedback where productAsin in 
 (Select dlist from(Select set(dlist) as dlist  
 from(Select $declineList.asin as dlist 
 let $list1 = (Select asin,count(asin) as cnt from 
