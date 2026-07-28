@@ -22,7 +22,7 @@ export class AlasqlDatabase extends Database<SqlObject[]> {
     return this.innerDb<SqlObject[]>(content, params);
   }
 
-  override exctractResults(result: SqlObject[]): SqlObject[] {
+  override extractResults(result: SqlObject[]): SqlObject[] {
     return result;
   }
 

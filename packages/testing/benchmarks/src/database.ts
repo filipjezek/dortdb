@@ -1,9 +1,35 @@
+import { performance } from 'node:perf_hooks';
 import { QueryParams } from './query.js';
+import { Events, workerLog } from './utils/logger.js';
 
 export abstract class Database<TResult> {
+  /**
+   * Use this to properly setup everything before running the benchmark and to measure the time it takes to setup the environment.
+   * Make sure to await it!
+   */
+  async setup<TOutput = void>(callback?: () => Promise<TOutput>): Promise<TOutput> {
+    const start = performance.now();
+    const result = await callback?.();
+    const end = performance.now();
+
+    workerLog(Events.environmentSetup, 'Finished preparing environment', {
+      duration: end - start,
+    });
+
+    return result;
+  }
+
+  /**
+   * Executes the query and returns it immediate output.
+   * Does NOT transform the output (so that we can get accurate measurements).
+   */
   abstract query(content: string, params?: QueryParams): Promise<TResult>;
 
-  abstract exctractResults(result: TResult): SqlObject[];
+  /**
+   * Transforms the raw query output into a common format so that it can be compared with other databases.
+   * It's not measured so it doesn't have optimal.
+   */
+  abstract extractResults(result: TResult): SqlObject[];
 }
 
 export type SqlRow = SqlValue[];

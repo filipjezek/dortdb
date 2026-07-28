@@ -1,11 +1,10 @@
-import { BenchmarkArgs } from './parse-args.js';
 import { Worker } from 'node:worker_threads';
-import { logger } from './utils/logger.js';
+import { Events, isWorkerLogMessage, logger } from './utils/logger.js';
 
 export type BenchmarkWorkerOptions = {
-  benchmark: BenchmarkArgs['benchmark'];
-  database: BenchmarkArgs['database'][number];
-  query: BenchmarkArgs['query'][number];
+  benchmark: BenchmarkName;
+  database: DatabaseName;
+  query: number;
   dataUrl: string | undefined;
   /** in seconds */
   hardTimeout: number;
@@ -16,15 +15,13 @@ export type BenchmarkWorkerOptions = {
   secondaryIndexes: boolean;
 };
 
-export type BenchmarkWorkerLogMessage = {
-  details: Record<string, any>;
-  message: string;
-};
+export const AVAILABLE_BENCHMARKS = [ 'tpch', 'unibench' ] as const;
+export type BenchmarkName = typeof AVAILABLE_BENCHMARKS[number];
 
-const BENCHMARK_WORKER_MODULES: Record<
-  BenchmarkArgs['benchmark'],
-  Partial<Record<BenchmarkArgs['database'][number], string>>
-> = {
+export const AVAILABLE_DATABASES = [ 'alasql', 'sqlite', 'arango', 'orient', 'dortdb' ] as const;
+export type DatabaseName = typeof AVAILABLE_DATABASES[number];
+
+const BENCHMARK_WORKER_MODULES: Record<BenchmarkName, Partial<Record<DatabaseName, string>>> = {
   tpch: {
     alasql: './tpch/benchmark_alasql.js',
     sqlite: './tpch/benchmark_sqlite.js',
@@ -74,15 +71,9 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
 
     if (timeoutMs > 0) {
       timeoutId = setTimeout(() => {
-        // finish will be called automatically by the 'exit' event
-        logger().error(
-          {
-            benchmark: options.benchmark,
-            database: options.database,
-            query: options.query,
-          },
-          `Worker timed out after ${options.hardTimeout}s`,
-        );
+        // Finish will be called automatically by the 'exit' event.
+        logger().error({ event: Events.hardTimeout }, `Worker timed out after ${options.hardTimeout}s`);
+
         worker.terminate().catch((error: unknown) => {
           finish(() => reject(error));
         });
@@ -90,17 +81,14 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
     }
 
     worker.on('message', (value: unknown) => {
-      if (
-        typeof value === 'object' &&
-        value !== null &&
-        'message' in value &&
-        'details' in value
-      ) {
-        const msg = value as BenchmarkWorkerLogMessage;
-        logger().info(msg.details, msg.message);
+      if (isWorkerLogMessage(value)) {
+        logger().info({
+          event: value.event,
+          ...value.details,
+        }, value.message);
 
         if (
-          msg.message === 'Finished preparing environment' &&
+          value.event === Events.environmentSetup &&
           options.snapshotInterval > 0
         ) {
           snapshotIntervalId = setupMemorySnapshots(options);
@@ -130,14 +118,9 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
 
 function setupMemorySnapshots(options: BenchmarkWorkerOptions): NodeJS.Timeout {
   return setInterval(() => {
-    logger().info(
-      {
-        benchmark: options.benchmark,
-        database: options.database,
-        query: options.query,
-        ...process.memoryUsage(),
-      },
-      'Memory snapshot',
-    );
+    logger().info({
+      event: Events.memorySnapshot,
+      ...process.memoryUsage(),
+    }, 'Memory snapshot');
   }, options.snapshotInterval * 1000);
 }

@@ -29,3 +29,14 @@ npm run benchmark -- -b unibench -d arango -q 1
 # npm run tpch:sqlite
 # npm run tpch:alasql
 ```
+
+### Experiments
+
+```bash
+cd experiments
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+In VS Code, select the Python interpreter for the experiments folder. Press `Ctrl+Shift+P` and search for "Python: Select Interpreter", press "Enter interpreter path" and paste `packages/testing/benchmarks/experiments/.venv/bin/python`.

@@ -5,40 +5,39 @@ import { createReadStream, createWriteStream, type ReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { performance } from 'node:perf_hooks';
+import { Events, workerLog } from './logger.js';
 
 type Parser<TData> = (stream: ReadStream) => Promise<TData>;
 
-export async function getParsedData<TData>(url: string, datasetName: string, cacheDir: string, parser: Parser<TData>): Promise<TData> {
-  const stream = await loadDatasetData(url, datasetName, cacheDir);
+export async function getParsedData<TData>(url: string, benchmark: string, cacheDir: string, parser: Parser<TData>): Promise<TData> {
+  const stream = await loadBenchmarkData(url, benchmark, cacheDir);
 
-  performance.mark('parseData_start');
-
+  const start = performance.now();
   const output = await parser(stream);
+  const end = performance.now();
 
-  performance.mark('parseData_end');
-  performance.measure(
-    'parseData',
-    'parseData_start',
-    'parseData_end',
-  );
+  workerLog(Events.dataParsed, 'Data parsed', {
+    url,
+    duration: end - start,
+  });
 
   return output;
 }
 
-async function loadDatasetData(url: string, datasetName: string, cacheDir: string): Promise<ReadStream> {
+async function loadBenchmarkData(url: string, benchmark: string, cacheDir: string): Promise<ReadStream> {
   const filename = createHash('md5').update(url).digest('hex') + '.zip';
   const path = resolve(cacheDir, filename);
 
   if (!(await fs.stat(path).catch(() => {}))) {
     await fs.mkdir(cacheDir, { recursive: true });
-    await downloadDatasetData(url, path, datasetName);
+    await downloadBenchmarkData(url, path, benchmark);
   }
 
   return createReadStream(path);
 }
 
-async function downloadDatasetData(url: string, path: string, datasetName: string) {
-  console.log(`No ${datasetName} data found at ${path}, downloading from ${url}`);
+async function downloadBenchmarkData(url: string, path: string, benchmark: string) {
+  console.log(`No ${benchmark} data found at ${path}, downloading from ${url}`);
 
   const response = await fetch(url);
   if (!response.ok)
@@ -49,5 +48,5 @@ async function downloadDatasetData(url: string, path: string, datasetName: strin
     createWriteStream(path, { flags: 'w+' }),
   );
 
-  console.log(`${datasetName} data downloaded.`);
+  console.log(`${benchmark} data downloaded.`);
 }

@@ -15,7 +15,7 @@ export class SqliteDatabase extends Database<QueryExecResult[]> {
     return this.innerDb.exec(content, params);
   }
 
-  override exctractResults(result: QueryExecResult[]): SqlObject[] {
+  override extractResults(result: QueryExecResult[]): SqlObject[] {
     // A list of results is returned (one for each statement executed). However, for some un-fucking-believable reason, if there are no rows, the result is skipped.
     // Unbelievable.
     if (result.length === 0)

@@ -2,8 +2,9 @@ import { resolve } from 'node:path';
 import fs from 'node:fs/promises';
 import { performance } from 'node:perf_hooks';
 import type { Database, SqlObject, SqlValue } from './database.js';
-import { deepEqual, promiseTimeout, workerLog } from './utils/common.js';
+import { deepEqual, promiseTimeout } from './utils/common.js';
 import { diff } from '@vitest/utils/diff';
+import { Events, workerLog } from './utils/logger.js';
 
 export type QueryDef = {
   filename: string;
@@ -69,38 +70,31 @@ export class Query {
   private async runOnce<TResult = unknown>(db: Database<TResult>, iteration: number) {
     gc();
 
-    const info = {
-      id: this.id,
-      iteration,
-    };
-
     const params = this.generateParams();
 
-    workerLog('Running query iteration', { ...info, params });
+    workerLog(Events.runQuery, 'Running query iteration', { iteration, params });
 
     const measureMemory = iteration === 0;
     if (measureMemory)
-      workerLog('Memory usage before running query', { ...process.memoryUsage(), ...info });
+      workerLog(Events.memoryBeforeQuery, 'Memory usage before running query', { iteration, ...process.memoryUsage() });
 
     await promiseTimeout(1000);
 
-    performance.mark(`runQuery_${this.id}_start`);
-
+    const start = performance.now();
     const result = await db.query(this.content, params);
+    const end = performance.now();
 
-    performance.mark(`runQuery_${this.id}_end`);
-    performance.measure(`runQuery_${this.id}`, {
-      detail: { ...info, params },
-      start: `runQuery_${this.id}_start`,
-      end: `runQuery_${this.id}_end`,
+    workerLog(Events.queryExecuted, 'Query executed', {
+      iteration,
+      duration: end - start,
     });
 
     if (measureMemory)
-      workerLog('Memory usage after running query', { ...process.memoryUsage(), ...info });
+      workerLog(Events.memoryAfterQuery, 'Memory usage after running query', { iteration, ...process.memoryUsage() });
 
     if (this.expectedResult) {
-      const rows = db.exctractResults(result);
-      checkQueryResult(info, rows, this.expectedResult);
+      const rows = db.extractResults(result);
+      checkQueryResult(iteration, rows, this.expectedResult);
     }
   }
 }
@@ -110,11 +104,11 @@ type QueryInfo = {
   iteration: number;
 }
 
-function checkQueryResult(query: QueryInfo, actual: SqlObject[], expected: SqlObject[]) {
+function checkQueryResult(iteration: number, actual: SqlObject[], expected: SqlObject[]) {
   if (deepEqual(actual, expected)) {
-    workerLog('Query result matches expected result', query);
+    workerLog(Events.queryResultCorrect, 'Query result matches expected result', { iteration });
   } else {
-    workerLog('Query result does NOT match expected result', { ...query, expected, actual });
+    workerLog(Events.queryResultIncorrect, 'Query result does NOT match expected result', { iteration, expected, actual });
     console.log(
       diff(expected, actual, {
         aAnnotation: 'expected',

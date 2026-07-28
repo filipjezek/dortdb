@@ -17,7 +17,7 @@ export class ArangoDatabase extends Database<Cursor> {
     return result;
   }
 
-  override exctractResults(result: Cursor): SqlObject[] {
+  override extractResults(result: Cursor): SqlObject[] {
     // FIXME
     return [];
   }

@@ -20,7 +20,7 @@ export class OrientDatabase extends Database<Result> {
     return result;
   }
 
-  override exctractResults(result: Result): SqlObject[] {
+  override extractResults(result: Result): SqlObject[] {
     // FIXME
     return [];
   }

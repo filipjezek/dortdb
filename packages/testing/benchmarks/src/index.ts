@@ -1,37 +1,30 @@
-import { logger, setupLogger } from './utils/logger.js';
+import { Events, logger, setupLogger } from './utils/logger.js';
 import { parseArgs } from './parse-args.js';
 import { runBenchmarkWorker } from './run-benchmark-worker.js';
 
-const args = parseArgs();
+await main();
 
-setupLogger(args);
+async function main() {
+  const args = parseArgs();
 
-const queries = args.query?.length ? args.query : [0];
+  setupLogger(args);
 
-for (const db of args.database) {
-  for (const query of queries) {
-    try {
-      await runBenchmarkWorker({
-        benchmark: args.benchmark,
-        database: db,
-        query,
-        dataUrl: args.dataUrl,
-        hardTimeout: args.hardTimeout,
-        softTimeout: args.softTimeout,
-        runs: args.runs,
-        snapshotInterval: args.snapshotInterval,
-        secondaryIndexes: args.benchmark === 'unibench' && args.unibench.secondaryIndexes,
-      });
-    } catch (err) {
-      logger().error(
-        {
-          error: err instanceof Error ? err.message : String(err),
-          benchmark: args.benchmark,
-          database: db,
-          query,
-        },
-        'Benchmark worker failed',
-      );
-    }
+  try {
+    await runBenchmarkWorker({
+      benchmark: args.benchmark,
+      database: args.database,
+      query: args.query,
+      dataUrl: args.dataUrl,
+      hardTimeout: args.hardTimeout,
+      softTimeout: args.softTimeout,
+      runs: args.runs,
+      snapshotInterval: args.snapshotInterval,
+      secondaryIndexes: args.benchmark === 'unibench' && args.unibench.secondaryIndexes,
+    });
+  } catch (err) {
+    logger().error({
+      event: Events.workerError,
+      error: err instanceof Error ? err.message : String(err),
+    }, 'Benchmark worker failed');
   }
 }

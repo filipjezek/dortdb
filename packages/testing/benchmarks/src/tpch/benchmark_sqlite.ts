@@ -2,7 +2,6 @@ import { resolve } from 'node:path';
 import fs from 'node:fs/promises';
 import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
-import { workerLog, setupPerformanceObserver } from '../utils/common.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { SqliteDatabase, type SqliteDB } from '../databases/sqlite.js';
 import { Query } from '../query.js';
@@ -16,13 +15,12 @@ if (!isMainThread) {
 }
 
 export default async function tpchBenchmarkSQLite(options: BenchmarkWorkerOptions) {
-  setupPerformanceObserver();
-
   const db = await SqliteDatabase.create();
 
-  const data = await prepareData(options.dataUrl);
-  await registerDataSources(db.innerDb, data);
-  workerLog('Finished preparing environment');
+  await db.setup(async () => {
+    const data = await prepareData(options.dataUrl);
+    await registerDataSources(db.innerDb, data);
+  });
 
   const id = options.query;
   const query = new Query(

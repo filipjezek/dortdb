@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { pickRandom, setupPerformanceObserver, workerLog } from '../utils/common.js';
+import { pickRandom } from '../utils/common.js';
 import { DortDB, MapIndex } from '@dortdb/core';
 import { ConnectionIndex } from '@dortdb/lang-cypher';
 import { prepareData } from './prepare-data.js';
@@ -17,13 +17,12 @@ if (!isMainThread) {
 }
 
 export default async function unibenchBenchmark(options: BenchmarkWorkerOptions) {
-  setupPerformanceObserver();
-
   const db = DortDBDatabase.create();
-  const data = await prepareData(options.dataUrl);
-  registerDataSources(db.innerDb, data, options.secondaryIndexes);
 
-  workerLog('Finished preparing environment');
+  await db.setup(async () => {
+    const data = await prepareData(options.dataUrl);
+    registerDataSources(db.innerDb, data, options.secondaryIndexes);
+  });
 
   const id = options.query;
   const def = defineQueries()[id - 1];

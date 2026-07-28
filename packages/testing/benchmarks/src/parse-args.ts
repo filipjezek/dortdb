@@ -1,10 +1,11 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import { AVAILABLE_BENCHMARKS, AVAILABLE_DATABASES, type BenchmarkName, type DatabaseName } from './run-benchmark-worker.js';
 
 export type BenchmarkArgs = {
-  benchmark: 'tpch' | 'unibench';
-  database: DatabaseName[];
-  query: number[];
+  benchmark: BenchmarkName;
+  database: DatabaseName;
+  query: number;
   dataUrl: string | undefined;
   runs: number;
   softTimeout: number;
@@ -16,30 +17,26 @@ export type BenchmarkArgs = {
   output?: string;
 };
 
-type DatabaseName = 'alasql' | 'sqlite' | 'arango' | 'orient' | 'dortdb';
-
 export function parseArgs(): BenchmarkArgs {
   const argv = yargs(hideBin(process.argv))
     .option('benchmark', {
       alias: 'b',
       type: 'string',
       description: 'Run a specific benchmark',
-      choices: ['tpch', 'unibench'],
+      choices: AVAILABLE_BENCHMARKS,
       required: true,
     })
     .option('database', {
       alias: 'd',
       type: 'string',
       description: 'Specify the database to use',
-      choices: ['alasql', 'sqlite', 'arango', 'orient', 'dortdb'],
-      array: true,
+      choices: AVAILABLE_DATABASES,
       required: true,
     })
     .option('query', {
       alias: 'q',
       type: 'number',
       description: 'Specify the query to run',
-      array: true,
       required: true,
     })
     .option('data-url', {
@@ -89,8 +86,8 @@ export function parseArgs(): BenchmarkArgs {
     .parseSync();
 
   return {
-    benchmark: argv.benchmark as BenchmarkArgs['benchmark'],
-    database: argv.database as BenchmarkArgs['database'],
+    benchmark: argv.benchmark,
+    database: argv.database,
     query: argv.query,
     dataUrl: argv['data-url'],
     runs: argv.runs,

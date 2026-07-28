@@ -2,7 +2,6 @@ import { DortDB, MapIndex } from '@dortdb/core';
 import { resolve } from 'node:path';
 import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
-import { setupPerformanceObserver } from '../utils/common.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { DortDBDatabase } from '../databases/dortdb.js';
 import { Query } from '../query.js';
@@ -15,11 +14,12 @@ if (!isMainThread) {
 }
 
 export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
-  setupPerformanceObserver();
-
   const db = DortDBDatabase.create();
-  const data = await prepareData(options.dataUrl);
-  registerDataSources(db.innerDb, data);
+
+  await db.setup(async () => {
+    const data = await prepareData(options.dataUrl);
+    registerDataSources(db.innerDb, data);
+  });
 
   const id = options.query;
   const query = new Query(

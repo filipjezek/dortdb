@@ -1,6 +1,4 @@
 import { createCustomEqual, type EqualityComparator } from 'fast-equals';
-import { parentPort } from 'node:worker_threads';
-import { BenchmarkWorkerLogMessage } from '../run-benchmark-worker.js';
 
 const rtol = 1e-9;
 const atol = 1e-9;
@@ -39,25 +37,4 @@ export function promiseTimeout(ms = 0): Promise<void> {
 
 export function pickRandom<T>(array: T[]): T {
   return array[~~(Math.random() * array.length)];
-}
-
-export function workerLog(message: string, details: Record<string, any> = {}) {
-  parentPort.postMessage({
-    details,
-    message,
-  } satisfies BenchmarkWorkerLogMessage);
-}
-
-export function setupPerformanceObserver() {
-  const obs = new PerformanceObserver((items) => {
-    items.getEntries().forEach((entry) => {
-      workerLog('Performance entry', {
-        duration: entry.duration,
-        name: entry.name,
-        detail: (entry as PerformanceMeasure).detail,
-      });
-    });
-  });
-  
-  obs.observe({ entryTypes: ['measure'], buffered: false });
 }

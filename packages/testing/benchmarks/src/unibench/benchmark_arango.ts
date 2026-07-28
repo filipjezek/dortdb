@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { pickRandom, setupPerformanceObserver, workerLog } from '../utils/common.js';
+import { pickRandom } from '../utils/common.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { brands, personIds, productIds } from './data.js';
@@ -13,11 +13,9 @@ if (!isMainThread) {
 }
 
 export default async function unibenchBenchmarkArango(options: BenchmarkWorkerOptions) {
-  setupPerformanceObserver();
-
   const db = ArangoDatabase.create();
 
-  workerLog('Finished preparing environment');
+  await db.setup();
 
   const id = options.query;
   const def = defineQueries()[id - 1];

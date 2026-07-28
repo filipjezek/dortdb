@@ -23,7 +23,7 @@ export class DortDBDatabase extends Database<QueryResult<ResultObject>> {
     return this.innerDb.query<ResultObject>(content, options);
   }
 
-  override exctractResults(result: QueryResult<ResultObject>): SqlObject[] {
+  override extractResults(result: QueryResult<ResultObject>): SqlObject[] {
     const { data, schema } = result;
 
     // Some workaround probably. Not sure why this is needed.
