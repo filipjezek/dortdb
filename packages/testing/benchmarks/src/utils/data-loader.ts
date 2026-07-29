@@ -14,12 +14,9 @@ export async function getParsedData<TData>(url: string, benchmark: string, cache
 
   const start = performance.now();
   const output = await parser(stream);
-  const end = performance.now();
+  const duration = performance.now() - start;
 
-  workerLog(Events.dataParsed, 'Data parsed', {
-    url,
-    duration: end - start,
-  });
+  workerLog(Events.dataParsed, 'Data parsed', { url, duration });
 
   return output;
 }

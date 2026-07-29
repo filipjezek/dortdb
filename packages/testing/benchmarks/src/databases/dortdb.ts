@@ -66,7 +66,7 @@ function transformToSqlValue(value: ResultValue): SqlValue {
     return null;
 
   if (value instanceof Date)
-    return value.toISOString();
+    return value.toISOString().substring(0, 10);
 
   throw new Error(`Cannot transform value to SqlValue: ${value}`);
 }

@@ -36,7 +36,7 @@ from
       and n1.regionkey = r.regionkey
       and r.name = 'AMERICA'
       and s.nationkey = n2.nationkey
-      and o.orderdate between '1995-01-01'::date and '1996-12-31'::date
+      and o.orderdate between date('1995-01-01') and date('1996-12-31')
       and p.type = 'LARGE POLISHED NICKEL'
   ) as all_nations
 group by

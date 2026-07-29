@@ -13,18 +13,18 @@ async function main() {
     await runBenchmarkWorker({
       benchmark: args.benchmark,
       database: args.database,
-      query: args.query,
       dataUrl: args.dataUrl,
+      queryIds: args.queryIds,
+      runs: args.runs,
       hardTimeout: args.hardTimeout,
       softTimeout: args.softTimeout,
-      runs: args.runs,
       snapshotInterval: args.snapshotInterval,
       secondaryIndexes: args.benchmark === 'unibench' && args.unibench.secondaryIndexes,
     });
-  } catch (err) {
+  } catch (error) {
     logger().error({
       event: Events.workerError,
-      error: err instanceof Error ? err.message : String(err),
+      error: error instanceof Error ? error.message : String(error),
     }, 'Benchmark worker failed');
   }
 }

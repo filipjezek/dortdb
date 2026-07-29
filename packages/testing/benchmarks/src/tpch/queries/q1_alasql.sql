@@ -20,7 +20,7 @@ select
 from
   lineitem l
 where
-  l.shipdate <= date_sub('1998-12-01'::date, date_interval('70 days'))
+  l.shipdate <= date_sub(date('1998-12-01'), date_interval('70 days'))
 group by
   l.returnflag,
   l.linestatus

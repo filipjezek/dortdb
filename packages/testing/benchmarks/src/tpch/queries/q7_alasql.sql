@@ -35,7 +35,7 @@ from
         (n1.name = 'ROMANIA' and n2.name = 'BRAZIL')
         or (n1.name = 'BRAZIL' and n2.name = 'ROMANIA')
       )
-      and l.shipdate between '1995-01-01'::date and '1996-12-31'::date
+      and l.shipdate between date('1995-01-01') and date('1996-12-31')
   ) as shipping
 group by
   shipping.supp_nation,

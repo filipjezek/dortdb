@@ -10,11 +10,9 @@ export abstract class Database<TResult> {
   async setup<TOutput = void>(callback?: () => Promise<TOutput>): Promise<TOutput> {
     const start = performance.now();
     const result = await callback?.();
-    const end = performance.now();
+    const duration = performance.now() - start;
 
-    workerLog(Events.environmentSetup, 'Finished preparing environment', {
-      duration: end - start,
-    });
+    workerLog(Events.environmentSetup, 'Finished preparing environment', { duration });
 
     return result;
   }

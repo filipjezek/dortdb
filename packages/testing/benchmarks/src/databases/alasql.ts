@@ -1,7 +1,7 @@
 import { Database, type SqlObject } from '../database.js';
 import { QueryParams } from '../query.js';
 import alasqlRaw from 'alasql';
-import { substr } from '@dortdb/core/fns';
+import { substr } from '@dortdb/lang-sql';
 import { datetime } from '@dortdb/datetime';
 
 // This is ugly but alasql uses commonjs modules and interface augmentation doesn't work.
@@ -23,7 +23,18 @@ export class AlasqlDatabase extends Database<SqlObject[]> {
   }
 
   override extractResults(result: SqlObject[]): SqlObject[] {
-    return result;
+    return result.map(object => {
+      const output: SqlObject = {};
+
+      for (const key in object) {
+        const value = object[key];
+        output[key] = value instanceof Date
+          ? value.toISOString().substring(0, 10)
+          : value;
+      }
+
+      return output;
+    });
   }
 
   private static isSetup = false;

@@ -55,13 +55,14 @@ function getLogFilename(args: BenchmarkArgs) {
   if (args.output)
     return args.output;
 
-  return `${args.benchmark}_${args.database}_${args.query}.log`;
+  return `${args.benchmark}_${args.database}.log`;
 }
 
 type WorkerLogMessage = {
   event: EventType;
   details: Record<string, unknown>;
   message: string;
+  isError: boolean;
 };
 
 export function isWorkerLogMessage(value: unknown): value is WorkerLogMessage {
@@ -74,11 +75,12 @@ export function isWorkerLogMessage(value: unknown): value is WorkerLogMessage {
   );
 }
 
-export function workerLog(event: EventType, message: string, details: Record<string, unknown> = {}) {
+export function workerLog(event: EventType, message: string, details: Record<string, unknown> = {}, isError = false) {
   parentPort.postMessage({
     event,
     details,
     message,
+    isError,
   } satisfies WorkerLogMessage);
 }
 
@@ -88,6 +90,7 @@ export const Events = {
   runStarted: 'run-started',
   workerError: 'worker-error',
   hardTimeout: 'hard-timeout',
+  queryError: 'query-error',
   memorySnapshot: 'memory-snapshot',
   dataParsed: 'data-parsed',
   environmentSetup: 'environment-setup',
@@ -95,6 +98,6 @@ export const Events = {
   queryExecuted: 'query-executed',
   memoryBeforeQuery: 'memory-before-query',
   memoryAfterQuery: 'memory-after-query',
-  queryResultCorrect: 'query-result-correct',
-  queryResultIncorrect: 'query-result-incorrect',
+  queryResultRight: 'query-result-right',
+  queryResultWrong: 'query-result-wrong',
 };

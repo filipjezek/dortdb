@@ -4,10 +4,11 @@ import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { DortDBDatabase } from '../databases/dortdb.js';
-import { Query } from '../query.js';
+import { type QueryDef, QueryRegistry } from '../query.js';
 import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
+const QUERY_COUNT = 22;
 
 if (!isMainThread) {
   await tpchBenchmark(workerData as BenchmarkWorkerOptions);
@@ -21,15 +22,9 @@ export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
     registerDataSources(db.innerDb, data);
   });
 
-  const id = options.query;
-  const query = new Query(
-    id,
-    QUERY_DIR,
-    `q${id}_dortdb.sql`,
-    `q${id}_results.json`,
-  );
+  const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
-  await query.run(db, options.softTimeout, options.runs);
+  await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
 function registerDataSources(db: DortDB, data: TpchData) {
@@ -57,4 +52,12 @@ function registerDataSources(db: DortDB, data: TpchData) {
   db.createIndex(['region'], ['regionkey'], MapIndex);
   db.createIndex(['supplier'], ['suppkey'], MapIndex);
   db.createIndex(['supplier'], ['nationkey'], MapIndex);
+}
+
+
+function defineQueries(): QueryDef[] {
+  return Array.from({ length: QUERY_COUNT }, (_, i) => ({
+    filename: `q${i + 1}_dortdb.sql`,
+    resultsFilename: `q${i + 1}_results.json`,
+  }));
 }

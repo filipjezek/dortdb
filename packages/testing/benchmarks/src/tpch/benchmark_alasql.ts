@@ -4,10 +4,11 @@ import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { AlaSQL, AlasqlDatabase } from '../databases/alasql.js';
-import { Query } from '../query.js';
+import { type QueryDef, QueryRegistry } from '../query.js';
 import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
+const QUERY_COUNT = 22;
 const SCHEMA_FILE = resolve(QUERY_DIR, 'schema_alasql.sql');
 
 if (!isMainThread) {
@@ -22,15 +23,9 @@ export default async function tpchBenchmarkAlaSQL(options: BenchmarkWorkerOption
     await registerDataSources(db.innerDb, data);
   });
 
-  const id = options.query;
-  const query = new Query(
-    id,
-    QUERY_DIR,
-    `q${id}_alasql.sql`,
-    `q${id}_results.json`,
-  );
+  const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
-  await query.run(db, options.softTimeout, options.runs);
+  await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
 async function registerDataSources(db: AlaSQL, data: TpchData) {
@@ -56,12 +51,15 @@ async function registerDataSources(db: AlaSQL, data: TpchData) {
     for (const row of rows) {
       db(
         `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
-        columns.map((col) => {
-          const val = row[col];
-          if (val instanceof Date) return val.getTime();
-          return val;
-        }),
+        columns.map((col) => row[col]),
       );
     }
   }
+}
+
+function defineQueries(): QueryDef[] {
+  return Array.from({ length: QUERY_COUNT }, (_, i) => ({
+    filename: `q${i + 1}_alasql.sql`,
+    resultsFilename: `q${i + 1}_results.json`,
+  }));
 }

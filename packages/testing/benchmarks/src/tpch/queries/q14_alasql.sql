@@ -17,5 +17,5 @@ from
   part p
 where
   l.partkey = p.partkey
-  and l.shipdate >= '1997-07-01'::date
-  and l.shipdate < date_add('1997-07-01'::date, date_interval('1 month'));
+  and l.shipdate >= date('1997-07-01')
+  and l.shipdate < date_add(date('1997-07-01'), date_interval('1 month'));

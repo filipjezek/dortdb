@@ -4,13 +4,13 @@ import { Events, isWorkerLogMessage, logger } from './utils/logger.js';
 export type BenchmarkWorkerOptions = {
   benchmark: BenchmarkName;
   database: DatabaseName;
-  query: number;
   dataUrl: string | undefined;
+  queryIds: number[];
+  runs: number[];
   /** in seconds */
   hardTimeout: number;
   /** in seconds */
   softTimeout: number;
-  runs: number;
   snapshotInterval: number;
   secondaryIndexes: boolean;
 };
@@ -82,10 +82,15 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
 
     worker.on('message', (value: unknown) => {
       if (isWorkerLogMessage(value)) {
-        logger().info({
+        const messageObject = {
           event: value.event,
           ...value.details,
-        }, value.message);
+        };
+
+        if (value.isError)
+          logger().error(messageObject, value.message);
+        else
+          logger().info(messageObject, value.message);
 
         if (
           value.event === Events.environmentSetup &&
@@ -103,11 +108,7 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
     worker.on('exit', (code) => {
       if (code !== 0) {
         finish(() => {
-          reject(
-            new Error(
-              `Worker exited with code ${code} (${options.benchmark}/${options.database}, q${options.query})`,
-            ),
-          );
+          reject(new Error(`Worker exited with code ${code} (${options.benchmark}/${options.database}, q${options.queryIds})`));
         });
         return;
       }

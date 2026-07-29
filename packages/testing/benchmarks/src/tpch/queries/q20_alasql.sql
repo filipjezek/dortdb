@@ -35,8 +35,8 @@ where
         where
           l.partkey = ps.partkey
           and l.suppkey = ps.suppkey
-          and l.shipdate >= '1994-01-01'::date
-          and l.shipdate < date_add('1994-01-01'::date, date_interval('1 year'))
+          and l.shipdate >= date('1994-01-01')
+          and l.shipdate < date_add(date('1994-01-01'), date_interval('1 year'))
       )
   )
   and s.nationkey = n.nationkey

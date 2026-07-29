@@ -6,6 +6,17 @@
 -- Approved February 1998
 
 
+with avg_acctbal as (
+  select
+    avg(acctbal) as avg_acctbal
+  from
+    customer c
+  where
+    c.acctbal > 0
+    and substr(c.phone,1,2) in
+      ('24','18','27','28','29','10','17')
+)
+
 select
   custsale.cntrycode as cntrycode,
   count(*) as numcust,
@@ -16,20 +27,12 @@ from
       substr(c.phone, 1, 2) as cntrycode,
       c.acctbal
     from
-      customer c
+      customer c,
+      avg_acctbal a
     where
       substr(c.phone, 1, 2) in
         ('24', '18', '27', '28', '29', '10', '17')
-      and c.acctbal > (
-        select
-          avg(c.acctbal)
-        from
-          customer c
-        where
-          c.acctbal > 0.00
-          and substr(c.phone, 1, 2) in
-            ('24', '18', '27', '28', '29', '10', '17')
-      )
+      and c.acctbal > a.avg_acctbal
       and not exists (
         select
           1

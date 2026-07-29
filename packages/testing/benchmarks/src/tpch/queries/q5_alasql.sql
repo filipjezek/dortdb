@@ -24,8 +24,8 @@ where
   and s.nationkey = n.nationkey
   and n.regionkey = r.regionkey
   and r.name = 'ASIA'
-  and o.orderdate >= '1997-01-01'::date
-  and o.orderdate < date_add('1997-01-01'::date, date_interval('1 year'))
+  and o.orderdate >= date('1997-01-01')
+  and o.orderdate < date_add(date('1997-01-01'), date_interval('1 year'))
 group by
   n.name
 order by

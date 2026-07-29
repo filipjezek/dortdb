@@ -5,18 +5,27 @@
 -- Functional Query Definition
 -- Approved February 1998
 
-with revenue0 (supplier_no, total_revenue) as  (
-  select
-    l.suppkey,
-    sum(l.extendedprice * (1 - l.discount))
-  from
-    lineitem l
-  where
-    l.shipdate >= '1993-07-01'::date
-    and l.shipdate < date_add('1993-07-01'::date, date_interval('3 month'))
-  group by
-    l.suppkey
-)
+
+with
+  revenue0 as (
+    select
+      l.suppkey as supplier_no,
+      sum(l.extendedprice * (1 - l.discount)) as total_revenue
+    from
+      lineitem l
+    where
+      l.shipdate >= date('1993-07-01')
+      and l.shipdate < date_add(date('1993-07-01'), date_interval('3 month'))
+    group by
+      l.suppkey
+  ),
+  max_revenue as (
+    select
+      max(total_revenue) as total_revenue
+    from
+      revenue0
+  )
+
 select
   s.suppkey as suppkey,
   s.name as name,
@@ -25,14 +34,10 @@ select
   r.total_revenue as total_revenue
 from
   supplier s,
-  revenue0 r
+  revenue0 r,
+  max_revenue m
 where
   s.suppkey = r.supplier_no
-  and r.total_revenue = (
-    select
-      max(total_revenue)
-    from
-      revenue0
-  )
+  and r.total_revenue = m.total_revenue
 order by
   s.suppkey;

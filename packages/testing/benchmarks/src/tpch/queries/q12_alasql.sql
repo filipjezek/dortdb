@@ -28,8 +28,8 @@ where
   and l.shipmode in ('FOB', 'TRUCK')
   and l.commitdate < l.receiptdate
   and l.shipdate < l.commitdate
-  and l.receiptdate >= '1997-01-01'::date
-  and l.receiptdate < date_add('1997-01-01'::date, date_interval('1 year'))
+  and l.receiptdate >= date('1997-01-01')
+  and l.receiptdate < date_add(date('1997-01-01'), date_interval('1 year'))
 group by
   l.shipmode
 order by

@@ -4,10 +4,11 @@ import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { SqliteDatabase, type SqliteDB } from '../databases/sqlite.js';
-import { Query } from '../query.js';
+import { type QueryDef, QueryRegistry } from '../query.js';
 import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
+const QUERY_COUNT = 22;
 const SCHEMA_FILE = resolve(QUERY_DIR, 'schema_sqlite.sql');
 
 if (!isMainThread) {
@@ -22,15 +23,9 @@ export default async function tpchBenchmarkSQLite(options: BenchmarkWorkerOption
     await registerDataSources(db.innerDb, data);
   });
 
-  const id = options.query;
-  const query = new Query(
-    id,
-    QUERY_DIR,
-    `q${id}_sqlite.sql`,
-    `q${id}_results.json`,
-  );
+  const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
-  await query.run(db, options.softTimeout, options.runs);
+  await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
 async function registerDataSources(db: SqliteDB, data: TpchData) {
@@ -56,4 +51,11 @@ async function registerDataSources(db: SqliteDB, data: TpchData) {
     }
     stmt.free();
   }
+}
+
+function defineQueries(): QueryDef[] {
+  return Array.from({ length: QUERY_COUNT }, (_, i) => ({
+    filename: `q${i + 1}_sqlite.sql`,
+    resultsFilename: `q${i + 1}_results.json`,
+  }));
 }

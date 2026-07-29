@@ -11,7 +11,7 @@ select
 from
   lineitem l
 where
-  l.shipdate >= '1997-01-01'::date
-  and l.shipdate < date_add('1997-01-01'::date, date_interval('1 year'))
+  l.shipdate >= date('1997-01-01')
+  and l.shipdate < date_add(date('1997-01-01'), date_interval('1 year'))
   and l.discount between 0.08 - 0.01 and 0.08 + 0.01
   and l.quantity < 24;

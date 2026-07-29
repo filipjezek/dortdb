@@ -3,7 +3,7 @@ import { pickRandom } from '../utils/common.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { brands, personIds, productIds } from './data.js';
-import { Query, QueryDef } from '../query.js';
+import { type QueryDef, QueryRegistry } from '../query.js';
 import { ArangoDatabase } from '../databases/arango.js';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/unibench/queries');
@@ -17,17 +17,9 @@ export default async function unibenchBenchmarkArango(options: BenchmarkWorkerOp
 
   await db.setup();
 
-  const id = options.query;
-  const def = defineQueries()[id - 1];
-  const query = new Query(
-    id,
-    QUERY_DIR,
-    def.filename,
-    undefined,
-    def.params
-  );
+  const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
-  await query.run(db, options.softTimeout, options.runs);
+  await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
 function defineQueries(): QueryDef[] {

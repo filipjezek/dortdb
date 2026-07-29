@@ -5,6 +5,7 @@
 -- Functional Query Definition
 -- Approved February 1998
 
+
 with revenue0 (supplier_no, total_revenue) as materialized (
   select
     l.suppkey,
@@ -17,6 +18,7 @@ with revenue0 (supplier_no, total_revenue) as materialized (
   group by
     l.suppkey
 )
+
 select
   s.suppkey,
   s.name,

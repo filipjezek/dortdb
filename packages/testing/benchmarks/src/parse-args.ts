@@ -5,9 +5,9 @@ import { AVAILABLE_BENCHMARKS, AVAILABLE_DATABASES, type BenchmarkName, type Dat
 export type BenchmarkArgs = {
   benchmark: BenchmarkName;
   database: DatabaseName;
-  query: number;
   dataUrl: string | undefined;
-  runs: number;
+  queryIds: number[];
+  runs: number[];
   softTimeout: number;
   hardTimeout: number;
   snapshotInterval: number;
@@ -33,22 +33,24 @@ export function parseArgs(): BenchmarkArgs {
       choices: AVAILABLE_DATABASES,
       required: true,
     })
-    .option('query', {
-      alias: 'q',
-      type: 'number',
-      description: 'Specify the query to run',
-      required: true,
-    })
     .option('data-url', {
       alias: 'u',
       type: 'string',
       description: 'URL to fetch the data from. Each benchmark has a default URL, but you can override it with this option.',
     })
+    .option('queries', {
+      alias: 'q',
+      type: 'number',
+      description: 'Specify the queries to run',
+      array: true,
+      required: true,
+    })
     .option('runs', {
       alias: 'r',
       type: 'number',
-      description: 'Number of runs for each query',
-      default: 5,
+      description: 'Numbers of runs for the queries. Has to have the same length as the queries array. Or, if only one number is provided, it will be used for all queries.',
+      array: true,
+      default: [ 5 ],
     })
     .option('soft-timeout', {
       alias: 'T',
@@ -88,7 +90,7 @@ export function parseArgs(): BenchmarkArgs {
   return {
     benchmark: argv.benchmark,
     database: argv.database,
-    query: argv.query,
+    queryIds: argv.queries,
     dataUrl: argv['data-url'],
     runs: argv.runs,
     softTimeout: argv['soft-timeout'],

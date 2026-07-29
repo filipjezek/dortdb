@@ -6,8 +6,56 @@ import { deepEqual, promiseTimeout } from './utils/common.js';
 import { diff } from '@vitest/utils/diff';
 import { Events, workerLog } from './utils/logger.js';
 
+export class QueryRegistry {
+  constructor(
+    readonly directory: string,
+    readonly definitions: QueryDef[],
+  ) {}
+
+  async run(
+    db: Database<unknown>,
+    queryIds: number[],
+    runs: number[],
+    /** In seconds. */
+    totalTimeout: number,
+  ): Promise<void> {
+    const runsArray = runs.length === 1 ? Array.from({ length: queryIds.length }, () => runs[0]) : runs;
+    if (queryIds.length !== runsArray.length)
+      throw new Error(`Length of queryIds (${queryIds.length}) does not match length of runs (${runsArray.length})`);
+
+    for (let i = 0; i < queryIds.length; i++) {
+      const queryId = queryIds[i];
+      const runsForQuery = runsArray[i];
+
+      if (queryId < 1 || queryId > this.definitions.length)
+        throw new Error(`Invalid query ID: ${queryId}. Must be between 1 and ${this.definitions.length}`);
+
+      const def = this.definitions[queryId - 1];
+      const query = new Query(
+        queryId,
+        this.directory,
+        def.filename,
+        def.resultsFilename,
+        def.params,
+      );
+
+      try {
+        await query.run(db, totalTimeout, runsForQuery);
+      }
+      catch (error) {
+        workerLog(Events.queryError, `Error running query ${queryId}`, {
+          queryId,
+          filename: def.filename,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  }
+}
+
 export type QueryDef = {
   filename: string;
+  resultsFilename?: string;
   params?: QueryParamsDef;
 };
 
@@ -70,45 +118,38 @@ export class Query {
   private async runOnce<TResult = unknown>(db: Database<TResult>, iteration: number) {
     gc();
 
+    const queryId = this.id;
     const params = this.generateParams();
 
-    workerLog(Events.runQuery, 'Running query iteration', { iteration, params });
+    workerLog(Events.runQuery, `Running query ${queryId} iteration ${iteration}`, { queryId, iteration, params });
 
     const measureMemory = iteration === 0;
     if (measureMemory)
-      workerLog(Events.memoryBeforeQuery, 'Memory usage before running query', { iteration, ...process.memoryUsage() });
+      workerLog(Events.memoryBeforeQuery, 'Memory usage before running query', { queryId, iteration, ...process.memoryUsage() });
 
     await promiseTimeout(1000);
 
     const start = performance.now();
     const result = await db.query(this.content, params);
-    const end = performance.now();
+    const duration = performance.now() - start;
 
-    workerLog(Events.queryExecuted, 'Query executed', {
-      iteration,
-      duration: end - start,
-    });
+    workerLog(Events.queryExecuted, 'Query executed', { queryId, iteration, duration });
 
     if (measureMemory)
-      workerLog(Events.memoryAfterQuery, 'Memory usage after running query', { iteration, ...process.memoryUsage() });
+      workerLog(Events.memoryAfterQuery, 'Memory usage after running query', { queryId, iteration, ...process.memoryUsage() });
 
     if (this.expectedResult) {
       const rows = db.extractResults(result);
-      checkQueryResult(iteration, rows, this.expectedResult);
+      checkQueryResult(queryId, iteration, rows, this.expectedResult);
     }
   }
 }
 
-type QueryInfo = {
-  id: number;
-  iteration: number;
-}
-
-function checkQueryResult(iteration: number, actual: SqlObject[], expected: SqlObject[]) {
+function checkQueryResult(queryId: number, iteration: number, actual: SqlObject[], expected: SqlObject[]) {
   if (deepEqual(actual, expected)) {
-    workerLog(Events.queryResultCorrect, 'Query result matches expected result', { iteration });
+    workerLog(Events.queryResultRight, 'Query result matches expected result', { queryId, iteration });
   } else {
-    workerLog(Events.queryResultIncorrect, 'Query result does NOT match expected result', { iteration, expected, actual });
+    workerLog(Events.queryResultWrong, 'Query result does NOT match expected result', { queryId, iteration, expected, actual });
     console.log(
       diff(expected, actual, {
         aAnnotation: 'expected',

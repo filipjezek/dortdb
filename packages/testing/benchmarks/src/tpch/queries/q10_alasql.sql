@@ -23,8 +23,8 @@ from
 where
   c.custkey = o.custkey
   and l.orderkey = o.orderkey
-  and o.orderdate >= '1994-11-01'::date
-  and o.orderdate < date_add('1994-11-01'::date, date_interval('3 month'))
+  and o.orderdate >= date('1994-11-01')
+  and o.orderdate < date_add(date('1994-11-01'), date_interval('3 month'))
   and l.returnflag = 'R'
   and c.nationkey = n.nationkey
 group by

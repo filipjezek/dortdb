@@ -12,8 +12,8 @@ select
 from
   orders o
 where
-  o.orderdate >= '1994-05-01'::date
-  and o.orderdate < date_add('1994-05-01'::date, date_interval('3 months'))
+  o.orderdate >= date('1994-05-01')
+  and o.orderdate < date_add(date('1994-05-01'), date_interval('3 months'))
   and exists (
     select
       1

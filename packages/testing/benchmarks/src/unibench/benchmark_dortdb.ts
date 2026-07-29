@@ -6,7 +6,7 @@ import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { brands, personIds, productIds } from './data.js';
-import { Query, QueryDef } from '../query.js';
+import { type QueryDef, QueryRegistry } from '../query.js';
 import { DortDBDatabase } from '../databases/dortdb.js';
 import { UnibenchData } from '@dortdb/dataloaders';
 
@@ -24,17 +24,9 @@ export default async function unibenchBenchmark(options: BenchmarkWorkerOptions)
     registerDataSources(db.innerDb, data, options.secondaryIndexes);
   });
 
-  const id = options.query;
-  const def = defineQueries()[id - 1];
-  const query = new Query(
-    id,
-    QUERY_DIR,
-    def.filename,
-    undefined,
-    def.params,
-  );
+  const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
-  await query.run(db, options.softTimeout, options.runs);
+  await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
 function registerDataSources(db: DortDB, data: UnibenchData, secondaryIndexes: boolean) {

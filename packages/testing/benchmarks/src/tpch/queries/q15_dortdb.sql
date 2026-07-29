@@ -17,6 +17,7 @@ with revenue0 (supplier_no, total_revenue) as materialized (
   group by
     l.suppkey
 )
+
 select
   s.suppkey as suppkey,
   s.name as name,
