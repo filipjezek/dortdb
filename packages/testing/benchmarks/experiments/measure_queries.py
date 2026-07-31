@@ -103,29 +103,29 @@ def tpch_commands():
     ]
 
 def unibench_commands():
-    # NICE_TO_HAVE: Measure these again with the higher run counts (see the numbers in comments).
     unibench_all = [
-        Command('unibench', 'arango', {1: 35}), # 80
-        Command('unibench', 'dortdb', {1: 35}), # 50
-        Command('unibench', 'orient', {1: 35}), # 100
+        Command('unibench', 'arango', {1: 80}),
+        Command('unibench', 'dortdb', {1: 50}),
+        Command('unibench', 'orient', {1: 100}),
     ]
     for command in unibench_all:
         # Use the full dataset.
         command.data_url = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip'
 
-    unisample_arango = Command('unisample', 'arango', same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 35)) # 100
+    unisample_arango = Command('unisample', 'arango', same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
 
-    unisample_dortdb = Command('unisample', 'dortdb', same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 35))
-    # 1: 100
-    # 2: 100
-    # 3: 100
-    # 4: 100
-    # 5: 100
-    # 6: 80
-    # 7: 50
-    # 8: 40
-    # 9: 50
-    # 10: 100
+    unisample_dortdb = Command('unisample', 'dortdb', {
+        1: 100,
+        2: 100,
+        3: 100,
+        4: 100,
+        5: 100,
+        6: 80,
+        7: 50,
+        8: 40,
+        9: 50,
+        10: 100,
+    })
 
     return [
         *unibench_all,
