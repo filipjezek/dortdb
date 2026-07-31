@@ -3,7 +3,7 @@ import { QueryParams } from '../query.js';
 import { DortDB, MapIndex, QueryResult } from '@dortdb/core';
 import { datetime } from '@dortdb/datetime';
 import { SQL } from '@dortdb/lang-sql';
-import { defaultRules } from '@dortdb/core/optimizer';
+import { UnnestSubqueries, mergeToFromItems, mergeFromToItems, PushdownSelections, ProjConcatToJoin, productsToJoins, JoinIndices, IndexScans, MergeProjections, PatternRule, PatternRuleConstructor } from '@dortdb/core/optimizer';
 import { DomDataAdapter, XQuery } from '@dortdb/lang-xquery';
 import { Cypher } from '@dortdb/lang-cypher'
 import { createDocument } from '../utils/setup-xml.js';
@@ -41,7 +41,14 @@ export class DortDBDatabase extends Database<QueryResult<ResultObject>> {
     });
   }
 
-  static create(): DortDBDatabase {
+  static create(excludeRules: DortDBRuleFamily[]): DortDBDatabase {
+    const rules: (PatternRule | PatternRuleConstructor)[] = [];
+
+    for (const [ family, familyRules ] of Object.entries(RULE_FAMILIES)) {
+      if (!excludeRules.includes(family as DortDBRuleFamily))
+        rules.push(...familyRules);
+    }
+
     const innerDb = new DortDB({
       mainLang: SQL(),
       additionalLangs: [
@@ -49,7 +56,7 @@ export class DortDBDatabase extends Database<QueryResult<ResultObject>> {
         Cypher({ defaultGraph: 'defaultGraph' }),
       ],
       extensions: [ datetime ],
-      optimizer: { rules: defaultRules },
+      optimizer: { rules },
       executor: { hashJoinIndices: [ MapIndex ] },
     });
 
@@ -70,3 +77,15 @@ function transformToSqlValue(value: ResultValue): SqlValue {
 
   throw new Error(`Cannot transform value to SqlValue: ${value}`);
 }
+
+const RULE_FAMILIES = {
+  subqueryNormalization: [ UnnestSubqueries ],
+  boundaryNormalization: [ mergeToFromItems, mergeFromToItems ],
+  predicateMovement: [ PushdownSelections ],
+  joinNormalization: [ ProjConcatToJoin, productsToJoins ],
+  indexAwareRewriting: [ JoinIndices, IndexScans ],
+  planSimplification: [ MergeProjections ],
+};
+
+export type DortDBRuleFamily = keyof typeof RULE_FAMILIES;
+export const DORTDB_RULE_FAMILIES = Object.keys(RULE_FAMILIES) as DortDBRuleFamily[];

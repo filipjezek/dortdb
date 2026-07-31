@@ -15,7 +15,7 @@ if (!isMainThread) {
 }
 
 export default async function tpchBenchmark(options: BenchmarkWorkerOptions) {
-  const db = DortDBDatabase.create();
+  const db = DortDBDatabase.create(options.dortdb.excludeRules);
 
   await db.setup(async () => {
     const data = await prepareData(options.dataUrl);

@@ -84,8 +84,10 @@ export class Query {
     console.log(`Running query: ${this.filename} at: ${now}`);
 
     for (let i = 0; i < runs; i++) {
-      if (Date.now() - now >= totalTimeout * 1000)
+      if (Date.now() - now >= totalTimeout * 1000) {
+        workerLog(Events.softTimeout, `Worker timed out after ${totalTimeout}s`, { queryId: this.id, iteration: i });
         break;
+      }
 
       await this.runOnce(db, i);
     }

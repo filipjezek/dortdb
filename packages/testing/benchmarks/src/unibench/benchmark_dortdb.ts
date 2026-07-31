@@ -17,11 +17,11 @@ if (!isMainThread) {
 }
 
 export default async function unibenchBenchmark(options: BenchmarkWorkerOptions) {
-  const db = DortDBDatabase.create();
+  const db = DortDBDatabase.create(options.dortdb.excludeRules);
 
   await db.setup(async () => {
     const data = await prepareData(options.dataUrl);
-    registerDataSources(db.innerDb, data, options.secondaryIndexes);
+    registerDataSources(db.innerDb, data, options.unibench.secondaryIndexes);
   });
 
   const registry = new QueryRegistry(QUERY_DIR, defineQueries());

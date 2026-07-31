@@ -1,5 +1,6 @@
 import { Worker } from 'node:worker_threads';
 import { Events, isWorkerLogMessage, logger } from './utils/logger.js';
+import { DortDBRuleFamily } from './databases/dortdb.js';
 
 export type BenchmarkWorkerOptions = {
   benchmark: BenchmarkName;
@@ -12,7 +13,12 @@ export type BenchmarkWorkerOptions = {
   /** in seconds */
   softTimeout: number;
   snapshotInterval: number;
-  secondaryIndexes: boolean;
+  unibench: {
+    secondaryIndexes: boolean;
+  };
+  dortdb: {
+    excludeRules: DortDBRuleFamily[];
+  };
 };
 
 export const AVAILABLE_BENCHMARKS = [ 'tpch', 'unibench' ] as const;

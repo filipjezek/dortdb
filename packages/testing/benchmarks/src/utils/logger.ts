@@ -89,6 +89,7 @@ type EventType = typeof Events[keyof typeof Events];
 export const Events = {
   runStarted: 'run-started',
   workerError: 'worker-error',
+  softTimeout: 'soft-timeout',
   hardTimeout: 'hard-timeout',
   queryError: 'query-error',
   memorySnapshot: 'memory-snapshot',

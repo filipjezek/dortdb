@@ -1,6 +1,7 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { AVAILABLE_BENCHMARKS, AVAILABLE_DATABASES, type BenchmarkName, type DatabaseName } from './run-benchmark-worker.js';
+import { DortDBRuleFamily, DORTDB_RULE_FAMILIES } from './databases/dortdb.js';
 
 export type BenchmarkArgs = {
   benchmark: BenchmarkName;
@@ -11,10 +12,13 @@ export type BenchmarkArgs = {
   softTimeout: number;
   hardTimeout: number;
   snapshotInterval: number;
+  output?: string;
   unibench: {
     secondaryIndexes: boolean;
   };
-  output?: string;
+  dortdb: {
+    excludeRules: DortDBRuleFamily[];
+  };
 };
 
 export function parseArgs(): BenchmarkArgs {
@@ -73,17 +77,24 @@ export function parseArgs(): BenchmarkArgs {
       default: 0,
       defaultDescription: 'disabled',
     })
-    .option('unibench-secondary-indexes', {
-      type: 'boolean',
-      description: 'Whether to create secondary indexes for the Unibench benchmark. The original Unibench paper uses only primary indexes.',
-      default: false,
-    })
     .option('output', {
       type: 'string',
       alias: 'o',
       description: 'Output file name',
       default: undefined,
       defaultDescription: 'based on other parameters',
+    })
+    .option('unibench-secondary-indexes', {
+      type: 'boolean',
+      description: 'Whether to create secondary indexes for the Unibench benchmark. The original Unibench paper uses only primary indexes.',
+      default: false,
+    })
+    .option('dortdb-exclude-rule', {
+      type: 'string',
+      array: true,
+      description: 'Exclude specific rule families from DortDB. This can be used to test the performance impact of certain optimizations.',
+      choices: DORTDB_RULE_FAMILIES,
+      default: [],
     })
     .parseSync();
 
@@ -96,9 +107,12 @@ export function parseArgs(): BenchmarkArgs {
     softTimeout: argv['soft-timeout'],
     hardTimeout: argv.timeout,
     snapshotInterval: argv['snapshot-interval'],
+    output: argv.output,
     unibench: {
       secondaryIndexes: argv['unibench-secondary-indexes'],
     },
-    output: argv.output,
+    dortdb: {
+      excludeRules: argv['dortdb-exclude-rule'],
+    },
   };
 }

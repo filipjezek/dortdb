@@ -19,7 +19,8 @@ async function main() {
       hardTimeout: args.hardTimeout,
       softTimeout: args.softTimeout,
       snapshotInterval: args.snapshotInterval,
-      secondaryIndexes: args.benchmark === 'unibench' && args.unibench.secondaryIndexes,
+      unibench: args.unibench,
+      dortdb: args.dortdb,
     });
   } catch (error) {
     logger().error({
