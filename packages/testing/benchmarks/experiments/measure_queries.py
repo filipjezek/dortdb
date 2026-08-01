@@ -121,9 +121,6 @@ def unibench_commands():
         Command('unibench', 'arango', UNIBENCH_URL['arango'], {1: 80}),
         Command('unibench', 'orient', UNIBENCH_URL['orient'], {1: 100}),
     ]
-    for command in unibench_all:
-        # Use the full dataset.
-        command.data_url = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip'
 
     unisample_dortdb = Command('unibench', 'dortdb', UNISAMPLE_URL['dortdb'], same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
     unisample_dortdb.output = 'unisample_dortdb.log'
@@ -138,25 +135,196 @@ def unibench_commands():
     ]
 
 def dortdb_rules_commands():
-    commands: list[Command] = []
+    boundaryNormalizationCommand = rule_command('boundaryNormalization', {
+        1: 50,
+        2: 100,
+        3: 100,
+        4: 100,
+        5: 100,
+        6: 100,
+        7: 50,
+        8: 50,
+        9: 30,
+        10: 100,
+        11: 100,
+        12: 50,
+        13: 100,
+        14: 100,
+        15: 50,
+        16: 50,
+        17: 50,
+        18: 50,
+        20: 100,
+        21: 50,
+        22: 100,
+    })
 
-    for rule in DORTDB_RULES:
-        command = tpch_dortdb_command()
-        commands.append(command)
+    indexAwareRewritingCommand = rule_command('indexAwareRewriting', {
+        1: 50,
+        2: 50,
+        3: 100,
+        # 4: TIMEOUT
+        5: 50,
+        6: 100,
+        7: 50,
+        8: 30,
+        9: 30,
+        10: 100,
+        11: 100,
+        12: 100,
+        13: 100,
+        14: 100,
+        15: 50,
+        16: 30,
+        17: 10,
+        # 18: TIMEOUT
+        # 20: TIMEOUT
+        # 21: TIMEOUT
+        22: 30,
+    })
 
-        command.output = f'tpch_dortdb_exclude_{rule}.log'
+    joinNormalizationCommand = rule_command('joinNormalization', {
+        1: 50,
+        # 2: TIMEOUT
+        # 3: TIMEOUT
+        4: 100,
+        # 5: TIMEOUT
+        6: 100,
+        # 7: TIMEOUT
+        # 8: TIMEOUT
+        # 9: TIMEOUT
+        10: 10,
+        # 11: TIMEOUT
+        12: 10,
+        13: 100,
+        14: 20,
+        15: 50,
+        16: 20,
+        17: 40,
+        18: 50,
+        20: 100,
+        # 21: TIMEOUT
+        22: 20,
+        })
+
+    planSimplificationCommand = rule_command('planSimplification', {
+        1: 50,
+        2: 100,
+        3: 100,
+        4: 100,
+        5: 100,
+        6: 100,
+        7: 40,
+        8: 50,
+        9: 30,
+        10: 100,
+        11: 100,
+        12: 50,
+        13: 100,
+        14: 100,
+        15: 50,
+        16: 50,
+        17: 50,
+        18: 50,
+        20: 100,
+        21: 50,
+        22: 100,
+    })
+
+    predicateMovementCommand = rule_command('predicateMovement', {
+        1: 50,
+        # 2: TIMEOUT
+        # 3: TIMEOUT
+        # 4: TIMEOUT
+        # 5: TIMEOUT
+        6: 100,
+        # 7: TIMEOUT
+        # 8: TIMEOUT
+        # 9: TIMEOUT
+        # 10: TIMEOUT
+        11: 10,
+        12: 50,
+        13: 100,
+        14: 50,
+        15: 50,
+        16: 20,
+        17: 10,
+        # 18: TIMEOUT
+        # 20: TIMEOUT
+        # 21: TIMEOUT
+        22: 30,
+    })
+
+    subqueryNormalizationCommand = rule_command('subqueryNormalization', {
+        1: 50,
+        # 2: TIMEOUT
+        3: 100,
+        # 4: WRONG
+        5: 100,
+        6: 100,
+        7: 50,
+        8: 50,
+        9: 30,
+        10: 100,
+        # 11: TIMEOUT
+        12: 50,
+        13: 100,
+        14: 100,
+        15: 50,
+        16: 50,
+        # 17: WRONG
+        18: 50,
+        # 20: TIMEOUT
+        21: 40,
+        # 22: WRONG,
+    })
+
+    allCommand = rule_command('all', {
+        1: 50,
+        # 2: TIMEOUT
+        # 3: TIMEOUT
+        # 4: TIMEOUT
+        # 5: TIMEOUT
+        6: 50,
+        # 7: TIMEOUT
+        # 8: TIMEOUT
+        # 9: TIMEOUT
+        # 10: TIMEOUT
+        # 11: TIMEOUT
+        # 12: TIMEOUT
+        13: 100,
+        # 14: TIMEOUT
+        15: 50,
+        # 16: TIMEOUT
+        # 17: TIMEOUT
+        # 18: TIMEOUT
+        # 20: TIMEOUT
+        # 21: TIMEOUT
+        22: 10,
+    })
+
+    return [
+        boundaryNormalizationCommand,
+        indexAwareRewritingCommand,
+        joinNormalizationCommand,
+        planSimplificationCommand,
+        predicateMovementCommand,
+        subqueryNormalizationCommand,
+        allCommand,
+    ]
+
+def rule_command(rule: str, query_runs: dict[int, int]):
+    command = Command('tpch', 'dortdb', TPCH_URL, query_runs)
+    command.output = f'tpch_dortdb_exclude_{rule}.log'
+
+    if rule == 'all':
+        command.custom_args = []
+        for rule in DORTDB_RULES:
+            command.custom_args.extend(['--dortdb-exclude-rule', rule])
+    else:
         command.custom_args = ['--dortdb-exclude-rule', rule]
 
-    exclude_all = tpch_dortdb_command()
-    commands.append(exclude_all)
-
-    exclude_all.output = 'tpch_dortdb_exclude_all.log'
-    exclude_all.custom_args = []
-    for rule in DORTDB_RULES:
-        exclude_all.custom_args.append('--dortdb-exclude-rule')
-        exclude_all.custom_args.append(rule)
-
-    return commands
+    return command
 
 class Command:
 
