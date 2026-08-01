@@ -87,11 +87,11 @@ def tpch_commands():
 
     # These will surely timeout, so they are runned separately to avoid blocking the other queries.
     tpch_timeouts = [
+        Command('tpch', 'dortdb', {19: 30}),
         Command('tpch', 'alasql', {4: 30}),
         Command('tpch', 'alasql', {9: 30}),
         Command('tpch', 'alasql', {19: 30}),
         Command('tpch', 'alasql', {20: 30}),
-        Command('tpch', 'dortdb', {19: 30}),
     ]
 
     return [
@@ -104,17 +104,15 @@ def tpch_commands():
 
 def unibench_commands():
     unibench_all = [
-        Command('unibench', 'arango', {1: 80}),
         Command('unibench', 'dortdb', {1: 50}),
+        Command('unibench', 'arango', {1: 80}),
         Command('unibench', 'orient', {1: 100}),
     ]
     for command in unibench_all:
         # Use the full dataset.
         command.data_url = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip'
 
-    unisample_arango = Command('unisample', 'arango', same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
-
-    unisample_dortdb = Command('unisample', 'dortdb', {
+    unisample_dortdb = Command('unibench', 'dortdb', {
         1: 100,
         2: 100,
         3: 100,
@@ -126,11 +124,15 @@ def unibench_commands():
         9: 50,
         10: 100,
     })
+    unisample_dortdb.output = 'unisample_dortdb.log'
+
+    unisample_arango = Command('unibench', 'arango', same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
+    unisample_arango.output = 'unisample_arango.log'
 
     return [
         *unibench_all,
-        unisample_arango,
         unisample_dortdb,
+        unisample_arango,
     ]
 
 def dortdb_rules_commands():
@@ -142,6 +144,15 @@ def dortdb_rules_commands():
 
         command.output = f'tpch_dortdb_exclude_{rule}.log'
         command.custom_args = ['--dortdb-exclude-rule', rule]
+
+    exclude_all = tpch_dortdb_command()
+    commands.append(exclude_all)
+
+    exclude_all.output = 'tpch_dortdb_exclude_all.log'
+    exclude_all.custom_args = []
+    for rule in DORTDB_RULES:
+        exclude_all.custom_args.append('--dortdb-exclude-rule')
+        exclude_all.custom_args.append(rule)
 
     return commands
 

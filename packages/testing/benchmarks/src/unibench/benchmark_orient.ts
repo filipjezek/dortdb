@@ -20,6 +20,8 @@ export default async function unibenchBenchmarkOrient(options: BenchmarkWorkerOp
   const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
   await registry.run(db, options.queryIds, options.runs, options.softTimeout);
+
+  await db.innerDb.close();
 }
 
 function defineQueries(): QueryDef[] {

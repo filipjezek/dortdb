@@ -20,6 +20,8 @@ export default async function unibenchBenchmarkArango(options: BenchmarkWorkerOp
   const registry = new QueryRegistry(QUERY_DIR, defineQueries());
 
   await registry.run(db, options.queryIds, options.runs, options.softTimeout);
+
+  db.innerDb.close();
 }
 
 function defineQueries(): QueryDef[] {
