@@ -2,10 +2,9 @@ import { resolve } from 'node:path';
 import { pickRandom } from '../utils/common.js';
 import { DortDB, MapIndex } from '@dortdb/core';
 import { ConnectionIndex } from '@dortdb/lang-cypher';
-import { prepareData } from './prepare-data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
-import { brands, personIds, productIds } from './data.js';
+import { brands, personIds, prepareData, productIds } from './data.js';
 import { type QueryDef, QueryRegistry } from '../query.js';
 import { DortDBDatabase } from '../databases/dortdb.js';
 import { UnibenchData } from '@dortdb/dataloaders';
@@ -90,9 +89,8 @@ function defineQueries(): QueryDef[] {
       customerId1: () => pickRandom(personIds),
       customerId2: ({ customerId1 }) => {
         let id2 = pickRandom(personIds);
-        while (id2 === customerId1) {
+        while (id2 === customerId1)
           id2 = pickRandom(personIds);
-        }
         return id2;
       },
     },

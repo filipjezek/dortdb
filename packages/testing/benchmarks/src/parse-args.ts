@@ -6,13 +6,13 @@ import { DortDBRuleFamily, DORTDB_RULE_FAMILIES } from './databases/dortdb.js';
 export type BenchmarkArgs = {
   benchmark: BenchmarkName;
   database: DatabaseName;
-  dataUrl: string | undefined;
+  dataUrl: string;
   queryIds: number[];
   runs: number[];
   softTimeout: number;
   hardTimeout: number;
   snapshotInterval: number;
-  output?: string;
+  output: string | undefined;
   unibench: {
     secondaryIndexes: boolean;
   };
@@ -40,7 +40,8 @@ export function parseArgs(): BenchmarkArgs {
     .option('data-url', {
       alias: 'u',
       type: 'string',
-      description: 'URL to fetch the data from. Each benchmark has a default URL, but you can override it with this option.',
+      description: 'URL to fetch the data from or a connection string to the database.',
+      required: true,
     })
     .option('queries', {
       alias: 'q',

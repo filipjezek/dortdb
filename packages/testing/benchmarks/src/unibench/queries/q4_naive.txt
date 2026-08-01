@@ -1,7 +1,3 @@
-// three-hop common friends of the two top spenders
-//
-// these two are actually not connected in the sample data
-
 LANG cypher
 
 UNWIND (

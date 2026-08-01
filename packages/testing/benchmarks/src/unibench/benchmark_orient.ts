@@ -13,7 +13,7 @@ if (!isMainThread) {
 }
 
 export default async function unibenchBenchmarkOrient(options: BenchmarkWorkerOptions) {
-  const db = OrientDatabase.create();
+  const db = OrientDatabase.create(options.dataUrl);
 
   await db.setup();
 
@@ -52,7 +52,12 @@ function defineQueries(): QueryDef[] {
     filename: 'q6_orient.txt',
     params: {
       id1: () => pickRandom(personIds),
-      id2: () => pickRandom(personIds),
+      id2: ({ id1 }) => {
+        let id2 = pickRandom(personIds);
+        while (id2 === id1)
+          id2 = pickRandom(personIds);
+        return id2;
+      },
     },
   }, {
     filename: 'q7_orient.txt',

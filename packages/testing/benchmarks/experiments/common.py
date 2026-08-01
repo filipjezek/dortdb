@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 from typing import Any
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
 BENCHMARKS_DIR = Path(__file__).parents[1]
 LOG_DIR = BENCHMARKS_DIR / 'dist/logs'

@@ -1,6 +1,7 @@
 import { Database, type SqlObject } from '../database.js';
 import { QueryParams } from '../query.js';
 import orientjs from 'orientjs';
+import { parseConnectionString } from '../utils/common.js';
 
 export type OrientDB = orientjs.Db;
 
@@ -25,15 +26,17 @@ export class OrientDatabase extends Database<Result> {
     return [];
   }
 
-  static create(): OrientDatabase {
+  static create(dataUrl: string): OrientDatabase {
+    const { username, password, host, port, database } = parseConnectionString(dataUrl, 'orientdb');
+
     const dbserver = orientjs({
-      host: 'localhost',
-      port: 2424,
+      host,
+      port,
     });
     const innerDb = dbserver.use({
-      name: 'test',
-      username: 'root',
-      password: 'pass',
+      name: database,
+      username,
+      password,
     });
 
     return new OrientDatabase(innerDb);

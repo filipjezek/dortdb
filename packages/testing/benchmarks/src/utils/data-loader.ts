@@ -7,10 +7,12 @@ import { pipeline } from 'node:stream/promises';
 import { performance } from 'node:perf_hooks';
 import { Events, workerLog } from './logger.js';
 
+const DATA_DIR = resolve(import.meta.dirname, '../../dist/data');
+
 type Parser<TData> = (stream: ReadStream) => Promise<TData>;
 
-export async function getParsedData<TData>(url: string, benchmark: string, cacheDir: string, parser: Parser<TData>): Promise<TData> {
-  const stream = await loadBenchmarkData(url, benchmark, cacheDir);
+export async function getParsedData<TData>(url: string, parser: Parser<TData>): Promise<TData> {
+  const stream = await loadBenchmarkData(url);
 
   const start = performance.now();
   const output = await parser(stream);
@@ -21,20 +23,20 @@ export async function getParsedData<TData>(url: string, benchmark: string, cache
   return output;
 }
 
-async function loadBenchmarkData(url: string, benchmark: string, cacheDir: string): Promise<ReadStream> {
+async function loadBenchmarkData(url: string): Promise<ReadStream> {
   const filename = createHash('md5').update(url).digest('hex') + '.zip';
-  const path = resolve(cacheDir, filename);
+  const path = resolve(DATA_DIR, filename);
 
   if (!(await fs.stat(path).catch(() => {}))) {
-    await fs.mkdir(cacheDir, { recursive: true });
-    await downloadBenchmarkData(url, path, benchmark);
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await downloadBenchmarkData(url, path);
   }
 
   return createReadStream(path);
 }
 
-async function downloadBenchmarkData(url: string, path: string, benchmark: string) {
-  console.log(`No ${benchmark} data found at ${path}, downloading from ${url}`);
+async function downloadBenchmarkData(url: string, path: string) {
+  console.log(`No data found at ${path}, downloading from ${url}`);
 
   const response = await fetch(url);
   if (!response.ok)
@@ -45,5 +47,5 @@ async function downloadBenchmarkData(url: string, path: string, benchmark: strin
     createWriteStream(path, { flags: 'w+' }),
   );
 
-  console.log(`${benchmark} data downloaded.`);
+  console.log(`Data downloaded.`);
 }

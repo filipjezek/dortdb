@@ -1,6 +1,6 @@
 import { DortDB, MapIndex } from '@dortdb/core';
 import { resolve } from 'node:path';
-import { prepareData } from './prepare-data.js';
+import { prepareData } from './data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { DortDBDatabase } from '../databases/dortdb.js';

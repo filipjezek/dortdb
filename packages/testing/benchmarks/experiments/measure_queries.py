@@ -1,6 +1,19 @@
 import subprocess
 from common import DORTDB_RULES, QUERY_TIMEOUT_MS
 
+BENCHMARK_BASE_CLI_ARGS = ['npm', 'run', 'benchmark', '--']
+
+TPCH_URL = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/tpch.zip'
+UNIBENCH_URL = {
+    'dortdb': 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip',
+    'arango': 'arangodb://root@localhost:8529/unibench',
+    'orient': 'orientdb://root:pass@localhost:2424/test',
+}
+UNISAMPLE_URL = {
+    'dortdb': 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip',
+    'arango': 'arangodb://root@localhost:8529/unisample',
+}
+
 def main():
     commands = [
         *tpch_commands(),
@@ -9,12 +22,12 @@ def main():
     ]
 
     for command in commands:
-        args = ['npm', 'run', 'benchmark', '--', *command.to_cli_args(command.timeout_s)]
+        args = [*BENCHMARK_BASE_CLI_ARGS, *command.to_cli_args(command.timeout_s)]
         print(f'Running benchmark {command.benchmark} on database {command.database} with args: {args}')
         subprocess.run(args, cwd='../')
 
 def tpch_dortdb_command():
-    return Command('tpch', 'dortdb', {
+    return Command('tpch', 'dortdb', TPCH_URL, {
         1: 40,
         2: 50,
         3: 80,
@@ -39,7 +52,7 @@ def tpch_dortdb_command():
     })
 
 def tpch_commands():
-    tpch_sqlite = Command('tpch', 'sqlite', {
+    tpch_sqlite = Command('tpch', 'sqlite', TPCH_URL, {
         1: 50,
         2: 100,
         3: 50,
@@ -64,7 +77,7 @@ def tpch_commands():
         22: 100,
     })
 
-    tpch_alasql = Command('tpch', 'alasql', {
+    tpch_alasql = Command('tpch', 'alasql', TPCH_URL, {
         1: 40,
         2: 100,
         3: 100,
@@ -82,16 +95,16 @@ def tpch_commands():
         22: 30,
     })
 
-    tpch_alasql_long = Command('tpch', 'alasql', same_runs([ 11, 13, 21 ], 30))
+    tpch_alasql_long = Command('tpch', 'alasql', TPCH_URL, same_runs([ 11, 13, 21 ], 30))
     tpch_alasql_long.timeout_s = 2 * 24 * 60 * 60 # 2 days
 
     # These will surely timeout, so they are runned separately to avoid blocking the other queries.
     tpch_timeouts = [
-        Command('tpch', 'dortdb', {19: 30}),
-        Command('tpch', 'alasql', {4: 30}),
-        Command('tpch', 'alasql', {9: 30}),
-        Command('tpch', 'alasql', {19: 30}),
-        Command('tpch', 'alasql', {20: 30}),
+        Command('tpch', 'dortdb', TPCH_URL, {19: 30}),
+        Command('tpch', 'alasql', TPCH_URL, {4: 30}),
+        Command('tpch', 'alasql', TPCH_URL, {9: 30}),
+        Command('tpch', 'alasql', TPCH_URL, {19: 30}),
+        Command('tpch', 'alasql', TPCH_URL, {20: 30}),
     ]
 
     return [
@@ -104,29 +117,18 @@ def tpch_commands():
 
 def unibench_commands():
     unibench_all = [
-        Command('unibench', 'dortdb', {1: 50}),
-        Command('unibench', 'arango', {1: 80}),
-        Command('unibench', 'orient', {1: 100}),
+        Command('unibench', 'dortdb', UNIBENCH_URL['dortdb'], {1: 50}),
+        Command('unibench', 'arango', UNIBENCH_URL['arango'], {1: 80}),
+        Command('unibench', 'orient', UNIBENCH_URL['orient'], {1: 100}),
     ]
     for command in unibench_all:
         # Use the full dataset.
         command.data_url = 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip'
 
-    unisample_dortdb = Command('unibench', 'dortdb', {
-        1: 100,
-        2: 100,
-        3: 100,
-        4: 100,
-        5: 100,
-        6: 80,
-        7: 50,
-        8: 40,
-        9: 50,
-        10: 100,
-    })
+    unisample_dortdb = Command('unibench', 'dortdb', UNISAMPLE_URL['dortdb'], same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
     unisample_dortdb.output = 'unisample_dortdb.log'
 
-    unisample_arango = Command('unibench', 'arango', same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
+    unisample_arango = Command('unibench', 'arango', UNISAMPLE_URL['arango'], same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
     unisample_arango.output = 'unisample_arango.log'
 
     return [
@@ -158,27 +160,24 @@ def dortdb_rules_commands():
 
 class Command:
 
-    def __init__(self, benchmark: str, database: str, query_runs: dict[int, int]):
+    def __init__(self, benchmark: str, database: str, data_url: str, query_runs: dict[int, int]):
         self.benchmark = benchmark
         self.database = database
+        self.data_url = data_url
         self.query_runs = query_runs
 
         self.timeout_s = int(QUERY_TIMEOUT_MS / 1000)
         self.output: str | None = None
-        self.data_url: str | None = None
         self.custom_args: list[str] = []
 
     def to_cli_args(self, timeout_s: int | None) -> list[str]:
         args = [
             '-b', self.benchmark,
             '-d', self.database,
+            '-u', self.data_url,
             '-t', str(timeout_s),
             '-T', str(timeout_s),
         ]
-
-        if self.data_url is not None:
-            args.append('-u')
-            args.append(self.data_url)
 
         if self.output is not None:
             args.append('-o')

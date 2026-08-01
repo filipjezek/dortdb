@@ -13,7 +13,7 @@ if (!isMainThread) {
 }
 
 export default async function unibenchBenchmarkArango(options: BenchmarkWorkerOptions) {
-  const db = ArangoDatabase.create();
+  const db = ArangoDatabase.create(options.dataUrl);
 
   await db.setup();
 
@@ -52,7 +52,12 @@ function defineQueries(): QueryDef[] {
     filename: 'q6_arango.txt',
     params: {
       customerOne: () => 'Customer/' + pickRandom(personIds),
-      customerTwo: () => 'Customer/' + pickRandom(personIds),
+      customerTwo: ({ customerOne }) => {
+        let id2 = 'Customer/' + pickRandom(personIds);
+        while (id2 === customerOne)
+          id2 = 'Customer/' + pickRandom(personIds);
+        return id2;
+      },
     },
   }, {
     filename: 'q7_arango.txt',

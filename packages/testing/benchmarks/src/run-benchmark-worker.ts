@@ -5,7 +5,7 @@ import { DortDBRuleFamily } from './databases/dortdb.js';
 export type BenchmarkWorkerOptions = {
   benchmark: BenchmarkName;
   database: DatabaseName;
-  dataUrl: string | undefined;
+  dataUrl: string;
   queryIds: number[];
   runs: number[];
   /** in seconds */

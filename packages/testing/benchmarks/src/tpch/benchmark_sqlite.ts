@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import fs from 'node:fs/promises';
-import { prepareData } from './prepare-data.js';
+import { prepareData } from './data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
 import { SqliteDatabase, type SqliteDB } from '../databases/sqlite.js';
