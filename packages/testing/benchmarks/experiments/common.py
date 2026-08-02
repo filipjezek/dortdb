@@ -35,8 +35,7 @@ class Benchmark:
 def open_output(filename: str) -> TextIOWrapper:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     path = OUTPUT_DIR / filename
-    # Let's append because there might be multiple results from different databases and benchmarks.
-    return open(path, 'a', newline='', encoding='utf-8')
+    return open(path, 'w', newline='', encoding='utf-8')
 
 class JsonEncoder(json.JSONEncoder):
     def default(self, o):

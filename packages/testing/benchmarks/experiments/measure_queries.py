@@ -135,7 +135,7 @@ def unibench_commands():
     ]
 
 def dortdb_rules_commands():
-    boundaryNormalizationCommand = rule_command('boundaryNormalization', {
+    boundaryNormalizationCommand = rule_command('boundaryNormalization', 4, {
         1: 50,
         2: 100,
         3: 100,
@@ -159,7 +159,7 @@ def dortdb_rules_commands():
         22: 100,
     })
 
-    indexAwareRewritingCommand = rule_command('indexAwareRewriting', {
+    indexAwareRewritingCommand = rule_command('indexAwareRewriting', 36, {
         1: 50,
         2: 50,
         3: 100,
@@ -183,7 +183,7 @@ def dortdb_rules_commands():
         22: 30,
     })
 
-    joinNormalizationCommand = rule_command('joinNormalization', {
+    joinNormalizationCommand = rule_command('joinNormalization', 72, {
         1: 50,
         2: 5,
         3: 5,
@@ -207,7 +207,7 @@ def dortdb_rules_commands():
         22: 20,
     })
 
-    planSimplificationCommand = rule_command('planSimplification', {
+    planSimplificationCommand = rule_command('planSimplification', 4, {
         1: 50,
         2: 100,
         3: 100,
@@ -231,7 +231,7 @@ def dortdb_rules_commands():
         22: 100,
     })
 
-    predicateMovementCommand = rule_command('predicateMovement', {
+    predicateMovementCommand = rule_command('predicateMovement', 24, {
         1: 50,
         # 2: TIMEOUT
         # 3: TIMEOUT
@@ -255,7 +255,7 @@ def dortdb_rules_commands():
         22: 30,
     })
 
-    subqueryNormalizationCommand = rule_command('subqueryNormalization', {
+    subqueryNormalizationCommand = rule_command('subqueryNormalization', 12, {
         1: 50,
         # 2: WRONG
         3: 100,
@@ -279,8 +279,8 @@ def dortdb_rules_commands():
         # 22: WRONG,
     })
 
-    # TODO measure these
-    allCommand = rule_command('all', {
+    # TODO measure these and change the timeout
+    allCommand = rule_command('all', 4, {
         1: 50,
         # 2: TIMEOUT
         # 3: ?
@@ -314,9 +314,10 @@ def dortdb_rules_commands():
         # allCommand,
     ]
 
-def rule_command(rule: str, query_runs: dict[int, int]):
+def rule_command(rule: str, timeout_h: int, query_runs: dict[int, int]):
     command = Command('tpch', 'dortdb', TPCH_URL, query_runs)
     command.output = f'tpch_dortdb_exclude_{rule}.log'
+    command.timeout_s = timeout_h * 60 * 60
 
     if rule == 'all':
         command.custom_args = []
