@@ -31,7 +31,8 @@ export class ArangoDatabase extends Database<Cursor> {
       databaseName: database,
       auth: {
         username,
-        password,
+        // So, if you plan to develop a database driver and you feel the need to define a "default value", maybe, just maybe, you should make sure the default value is actually used if undefined (or even no property at all) is passed. Is that really too much to ask? Unbeliavable.
+        password: password ?? '',
       },
     });
 
