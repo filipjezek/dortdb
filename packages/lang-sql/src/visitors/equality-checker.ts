@@ -1,4 +1,4 @@
-import { DescentArgs, EqualityChecker, PlanVisitor } from '@dortdb/core';
+import { EcDescentArgs, EqualityChecker, PlanVisitor } from '@dortdb/core';
 import {
   LangSwitch,
   SQLPlanVisitor,
@@ -12,16 +12,16 @@ import {
  */
 export class SQLEqualityChecker
   extends EqualityChecker
-  implements SQLPlanVisitor<boolean, DescentArgs>
+  implements SQLPlanVisitor<boolean, EcDescentArgs>
 {
-  constructor(vmap: Record<string, PlanVisitor<boolean, DescentArgs>>) {
+  constructor(vmap: Record<string, PlanVisitor<boolean, EcDescentArgs>>) {
     super(vmap);
   }
-  visitLangSwitch(a: LangSwitch, args: DescentArgs): boolean {
+  visitLangSwitch(a: LangSwitch, args: EcDescentArgs): boolean {
     const b = args.other as LangSwitch;
     return a.node === b.node;
   }
-  visitUsing(a: Using, args: DescentArgs): boolean {
+  visitUsing(a: Using, args: EcDescentArgs): boolean {
     const b = args.other as Using;
     return (
       a.leftName.equals(b.leftName) &&
@@ -30,7 +30,7 @@ export class SQLEqualityChecker
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitTableAlias(operator: TableAlias, arg?: DescentArgs): boolean {
+  visitTableAlias(operator: TableAlias, arg?: EcDescentArgs): boolean {
     const other = arg?.other as TableAlias;
     return (
       operator.alias === other.alias &&

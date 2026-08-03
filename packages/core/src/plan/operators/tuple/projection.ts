@@ -1,6 +1,7 @@
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
+  IdSet,
   OpOrId,
   PlanOperator,
   PlanTupleOperator,
@@ -8,10 +9,10 @@ import {
 } from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import {
   cloneIfPossible,
   isCalc,
+  isId,
   retI0,
   retI1,
 } from '../../../internal-fns/index.js';
@@ -50,7 +51,6 @@ export class Projection extends PlanTupleOperator {
       if (attr instanceof ASTIdentifier) {
         this.renames.set(attr.parts, alias.parts);
         this.renamesInv.set(alias.parts, attr.parts);
-        this.dependencies.add(attr.parts);
       } else {
         attr.parent = this;
       }
@@ -77,8 +77,7 @@ export class Projection extends PlanTupleOperator {
       this.source = replacement as PlanTupleOperator;
     } else {
       this.attrs.find((x) => x[0] === current)[0] = replacement as
-        | Calculation
-        | ASTIdentifier;
+        Calculation | ASTIdentifier;
     }
   }
   /** {@inheritDoc PlanOperator.getChildren} */
@@ -95,6 +94,11 @@ export class Projection extends PlanTupleOperator {
       this.attrs.map(cloneIfPossible),
       this.source.clone(),
     );
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return schemaToTrie(this.attrs.map(retI0).filter(isId));
   }
 }
 

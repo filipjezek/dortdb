@@ -20,8 +20,6 @@ export interface PlanOpAsArg {
 export class FnCall implements PlanOperator {
   /** Marks this as a {@link CalcIntermediate} sub-operator of a {@link Calculation}. */
   public [CalcIntermediate] = true;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies: IdSet;
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -36,7 +34,6 @@ export class FnCall implements PlanOperator {
      */
     public pure = false,
   ) {
-    this.dependencies = schemaToTrie(args.filter(isId));
     for (const arg of args) {
       if ('op' in arg) {
         arg.op.parent = this;
@@ -107,5 +104,10 @@ export class FnCall implements PlanOperator {
       }
     }
     return res;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return schemaToTrie(this.args.filter(isId));
   }
 }

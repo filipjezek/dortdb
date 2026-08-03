@@ -10,8 +10,6 @@ import { Calculation } from './calculation.js';
 export class ItemSource implements PlanOperator {
   /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies = new Trie<string | symbol>();
 
   /**
    * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
@@ -42,14 +40,16 @@ export class ItemSource implements PlanOperator {
   clone(): ItemSource {
     return new ItemSource(this.lang, this.name);
   }
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return new Trie();
+  }
 }
 
 /** A leaf operator that produces items by invoking a generator function. */
 export class ItemFnSource implements PlanOperator {
   /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies: IdSet;
 
   /**
    * @param name This should be aliased only while building the plan. It should be replaced with Projection before the actual execution.
@@ -65,7 +65,6 @@ export class ItemFnSource implements PlanOperator {
     public name?: ASTIdentifier | Aliased<ASTIdentifier>,
   ) {
     arrSetParent(this.args, this);
-    this.dependencies = schemaToTrie(this.args.filter(isId));
   }
 
   /** {@inheritDoc PlanOperator.accept} */
@@ -93,5 +92,9 @@ export class ItemFnSource implements PlanOperator {
       this.impl,
       this.name,
     );
+  }
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return schemaToTrie(this.args.filter(isId));
   }
 }

@@ -12,8 +12,6 @@ import { CalcIntermediate, Calculation } from './calculation.js';
 export class Conditional implements PlanOperator {
   /** Marks this as a {@link CalcIntermediate} sub-operator of a {@link Calculation}. */
   public [CalcIntermediate] = true;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies: IdSet;
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -28,14 +26,11 @@ export class Conditional implements PlanOperator {
     /** The ELSE expression; `null` means return `null` when no branch matches. */
     public defaultCase: PlanOperator | ASTIdentifier,
   ) {
-    this.dependencies = new Trie();
     const items = whenThens.flat();
     if (condition) items.push(condition);
     if (defaultCase) items.push(defaultCase);
     for (const item of items) {
-      if (item instanceof ASTIdentifier) {
-        this.dependencies.add(item.parts);
-      } else {
+      if (!(item instanceof ASTIdentifier)) {
         item.parent = this;
       }
     }
@@ -103,5 +98,19 @@ export class Conditional implements PlanOperator {
       }
     }
     return res;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    const deps: IdSet = new Trie();
+    const items = this.whenThens.flat();
+    if (this.condition) items.push(this.condition);
+    if (this.defaultCase) items.push(this.defaultCase);
+    for (const item of items) {
+      if (item instanceof ASTIdentifier) {
+        deps.add(item.parts);
+      }
+    }
+    return deps;
   }
 }

@@ -61,7 +61,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     const horizontal = this.onlyExternal(
       union(
         ...operator.attrs.map(retI0).filter(isCalc).map(this.processNode),
-        operator.dependencies,
+        operator.getDependencies(),
       ),
       operator.source,
     );
@@ -80,10 +80,10 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     return result;
   }
   visitTupleSource(operator: plan.TupleSource): IdSet {
-    return operator.dependencies;
+    return operator.getDependencies();
   }
   visitItemSource(operator: plan.ItemSource): IdSet {
-    return operator.dependencies;
+    return operator.getDependencies();
   }
   visitFnCall(operator: plan.FnCall): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -91,13 +91,13 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
       ...operator.args
         .filter((arg) => 'op' in arg)
         .map((arg) => this.processNode(arg.op)),
-      operator.dependencies,
+      operator.getDependencies(),
     );
     tdepsCache.set(operator, result);
     return result;
   }
   visitLiteral(operator: plan.Literal): IdSet {
-    return operator.dependencies;
+    return operator.getDependencies();
   }
   visitCalculation(operator: plan.Calculation): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
@@ -105,7 +105,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
       ...(operator.args.filter((x) => !isId(x)) as PlanOperator[]).map(
         this.processNode,
       ),
-      operator.dependencies,
+      operator.getDependencies(),
     );
     tdepsCache.set(operator, result);
     return result;
@@ -114,7 +114,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const result = union(
       ...operator.getChildren().map(this.processNode),
-      operator.dependencies,
+      operator.getDependencies(),
     );
     tdepsCache.set(operator, result);
     return result;
@@ -178,7 +178,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
           .map(plan.getKey)
           .filter(isCalc)
           .map(this.processNode),
-        operator.dependencies,
+        operator.getDependencies(),
       ),
       operator,
     );
@@ -192,7 +192,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
       union(
         ...operator.keys.map(retI0).filter(isCalc).map(this.processNode),
         ...operator.aggs.map(this.processNode),
-        operator.dependencies,
+        operator.getDependencies(),
       ),
       operator,
     );
@@ -226,11 +226,11 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const horizontal =
       operator.attrs === allAttrs
-        ? operator.dependencies
+        ? operator.getDependencies()
         : this.onlyExternal(
             union(
               ...operator.attrs.filter(isCalc).map(this.processNode),
-              operator.dependencies,
+              operator.getDependencies(),
             ),
             operator,
           );
@@ -239,13 +239,13 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     return result;
   }
   visitNullSource(operator: plan.NullSource): IdSet {
-    return operator.dependencies;
+    return operator.getDependencies();
   }
   visitAggregate(operator: plan.AggregateCall): IdSet {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const result = union(
       ...operator.args.filter(isCalc).map(this.processNode),
-      operator.dependencies,
+      operator.getDependencies(),
       operator.postGroupOp.accept(this.vmap),
     );
     tdepsCache.set(operator, result);
@@ -255,7 +255,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const result = union(
       ...operator.args.filter(isCalc).map(this.processNode),
-      operator.dependencies,
+      operator.getDependencies(),
     );
     tdepsCache.set(operator, result);
     return result;
@@ -264,7 +264,7 @@ export class TransitiveDependencies implements PlanVisitor<IdSet> {
     if (tdepsCache.has(operator)) return tdepsCache.get(operator);
     const result = union(
       ...operator.args.filter(isCalc).map(this.processNode),
-      operator.dependencies,
+      operator.getDependencies(),
     );
     tdepsCache.set(operator, result);
     return result;

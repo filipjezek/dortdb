@@ -8,7 +8,7 @@ import { containsAll } from '../utils/trie.js';
 /**
  * Arguments threaded through the equality-checking visitor during recursive descent.
  */
-export interface DescentArgs {
+export interface EcDescentArgs {
   /** The node from the second tree being compared against the currently visited node. */
   other: PlanOperator;
   /** When `true`, differences in the `lang` field of plan operators are ignored. */
@@ -20,10 +20,10 @@ export interface DescentArgs {
 /**
  * Checks for equality between two plan operator trees.
  */
-export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
+export class EqualityChecker implements PlanVisitor<boolean, EcDescentArgs> {
   constructor(
     /** Per-language visitor map used for recursive descent. */
-    protected vmap: Record<string, PlanVisitor<boolean, DescentArgs>>,
+    protected vmap: Record<string, PlanVisitor<boolean, EcDescentArgs>>,
   ) {}
 
   /**
@@ -93,7 +93,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
   protected processArray(
     arrA: OpOrId[],
     arrB: OpOrId[],
-    args: DescentArgs,
+    args: EcDescentArgs,
   ): boolean {
     if (arrA.length !== arrB.length) {
       return false;
@@ -116,7 +116,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     return this.processItem(op1, { other: op2, ignoreLang, renameMap });
   }
 
-  visitRecursion(a: plan.Recursion, args: DescentArgs): boolean {
+  visitRecursion(a: plan.Recursion, args: EcDescentArgs): boolean {
     const b = args.other as plan.Recursion;
     return (
       a.min === b.min &&
@@ -126,7 +126,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitProjection(a: plan.Projection, args: DescentArgs): boolean {
+  visitProjection(a: plan.Projection, args: EcDescentArgs): boolean {
     const b = args.other as plan.Projection;
     return (
       a.attrs.length === b.attrs.length &&
@@ -140,17 +140,17 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitSelection(a: plan.Selection, args: DescentArgs): boolean {
+  visitSelection(a: plan.Selection, args: EcDescentArgs): boolean {
     const b = args.other as plan.Selection;
     return (
       this.processItem(a.condition, { ...args, other: b.condition }) &&
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitTupleSource(a: plan.TupleSource, args: DescentArgs): boolean {
+  visitTupleSource(a: plan.TupleSource, args: EcDescentArgs): boolean {
     return this.visitItemSource(a as plan.ItemSource, args);
   }
-  visitItemSource(a: plan.ItemSource, args: DescentArgs): boolean {
+  visitItemSource(a: plan.ItemSource, args: EcDescentArgs): boolean {
     const b = args.other as plan.TupleSource;
     if (Array.isArray(a.name)) {
       return (
@@ -161,7 +161,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     }
     return !Array.isArray(b.name) && a.name.equals(b.name);
   }
-  visitFnCall(a: plan.FnCall, args: DescentArgs): boolean {
+  visitFnCall(a: plan.FnCall, args: EcDescentArgs): boolean {
     const b = args.other as plan.FnCall;
     return (
       a.impl === b.impl &&
@@ -175,11 +175,11 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       })
     );
   }
-  visitLiteral(a: plan.Literal, args: DescentArgs): boolean {
+  visitLiteral(a: plan.Literal, args: EcDescentArgs): boolean {
     const b = args.other as plan.Literal;
     return isEqual(a.value, b.value);
   }
-  visitCalculation(a: plan.Calculation, args: DescentArgs): boolean {
+  visitCalculation(a: plan.Calculation, args: EcDescentArgs): boolean {
     const b = args.other as plan.Calculation;
     return (
       this.processArray(a.args, b.args, args) &&
@@ -189,7 +189,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
         : a.impl === b.impl)
     );
   }
-  visitConditional(a: plan.Conditional, args: DescentArgs): boolean {
+  visitConditional(a: plan.Conditional, args: EcDescentArgs): boolean {
     const b = args.other as plan.Conditional;
     return (
       this.processArray(a.whenThens.map(retI0), b.whenThens.map(retI0), args) &&
@@ -204,14 +204,17 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
         : !b.defaultCase)
     );
   }
-  visitCartesianProduct(a: plan.CartesianProduct, args: DescentArgs): boolean {
+  visitCartesianProduct(
+    a: plan.CartesianProduct,
+    args: EcDescentArgs,
+  ): boolean {
     const b = args.other as plan.CartesianProduct;
     return (
       this.processItem(a.left, { ...args, other: b.left }) &&
       this.processItem(a.right, { ...args, other: b.right })
     );
   }
-  visitJoin(a: plan.Join, args: DescentArgs): boolean {
+  visitJoin(a: plan.Join, args: EcDescentArgs): boolean {
     const b = args.other as plan.Join;
     return (
       a.leftOuter === b.leftOuter &&
@@ -220,7 +223,10 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.visitCartesianProduct(a, args)
     );
   }
-  visitProjectionConcat(a: plan.ProjectionConcat, args: DescentArgs): boolean {
+  visitProjectionConcat(
+    a: plan.ProjectionConcat,
+    args: EcDescentArgs,
+  ): boolean {
     const b = args.other as plan.ProjectionConcat;
     return (
       a.outer === b.outer &&
@@ -230,28 +236,28 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitMapToItem(a: plan.MapToItem, args: DescentArgs): boolean {
+  visitMapToItem(a: plan.MapToItem, args: EcDescentArgs): boolean {
     const b = args.other as plan.MapToItem;
     return (
       a.key.equals(b.key) &&
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitMapFromItem(a: plan.MapFromItem, args: DescentArgs): boolean {
+  visitMapFromItem(a: plan.MapFromItem, args: EcDescentArgs): boolean {
     const b = args.other as plan.MapFromItem;
     return (
       a.key.equals(b.key) &&
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitProjectionIndex(a: plan.ProjectionIndex, args: DescentArgs): boolean {
+  visitProjectionIndex(a: plan.ProjectionIndex, args: EcDescentArgs): boolean {
     const b = args.other as plan.ProjectionIndex;
     return (
       a.indexCol.equals(b.indexCol) &&
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitOrderBy(a: plan.OrderBy, args: DescentArgs): boolean {
+  visitOrderBy(a: plan.OrderBy, args: EcDescentArgs): boolean {
     const b = args.other as plan.OrderBy;
     return (
       a.orders.length === b.orders.length &&
@@ -266,7 +272,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitGroupBy(a: plan.GroupBy, args: DescentArgs): boolean {
+  visitGroupBy(a: plan.GroupBy, args: EcDescentArgs): boolean {
     const b = args.other as plan.GroupBy;
     return (
       a.keys.length === b.keys.length &&
@@ -281,7 +287,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitLimit(a: plan.Limit, args: DescentArgs): boolean {
+  visitLimit(a: plan.Limit, args: EcDescentArgs): boolean {
     const b = args.other as plan.Limit;
     return (
       a.limit === b.limit &&
@@ -289,23 +295,23 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  protected visitSetOp(a: plan.SetOperator, args: DescentArgs): boolean {
+  protected visitSetOp(a: plan.SetOperator, args: EcDescentArgs): boolean {
     const b = args.other as plan.SetOperator;
     return (
       this.processItem(a.left, { ...args, other: b.left }) &&
       this.processItem(a.right, { ...args, other: b.right })
     );
   }
-  visitUnion(a: plan.Union, args: DescentArgs): boolean {
+  visitUnion(a: plan.Union, args: EcDescentArgs): boolean {
     return this.visitSetOp(a, args);
   }
-  visitIntersection(a: plan.Intersection, args: DescentArgs): boolean {
+  visitIntersection(a: plan.Intersection, args: EcDescentArgs): boolean {
     return this.visitSetOp(a, args);
   }
-  visitDifference(a: plan.Difference, args: DescentArgs): boolean {
+  visitDifference(a: plan.Difference, args: EcDescentArgs): boolean {
     return this.visitSetOp(a, args);
   }
-  visitDistinct(a: plan.Distinct, args: DescentArgs): boolean {
+  visitDistinct(a: plan.Distinct, args: EcDescentArgs): boolean {
     const b = args.other as plan.Distinct;
     for (const [alls, somes] of [
       [a, b],
@@ -327,10 +333,10 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
     }
     return this.processItem(a.source, { ...args, other: b.source });
   }
-  visitNullSource(a: plan.NullSource, args: DescentArgs): boolean {
+  visitNullSource(a: plan.NullSource, args: EcDescentArgs): boolean {
     return true;
   }
-  visitAggregate(a: plan.AggregateCall, args: DescentArgs): boolean {
+  visitAggregate(a: plan.AggregateCall, args: EcDescentArgs): boolean {
     const b = args.other as plan.AggregateCall;
     return (
       a.impl === b.impl &&
@@ -339,29 +345,32 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
       this.processArray(a.args, b.args, args)
     );
   }
-  visitItemFnSource(a: plan.ItemFnSource, args: DescentArgs): boolean {
+  visitItemFnSource(a: plan.ItemFnSource, args: EcDescentArgs): boolean {
     const b = args.other as plan.ItemFnSource;
     return a.impl === b.impl && this.processArray(a.args, b.args, args);
   }
-  visitTupleFnSource(a: plan.TupleFnSource, args: DescentArgs): boolean {
+  visitTupleFnSource(a: plan.TupleFnSource, args: EcDescentArgs): boolean {
     const b = args.other as plan.ItemFnSource;
     return a.impl === b.impl && this.processArray(a.args, b.args, args);
   }
-  visitQuantifier(a: plan.Quantifier, args: DescentArgs): boolean {
+  visitQuantifier(a: plan.Quantifier, args: EcDescentArgs): boolean {
     const b = args.other as plan.Quantifier;
     return (
       a.type === b.type &&
       this.processItem(a.query, { ...args, other: b.query })
     );
   }
-  visitIndexScan(a: plan.IndexScan, args: DescentArgs): boolean {
+  visitIndexScan(a: plan.IndexScan, args: EcDescentArgs): boolean {
     const b = args.other as plan.IndexScan;
     return (
       this.visitTupleSource(a, args) &&
       this.processItem(a.access, { ...args, other: b.access })
     );
   }
-  visitIndexedRecursion(a: plan.IndexedRecursion, args: DescentArgs): boolean {
+  visitIndexedRecursion(
+    a: plan.IndexedRecursion,
+    args: EcDescentArgs,
+  ): boolean {
     const b = args.other as plan.IndexedRecursion;
     return (
       a.min === b.min &&
@@ -373,7 +382,7 @@ export class EqualityChecker implements PlanVisitor<boolean, DescentArgs> {
   }
   visitBidirectionalRecursion(
     a: plan.BidirectionalRecursion,
-    args: DescentArgs,
+    args: EcDescentArgs,
   ): boolean {
     const b = args.other as plan.BidirectionalRecursion;
     return (

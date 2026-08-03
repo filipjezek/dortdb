@@ -38,7 +38,8 @@
       "executor": "@nx/vitest:test",
       "dependsOn": ["^build", "peggy"],
       "options": {
-        "reporters": ["default"]
+        "reporters": ["default"],
+        "watch": false
       }
     },
     "lint": {
@@ -82,7 +83,8 @@
     {
       "plugin": "@nx/vitest",
       "options": {
-        "testTargetName": "test"
+        "testTargetName": "test",
+        "testMode": "run"
       }
     },
     {

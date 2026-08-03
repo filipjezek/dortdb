@@ -1,8 +1,13 @@
 import { ASTIdentifier } from '../../../ast.js';
-import { cloneIfPossible, isCalc } from '../../../internal-fns/index.js';
+import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
+import {
+  IdSet,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 
 /**
@@ -71,6 +76,11 @@ export class Recursion extends PlanTupleOperator {
       this.distinctKeys.map(cloneIfPossible),
     );
   }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return schemaToTrie(this.distinctKeys.filter(isId));
+  }
 }
 
 /**
@@ -137,6 +147,11 @@ export class IndexedRecursion extends PlanTupleOperator {
       this.source.clone(),
       this.distinctKeys.map(cloneIfPossible),
     );
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return schemaToTrie(this.distinctKeys.filter(isId));
   }
 }
 

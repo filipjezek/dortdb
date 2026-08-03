@@ -1,6 +1,11 @@
 import { Trie } from '../../../data-structures/trie.js';
 import { ASTIdentifier } from '../../../ast.js';
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
+import {
+  IdSet,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../visitor.js';
 import { Calculation } from '../item/calculation.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
@@ -60,7 +65,6 @@ export class TupleFnSource extends PlanTupleOperator {
     this.schema = [];
     this.schemaSet = new Trie<string | symbol>();
     arrSetParent(this.args, this);
-    this.dependencies = schemaToTrie(args.filter(isId));
   }
 
   /** {@inheritDoc PlanOperator.accept} */
@@ -91,6 +95,11 @@ export class TupleFnSource extends PlanTupleOperator {
     res.schema = this.schema.slice();
     res.schemaSet = this.schemaSet.clone();
     return res;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return schemaToTrie(this.args.filter(isId));
   }
 }
 

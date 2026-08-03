@@ -1,4 +1,5 @@
 import {
+  ArcDescentArgs,
   AttributeRenameChecker,
   DortDBAsFriend,
   PlanVisitor,
@@ -12,30 +13,24 @@ import { RenameMap } from '@dortdb/core/plan';
  */
 export class XQueryAttributeRenameChecker
   extends AttributeRenameChecker
-  implements XQueryPlanVisitor<boolean, RenameMap>
+  implements XQueryPlanVisitor<boolean, ArcDescentArgs>
 {
   constructor(
-    vmap: Record<string, PlanVisitor<boolean, RenameMap>>,
+    vmap: Record<string, PlanVisitor<boolean, ArcDescentArgs>>,
     db: DortDBAsFriend,
   ) {
     super(vmap, db);
   }
-  visitTreeJoin(operator: TreeJoin, renamesInv: RenameMap): boolean {
+  visitTreeJoin(operator: TreeJoin, args: ArcDescentArgs): boolean {
     return (
-      this.checkHorizontal(
-        operator.step,
-        operator.source.schemaSet,
-        renamesInv,
-      ) && operator.source.accept(this.vmap, renamesInv)
+      this.checkHorizontal(operator.step, operator.source.schemaSet, args) &&
+      operator.source.accept(this.vmap, args)
     );
   }
-  visitProjectionSize(
-    operator: ProjectionSize,
-    renamesInv: RenameMap,
-  ): boolean {
+  visitProjectionSize(operator: ProjectionSize, args: ArcDescentArgs): boolean {
     return (
-      !renamesInv.has(operator.sizeCol.parts) &&
-      operator.source.accept(this.vmap, renamesInv)
+      !args.renamesInv.has(operator.sizeCol.parts) &&
+      operator.source.accept(this.vmap, args)
     );
   }
 }

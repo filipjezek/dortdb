@@ -146,12 +146,10 @@ export class MergeProjections implements PatternRule<
         if (mapped) {
           for (const loc of calc.argMeta[i].originalLocations) {
             const { obj, key, idAsFnArg, op } = loc;
-            op.dependencies.delete(arg.parts);
             if (mapped instanceof plan.Calculation) {
               obj[key] = idAsFnArg ? { op: mapped.original } : mapped.original;
               mapped.original.parent = op;
             } else {
-              op.dependencies.add(mapped.parts);
               obj[key] = mapped;
             }
           }
@@ -185,7 +183,7 @@ export class MergeProjections implements PatternRule<
             canMerge = false;
             return true;
           }
-          if (aVal.dependencies.has(alias.parts)) {
+          if (aVal.getDependencies().has(alias.parts)) {
             const metaIndex = aVal.args.findIndex(
               (x) => x instanceof ASTIdentifier && x.equals(alias),
             );

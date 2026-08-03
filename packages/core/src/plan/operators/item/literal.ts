@@ -1,14 +1,12 @@
 import { Trie } from '../../../data-structures/trie.js';
 import { ArgMeta } from '../../../visitors/calculation-builder.js';
-import { PlanOperator, PlanVisitor } from '../../visitor.js';
+import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate, Calculation } from './calculation.js';
 
 /** A compile-time constant value embedded in a {@link Calculation}. */
 export class Literal<T = unknown> implements PlanOperator {
   /** Marks this as a {@link CalcIntermediate} sub-operator of a {@link Calculation}. */
   public [CalcIntermediate] = true;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies = new Trie<string | symbol>();
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -40,5 +38,10 @@ export class Literal<T = unknown> implements PlanOperator {
    */
   clone(meta?: ArgMeta[]): Literal<T> {
     return new Literal(this.lang, this.value);
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return new Trie();
   }
 }

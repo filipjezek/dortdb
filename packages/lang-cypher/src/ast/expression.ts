@@ -38,7 +38,7 @@ export class ExistsSubquery implements ASTNode {
     /** Inline path patterns for the pattern-only form; empty when a full query is present. */
     public pattern: PatternElChain[],
     /** Optional WHERE filter applied inside the EXISTS check. */
-    public where: ASTNode,
+    public where?: ASTNode,
   ) {}
 
   accept<Ret, Arg>(visitor: CypherVisitor<Ret, Arg>, arg?: Arg): Ret {

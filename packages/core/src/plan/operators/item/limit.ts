@@ -1,4 +1,10 @@
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../../visitor.js';
+import { Trie } from '../../../data-structures/trie.js';
+import {
+  IdSet,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../../visitor.js';
 
 /** Skips the first `skip` rows of its source and then passes at most `limit` rows through. */
 export class Limit extends PlanTupleOperator {

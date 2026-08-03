@@ -148,7 +148,6 @@ export class UnnestSubqueries implements PatternRule<
       calc.impl = newParams.impl;
       calc.aggregates = newParams.aggregates;
       calc.argMeta = newParams.argMeta;
-      calc.dependencies.add(newAttr.parts);
       calc.literal = newParams.literal;
       calc.args = newParams.args;
     }

@@ -1,9 +1,5 @@
-import { DescentArgs, EqualityChecker, PlanVisitor } from '@dortdb/core';
-import {
-  ProjectionSize,
-  TreeJoin,
-  XQueryPlanVisitor,
-} from '@dortdb/lang-xquery';
+import { EcDescentArgs, EqualityChecker, PlanVisitor } from '@dortdb/core';
+import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
 
 /**
  * Extends {@link EqualityChecker} to compare XQuery-specific plan operators
@@ -11,19 +7,19 @@ import {
  */
 export class XQueryEqualityChecker
   extends EqualityChecker
-  implements XQueryPlanVisitor<boolean, DescentArgs>
+  implements XQueryPlanVisitor<boolean, EcDescentArgs>
 {
-  constructor(vmap: Record<string, PlanVisitor<boolean, DescentArgs>>) {
+  constructor(vmap: Record<string, PlanVisitor<boolean, EcDescentArgs>>) {
     super(vmap);
   }
-  visitTreeJoin(a: TreeJoin, args: DescentArgs): boolean {
+  visitTreeJoin(a: TreeJoin, args: EcDescentArgs): boolean {
     const b = args.other as TreeJoin;
     return (
       this.processItem(a.step, { ...args, other: b.step }) &&
       this.processItem(a.source, { ...args, other: b.source })
     );
   }
-  visitProjectionSize(a: ProjectionSize, args: DescentArgs): boolean {
+  visitProjectionSize(a: ProjectionSize, args: EcDescentArgs): boolean {
     const b = args.other as ProjectionSize;
     return (
       a.sizeCol.equals(b.sizeCol) &&

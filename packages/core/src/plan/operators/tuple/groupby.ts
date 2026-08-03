@@ -1,6 +1,7 @@
 import { ASTIdentifier } from '../../../ast.js';
 import {
   Aliased,
+  IdSet,
   OpOrId,
   PlanOperator,
   PlanTupleOperator,
@@ -45,7 +46,6 @@ export class GroupBy extends PlanTupleOperator {
       ASTIdentifier.fromParts(k),
     );
     source.parent = this;
-    this.dependencies = schemaToTrie(this.keys.map(retI0).filter(isId));
     arrSetParent(keys.map(retI0), this);
     arrSetParent(aggs, this);
 
@@ -102,5 +102,10 @@ export class GroupBy extends PlanTupleOperator {
       this.aggs.map(clone),
       this.source.clone(),
     );
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return schemaToTrie(this.keys.map(retI0).filter(isId));
   }
 }

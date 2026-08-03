@@ -1,6 +1,6 @@
 import { Trie } from '../../../data-structures/trie.js';
 import { ArgMeta } from '../../../visitors/calculation-builder.js';
-import { PlanOperator, PlanVisitor } from '../../visitor.js';
+import { IdSet, PlanOperator, PlanVisitor } from '../../visitor.js';
 import { CalcIntermediate, Calculation } from './calculation.js';
 
 /** Selects whether ALL or ANY rows in a subquery must satisfy a condition. */
@@ -15,8 +15,6 @@ export enum QuantifierType {
 export class Quantifier implements PlanOperator {
   /** Marks this as a {@link CalcIntermediate} sub-operator of a {@link Calculation}. */
   public [CalcIntermediate] = true;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies = new Trie<string | symbol>();
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -62,5 +60,10 @@ export class Quantifier implements PlanOperator {
       }
     }
     return res;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return new Trie();
   }
 }

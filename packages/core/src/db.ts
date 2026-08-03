@@ -139,8 +139,12 @@ export class DortDB<LangNames extends string = string> {
   } {
     const varMappers = this.langMgr.getVisitorMap('variableMapper');
     const executors = this.langMgr.getVisitorMap('executor');
+    const tdeps = this.langMgr.getVisitorMap('transitiveDependencies');
     const serialize = this.langMgr.getLang(plan.lang).serialize;
 
+    // Important! fill cache of tdeps before mapping variables
+    // otherwise, the tdeps may contain numeric ids
+    plan.accept(tdeps);
     const varMapCtx = varMappers[plan.lang].mapVariables(plan);
     const { result, ctx } = executors[plan.lang].execute(
       plan,
@@ -248,7 +252,7 @@ export class DortDB<LangNames extends string = string> {
     expr: Calculation,
     fromItemKey: string[],
   ): void {
-    if (expr.dependencies.size === 0) return;
+    if (expr.getDependencies().size === 0) return;
     if (expr.original) {
       const renamers = this.langMgr.getVisitorMap('attributeRenamer');
       const renameMap: RenameMap = new Trie();
@@ -299,7 +303,7 @@ export class DortDB<LangNames extends string = string> {
     );
     if (!isItemSource) {
       for (const expr of index.expressions) {
-        projection.source.addToSchema(expr.dependencies);
+        projection.source.addToSchema(expr.getDependencies());
       }
       projection.source.addToSchema(allAttrsId);
     }

@@ -8,8 +8,6 @@ export interface PlanOperator {
   lang: Lowercase<string>;
   /** Parent node in the plan tree; `undefined` at the root. */
   parent?: PlanOperator;
-  /** Attribute identifiers read by this operator from its input(s). */
-  dependencies: IdSet;
 
   /** Dispatches this operator to the visitor registered under {@link lang}. */
   accept<Ret, Arg>(
@@ -25,6 +23,8 @@ export interface PlanOperator {
   getChildren(): PlanOperator[];
   /** Returns a deep copy of this operator subtree. */
   clone(): PlanOperator;
+  /** Get the attribute identifiers read by this operator from its input(s). */
+  getDependencies(): IdSet;
 }
 
 /**
@@ -42,8 +42,6 @@ export abstract class PlanTupleOperator implements PlanOperator {
   public lang: Lowercase<string>;
   /** {@inheritDoc PlanOperator.parent} */
   public parent?: PlanOperator;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies = new Trie<string | symbol | number>();
 
   /** {@inheritDoc PlanOperator.accept} */
   abstract accept<Ret, Arg>(
@@ -110,6 +108,11 @@ export abstract class PlanTupleOperator implements PlanOperator {
 
   /** {@inheritDoc PlanOperator.clone} */
   abstract clone(): PlanTupleOperator;
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return new Trie();
+  }
 }
 
 /** A plan operator or a bare attribute identifier; used where either form may appear in a tree position. */

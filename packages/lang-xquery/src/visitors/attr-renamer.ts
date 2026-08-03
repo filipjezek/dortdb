@@ -1,6 +1,10 @@
-import { AttributeRenamer, DortDBAsFriend, PlanVisitor } from '@dortdb/core';
+import {
+  AttributeRenamer,
+  DortDBAsFriend,
+  PlanVisitor,
+  Translations,
+} from '@dortdb/core';
 import { ProjectionSize, TreeJoin, XQueryPlanVisitor } from '../plan/index.js';
-import { RenameMap } from '@dortdb/core/plan';
 
 /**
  * Extends {@link AttributeRenamer} to apply column renames inside
@@ -9,19 +13,24 @@ import { RenameMap } from '@dortdb/core/plan';
  */
 export class XQueryAttributeRenamer
   extends AttributeRenamer
-  implements XQueryPlanVisitor<void, RenameMap>
+  implements XQueryPlanVisitor<void, Translations>
 {
   constructor(
-    vmap: Record<string, PlanVisitor<void, RenameMap>>,
+    vmap: Record<string, PlanVisitor<void, Translations>>,
     db: DortDBAsFriend,
   ) {
     super(vmap, db);
   }
-  visitTreeJoin(operator: TreeJoin, renames: RenameMap): void {
-    operator.source.accept(this.vmap, renames);
-    this.processItem(operator, 'step', operator.dependencies, renames);
+  visitTreeJoin(operator: TreeJoin, translations: Translations): void {
+    operator.source.accept(this.vmap, translations);
+    this.processItem(operator, 'step', translations, operator);
   }
-  visitProjectionSize(operator: ProjectionSize, renames: RenameMap): void {
-    operator.source.accept(this.vmap, renames);
+  visitProjectionSize(
+    operator: ProjectionSize,
+    translations: Translations,
+  ): void {
+    const renames = translations.get(operator);
+    operator.sizeCol = renames.get(operator.sizeCol.parts);
+    operator.source.accept(this.vmap, translations);
   }
 }

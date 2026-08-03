@@ -1,7 +1,9 @@
 import { allAttrs, ASTIdentifier } from '../../../ast.js';
+import { Trie } from '../../../data-structures/trie.js';
 import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import {
+  IdSet,
   OpOrId,
   PlanOperator,
   PlanTupleOperator,
@@ -30,11 +32,6 @@ export class Distinct extends PlanTupleOperator {
     this.schema = source.schema;
     this.schemaSet = source.schemaSet;
     source.parent = this;
-    if (attrs === allAttrs) {
-      this.dependencies.add([allAttrs]);
-    } else {
-      this.dependencies = schemaToTrie(attrs.filter(isId));
-    }
   }
 
   /** {@inheritDoc PlanOperator.accept} */
@@ -58,8 +55,7 @@ export class Distinct extends PlanTupleOperator {
         current as Calculation | ASTIdentifier,
       );
       (this.attrs as (Calculation | ASTIdentifier)[])[index] = replacement as
-        | Calculation
-        | ASTIdentifier;
+        Calculation | ASTIdentifier;
     }
   }
   /** {@inheritDoc PlanOperator.getChildren} */
@@ -77,5 +73,12 @@ export class Distinct extends PlanTupleOperator {
       this.attrs === allAttrs ? this.attrs : this.attrs.map(cloneIfPossible),
       this.source.clone(),
     );
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return this.attrs === allAttrs
+      ? new Trie([[allAttrs]])
+      : schemaToTrie(this.attrs.filter(isId));
   }
 }

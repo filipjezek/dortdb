@@ -25,7 +25,7 @@ describe('AST patterns', () => {
     const result = getRet(
       'RETURN (a)-[:REL]->(b:bar)<-[{foo: 1}]-(:baz:gaz)<--({foo: 2})--(c:qux $1)<--(d)-->(e)-[c:x|:y {foo: 3}]-(f)<-[:z*2]-(g)-[:z*{foo: 4}]->(h)-[:z*2..4]->(i)',
     );
-    const expected = new astCypher.PatternElChain([
+    let expected: ASTNode = new astCypher.PatternElChain([
       new astCypher.NodePattern(new astCypher.CypherIdentifier('a')),
       new astCypher.RelPattern(false, true, undefined, [
         new astCypher.CypherIdentifier('REL'),
@@ -124,6 +124,9 @@ describe('AST patterns', () => {
         ],
       ),
       new astCypher.NodePattern(new astCypher.CypherIdentifier('i')),
+    ]);
+    expected = new astCypher.ExistsSubquery(null, [
+      expected as astCypher.PatternElChain,
     ]);
     expect(result).toEqual(expected);
   });

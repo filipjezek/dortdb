@@ -63,7 +63,7 @@ export class ConnectionIndex implements Index {
   ): boolean {
     for (const dep of expr instanceof ASTIdentifier
       ? [expr.parts]
-      : expr.dependencies) {
+      : expr.getDependencies()) {
       if (renames?.get(dep)?.[0] === fromItemIndexKey) return true;
     }
     return false;

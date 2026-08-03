@@ -3,6 +3,7 @@ import { cloneIfPossible, isCalc, isId } from '../../../internal-fns/index.js';
 import { arrSetParent } from '../../../utils/arr-set-parent.js';
 import { schemaToTrie } from '../../../utils/trie.js';
 import {
+  IdSet,
   OpOrId,
   PlanOperator,
   PlanTupleOperator,
@@ -40,7 +41,6 @@ export class OrderBy extends PlanTupleOperator {
     this.schemaSet = source.schemaSet;
     source.parent = this;
     arrSetParent(orders.map(getKey), this);
-    this.dependencies = schemaToTrie(this.orders.map(getKey).filter(isId));
   }
 
   /** {@inheritDoc PlanOperator.accept} */
@@ -63,8 +63,7 @@ export class OrderBy extends PlanTupleOperator {
       this.source = replacement as PlanTupleOperator;
     } else {
       this.orders.find((o) => o.key === current).key = replacement as
-        | Calculation
-        | ASTIdentifier;
+        Calculation | ASTIdentifier;
     }
   }
   /** {@inheritDoc PlanOperator.getChildren} */
@@ -84,5 +83,10 @@ export class OrderBy extends PlanTupleOperator {
       })),
       this.source.clone(),
     );
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  override getDependencies(): IdSet {
+    return schemaToTrie(this.orders.map(getKey).filter(isId));
   }
 }

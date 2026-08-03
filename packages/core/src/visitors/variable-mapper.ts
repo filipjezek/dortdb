@@ -32,6 +32,8 @@ export interface VariableMapperCtx {
   variableNames: ASTIdentifier[];
   /** The next free numeric index to assign to a new variable. */
   currentIndex: number;
+  /** Include calculation intermediate operators */
+  calcIntermediates?: boolean;
 }
 
 /**
@@ -77,17 +79,33 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   ): ASTIdentifier {
     const isBoundParam = attr.parts[0] === boundParam;
     const iMin = Math.max(0, ctx.scopeStack.length - depth);
+    let translated: ASTIdentifier;
     for (let i = isBoundParam ? 0 : ctx.scopeStack.length - 1; i >= iMin; i--) {
       const scope = ctx.scopeStack[i];
-      const translated = scope.get(attr.parts);
+      translated = scope.get(attr.parts);
       if (translated !== undefined) {
-        return translated;
+        break;
       }
     }
-    const newTranslation = ASTIdentifier.fromParts([ctx.currentIndex]);
-    ctx.scopeStack.at(isBoundParam ? 0 : -1).set(attr.parts, newTranslation);
-    ctx.variableNames[ctx.currentIndex++] = attr;
-    return newTranslation;
+    if (!translated) {
+      translated = ASTIdentifier.fromParts([ctx.currentIndex]);
+      ctx.scopeStack.at(isBoundParam ? 0 : -1).set(attr.parts, translated);
+      ctx.variableNames[ctx.currentIndex++] = attr;
+    }
+    if (attr.aggregate) {
+      translated = ASTIdentifier.fromParts([...translated.parts]);
+      translated.aggregate = attr.aggregate;
+    }
+    return translated;
+  }
+
+  /**
+   * Removes an identifier from the current scope. For example, a projection
+   * may drop an attribute, and it should no longer be visible in the current scope.
+   * Instead, a previously shadowed variable may now be visible.
+   */
+  protected removeFromCurrScope(attr: ASTIdentifier, ctx: VariableMapperCtx) {
+    ctx.scopeStack.at(-1).delete(attr.parts);
   }
 
   /** Translates each {@link ASTIdentifier} in `array` in place; recurses into operators. */
@@ -141,7 +159,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   visitProjection(operator: plan.Projection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
 
-    // first tranlate all sources, so that the translation does not use the new translations being set in this operator
+    // first translate all sources, so that the translation does not use the new translations being set in this operator
     for (const attr of operator.attrs) {
       if (attr[0] instanceof ASTIdentifier) {
         operator.renames.delete(attr[0].parts);
@@ -149,6 +167,15 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
         attr[0] = this.translate(attr[0], ctx);
       } else {
         this.visitCalculation(attr[0], ctx);
+      }
+    }
+
+    // we clone to preserve translations, but remove attrs from schema (after translating new attr names)
+    const sourceScope = ctx.scopeStack.pop();
+    ctx.scopeStack.push(sourceScope.clone());
+    for (const id of operator.source.schema) {
+      if (!operator.schemaSet.has(id.parts)) {
+        this.removeFromCurrScope(id, ctx);
       }
     }
 
@@ -165,6 +192,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
         operator.renamesInv.set(attr[1].parts, attr[0].parts);
       }
     }
+
     const curr = ctx.scopeStack.pop();
     const sum = this.union(ctx.scopeStack.pop(), curr);
     ctx.currentIndex =
@@ -172,6 +200,8 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
       1;
     ctx.scopeStack.push(sum);
     this.setTranslations(operator, ctx);
+    const translations = ctx.translations.get(operator);
+    translations.external = this.union(translations.external, sourceScope);
   }
   visitSelection(operator: plan.Selection, ctx: VariableMapperCtx): void {
     operator.source.accept(this.vmap, ctx);
@@ -188,18 +218,50 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
       scope.set(attr.parts, ASTIdentifier.fromParts([ctx.currentIndex++]));
     }
   }
-  visitItemSource(operator: plan.ItemSource, ctx: VariableMapperCtx): void {}
+  visitItemSource(operator: plan.ItemSource, ctx: VariableMapperCtx): void {
+    this.setTranslations(operator, ctx);
+  }
   visitFnCall(operator: plan.FnCall, ctx: VariableMapperCtx): void {
-    throw new Error('Method not implemented.');
+    for (let i = 0; i < operator.args.length; i++) {
+      const k = operator.args[i];
+      if (k instanceof ASTIdentifier) {
+        operator.args[i] = this.translate(k, ctx);
+      } else if (plan.CalcIntermediate in k.op) {
+        k.op.accept(this.vmap, ctx);
+      }
+    }
+    this.setTranslations(operator, ctx);
   }
   visitLiteral(operator: plan.Literal, ctx: VariableMapperCtx): void {
-    throw new Error('Method not implemented.');
+    this.setTranslations(operator, ctx);
   }
   visitCalculation(operator: plan.Calculation, ctx: VariableMapperCtx): void {
+    this.setTranslations(operator, ctx);
     this.translateArray(operator.args, ctx);
+    if (operator.original && ctx.calcIntermediates) {
+      operator.original.accept(this.vmap, ctx);
+    }
   }
   visitConditional(operator: plan.Conditional, ctx: VariableMapperCtx): void {
-    throw new Error('Method not implemented.');
+    for (const key of ['condition', 'defaultCase'] as const) {
+      const item = operator[key];
+      if (!item) continue;
+      if (item instanceof ASTIdentifier) {
+        operator[key] = this.translate(item, ctx);
+      } else if (plan.CalcIntermediate in item) {
+        item.accept(this.vmap, ctx);
+      }
+    }
+    for (const wt of operator.whenThens) {
+      for (const i of [0, 1] as const) {
+        if (wt[i] instanceof ASTIdentifier) {
+          wt[i] = this.translate(wt[i], ctx);
+        } else if (plan.CalcIntermediate in wt[i]) {
+          wt[i].accept(this.vmap, ctx);
+        }
+      }
+    }
+    this.setTranslations(operator, ctx);
   }
   visitCartesianProduct(
     operator: plan.CartesianProduct,
@@ -276,8 +338,8 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     }
   }
   visitAggregate(operator: plan.AggregateCall, ctx: VariableMapperCtx): void {
-    this.setTranslations(operator, ctx);
     operator.postGroupOp.accept(this.vmap, ctx);
+    this.setTranslations(operator, ctx);
     for (let i = 0; i < operator.args.length; i++) {
       const arg = operator.args[i];
       if (arg instanceof ASTIdentifier) {
@@ -350,6 +412,7 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     this.setTranslations(operator, ctx);
   }
   visitItemFnSource(operator: plan.ItemFnSource, ctx: VariableMapperCtx): void {
+    this.setTranslations(operator, ctx);
     for (let i = 0; i < operator.args.length; i++) {
       const arg = operator.args[i];
       if (arg instanceof ASTIdentifier) {
@@ -380,7 +443,8 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
     }
   }
   visitQuantifier(operator: plan.Quantifier, ctx: VariableMapperCtx): void {
-    throw new Error('Method not implemented.');
+    // the query will be visited by the calculation.accept method, so we don't need to visit it again
+    this.setTranslations(operator, ctx);
   }
   visitIndexScan(operator: plan.IndexScan, ctx: VariableMapperCtx): void {
     this.visitTupleSource(operator, ctx);

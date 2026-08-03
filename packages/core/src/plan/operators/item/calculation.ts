@@ -20,8 +20,6 @@ export const CalcIntermediate = Symbol('CalcIntermediate');
 export class Calculation implements PlanOperator {
   /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies: IdSet;
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -41,7 +39,6 @@ export class Calculation implements PlanOperator {
   ) {
     arrSetParent(args, this);
     arrSetParent(aggregates, this);
-    this.dependencies = schemaToTrie(this.args.filter(isId));
   }
 
   /** {@inheritDoc PlanOperator.accept} */
@@ -130,5 +127,10 @@ export class Calculation implements PlanOperator {
       this.literal,
     );
     return res;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return schemaToTrie(this.args.filter(isId));
   }
 }

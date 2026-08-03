@@ -1,5 +1,10 @@
 import { allAttrs, ASTIdentifier } from '../../ast.js';
-import { PlanOperator, PlanTupleOperator, PlanVisitor } from '../visitor.js';
+import {
+  IdSet,
+  PlanOperator,
+  PlanTupleOperator,
+  PlanVisitor,
+} from '../visitor.js';
 import { schemaToTrie } from '../../utils/trie.js';
 import { Trie } from '../../data-structures/trie.js';
 
@@ -7,8 +12,6 @@ import { Trie } from '../../data-structures/trie.js';
 export class MapToItem implements PlanOperator {
   /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies = new Trie<string | symbol | number>();
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -27,7 +30,6 @@ export class MapToItem implements PlanOperator {
           ? source.schema[0]
           : ASTIdentifier.fromParts([allAttrs]);
     }
-    this.dependencies.add(this.key.parts);
     source.parent = this;
   }
 
@@ -54,6 +56,11 @@ export class MapToItem implements PlanOperator {
   clone(): MapToItem {
     const clone = new MapToItem(this.lang, this.key, this.source.clone());
     return clone;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return new Trie([this.key.parts]);
   }
 }
 

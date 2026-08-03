@@ -34,8 +34,6 @@ export class AggregateCall implements PlanOperator {
   protected _postGSource: PlanTupleOperator;
   /** {@inheritDoc PlanOperator.parent} */
   public parent: PlanOperator;
-  /** {@inheritDoc PlanOperator.dependencies} */
-  public dependencies: IdSet;
 
   constructor(
     /** {@inheritDoc PlanOperator.lang} */
@@ -53,7 +51,6 @@ export class AggregateCall implements PlanOperator {
       ASTIdentifier.fromParts(['<partition>']),
     );
     this.postGroupOp = this._postGSource;
-    this.dependencies = schemaToTrie(args.filter(isId));
     this.fieldName.aggregate = this;
   }
 
@@ -111,5 +108,10 @@ export class AggregateCall implements PlanOperator {
       if (m.aggregate === this) m.aggregate = clone;
     }
     return clone;
+  }
+
+  /** {@inheritDoc PlanOperator.getDependencies} */
+  getDependencies(): IdSet {
+    return schemaToTrie(this.args.filter(isId));
   }
 }
