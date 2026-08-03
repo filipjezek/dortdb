@@ -279,28 +279,27 @@ def dortdb_rules_commands():
         # 22: WRONG,
     })
 
-    # TODO measure these and change the timeout
-    allCommand = rule_command('all', 4, {
+    allCommand = rule_command('all', 24, {
         1: 50,
         # 2: TIMEOUT
-        # 3: ?
-        # 4: ?
-        # 5: ?
+        # 3: TIMEOUT
+        4: 5,
+        # 5: TIMEOUT
         6: 50,
-        # 7: ?
-        # 8: ?
-        # 9: ?
-        # 10: ?
-        # 11: ?
-        # 12: ?
+        # 7: TIMEOUT
+        # 8: TIMEOUT
+        # 9: TIMEOUT
+        # 10: TIMEOUT
+        # 11: TIMEOUT
+        # 12: TIMEOUT
         13: 100,
-        # 14: ?
+        # 14: TIMEOUT
         15: 50,
-        # 16: ?
-        # 17: ?
-        # 18: ?
-        # 20: ?
-        # 21: ?
+        16: 5,
+        # 17: TIMEOUT
+        # 18: TIMEOUT
+        # 20: TIMEOUT
+        # 21: TIMEOUT
         22: 10,
     })
 
@@ -311,7 +310,7 @@ def dortdb_rules_commands():
         planSimplificationCommand,
         predicateMovementCommand,
         subqueryNormalizationCommand,
-        # allCommand,
+        allCommand,
     ]
 
 def rule_command(rule: str, timeout_h: int, query_runs: dict[int, int]):
