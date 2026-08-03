@@ -154,6 +154,7 @@ def dortdb_rules_commands():
         16: 50,
         17: 50,
         18: 50,
+        # 19: TIMEOUT
         20: 100,
         21: 50,
         22: 100,
@@ -178,6 +179,7 @@ def dortdb_rules_commands():
         16: 30,
         17: 10,
         # 18: TIMEOUT
+        # 19: TIMEOUT
         # 20: TIMEOUT
         21: 5,
         22: 30,
@@ -202,6 +204,7 @@ def dortdb_rules_commands():
         16: 20,
         17: 40,
         18: 50,
+        # 19: TIMEOUT
         20: 100,
         # 21: TIMEOUT
         22: 20,
@@ -226,6 +229,7 @@ def dortdb_rules_commands():
         16: 50,
         17: 50,
         18: 50,
+        # 19: TIMEOUT
         20: 100,
         21: 50,
         22: 100,
@@ -250,16 +254,19 @@ def dortdb_rules_commands():
         16: 20,
         17: 10,
         # 18: TIMEOUT
+        # 19: TIMEOUT
         # 20: TIMEOUT
         # 21: TIMEOUT
         22: 30,
     })
 
-    subqueryNormalizationCommand = rule_command('subqueryNormalization', 12, {
+    # 10000+ 30
+
+    subqueryNormalizationCommand = rule_command('subqueryNormalization', 36, {
         1: 50,
-        # 2: WRONG
+        2: 30,
         3: 100,
-        # 4: WRONG
+        4: 5,
         5: 100,
         6: 100,
         7: 50,
@@ -272,11 +279,12 @@ def dortdb_rules_commands():
         14: 100,
         15: 50,
         16: 50,
-        # 17: WRONG
+        17: 50,
         18: 50,
-        # 20: WRONG
+        # 19: TIMEOUT
+        20: 10,
         21: 40,
-        # 22: WRONG,
+        22: 20,
     })
 
     allCommand = rule_command('all', 24, {
@@ -298,6 +306,7 @@ def dortdb_rules_commands():
         16: 5,
         # 17: TIMEOUT
         # 18: TIMEOUT
+        # 19: TIMEOUT
         # 20: TIMEOUT
         # 21: TIMEOUT
         22: 10,
@@ -310,7 +319,7 @@ def dortdb_rules_commands():
         planSimplificationCommand,
         predicateMovementCommand,
         subqueryNormalizationCommand,
-        allCommand,
+        # allCommand,
     ]
 
 def rule_command(rule: str, timeout_h: int, query_runs: dict[int, int]):
