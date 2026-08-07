@@ -7,7 +7,7 @@ TPCH_URL = 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-
 UNIBENCH_URL = {
     'dortdb': 'https://github.com/HY-UDBMS/UniBench/releases/download/0.2/Unibench-0.2.zip',
     'arango': 'arangodb://root@localhost:8529/unibench',
-    'orient': 'orientdb://root:pass@localhost:2424/test',
+    'orient': 'orientdb://root:pass@localhost:2424/unibench',
 }
 UNISAMPLE_URL = {
     'dortdb': 'https://s3.eu-north-1.amazonaws.com/dortdb.datasets-183601983835-eu-north-1-an/Unibench-0.2.sample.zip',
@@ -100,11 +100,11 @@ def tpch_commands():
 
     # These will surely timeout, so they are runned separately to avoid blocking the other queries.
     tpch_timeouts = [
-        Command('tpch', 'dortdb', TPCH_URL, {19: 30}),
-        Command('tpch', 'alasql', TPCH_URL, {4: 30}),
-        Command('tpch', 'alasql', TPCH_URL, {9: 30}),
-        Command('tpch', 'alasql', TPCH_URL, {19: 30}),
-        Command('tpch', 'alasql', TPCH_URL, {20: 30}),
+        Command('tpch', 'dortdb', TPCH_URL, { 19: 30 }),
+        Command('tpch', 'alasql', TPCH_URL, { 4: 30 }),
+        Command('tpch', 'alasql', TPCH_URL, { 9: 30 }),
+        Command('tpch', 'alasql', TPCH_URL, { 19: 30 }),
+        Command('tpch', 'alasql', TPCH_URL, { 20: 30 }),
     ]
 
     return [
@@ -117,9 +117,9 @@ def tpch_commands():
 
 def unibench_commands():
     unibench_all = [
-        Command('unibench', 'dortdb', UNIBENCH_URL['dortdb'], {1: 50}),
-        Command('unibench', 'arango', UNIBENCH_URL['arango'], {1: 80}),
-        Command('unibench', 'orient', UNIBENCH_URL['orient'], {1: 100}),
+        Command('unibench', 'dortdb', UNIBENCH_URL['dortdb'], { 1: 50 }),
+        Command('unibench', 'arango', UNIBENCH_URL['arango'], { 1: 80 }),
+        Command('unibench', 'orient', UNIBENCH_URL['orient'], { 1: 100 }),
     ]
 
     unisample_dortdb = Command('unibench', 'dortdb', UNISAMPLE_URL['dortdb'], same_runs([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 100))
@@ -260,8 +260,6 @@ def dortdb_rules_commands():
         22: 30,
     })
 
-    # 10000+ 30
-
     subqueryNormalizationCommand = rule_command('subqueryNormalization', 36, {
         1: 50,
         2: 30,
@@ -312,7 +310,7 @@ def dortdb_rules_commands():
         22: 10,
     })
 
-    return [
+    commands = [
         boundaryNormalizationCommand,
         indexAwareRewritingCommand,
         joinNormalizationCommand,
@@ -321,6 +319,21 @@ def dortdb_rules_commands():
         subqueryNormalizationCommand,
         # allCommand,
     ]
+
+    timeouts = list[Command]()
+    max_query_id = 22
+
+    for command in commands:
+        for i in range(0, max_query_id):
+            query_id = i + 1
+            if query_id not in command.query_runs:
+                timeout_command = Command(command.benchmark, command.database, command.data_url, { query_id: 1 })
+                timeout_command.output = command.output
+                timeout_command.custom_args = command.custom_args
+
+                timeouts.append(timeout_command)
+
+    return commands + timeouts
 
 def rule_command(rule: str, timeout_h: int, query_runs: dict[int, int]):
     command = Command('tpch', 'dortdb', TPCH_URL, query_runs)

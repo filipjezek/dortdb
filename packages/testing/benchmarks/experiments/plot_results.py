@@ -9,7 +9,7 @@ def main():
     _plot_tpch()
     _plot_unisample()
     _plot_unibench()
-    # _plot_tpch_rules()
+    _plot_tpch_rules()
 
 def _plot_tpch():
     results = Benchmark('tpch').load_results()
@@ -27,12 +27,20 @@ def _plot_unibench():
     results = Benchmark('unibench').load_results()
     databases = ['dortdb', 'arango', 'orient']
     labels = ['DortDB', 'ArangoDB', 'OrientDB']
-    plot_query_times(results, databases, 1, (6, 3), 'UniBench Dataset, Query 1', save_as='unibench_medians.pdf', labels=labels)
+    plot_query_times(results, databases, 1, (4, 4), ' ', save_as='unibench_medians.pdf', labels=labels)
 
 def _plot_tpch_rules():
     results = Benchmark('tpch').load_results()
     databases = [f'dortdb_exclude_{rule}' for rule in DORTDB_RULES]
-    plot_benchmark_query_times(results, databases, 'bar', (16, 6), 'TPC-H Query', save_as='tpch_rules_medians.pdf', legend_loc='upper right')
+    labels = [
+        'Boundary Normalization',
+        'Index-Aware Rewriting',
+        'Join Normalization',
+        'Plan Simplification',
+        'Predicate Movement',
+        'Subquery Normalization',
+    ]
+    plot_benchmark_query_times(results, databases, 'bar', (12, 4), 'TPC-H Query', save_as='tpch_rules_medians.pdf', legend_loc='upper right', labels=labels)
 
 def plot_database_query_times(results: pd.DataFrame, database: str):
     """Plot all query execution times for a given benchmark and database.
@@ -87,9 +95,6 @@ def plot_benchmark_query_times(
             # Sort the index so that the queries are in order.
             .sort_index()
     )
-
-    # Remove queries that have NaN for all databases.
-    df = df[~df.isna().all(axis=1)]
 
     plt.figure(figsize=size)
     ax = plt.gca()
@@ -171,16 +176,18 @@ def plot_query_times(
         databases: list[str],
         query_id: int,
         size: tuple[float, float],
-        title: str,
+        x_label: str,
         fillna = True,
         save_as: str | None = None,
         labels: list[str] | None = None,
     ):
     """Plots the median execution times of queries (with std error bars) for a given benchmark and databases."""
+
+    df = results[results['queryId'] == query_id][['database', 'median', 'std']]
     df = (
-        results[results['queryId'] == query_id]
+        df[df['database'].isin(databases)]
+            .sort_values(by='database', key=lambda x: [databases.index(db) for db in x])
             .reset_index()
-            [['database', 'median', 'std']]
     )
 
     plt.figure(figsize=size)
@@ -218,7 +225,7 @@ def plot_query_times(
     )
 
     ax.set_ylabel('Median execution time (ms)')
-    plt.title(title)
+    ax.set_xlabel(x_label)
     plt.tight_layout()
 
     if save_as:
