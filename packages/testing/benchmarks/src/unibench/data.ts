@@ -7,9 +7,7 @@ import {
 } from '@dortdb/dataloaders';
 import { DOMParser } from 'slimdom';
 
-export function prepareData(
-  dataUrl: string | undefined,
-): Promise<UnibenchData> {
+export function prepareData(dataUrl: string): Promise<UnibenchData> {
   return getParsedData(dataUrl, async (stream) => {
     const result = (await extractArchive(
       stream,

@@ -49,11 +49,16 @@ export class QueryRegistry {
       try {
         await query.run(db, totalTimeout, runsForQuery);
       } catch (error) {
-        workerLog(Events.queryError, `Error running query ${queryId}`, {
-          queryId,
-          filename: def.filename,
-          error: error instanceof Error ? error.message : String(error),
-        });
+        workerLog(
+          Events.queryError,
+          `Error running query ${queryId}`,
+          {
+            queryId,
+            filename: def.filename,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          true,
+        );
       }
     }
   }

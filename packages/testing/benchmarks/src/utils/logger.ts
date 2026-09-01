@@ -34,7 +34,14 @@ export function setupLogger(args: BenchmarkArgs) {
   loggerInstance.info(
     {
       event: Events.runStarted,
-      config: args,
+      config: {
+        ...args,
+        // Hide the data URL if it's not an HTTPS URL to avoid logging sensitive information.
+        // Could be a connection string to a database.
+        dataUrl: args.dataUrl?.startsWith('https://')
+          ? args.dataUrl
+          : '[REDACTED]',
+      },
     },
     `Benchmark run started`,
   );
