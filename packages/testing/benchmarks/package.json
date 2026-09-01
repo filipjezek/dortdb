@@ -5,12 +5,12 @@
   "description": "",
   "exports": {
     ".": "./dist/index.js",
-    "./tpch/benchmark_dortdb": "./dist/tpch/benchmark-dortdb.js",
-    "./tpch/benchmark_sqlite": "./dist/tpch/benchmark-sqlite.js",
-    "./tpch/benchmark_alasql": "./dist/tpch/benchmark-alasql.js",
-    "./unibench/benchmark_dortdb": "./dist/unibench/benchmark-dortdb.js",
-    "./unibench/benchmark_arango": "./dist/unibench/benchmark-arango.js",
-    "./unibench/benchmark_orient": "./dist/unibench/benchmark-orient.js",
+    "./tpch/benchmark-dortdb": "./dist/tpch/benchmark-dortdb.js",
+    "./tpch/benchmark-sqlite": "./dist/tpch/benchmark-sqlite.js",
+    "./tpch/benchmark-alasql": "./dist/tpch/benchmark-alasql.js",
+    "./unibench/benchmark-dortdb": "./dist/unibench/benchmark-dortdb.js",
+    "./unibench/benchmark-arango": "./dist/unibench/benchmark-arango.js",
+    "./unibench/benchmark-orient": "./dist/unibench/benchmark-orient.js",
     "./package.json": "./package.json"
   },
   "repository": {
