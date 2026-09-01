@@ -12,9 +12,7 @@ export type AlaSQL = typeof alasqlRaw & {
 const alasql = alasqlRaw as AlaSQL;
 
 export class AlasqlDatabase extends Database<SqlObject[]> {
-  constructor(
-    readonly innerDb: AlaSQL
-  ) {
+  constructor(readonly innerDb: AlaSQL) {
     super();
   }
 
@@ -23,14 +21,13 @@ export class AlasqlDatabase extends Database<SqlObject[]> {
   }
 
   override extractResults(result: SqlObject[]): SqlObject[] {
-    return result.map(object => {
+    return result.map((object) => {
       const output: SqlObject = {};
 
       for (const key in object) {
         const value = object[key];
-        output[key] = value instanceof Date
-          ? value.toISOString().substring(0, 10)
-          : value;
+        output[key] =
+          value instanceof Date ? value.toISOString().substring(0, 10) : value;
       }
 
       return output;
@@ -56,8 +53,12 @@ function setupAlasql(alasql: AlaSQL) {
   (alasql.options as any).dateAsString = false;
   alasql.options.cache = false;
   alasql.fn['substr'] = substr.impl;
-  alasql.fn['date_interval'] = datetime.functions.find(x => x.name === 'interval').impl;
-  alasql.fn['date_add'] = datetime.functions.find(x => x.name === 'add').impl;
-  alasql.fn['date_sub'] = datetime.functions.find(x => x.name === 'sub').impl;
-  alasql.fn['date_extract'] = datetime.functions.find(x => x.name === 'extract').impl;
+  alasql.fn['date_interval'] = datetime.functions.find(
+    (x) => x.name === 'interval',
+  ).impl;
+  alasql.fn['date_add'] = datetime.functions.find((x) => x.name === 'add').impl;
+  alasql.fn['date_sub'] = datetime.functions.find((x) => x.name === 'sub').impl;
+  alasql.fn['date_extract'] = datetime.functions.find(
+    (x) => x.name === 'extract',
+  ).impl;
 }

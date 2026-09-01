@@ -23,9 +23,12 @@ async function main() {
       dortdb: args.dortdb,
     });
   } catch (error) {
-    logger().error({
-      event: Events.workerError,
-      error: error instanceof Error ? error.message : String(error),
-    }, 'Benchmark worker failed');
+    logger().error(
+      {
+        event: Events.workerError,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Benchmark worker failed',
+    );
   }
 }

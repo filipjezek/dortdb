@@ -1,6 +1,11 @@
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { AVAILABLE_BENCHMARKS, AVAILABLE_DATABASES, type BenchmarkName, type DatabaseName } from './run-benchmark-worker.js';
+import {
+  AVAILABLE_BENCHMARKS,
+  AVAILABLE_DATABASES,
+  type BenchmarkName,
+  type DatabaseName,
+} from './run-benchmark-worker.js';
 import { DortDBRuleFamily, DORTDB_RULE_FAMILIES } from './databases/dortdb.js';
 
 export type BenchmarkArgs = {
@@ -40,7 +45,8 @@ export function parseArgs(): BenchmarkArgs {
     .option('data-url', {
       alias: 'u',
       type: 'string',
-      description: 'URL to fetch the data from or a connection string to the database.',
+      description:
+        'URL to fetch the data from or a connection string to the database.',
       required: true,
     })
     .option('queries', {
@@ -53,21 +59,24 @@ export function parseArgs(): BenchmarkArgs {
     .option('runs', {
       alias: 'r',
       type: 'number',
-      description: 'Numbers of runs for the queries. Has to have the same length as the queries array. Or, if only one number is provided, it will be used for all queries.',
+      description:
+        'Numbers of runs for the queries. Has to have the same length as the queries array. Or, if only one number is provided, it will be used for all queries.',
       array: true,
-      default: [ 5 ],
+      default: [5],
     })
     .option('soft-timeout', {
       alias: 'T',
       type: 'number',
-      description: 'Set a soft timeout for all runs of a query in seconds. The query will not be stopped, but the next run will be skipped if the total time exceeds this limit.',
+      description:
+        'Set a soft timeout for all runs of a query in seconds. The query will not be stopped, but the next run will be skipped if the total time exceeds this limit.',
       default: 24 * 60 * 60, // 24 hours,
       defaultDescription: '24 hours',
     })
     .option('timeout', {
       alias: 't',
       type: 'number',
-      description: 'Set a hard timeout for all runs of a query in seconds. The query will be stopped if the time exceeds this limit.',
+      description:
+        'Set a hard timeout for all runs of a query in seconds. The query will be stopped if the time exceeds this limit.',
       default: 24 * 60 * 60, // 24 hours,
       defaultDescription: '24 hours',
     })
@@ -87,13 +96,15 @@ export function parseArgs(): BenchmarkArgs {
     })
     .option('unibench-secondary-indexes', {
       type: 'boolean',
-      description: 'Whether to create secondary indexes for the Unibench benchmark. The original Unibench paper uses only primary indexes.',
+      description:
+        'Whether to create secondary indexes for the Unibench benchmark. The original Unibench paper uses only primary indexes.',
       default: false,
     })
     .option('dortdb-exclude-rule', {
       type: 'string',
       array: true,
-      description: 'Exclude specific rule families from DortDB. This can be used to test the performance impact of certain optimizations.',
+      description:
+        'Exclude specific rule families from DortDB. This can be used to test the performance impact of certain optimizations.',
       choices: DORTDB_RULE_FAMILIES,
       default: [],
     })

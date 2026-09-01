@@ -5,9 +5,7 @@ import { Cursor } from 'arangojs/cursors';
 import { parseConnectionString } from '../utils/common.js';
 
 export class ArangoDatabase extends Database<Cursor> {
-  constructor(
-    readonly innerDb: ArangoDB
-  ) {
+  constructor(readonly innerDb: ArangoDB) {
     super();
   }
 
@@ -24,7 +22,10 @@ export class ArangoDatabase extends Database<Cursor> {
   }
 
   static create(dataUrl: string): ArangoDatabase {
-    const { username, password, host, port, database } = parseConnectionString(dataUrl, 'arangodb');
+    const { username, password, host, port, database } = parseConnectionString(
+      dataUrl,
+      'arangodb',
+    );
 
     const innerDb = new ArangoDB({
       url: `http://${host}:${port}`,

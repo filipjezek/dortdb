@@ -5,9 +5,7 @@ import initSqlJs, { QueryExecResult, type Database as SqliteDB } from 'sql.js';
 export { SqliteDB };
 
 export class SqliteDatabase extends Database<QueryExecResult[]> {
-  constructor(
-    readonly innerDb: SqliteDB
-  ) {
+  constructor(readonly innerDb: SqliteDB) {
     super();
   }
 
@@ -18,8 +16,7 @@ export class SqliteDatabase extends Database<QueryExecResult[]> {
   override extractResults(result: QueryExecResult[]): SqlObject[] {
     // A list of results is returned (one for each statement executed). However, for some un-fucking-believable reason, if there are no rows, the result is skipped.
     // Unbelievable.
-    if (result.length === 0)
-      return [];
+    if (result.length === 0) return [];
 
     const { columns, values } = result[0];
     return rowsToObjects(columns, values);

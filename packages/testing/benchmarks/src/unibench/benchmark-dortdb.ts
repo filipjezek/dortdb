@@ -15,7 +15,9 @@ if (!isMainThread) {
   await unibenchBenchmark(workerData as BenchmarkWorkerOptions);
 }
 
-export default async function unibenchBenchmark(options: BenchmarkWorkerOptions) {
+export default async function unibenchBenchmark(
+  options: BenchmarkWorkerOptions,
+) {
   const db = DortDBDatabase.create(options.dortdb.excludeRules);
 
   await db.setup(async () => {
@@ -28,7 +30,11 @@ export default async function unibenchBenchmark(options: BenchmarkWorkerOptions)
   await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
-function registerDataSources(db: DortDB, data: UnibenchData, secondaryIndexes: boolean) {
+function registerDataSources(
+  db: DortDB,
+  data: UnibenchData,
+  secondaryIndexes: boolean,
+) {
   db.registerSource(['customers'], data.customers);
   db.registerSource(['products'], data.products);
   db.registerSource(['feedback'], data.feedback);
@@ -40,7 +46,10 @@ function registerDataSources(db: DortDB, data: UnibenchData, secondaryIndexes: b
   db.registerSource(['vendors'], data.vendors);
 
   db.createIndex(['defaultGraph', 'nodes'], [], ConnectionIndex);
-  db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, { mainLang: 'cypher', fromItemKey: ['x'] });
+  db.createIndex(['defaultGraph', 'nodes'], ['x.id'], MapIndex, {
+    mainLang: 'cypher',
+    fromItemKey: ['x'],
+  });
   db.createIndex(['defaultGraph', 'edges'], [], ConnectionIndex);
   db.createIndex(['customers'], ['id'], MapIndex);
   db.createIndex(['products'], ['productId'], MapIndex);
@@ -60,58 +69,69 @@ function registerDataSources(db: DortDB, data: UnibenchData, secondaryIndexes: b
 }
 
 function defineQueries(): QueryDef[] {
-  return [ {
-    filename: 'q1_dortdb.txt',
-    params: {
-      customerId: () => pickRandom(personIds),
-    },
-  }, {
-    filename: 'q2_dortdb.txt',
-    params: {
-      productId: () => pickRandom(productIds),
-    },
-  }, {
-    filename: 'q3_dortdb.txt',
-    params: {
-      productId: () => pickRandom(productIds),
-    },
-  }, {
-    filename: 'q4_dortdb.txt',
-  }, {
-    filename: 'q5_dortdb.txt',
-    params: {
-      personId: () => pickRandom(personIds),
-      brand: () => pickRandom(brands),
-    },
-  }, {
-    filename: 'q6_dortdb.txt',
-    params: {
-      customerId1: () => pickRandom(personIds),
-      customerId2: ({ customerId1 }) => {
-        let id2 = pickRandom(personIds);
-        while (id2 === customerId1)
-          id2 = pickRandom(personIds);
-        return id2;
+  return [
+    {
+      filename: 'q1_dortdb.txt',
+      params: {
+        customerId: () => pickRandom(personIds),
       },
     },
-  }, {
-    filename: 'q7_dortdb.txt',
-    params: {
-      brand: () => pickRandom(brands),
+    {
+      filename: 'q2_dortdb.txt',
+      params: {
+        productId: () => pickRandom(productIds),
+      },
     },
-  }, {
-    filename: 'q8_dortdb.txt',
-    params: {
-      industry: () => 'Sports',
+    {
+      filename: 'q3_dortdb.txt',
+      params: {
+        productId: () => pickRandom(productIds),
+      },
     },
-  }, {
-    filename: 'q9_dortdb.txt',
-    params: {
-      country: () => 'China',
+    {
+      filename: 'q4_dortdb.txt',
     },
-  }, {
-    filename: 'q10_dortdb.txt',
-  }, {
-    filename: 'q4_naive.txt',
-  } ];
+    {
+      filename: 'q5_dortdb.txt',
+      params: {
+        personId: () => pickRandom(personIds),
+        brand: () => pickRandom(brands),
+      },
+    },
+    {
+      filename: 'q6_dortdb.txt',
+      params: {
+        customerId1: () => pickRandom(personIds),
+        customerId2: ({ customerId1 }) => {
+          let id2 = pickRandom(personIds);
+          while (id2 === customerId1) id2 = pickRandom(personIds);
+          return id2;
+        },
+      },
+    },
+    {
+      filename: 'q7_dortdb.txt',
+      params: {
+        brand: () => pickRandom(brands),
+      },
+    },
+    {
+      filename: 'q8_dortdb.txt',
+      params: {
+        industry: () => 'Sports',
+      },
+    },
+    {
+      filename: 'q9_dortdb.txt',
+      params: {
+        country: () => 'China',
+      },
+    },
+    {
+      filename: 'q10_dortdb.txt',
+    },
+    {
+      filename: 'q4_naive.txt',
+    },
+  ];
 }

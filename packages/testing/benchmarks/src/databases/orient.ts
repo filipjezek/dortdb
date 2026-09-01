@@ -8,9 +8,7 @@ export type OrientDB = orientjs.Db;
 type Result = ReturnType<OrientDB['query']>;
 
 export class OrientDatabase extends Database<Result> {
-  constructor(
-    readonly innerDb: OrientDB
-  ) {
+  constructor(readonly innerDb: OrientDB) {
     super();
   }
 
@@ -27,7 +25,10 @@ export class OrientDatabase extends Database<Result> {
   }
 
   static create(dataUrl: string): OrientDatabase {
-    const { username, password, host, port, database } = parseConnectionString(dataUrl, 'orientdb');
+    const { username, password, host, port, database } = parseConnectionString(
+      dataUrl,
+      'orientdb',
+    );
 
     const dbserver = orientjs({
       host,

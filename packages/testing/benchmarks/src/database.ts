@@ -7,12 +7,16 @@ export abstract class Database<TResult> {
    * Use this to properly setup everything before running the benchmark and to measure the time it takes to setup the environment.
    * Make sure to await it!
    */
-  async setup<TOutput = void>(callback?: () => Promise<TOutput>): Promise<TOutput> {
+  async setup<TOutput = void>(
+    callback?: () => Promise<TOutput>,
+  ): Promise<TOutput> {
     const start = performance.now();
     const result = await callback?.();
     const duration = performance.now() - start;
 
-    workerLog(Events.environmentSetup, 'Finished preparing environment', { duration });
+    workerLog(Events.environmentSetup, 'Finished preparing environment', {
+      duration,
+    });
 
     return result;
   }
@@ -41,8 +45,7 @@ export function rowsToObjects(columns: string[], rows: SqlRow[]): SqlObject[] {
   for (const row of rows) {
     const object: SqlObject = {};
 
-    for (let i = 0; i < columns.length; i++)
-      object[columns[i]] = row[i];
+    for (let i = 0; i < columns.length; i++) object[columns[i]] = row[i];
 
     objects.push(object);
   }

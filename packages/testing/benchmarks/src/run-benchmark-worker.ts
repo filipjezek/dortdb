@@ -21,13 +21,22 @@ export type BenchmarkWorkerOptions = {
   };
 };
 
-export const AVAILABLE_BENCHMARKS = [ 'tpch', 'unibench' ] as const;
-export type BenchmarkName = typeof AVAILABLE_BENCHMARKS[number];
+export const AVAILABLE_BENCHMARKS = ['tpch', 'unibench'] as const;
+export type BenchmarkName = (typeof AVAILABLE_BENCHMARKS)[number];
 
-export const AVAILABLE_DATABASES = [ 'alasql', 'sqlite', 'arango', 'orient', 'dortdb' ] as const;
-export type DatabaseName = typeof AVAILABLE_DATABASES[number];
+export const AVAILABLE_DATABASES = [
+  'alasql',
+  'sqlite',
+  'arango',
+  'orient',
+  'dortdb',
+] as const;
+export type DatabaseName = (typeof AVAILABLE_DATABASES)[number];
 
-const BENCHMARK_WORKER_MODULES: Record<BenchmarkName, Partial<Record<DatabaseName, string>>> = {
+const BENCHMARK_WORKER_MODULES: Record<
+  BenchmarkName,
+  Partial<Record<DatabaseName, string>>
+> = {
   tpch: {
     alasql: './tpch/benchmark_alasql.js',
     sqlite: './tpch/benchmark_sqlite.js',
@@ -41,14 +50,19 @@ const BENCHMARK_WORKER_MODULES: Record<BenchmarkName, Partial<Record<DatabaseNam
 };
 
 function resolveWorkerScript(options: BenchmarkWorkerOptions): URL {
-  const scriptPath = BENCHMARK_WORKER_MODULES[options.benchmark][options.database];
+  const scriptPath =
+    BENCHMARK_WORKER_MODULES[options.benchmark][options.database];
   if (!scriptPath)
-    throw new Error(`No worker script configured for ${options.benchmark}/${options.database}`);
+    throw new Error(
+      `No worker script configured for ${options.benchmark}/${options.database}`,
+    );
 
   return new URL(scriptPath, import.meta.url);
 }
 
-export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promise<void> {
+export async function runBenchmarkWorker(
+  options: BenchmarkWorkerOptions,
+): Promise<void> {
   const workerScript = resolveWorkerScript(options);
 
   await new Promise<void>((resolve, reject) => {
@@ -78,7 +92,10 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
     if (timeoutMs > 0) {
       timeoutId = setTimeout(() => {
         // Finish will be called automatically by the 'exit' event.
-        logger().error({ event: Events.hardTimeout }, `Worker timed out after ${options.hardTimeout}s`);
+        logger().error(
+          { event: Events.hardTimeout },
+          `Worker timed out after ${options.hardTimeout}s`,
+        );
 
         worker.terminate().catch((error: unknown) => {
           finish(() => reject(error));
@@ -93,10 +110,8 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
           ...value.details,
         };
 
-        if (value.isError)
-          logger().error(messageObject, value.message);
-        else
-          logger().info(messageObject, value.message);
+        if (value.isError) logger().error(messageObject, value.message);
+        else logger().info(messageObject, value.message);
 
         if (
           value.event === Events.environmentSetup &&
@@ -114,7 +129,11 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
     worker.on('exit', (code) => {
       if (code !== 0) {
         finish(() => {
-          reject(new Error(`Worker exited with code ${code} (${options.benchmark}/${options.database}, q${options.queryIds})`));
+          reject(
+            new Error(
+              `Worker exited with code ${code} (${options.benchmark}/${options.database}, q${options.queryIds})`,
+            ),
+          );
         });
         return;
       }
@@ -125,9 +144,12 @@ export async function runBenchmarkWorker(options: BenchmarkWorkerOptions): Promi
 
 function setupMemorySnapshots(options: BenchmarkWorkerOptions): NodeJS.Timeout {
   return setInterval(() => {
-    logger().info({
-      event: Events.memorySnapshot,
-      ...process.memoryUsage(),
-    }, 'Memory snapshot');
+    logger().info(
+      {
+        event: Events.memorySnapshot,
+        ...process.memoryUsage(),
+      },
+      'Memory snapshot',
+    );
   }, options.snapshotInterval * 1000);
 }

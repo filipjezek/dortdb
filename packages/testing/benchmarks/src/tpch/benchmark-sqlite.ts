@@ -15,7 +15,9 @@ if (!isMainThread) {
   await tpchBenchmarkSQLite(workerData as BenchmarkWorkerOptions);
 }
 
-export default async function tpchBenchmarkSQLite(options: BenchmarkWorkerOptions) {
+export default async function tpchBenchmarkSQLite(
+  options: BenchmarkWorkerOptions,
+) {
   const db = await SqliteDatabase.create();
 
   await db.setup(async () => {
@@ -34,9 +36,13 @@ async function registerDataSources(db: SqliteDB, data: TpchData) {
 
   for (const [table, rows] of Object.entries(data)) {
     const columns = Object.keys(rows[0]);
-    const placeholders = Object.keys(rows[0]).map(() => '?').join(', ');
+    const placeholders = Object.keys(rows[0])
+      .map(() => '?')
+      .join(', ');
 
-    const stmt = db.prepare(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`);
+    const stmt = db.prepare(
+      `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
+    );
 
     for (const row of rows) {
       stmt.run(

@@ -12,7 +12,9 @@ if (!isMainThread) {
   await unibenchBenchmarkOrient(workerData as BenchmarkWorkerOptions);
 }
 
-export default async function unibenchBenchmarkOrient(options: BenchmarkWorkerOptions) {
+export default async function unibenchBenchmarkOrient(
+  options: BenchmarkWorkerOptions,
+) {
   const db = OrientDatabase.create(options.dataUrl);
 
   await db.setup();
@@ -25,53 +27,63 @@ export default async function unibenchBenchmarkOrient(options: BenchmarkWorkerOp
 }
 
 function defineQueries(): QueryDef[] {
-  return [ {
-    filename: 'q1_orient.txt',
-    params: {
-      id: () => pickRandom(personIds),
-    },
-  }, {
-    filename: 'q2_orient.txt',
-    params: {
-      id: () => pickRandom(productIds),
-    },
-  }, {
-    filename: 'q3_orient.txt',
-    params: {
-      id: () => pickRandom(productIds),
-    },
-  }, {
-    filename: 'q4_orient.txt',
-  }, {
-    filename: 'q5_orient.txt',
-    params: {
-      person: () => pickRandom(personIds),
-      brand: () => pickRandom(brands),
-    },
-  }, {
-    filename: 'q6_orient.txt',
-    params: {
-      id1: () => pickRandom(personIds),
-      id2: ({ id1 }) => {
-        let id2 = pickRandom(personIds);
-        while (id2 === id1)
-          id2 = pickRandom(personIds);
-        return id2;
+  return [
+    {
+      filename: 'q1_orient.txt',
+      params: {
+        id: () => pickRandom(personIds),
       },
     },
-  }, {
-    filename: 'q7_orient.txt',
-    params: {
-      brand: () => pickRandom(brands),
+    {
+      filename: 'q2_orient.txt',
+      params: {
+        id: () => pickRandom(productIds),
+      },
     },
-  }, {
-    filename: 'q8_orient.txt',
-    params: {
-      industry: () => 'Sports',
+    {
+      filename: 'q3_orient.txt',
+      params: {
+        id: () => pickRandom(productIds),
+      },
     },
-  }, {
-    filename: 'q9_orient.txt',
-  }, {
-    filename: 'q10_orient.txt',
-  } ];
+    {
+      filename: 'q4_orient.txt',
+    },
+    {
+      filename: 'q5_orient.txt',
+      params: {
+        person: () => pickRandom(personIds),
+        brand: () => pickRandom(brands),
+      },
+    },
+    {
+      filename: 'q6_orient.txt',
+      params: {
+        id1: () => pickRandom(personIds),
+        id2: ({ id1 }) => {
+          let id2 = pickRandom(personIds);
+          while (id2 === id1) id2 = pickRandom(personIds);
+          return id2;
+        },
+      },
+    },
+    {
+      filename: 'q7_orient.txt',
+      params: {
+        brand: () => pickRandom(brands),
+      },
+    },
+    {
+      filename: 'q8_orient.txt',
+      params: {
+        industry: () => 'Sports',
+      },
+    },
+    {
+      filename: 'q9_orient.txt',
+    },
+    {
+      filename: 'q10_orient.txt',
+    },
+  ];
 }

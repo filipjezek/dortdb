@@ -11,7 +11,10 @@ const DATA_DIR = resolve(import.meta.dirname, '../../dist/data');
 
 type Parser<TData> = (stream: ReadStream) => Promise<TData>;
 
-export async function getParsedData<TData>(url: string, parser: Parser<TData>): Promise<TData> {
+export async function getParsedData<TData>(
+  url: string,
+  parser: Parser<TData>,
+): Promise<TData> {
   const stream = await loadBenchmarkData(url);
 
   const start = performance.now();

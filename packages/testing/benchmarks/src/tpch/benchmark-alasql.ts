@@ -15,7 +15,9 @@ if (!isMainThread) {
   await tpchBenchmarkAlaSQL(workerData as BenchmarkWorkerOptions);
 }
 
-export default async function tpchBenchmarkAlaSQL(options: BenchmarkWorkerOptions) {
+export default async function tpchBenchmarkAlaSQL(
+  options: BenchmarkWorkerOptions,
+) {
   const db = AlasqlDatabase.create();
 
   await db.setup(async () => {
@@ -46,7 +48,9 @@ async function registerDataSources(db: AlaSQL, data: TpchData) {
 
     const rows = data[table];
     const columns = Object.keys(rows[0]);
-    const placeholders = Object.keys(rows[0]).map(() => '?').join(', ');
+    const placeholders = Object.keys(rows[0])
+      .map(() => '?')
+      .join(', ');
 
     for (const row of rows) {
       db(

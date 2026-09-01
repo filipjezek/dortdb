@@ -29,5 +29,5 @@ Object.defineProperty(SlimdomDocument.prototype, 'createTreeWalker', {
 });
 
 export function createDocument(): Document {
-    return new SlimdomDocument() as unknown as Document;
+  return new SlimdomDocument() as unknown as Document;
 }

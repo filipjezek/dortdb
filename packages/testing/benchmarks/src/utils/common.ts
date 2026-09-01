@@ -10,7 +10,8 @@ function createAreNumbersEqual(
     if (!isNaN(a) && !isNaN(b)) {
       if (a % 1 !== 0 || b % 1 !== 0) {
         // Compare numbers with a tolerance to account for floating point precision issues
-        const res = Math.abs(a - b) <= atol + rtol * Math.max(Math.abs(a), Math.abs(b));
+        const res =
+          Math.abs(a - b) <= atol + rtol * Math.max(Math.abs(a), Math.abs(b));
         // if (!res) {
         //   console.error(
         //     `Numbers ${a} and ${b} differ more than the allowed tolerance.`,
@@ -51,9 +52,13 @@ type ConnectionCredentials = {
 
 // A workaround for the fact that we have to pass the credentials to the databases and we just really don't want to complicate the CLI with a shit ton of options.
 // It doesn't help that OrientDB and ArangoDB don't support connection strings, but we can define our own format!
-const CONNECTION_STRING_REGEX = /^(?<protocol>[^:]+):\/\/(?<username>[^:]+)(?::(?<password>[^@]+))?@(?<host>[^:]+):(?<port>\d+)\/(?<database>.+)$/;
+const CONNECTION_STRING_REGEX =
+  /^(?<protocol>[^:]+):\/\/(?<username>[^:]+)(?::(?<password>[^@]+))?@(?<host>[^:]+):(?<port>\d+)\/(?<database>.+)$/;
 
-export function parseConnectionString(connectionString: string, databaseProtocol: string): ConnectionCredentials {
+export function parseConnectionString(
+  connectionString: string,
+  databaseProtocol: string,
+): ConnectionCredentials {
   const match = connectionString.match(CONNECTION_STRING_REGEX);
   if (!match || !match.groups)
     throw new Error(`Invalid connection string: ${connectionString}`);
@@ -61,7 +66,9 @@ export function parseConnectionString(connectionString: string, databaseProtocol
   const { protocol, username, password, host, port, database } = match.groups;
 
   if (protocol !== databaseProtocol)
-    throw new Error(`Invalid protocol in connection string: ${protocol}. Expected: ${databaseProtocol}`);
+    throw new Error(
+      `Invalid protocol in connection string: ${protocol}. Expected: ${databaseProtocol}`,
+    );
 
   return { username, password, host, port: parseInt(port, 10), database };
 }

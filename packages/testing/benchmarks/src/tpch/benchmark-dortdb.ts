@@ -54,7 +54,6 @@ function registerDataSources(db: DortDB, data: TpchData) {
   db.createIndex(['supplier'], ['nationkey'], MapIndex);
 }
 
-
 function defineQueries(): QueryDef[] {
   return Array.from({ length: QUERY_COUNT }, (_, i) => ({
     filename: `q${i + 1}_dortdb.sql`,

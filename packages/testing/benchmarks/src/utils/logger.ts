@@ -17,7 +17,9 @@ let loggerInstance: Logger | undefined = undefined;
 
 export function logger() {
   if (!loggerInstance)
-    throw new Error('Logger not initialized. Call `setupLogger()` before using the logger.');
+    throw new Error(
+      'Logger not initialized. Call `setupLogger()` before using the logger.',
+    );
 
   return loggerInstance;
 }
@@ -29,31 +31,36 @@ export function setupLogger(args: BenchmarkArgs) {
   const runId = randomUUID();
   loggerInstance = logger.child({ runId });
 
-  loggerInstance.info({
-    event: Events.runStarted,
-    config: args,
-  }, `Benchmark run started`);
+  loggerInstance.info(
+    {
+      event: Events.runStarted,
+      config: args,
+    },
+    `Benchmark run started`,
+  );
 }
 
 function createLogger(args: BenchmarkArgs) {
   return pino(
     transport({
-      targets: [ {
-        target: 'pino/file',
-        options: {
-          destination: resolve(LOG_DIR, getLogFilename(args)),
-          mkdir: true,
+      targets: [
+        {
+          target: 'pino/file',
+          options: {
+            destination: resolve(LOG_DIR, getLogFilename(args)),
+            mkdir: true,
+          },
         },
-      }, {
-        target: 'pino-pretty',
-      } ],
+        {
+          target: 'pino-pretty',
+        },
+      ],
     }),
   );
 }
 
 function getLogFilename(args: BenchmarkArgs) {
-  if (args.output)
-    return args.output;
+  if (args.output) return args.output;
 
   return `${args.benchmark}_${args.database}.log`;
 }
@@ -75,7 +82,12 @@ export function isWorkerLogMessage(value: unknown): value is WorkerLogMessage {
   );
 }
 
-export function workerLog(event: EventType, message: string, details: Record<string, unknown> = {}, isError = false) {
+export function workerLog(
+  event: EventType,
+  message: string,
+  details: Record<string, unknown> = {},
+  isError = false,
+) {
   parentPort.postMessage({
     event,
     details,
@@ -84,7 +96,7 @@ export function workerLog(event: EventType, message: string, details: Record<str
   } satisfies WorkerLogMessage);
 }
 
-type EventType = typeof Events[keyof typeof Events];
+type EventType = (typeof Events)[keyof typeof Events];
 
 export const Events = {
   runStarted: 'run-started',

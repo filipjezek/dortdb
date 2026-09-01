@@ -2,7 +2,7 @@ import { getParsedData } from '../utils/data-loader.js';
 import { extractArchive, TpchData, tpchFiles } from '@dortdb/dataloaders';
 
 export function prepareData(dataUrl: string): Promise<TpchData> {
-  return getParsedData(dataUrl, async stream => {
+  return getParsedData(dataUrl, async (stream) => {
     const result = (await extractArchive(
       stream,
       tpchFiles,
