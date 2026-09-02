@@ -380,9 +380,16 @@ export class VariableMapper implements PlanVisitor<void, VariableMapperCtx> {
   ): void {
     operator.left.accept(this.vmap, ctx);
     this.setTranslations(operator, ctx);
+    let leftScope: VariableMap;
+    if (operator.left instanceof PlanTupleOperator && operator.left.schema) {
+      leftScope = ctx.scopeStack.pop();
+      ctx.currentIndex -= leftScope.size;
+    }
     operator.right.accept(this.vmap, ctx);
-    if (operator.right instanceof PlanTupleOperator && operator.right.schema)
-      ctx.currentIndex -= ctx.scopeStack.pop().size;
+    if (operator.right instanceof PlanTupleOperator && operator.right.schema) {
+      ctx.currentIndex -= ctx.scopeStack.pop().size - leftScope.size;
+      ctx.scopeStack.push(leftScope);
+    }
   }
   visitUnion(operator: plan.Union, ctx: VariableMapperCtx): void {
     this.visitSetOp(operator, ctx);
