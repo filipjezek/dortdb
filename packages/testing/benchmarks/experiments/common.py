@@ -46,7 +46,6 @@ class JsonEncoder(json.JSONEncoder):
 
 class JsonLinesWriter:
     def __init__(self, file: TextIOWrapper):
-        """If `extended` is True, extended json (via `bson.json_util`) will be used."""
         self._file = file
 
     def writeobject(self, object: dict | Any):
