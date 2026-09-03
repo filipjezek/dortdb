@@ -265,7 +265,10 @@ export class SchemaInferrer implements SQLPlanVisitor<IdSet, IdSet> {
       'source' in operator &&
       operator.lang === 'sql' &&
       operator.source instanceof PlanTupleOperator &&
-      !(operator.source instanceof plan.NullSource)
+      !(
+        operator.source instanceof plan.NullSource ||
+        operator instanceof plan.ProjectionConcat
+      )
     ) {
       if (operator instanceof plan.Projection) {
         // alias renaming
