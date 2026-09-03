@@ -1,0 +1,27 @@
+-- find this year's top posters and get their recency/frequency/monetary statistics,
+-- their interests and their latest feedback
+
+LANG sql
+
+SELECT
+  orders.PersonId,
+  topPosters.interests,
+  MAX(orders.OrderDate) recency,
+  COUNT(orders.PersonId) frequency,
+  SUM(orders.TotalPrice) monetary,
+  ARRAY(
+    SELECT feedback FROM feedback
+    WHERE personId = orders.PersonId::number
+    LIMIT 10
+  ) recentReviews
+FROM orders JOIN (
+  LANG cypher
+  MATCH (cust)<-[:hasCreator]-(post)
+  WHERE post.creationDate > date.sub(date('2011-12-31'), interval('1 year'))
+  WITH cust, count(post) AS postCount
+  ORDER BY postCount DESC LIMIT 10
+  MATCH (cust)-[:hasInterest]->(tag)
+  RETURN cust.id AS custId, collect(tag.id) AS interests
+) topPosters
+ON orders.PersonId::number = topPosters.custId
+GROUP BY orders.PersonId, topPosters.interests

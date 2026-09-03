@@ -39,9 +39,9 @@ Root
   ;
 
 ScopeExit
-  =	'}'
-	/ ')'
-	/ ']'
+  =  '}'
+  / ')'
+  / ']'
   ;
 
 StatementsOrLangSwitch
@@ -167,8 +167,8 @@ WithQuerySearch
   ;
 
 WithSearchType
-	= 'DEPTH'i { return 'dfs'; }
-	/ 'BREADTH'i { return 'bfs'; } ;
+  = 'DEPTH'i { return 'dfs'; }
+  / 'BREADTH'i { return 'bfs'; } ;
 
 WithQueryCycle
   = wq:WithQuerySearch _ 'CYCLE'i _ cols:ColumnList _ 'SET'i _ markCol:Identifier _ 'USING'i _ pathCol:Identifier {

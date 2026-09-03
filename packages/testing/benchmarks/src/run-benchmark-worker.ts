@@ -1,38 +1,49 @@
-import { BenchmarkArgs } from './parse-args.js';
 import { Worker } from 'node:worker_threads';
-import { logger } from './logger.js';
+import { Events, isWorkerLogMessage, logger } from './utils/logger.js';
+import { DortDBRuleFamily } from './databases/dortdb.js';
 
-export interface BenchmarkWorkerOptions {
-  benchmark: BenchmarkArgs['benchmark'];
-  database: BenchmarkArgs['database'][number];
-  query: BenchmarkArgs['query'][number];
-  measureInit: boolean;
+export type BenchmarkWorkerOptions = {
+  benchmark: BenchmarkName;
+  database: DatabaseName;
+  dataUrl: string;
+  queryIds: number[];
+  runs: number[];
   /** in seconds */
   hardTimeout: number;
   /** in seconds */
   softTimeout: number;
-  runs: number;
   snapshotInterval: number;
-  secondaryIndices: boolean;
-  skipWarmup: boolean;
-}
+  unibench: {
+    secondaryIndexes: boolean;
+  };
+  dortdb: {
+    excludeRules: DortDBRuleFamily[];
+  };
+};
 
-export interface BenchmarkWorkerLogMessage {
-  details: Record<string, any>;
-  message: string;
-}
+export const AVAILABLE_BENCHMARKS = ['tpch', 'unibench'] as const;
+export type BenchmarkName = (typeof AVAILABLE_BENCHMARKS)[number];
+
+export const AVAILABLE_DATABASES = [
+  'alasql',
+  'sqlite',
+  'arango',
+  'orient',
+  'dortdb',
+] as const;
+export type DatabaseName = (typeof AVAILABLE_DATABASES)[number];
 
 const BENCHMARK_WORKER_MODULES: Record<
-  BenchmarkArgs['benchmark'],
-  Partial<Record<BenchmarkArgs['database'][number], string>>
+  BenchmarkName,
+  Partial<Record<DatabaseName, string>>
 > = {
   tpch: {
-    alasql: './tpch/benchmark-alasql.js',
-    sqlite: './tpch/benchmark-sqlite.js',
-    dortdb: './tpch/benchmark.js',
+    alasql: './tpch/benchmark_alasql.js',
+    sqlite: './tpch/benchmark_sqlite.js',
+    dortdb: './tpch/benchmark_dortdb.js',
   },
   unibench: {
-    dortdb: './unibench/benchmark.js',
+    dortdb: './unibench/benchmark_dortdb.js',
     arango: './unibench/benchmark_arango.js',
     orient: './unibench/benchmark_orient.js',
   },
@@ -41,11 +52,11 @@ const BENCHMARK_WORKER_MODULES: Record<
 function resolveWorkerScript(options: BenchmarkWorkerOptions): URL {
   const scriptPath =
     BENCHMARK_WORKER_MODULES[options.benchmark][options.database];
-  if (!scriptPath) {
+  if (!scriptPath)
     throw new Error(
       `No worker script configured for ${options.benchmark}/${options.database}`,
     );
-  }
+
   return new URL(scriptPath, import.meta.url);
 }
 
@@ -80,15 +91,12 @@ export async function runBenchmarkWorker(
 
     if (timeoutMs > 0) {
       timeoutId = setTimeout(() => {
-        // finish will be called automatically by the 'exit' event
-        logger.error(
-          {
-            benchmark: options.benchmark,
-            database: options.database,
-            query: options.query,
-          },
+        // Finish will be called automatically by the 'exit' event.
+        logger().error(
+          { event: Events.hardTimeout },
           `Worker timed out after ${options.hardTimeout}s`,
         );
+
         worker.terminate().catch((error: unknown) => {
           finish(() => reject(error));
         });
@@ -96,17 +104,17 @@ export async function runBenchmarkWorker(
     }
 
     worker.on('message', (value: unknown) => {
-      if (
-        typeof value === 'object' &&
-        value !== null &&
-        'message' in value &&
-        'details' in value
-      ) {
-        const msg = value as BenchmarkWorkerLogMessage;
-        logger.info(msg.details, msg.message);
+      if (isWorkerLogMessage(value)) {
+        const messageObject = {
+          event: value.event,
+          ...value.details,
+        };
+
+        if (value.isError) logger().error(messageObject, value.message);
+        else logger().info(messageObject, value.message);
 
         if (
-          msg.message === 'Finished preparing environment' &&
+          value.event === Events.environmentSetup &&
           options.snapshotInterval > 0
         ) {
           snapshotIntervalId = setupMemorySnapshots(options);
@@ -123,7 +131,7 @@ export async function runBenchmarkWorker(
         finish(() => {
           reject(
             new Error(
-              `Worker exited with code ${code} (${options.benchmark}/${options.database}, q${options.query})`,
+              `Worker exited with code ${code} (${options.benchmark}/${options.database}, q${options.queryIds})`,
             ),
           );
         });
@@ -136,11 +144,9 @@ export async function runBenchmarkWorker(
 
 function setupMemorySnapshots(options: BenchmarkWorkerOptions): NodeJS.Timeout {
   return setInterval(() => {
-    logger.info(
+    logger().info(
       {
-        benchmark: options.benchmark,
-        database: options.database,
-        query: options.query,
+        event: Events.memorySnapshot,
         ...process.memoryUsage(),
       },
       'Memory snapshot',

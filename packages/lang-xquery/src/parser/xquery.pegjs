@@ -17,9 +17,9 @@ Root
 ModuleOrLang = NestedLang / Module ;
 
 ScopeExit
-  =	'}'
-	/ ')'
-	/ ']'
+  =  '}'
+  / ')'
+  / ']'
   ;
 
 Module = p:(@Prolog _)? b:QueryBody {
@@ -47,11 +47,11 @@ EmptyOrder = 'greatest' { return true; }
 QueryBody = ExprList ;
 
 Expr
-	= FlworExpr
-	/ QuantifiedExpr
-	/ SwitchExpr
-	/ IfExpr
-	/ OrExpr
+  = FlworExpr
+  / QuantifiedExpr
+  / SwitchExpr
+  / IfExpr
+  / OrExpr
   ;
 
 FlworExpr
@@ -186,13 +186,13 @@ ParExpr
   ;
 
 CurExpr
-	= '{' _? @NestedLang _? '}'
-	/ '{' _? @ExprList _? '}'
+  = '{' _? @NestedLang _? '}'
+  / '{' _? @ExprList _? '}'
   ;
 
 CurOptExpr
-	= '{' _? @NestedLang _? '}'
-	/ '{' _? @ExprList? _? '}'
+  = '{' _? @NestedLang _? '}'
+  / '{' _? @ExprList? _? '}'
   ;
 
 ExprList = Expr|1.., _? ',' _?| ;
@@ -342,13 +342,13 @@ PITarget
   = @name:$NCName ! { return name.toLowerCase() === 'xml'; }
 
 ComputedConstructor
-	= x:'document' _? expr:CurExpr { return new ast.ComputedConstructor(x, expr); }
-	/ x:'element' _? name:NameOrExpr _ expr:CurOptExpr { return new ast.ComputedConstructor(x, expr, name); }
-	/ x:'attribute' _? name:NameOrExpr _ expr:CurOptExpr { return new ast.ComputedConstructor(x, expr, name); }
-	/ x:'namespace' _? name:NCNameOrExpr _ expr:CurExpr { return new ast.ComputedConstructor(x, expr, name); }
-	/ x:'processing-instruction' _? name:NCNameOrExpr _ expr:CurExpr { return new ast.ComputedConstructor(x, expr, name); }
-	/ x:'text' _? expr:CurExpr { return new ast.ComputedConstructor(x, expr); }
-	/ x:'comment' _? expr:CurExpr { return new ast.ComputedConstructor(x, expr); } ;
+  = x:'document' _? expr:CurExpr { return new ast.ComputedConstructor(x, expr); }
+  / x:'element' _? name:NameOrExpr _ expr:CurOptExpr { return new ast.ComputedConstructor(x, expr, name); }
+  / x:'attribute' _? name:NameOrExpr _ expr:CurOptExpr { return new ast.ComputedConstructor(x, expr, name); }
+  / x:'namespace' _? name:NCNameOrExpr _ expr:CurExpr { return new ast.ComputedConstructor(x, expr, name); }
+  / x:'processing-instruction' _? name:NCNameOrExpr _ expr:CurExpr { return new ast.ComputedConstructor(x, expr, name); }
+  / x:'text' _? expr:CurExpr { return new ast.ComputedConstructor(x, expr); }
+  / x:'comment' _? expr:CurExpr { return new ast.ComputedConstructor(x, expr); } ;
 
 NameOrExpr
   = Name

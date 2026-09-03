@@ -1,0 +1,8 @@
+LANG cypher
+
+MATCH (:person {id: $personId})-[:knows]->(person)<-[:hasCreator]-()-[:hasTag]->(tag)
+WHERE EXISTS {
+  LANG xquery
+  $Invoices/Invoices/Invoice.xml[PersonId=$person/@id]/Orderline[brand=$param:brand]
+}
+RETURN DISTINCT tag.id

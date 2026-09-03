@@ -12,6 +12,7 @@ export interface UnibenchData {
   socialNetwork: GraphologyGraph;
   posts: Record<string, any>[];
 }
+
 export type UnibenchObjectKeys = keyof {
   [K in keyof UnibenchData as UnibenchData[K] extends Record<string, any>[]
     ? K
@@ -26,6 +27,7 @@ const graphOptions: ExtractedFileOptions = {
     columns: undefined,
   },
 };
+
 export const unibenchFiles: Record<string, ExtractedFileOptions> = {
   'Dataset/Customer/person_0_0.csv': {
     key: 'customers',

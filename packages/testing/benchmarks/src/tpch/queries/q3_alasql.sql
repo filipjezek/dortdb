@@ -1,0 +1,31 @@
+-- TPC TPC-H Parameter Substitution (Version 2.17.3 build 0)
+-- using 1752693157 as a seed to the RNG
+-- $ID$
+-- TPC-H/TPC-R Shipping Priority Query (Q3)
+-- Functional Query Definition
+-- Approved February 1998
+
+
+select
+  l.orderkey as orderkey,
+  sum(l.extendedprice * (1 - l.discount)) as revenue,
+  o.orderdate as orderdate,
+  o.shippriority as shippriority
+from
+  customer c,
+  orders o,
+  lineitem l
+where
+  c.mktsegment = 'HOUSEHOLD'
+  and c.custkey = o.custkey
+  and l.orderkey = o.orderkey
+  and o.orderdate < date('1995-03-09')
+  and l.shipdate > date('1995-03-09')
+group by
+  l.orderkey,
+  o.orderdate,
+  o.shippriority
+order by
+  revenue desc,
+  o.orderdate
+limit 10;

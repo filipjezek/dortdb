@@ -1,212 +1,67 @@
 import { resolve } from 'node:path';
-import { readFileSync } from 'node:fs';
-import { prepareData } from './prepare-data.js';
-import initSqlJs, { Database } from 'sql.js';
-import { PerformanceMeasure } from 'node:perf_hooks';
+import fs from 'node:fs/promises';
+import { prepareData } from './data.js';
 import { isMainThread, workerData } from 'node:worker_threads';
-import { workerLog } from '../utils/worker-log.js';
 import { BenchmarkWorkerOptions } from '../run-benchmark-worker.js';
-import { promiseTimeout } from '../utils/promise-timeout.js';
+import { SqliteDatabase, type SqliteDB } from '../databases/sqlite.js';
+import { type QueryDef, QueryRegistry } from '../query.js';
+import { TpchData } from '@dortdb/dataloaders';
 
 const QUERY_DIR = resolve(import.meta.dirname, '../../src/tpch/queries');
+const QUERY_COUNT = 22;
+const SCHEMA_FILE = resolve(QUERY_DIR, 'schema_sqlite.sql');
 
-async function prepareEnv(measureInit: boolean): Promise<Database> {
-  const SQL = await initSqlJs();
-  const db = new SQL.Database();
-  const obs = new PerformanceObserver((items) => {
-    items.getEntries().forEach((entry) => {
-      workerLog(
-        {
-          duration: entry.duration,
-          name: entry.name,
-          detail: (entry as PerformanceMeasure).detail,
-        },
-        'Performance entry',
-      );
-    });
-  });
-  obs.observe({ entryTypes: ['measure'], buffered: false });
-
-  await registerDataSources(db, measureInit);
-  workerLog({}, 'Finished preparing environment');
-  return db;
+if (!isMainThread) {
+  await tpchBenchmarkSQLite(workerData as BenchmarkWorkerOptions);
 }
 
-async function runQuery(
-  query: number,
-  db: Database,
-  /** in seconds */
-  totalTimeout: number,
-  runs: number,
-): Promise<void> {
-  const queryText = readFileSync(
-    resolve(QUERY_DIR, `tpch-q${query}_sqlite.sql`),
-    'utf-8',
-  ).replaceAll('\r\n', '\n');
-  console.log(new Date());
-  console.log(`Running query: tpch-q${query}_sqlite.sql`);
-  console.log(queryText);
-
-  const now = Date.now();
-  for (let i = 0; Date.now() - now < totalTimeout * 1000 && i < runs; i++) {
-    await measureQueryRun(query, queryText, db, i, false, i === 0);
-  }
-}
-
-async function measureQueryRun(
-  query: number,
-  queryText: string,
-  db: Database,
-  iteration: number,
-  isWarmup: boolean,
-  measureMemory: boolean,
+export default async function tpchBenchmarkSQLite(
+  options: BenchmarkWorkerOptions,
 ) {
-  await promiseTimeout(1000);
-  performance.mark(`runQuery_${query}_start`);
-  const res = db.exec(queryText);
-  console.log(res);
+  const db = await SqliteDatabase.create();
 
-  performance.mark(`runQuery_${query}_end`);
-  performance.measure(`runQuery_${query}`, {
-    detail: { q: query, iteration, isWarmup },
-    start: `runQuery_${query}_start`,
-    end: `runQuery_${query}_end`,
+  await db.setup(async () => {
+    const data = await prepareData(options.dataUrl);
+    await registerDataSources(db.innerDb, data);
   });
+
+  const registry = new QueryRegistry(QUERY_DIR, defineQueries());
+
+  await registry.run(db, options.queryIds, options.runs, options.softTimeout);
 }
 
-async function registerDataSources(db: Database, measureInit: boolean) {
-  const data = await prepareData();
-
-  db.run(`
-CREATE TABLE region (
-    regionkey INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    comment TEXT
-);
-CREATE TABLE nation (
-    nationkey INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    regionkey INTEGER NOT NULL,
-    comment TEXT,
-    FOREIGN KEY (regionkey) REFERENCES region(regionkey)
-);
-CREATE TABLE supplier (
-    suppkey INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    address TEXT,
-    nationkey INTEGER NOT NULL,
-    phone TEXT,
-    acctbal REAL,
-    comment TEXT,
-    FOREIGN KEY (nationkey) REFERENCES nation(nationkey)
-);
-CREATE TABLE part (
-    partkey INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    mfgr TEXT,
-    brand TEXT,
-    type TEXT,
-    size INTEGER,
-    container TEXT,
-    retailprice REAL,
-    comment TEXT
-);
-CREATE TABLE partsupp (
-    partkey INTEGER NOT NULL,
-    suppkey INTEGER NOT NULL,
-    availqty INTEGER,
-    supplycost REAL,
-    comment TEXT,
-    PRIMARY KEY (partkey, suppkey),
-    FOREIGN KEY (partkey) REFERENCES part(partkey),
-    FOREIGN KEY (suppkey) REFERENCES supplier(suppkey)
-);
-CREATE TABLE customer (
-    custkey INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    address TEXT,
-    nationkey INTEGER NOT NULL,
-    phone TEXT,
-    acctbal REAL,
-    mktsegment TEXT,
-    comment TEXT,
-    FOREIGN KEY (nationkey) REFERENCES nation(nationkey)
-);
-CREATE TABLE orders (
-    orderkey INTEGER PRIMARY KEY,
-    custkey INTEGER NOT NULL,
-    orderstatus TEXT,
-    totalprice REAL,
-    orderdate TEXT,
-    orderpriority TEXT,
-    clerk TEXT,
-    shippriority INTEGER,
-    comment TEXT,
-    FOREIGN KEY (custkey) REFERENCES customer(custkey)
-);
-CREATE TABLE lineitem (
-    orderkey INTEGER NOT NULL,
-    partkey INTEGER NOT NULL,
-    suppkey INTEGER NOT NULL,
-    linenumber INTEGER NOT NULL,
-    quantity REAL,
-    extendedprice REAL,
-    discount REAL,
-    tax REAL,
-    returnflag TEXT,
-    linestatus TEXT,
-    shipdate TEXT,
-    commitdate TEXT,
-    receiptdate TEXT,
-    shipinstruct TEXT,
-    shipmode TEXT,
-    comment TEXT,
-    PRIMARY KEY (orderkey, linenumber),
-    FOREIGN KEY (orderkey) REFERENCES orders(orderkey),
-    FOREIGN KEY (partkey, suppkey) REFERENCES partsupp(partkey, suppkey)
-);
-
-CREATE INDEX idx_nation_regionkey ON nation(regionkey);
-CREATE INDEX idx_supplier_nationkey ON supplier(nationkey);
-CREATE INDEX idx_partsupp_partkey ON partsupp(partkey);
-CREATE INDEX idx_partsupp_suppkey ON partsupp(suppkey);
-CREATE INDEX idx_customer_nationkey ON customer(nationkey);
-CREATE INDEX idx_orders_custkey ON orders(custkey);
-CREATE INDEX idx_lineitem_partkey ON lineitem(partkey);
-CREATE INDEX idx_lineitem_suppkey ON lineitem(suppkey);
-CREATE INDEX idx_lineitem_partkey_suppkey ON lineitem(partkey, suppkey);
-  `);
+async function registerDataSources(db: SqliteDB, data: TpchData) {
+  const schema = await fs.readFile(SCHEMA_FILE, 'utf-8');
+  db.run(schema);
 
   for (const [table, rows] of Object.entries(data)) {
     const columns = Object.keys(rows[0]);
     const placeholders = Object.keys(rows[0])
       .map(() => '?')
       .join(', ');
+
     const stmt = db.prepare(
       `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`,
     );
+
     for (const row of rows) {
       stmt.run(
         columns.map((col) => {
           const val = row[col];
           if (val instanceof Date)
             return `${val.getFullYear()}-${(val.getMonth() + 1).toString().padStart(2, '0')}-${val.getDate().toString().padStart(2, '0')}`;
+
           return val;
         }),
       );
     }
     stmt.free();
   }
-  workerLog({}, 'Finished registering data sources');
 }
 
-export default async function tpchBenchmarkSQLite(
-  options: BenchmarkWorkerOptions,
-) {
-  const db = await prepareEnv(options.measureInit);
-  await runQuery(options.query, db, options.softTimeout, options.runs);
-}
-
-if (!isMainThread) {
-  await tpchBenchmarkSQLite(workerData as BenchmarkWorkerOptions);
+function defineQueries(): QueryDef[] {
+  return Array.from({ length: QUERY_COUNT }, (_, i) => ({
+    filename: `q${i + 1}_sqlite.sql`,
+    resultsFilename: `q${i + 1}_results.json`,
+  }));
 }

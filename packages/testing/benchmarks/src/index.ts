@@ -1,37 +1,34 @@
-import { logger } from './logger.js';
+import { Events, logger, setupLogger } from './utils/logger.js';
 import { parseArgs } from './parse-args.js';
 import { runBenchmarkWorker } from './run-benchmark-worker.js';
 
-const args = parseArgs();
+await main();
 
-const queries = args.query?.length ? args.query : [0];
+async function main() {
+  const args = parseArgs();
 
-for (const db of args.database) {
-  for (const query of queries) {
-    try {
-      await runBenchmarkWorker({
-        benchmark: args.benchmark,
-        database: db,
-        query,
-        measureInit: true,
-        hardTimeout: args.hardTimeout,
-        softTimeout: args.softTimeout,
-        runs: args.runs,
-        snapshotInterval: args.snapshotInterval,
-        secondaryIndices:
-          args.benchmark === 'unibench' && args.unibench.secondaryIndices,
-        skipWarmup: args.skipWarmup,
-      });
-    } catch (err) {
-      logger.error(
-        {
-          error: err instanceof Error ? err.message : String(err),
-          benchmark: args.benchmark,
-          database: db,
-          query,
-        },
-        'Benchmark worker failed',
-      );
-    }
+  setupLogger(args);
+
+  try {
+    await runBenchmarkWorker({
+      benchmark: args.benchmark,
+      database: args.database,
+      dataUrl: args.dataUrl,
+      queryIds: args.queryIds,
+      runs: args.runs,
+      hardTimeout: args.hardTimeout,
+      softTimeout: args.softTimeout,
+      snapshotInterval: args.snapshotInterval,
+      unibench: args.unibench,
+      dortdb: args.dortdb,
+    });
+  } catch (error) {
+    logger().error(
+      {
+        event: Events.workerError,
+        error: error instanceof Error ? error.message : String(error),
+      },
+      'Benchmark worker failed',
+    );
   }
 }
